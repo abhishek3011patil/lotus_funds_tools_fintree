@@ -1,10 +1,29 @@
-import { Box, Button, MenuItem, Paper, Select, Typography, ToggleButton, ToggleButtonGroup, TextField, Switch, Autocomplete, FormControlLabel, Radio, RadioGroup } from "@mui/material";
+import {
+  Autocomplete,
+  Box,
+  Button,
+  FormControlLabel,
+  MenuItem,
+  Paper,
+  Radio,
+  RadioGroup,
+  Select,
+  Switch,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+} from "@mui/material";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
-import { useRef, useState, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { STOCK_DATA } from "../assets/stocks";
 import { useExpiryDates } from "../hooks/useExpiryDates";
 import { useStockAutocomplete } from "../hooks/useStockAutocomplete";
-
+import {
+  getRecentStudies,
+  UNDERLYING_STUDIES,
+} from "../assets/UnderlyingStudy";
+import type { StudyOption } from "../assets/UnderlyingStudy";
 const BUY_COLOR = "#22c55e";
 const SELL_COLOR = "#ef4444";
 
@@ -31,6 +50,10 @@ const NewRecommendation = () => {
   const [stopLoss, setStopLoss] = useState("");
   const [rationale, setRationale] = useState("");
   const [tradeType, setTradeType] = useState("Intraday");
+  const [underlyingStudyValue, setUnderlyingStudyValue] =
+    useState<StudyOption | null>(null);
+  const [underlyingStudyInput, setUnderlyingStudyInput] = useState("");
+  const [recentStudyOptions, setRecentStudyOptions] = useState<StudyOption[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -85,6 +108,72 @@ const NewRecommendation = () => {
     handleKeyDown,
   } = useStockAutocomplete(exchangeType as "NSE" | "BSE");
 
+  // =============================
+  // Underlying Study helpers
+  // =============================
+  type StudyAutocompleteOption = StudyOption & { group: string };
+
+  // Load recent selections from localStorage (if any)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = window.localStorage.getItem("recentUnderlyingStudies");
+      if (!stored) return;
+      const values: string[] = JSON.parse(stored);
+      setRecentStudyOptions(getRecentStudies(values));
+    } catch {
+      // ignore malformed storage
+    }
+  }, []);
+
+  // Build options with 4 logical groups, including "Recently Selected"
+  const studyOptions: StudyAutocompleteOption[] = useMemo(() => {
+    const recentValues = new Set(recentStudyOptions.map((o) => o.value));
+
+    const recent: StudyAutocompleteOption[] = recentStudyOptions.map((o) => ({
+      ...o,
+      group: "Recently Selected",
+    }));
+
+    const groupedBase: StudyAutocompleteOption[] = UNDERLYING_STUDIES.flatMap(
+      (g) =>
+        g.options
+          .filter((opt) => !recentValues.has(opt.value))
+          .map((opt) => ({
+            ...opt,
+            group: g.group,
+          }))
+    );
+
+    return [...recent, ...groupedBase];
+  }, [recentStudyOptions]);
+
+  const handleUnderlyingStudyChange = (
+    _: unknown,
+    newValue: StudyOption | null
+  ) => {
+    setUnderlyingStudyValue(newValue);
+    if (!newValue) return;
+
+    // update "recently selected" list (max 10, most recent first)
+    setRecentStudyOptions((prev) => {
+      const existingValues = prev.map((p) => p.value);
+      const mergedValues = [
+        newValue.value,
+        ...existingValues.filter((v) => v !== newValue.value),
+      ].slice(0, 10);
+
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(
+          "recentUnderlyingStudies",
+          JSON.stringify(mergedValues)
+        );
+      }
+
+      return getRecentStudies(mergedValues);
+    });
+  };
+
 
   useEffect(() => {
     if (expiryDates.length > 0) {
@@ -103,10 +192,9 @@ const NewRecommendation = () => {
         display: "grid",
         gridTemplateColumns: { xs: "1fr", lg: "3fr 1.5fr" },
         gap: { xs: 2, md: 1.5 },
-        height: { lg: "100vh", xs: "auto" },
+        height: "auto",
         p: { xs: 1, sm: 1.5 },
         boxSizing: "border-box",
-        overflowY: "auto",
       }}
     >
       {/* LEFT PANEL */}
@@ -119,9 +207,8 @@ const NewRecommendation = () => {
           display: "flex",
           flexDirection: "column",
           height: "auto",
-          minHeight: { xs: "100%", lg: "85%" },
+          minHeight: "100%",
           gap: 1.5,
-          overflow: "hidden"
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
@@ -441,17 +528,97 @@ const NewRecommendation = () => {
             )}
           </Box>
 
-          <TextField
-            label="Rationale"
+          <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 0.5 }}>
+            <Typography sx={{ fontSize: '0.7rem', fontWeight: 700 }}>Rationale</Typography>
+            <Box sx={{ overflowX: "auto" }}>
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={rationale}
+                onChange={(_, val) => val && setRationale(val)}
+                sx={{
+                  backgroundColor: "#eef2f7",
+                  whiteSpace: "nowrap",
+                  "& .MuiToggleButtonGroup-grouped": {
+                    border: "none",
+                    px: 1,
+                    fontSize: "0.65rem",
+                    fontWeight: 700,
+                    color: "#6b7280",
+                    "&.Mui-selected": {
+                      backgroundColor: "#4f6bed",
+                      color: "#fff",
+                      "&:hover": {
+                        backgroundColor: "#3b51c5",
+                      },
+                    },
+                  },
+                }}
+              >
+                <ToggleButton value="Overbought Condition">Overbought Condition</ToggleButton>
+                <ToggleButton value="Oversold Condition">Oversold Condition</ToggleButton>
+                <ToggleButton value="Momentum Play">Momentum Play</ToggleButton>
+                <ToggleButton value="Break Out Play">Break Out Play</ToggleButton>
+                <ToggleButton value="Break Down Play">Break Down Play</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+          </Box>
+        </Box>
+        
+
+        {/* Underlying Study */}
+        <Box sx={{ mb: 1 }}>
+          <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, mb: 0.5 }}>
+            Underlying Study
+          </Typography>
+
+          <Autocomplete<StudyAutocompleteOption, false, false, false>
             size="small"
-            multiline
-            rows={1}
-            value={rationale}
-            onChange={(e) => setRationale(e.target.value)}
-            sx={{ width: "100%", flex: 1 }}
+            fullWidth
+            options={studyOptions}
+            value={
+              underlyingStudyValue
+                ? {
+                    ...underlyingStudyValue,
+                    group:
+                      UNDERLYING_STUDIES.find((g) =>
+                        g.options.some((o) => o.value === underlyingStudyValue.value)
+                      )?.group ?? "Fundamental & General Analysis",
+                  }
+                : null
+            }
+            inputValue={underlyingStudyInput}
+            onInputChange={(_, newInput) => setUnderlyingStudyInput(newInput)}
+            onChange={handleUnderlyingStudyChange}
+            getOptionLabel={(option) => option.label}
+            groupBy={(option) => option.group}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Select or search underlying study"
+                variant="outlined"
+              />
+            )}
+            renderGroup={(params) => (
+              <Box key={params.key}>
+                <Typography
+                  sx={{
+                    px: 1.5,
+                    pt: 1,
+                    pb: 0.25,
+                    fontSize: "0.65rem",
+                    fontWeight: 700,
+                    color: "#6b7280",
+                  }}
+                >
+                  {params.group}
+                </Typography>
+                {params.children}
+              </Box>
+            )}
+            isOptionEqualToValue={(option, value) => option.value === value.value}
           />
         </Box>
-
         {/* Remarks & Upload */}
         <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1.5, mb: 2 }}>
           <TextField multiline rows={2} placeholder="Research Analyst's Remarks" sx={{ flexGrow: 1 }} />
@@ -482,6 +649,10 @@ const NewRecommendation = () => {
             </Button>
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <Typography sx={{ fontSize: '0.65rem', fontWeight: 600 }}>Is this an Algo Powered Recommendation?</Typography>
+              <Switch size="small" />
+            </Box>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Typography sx={{ fontSize: '0.65rem', fontWeight: 600 }}>Vested Interest?</Typography>
               <Switch size="small" />
             </Box>
           </Box>
