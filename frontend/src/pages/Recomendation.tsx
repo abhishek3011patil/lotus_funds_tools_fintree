@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { STOCK_DATA } from "../assets/stocks";
+
 import { useExpiryDates } from "../hooks/useExpiryDates";
 import { useStockAutocomplete } from "../hooks/useStockAutocomplete";
 import {
@@ -564,7 +564,7 @@ const NewRecommendation = () => {
             </Box>
           </Box>
         </Box>
-        
+
 
         {/* Underlying Study */}
         <Box sx={{ mb: 1 }}>
@@ -579,12 +579,12 @@ const NewRecommendation = () => {
             value={
               underlyingStudyValue
                 ? {
-                    ...underlyingStudyValue,
-                    group:
-                      UNDERLYING_STUDIES.find((g) =>
-                        g.options.some((o) => o.value === underlyingStudyValue.value)
-                      )?.group ?? "Fundamental & General Analysis",
-                  }
+                  ...underlyingStudyValue,
+                  group:
+                    UNDERLYING_STUDIES.find((g) =>
+                      g.options.some((o) => o.value === underlyingStudyValue.value)
+                    )?.group ?? "Fundamental & General Analysis",
+                }
                 : null
             }
             inputValue={underlyingStudyInput}
