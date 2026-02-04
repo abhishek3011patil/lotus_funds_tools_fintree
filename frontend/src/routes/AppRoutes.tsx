@@ -1,15 +1,15 @@
 import { Routes, Route } from "react-router-dom";
 import AppLayout from "../components/layout/AppLayout";
-import AutomationLayout from "../components/layout_automation/AppLayout";
 import Dashboard from "../pages/Dashboard";
 
 import Recommendations from "../pages/Recomendation";
 import Performance from "../pages/Performance";
-import Afternoon from "../pages/automation/Afternoon";
-import Evening from "../pages/automation/Evening";
-import Morning from "../pages/automation/Morning";
-import Special from "../pages/automation/Special";
-import Weekly from "../pages/automation/Weekly";
+import AutomationLayout from "../components/layout_automation/AppLayout";
+import Afternoon from "../pages_automation/Afternoon";
+import Evening from "../pages_automation/Evening";
+import Morning from "../pages_automation/Morning";
+import Special from "../pages_automation/Special";
+import Weekly from "../pages_automation/Weekly";
 // import NotFound from "../pages/NotFound";
 
 const AppRoutes = () => {
@@ -21,6 +21,8 @@ const AppRoutes = () => {
         <Route path="/recommendations" element={<Recommendations />} />
         <Route path="/performance" element={<Performance />} />
       </Route>
+
+      {/* Automation layout with its own sidebar/header */}
       <Route path="/automation" element={<AutomationLayout />}>
         <Route index element={<Afternoon />} />
         <Route path="Afternoon" element={<Afternoon />} />
@@ -31,8 +33,8 @@ const AppRoutes = () => {
       </Route>
 
       {/* Pages without sidebar (optional) */}
-     {/* <Route path="*" element={<NotFound />} /> */}
-    </Routes> 
+      {/* <Route path="*" element={<NotFound />} /> */}
+    </Routes>
   );
 };
 

@@ -54,3 +54,21 @@ export const automationSidebarItems: SidebarItem[] = [
   },
 ];
 
+export const afternoonTiles: SidebarItem[] = [
+  {
+    label: "Tile 1",
+    path: "/automation/Afternoon/tile1",
+    icon: <DashboardIcon sx={{ mr: 1.5 }} />,
+  },
+  {
+    label: "Tile 2",
+    path: "/automation/Afternoon/tile2",
+    icon: <CheckBoxIcon sx={{ mr: 1.5 }} />,
+  },
+  {
+    label: "Tile 3",
+    path: "/automation/Afternoon/tile3",
+    icon: <FolderIcon sx={{ mr: 1.5 }} />,
+  },
+];
+

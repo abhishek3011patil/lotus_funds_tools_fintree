@@ -15,15 +15,16 @@ import {
   Typography,
 } from "@mui/material";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
-import { useEffect, useMemo, useRef, useState } from "react";
-
+import { useRef, useState, useEffect, useMemo } from "react";
+import { STOCK_DATA } from "../assets/stocks";
 import { useExpiryDates } from "../hooks/useExpiryDates";
 import { useStockAutocomplete } from "../hooks/useStockAutocomplete";
 import {
-  getRecentStudies,
   UNDERLYING_STUDIES,
+  getRecentStudies,
 } from "../assets/UnderlyingStudy";
 import type { StudyOption } from "../assets/UnderlyingStudy";
+
 const BUY_COLOR = "#22c55e";
 const SELL_COLOR = "#ef4444";
 
@@ -173,7 +174,6 @@ const NewRecommendation = () => {
       return getRecentStudies(mergedValues);
     });
   };
-
 
   useEffect(() => {
     if (expiryDates.length > 0) {
@@ -565,7 +565,6 @@ const NewRecommendation = () => {
           </Box>
         </Box>
 
-
         {/* Underlying Study */}
         <Box sx={{ mb: 1 }}>
           <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, mb: 0.5 }}>
@@ -579,12 +578,12 @@ const NewRecommendation = () => {
             value={
               underlyingStudyValue
                 ? {
-                  ...underlyingStudyValue,
-                  group:
-                    UNDERLYING_STUDIES.find((g) =>
-                      g.options.some((o) => o.value === underlyingStudyValue.value)
-                    )?.group ?? "Fundamental & General Analysis",
-                }
+                    ...underlyingStudyValue,
+                    group:
+                      UNDERLYING_STUDIES.find((g) =>
+                        g.options.some((o) => o.value === underlyingStudyValue.value)
+                      )?.group ?? "Fundamental & General Analysis",
+                  }
                 : null
             }
             inputValue={underlyingStudyInput}
@@ -619,6 +618,7 @@ const NewRecommendation = () => {
             isOptionEqualToValue={(option, value) => option.value === value.value}
           />
         </Box>
+
         {/* Remarks & Upload */}
         <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1.5, mb: 2 }}>
           <TextField multiline rows={2} placeholder="Research Analyst's Remarks" sx={{ flexGrow: 1 }} />
