@@ -480,90 +480,89 @@ const NewRecommendation = () => {
         </Box>
 
         {/* Holding period & Rationale Container */}
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: { xs: "column", sm: "row" },
-            gap: 2,
-            mb: 1,
-            alignItems: { xs: "flex-start", sm: "flex-end" }
-          }}
-        >
-          <Box sx={{ width: "100%", flex: 1 }}>
-            <Typography sx={{ fontSize: '0.7rem', fontWeight: 700 }}>Holding Period</Typography>
-            {/* Logic for Intraday */}
-            {tradeType === "Intraday" && (
-              <RadioGroup row value="0">
-                <FormControlLabel
-                  value="0"
-                  control={<Radio size="small" color="primary" />}
-                  label={<Typography sx={{ fontSize: '0.65rem' }}>0</Typography>}
-                  checked={true}
-                />
-              </RadioGroup>
-            )}
-            {/* Logic for BTST/STBT */}
-            {(tradeType === "BTST" || tradeType === "STBT") && (
-              <RadioGroup row value={radioValue} onChange={(e) => setRadioValue(e.target.value)}>
-                <FormControlLabel value="0" control={<Radio size="small" color="primary" />} label={<Typography sx={{ fontSize: '0.65rem' }}>0</Typography>} />
-                <FormControlLabel value="1" control={<Radio size="small" color="primary" />} label={<Typography sx={{ fontSize: '0.65rem' }}>1</Typography>} />
-              </RadioGroup>
-            )}
-            {/* Logic for Short Term */}
-            {tradeType === "Short Term" && (
-              <RadioGroup row value={radioValue} onChange={(e) => setRadioValue(e.target.value)}>
-                <FormControlLabel value="7 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 7 Days</Typography>} />
-                <FormControlLabel value="30 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 30 Days</Typography>} />
-                <FormControlLabel value="90 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 90 Days</Typography>} />
-              </RadioGroup>
-            )}
+        <Box 
+  sx={{ 
+    display: "flex", 
+    flexDirection: "column", // Stack sections vertically
+    gap: 1.5, 
+    mb: 1 
+  }}
+>
+  {/* TOP PART: Holding Period */}
+  <Box sx={{ width: "100%" }}>
+    <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, mb: 0.5 }}>Holding Period</Typography>
+    
+    {/* Intraday Logic */}
+    {tradeType === "Intraday" && (
+      <RadioGroup row value="0">
+        <FormControlLabel value="0" control={<Radio size="small" color="primary" />} label={<Typography sx={{ fontSize: '0.65rem' }}>0</Typography>} checked={true} />
+      </RadioGroup>
+    )}
 
-            {/* Logic for Long Term */}
-            {tradeType === "Long Term" && (
-              <RadioGroup row value={radioValue} onChange={(e) => setRadioValue(e.target.value)}>
-                <FormControlLabel value="6 Months" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 6 Months</Typography>} />
-                <FormControlLabel value="1 Year" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 1 Year</Typography>} />
-                <FormControlLabel value="5 Years" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 5 Years</Typography>} />
-              </RadioGroup>
-            )}
-          </Box>
+    {/* BTST/STBT Logic */}
+    {(tradeType === "BTST" || tradeType === "STBT") && (
+      <RadioGroup row value={radioValue} onChange={(e) => setRadioValue(e.target.value)}>
+        <FormControlLabel value="0" control={<Radio size="small" color="primary" />} label={<Typography sx={{ fontSize: '0.65rem' }}>0</Typography>} />
+        <FormControlLabel value="1" control={<Radio size="small" color="primary" />} label={<Typography sx={{ fontSize: '0.65rem' }}>1</Typography>} />
+      </RadioGroup>
+    )}
 
-          <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 0.5 }}>
-            <Typography sx={{ fontSize: '0.7rem', fontWeight: 700 }}>Rationale</Typography>
-            <Box sx={{ overflowX: "auto" }}>
-              <ToggleButtonGroup
-                size="small"
-                exclusive
-                value={rationale}
-                onChange={(_, val) => val && setRationale(val)}
-                sx={{
-                  backgroundColor: "#eef2f7",
-                  whiteSpace: "nowrap",
-                  "& .MuiToggleButtonGroup-grouped": {
-                    border: "none",
-                    px: 1,
-                    fontSize: "0.65rem",
-                    fontWeight: 700,
-                    color: "#6b7280",
-                    "&.Mui-selected": {
-                      backgroundColor: "#4f6bed",
-                      color: "#fff",
-                      "&:hover": {
-                        backgroundColor: "#3b51c5",
-                      },
+    {/* Short Term Logic */}
+    {tradeType === "Short Term" && (
+      <RadioGroup row value={radioValue} onChange={(e) => setRadioValue(e.target.value)}>
+        <FormControlLabel value="7 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 7 Days</Typography>} />
+        <FormControlLabel value="30 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 30 Days</Typography>} />
+        <FormControlLabel value="90 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 90 Days</Typography>} />
+      </RadioGroup>
+    )}
+
+    {/* Long Term Logic */}
+    {tradeType === "Long Term" && (
+      <RadioGroup row value={radioValue} onChange={(e) => setRadioValue(e.target.value)}>
+        <FormControlLabel value="6 Months" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 6 Months</Typography>} />
+        <FormControlLabel value="1 Year" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 1 Year</Typography>} />
+        <FormControlLabel value="5 Years" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 5 Years</Typography>} />
+      </RadioGroup>
+    )}
+  </Box>
+
+  {/* BOTTOM PART: Rationale (Now appears under Holding Period) */}
+  <Box sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 0.5 }}>
+    <Typography sx={{ fontSize: '0.7rem', fontWeight: 700 }}>Rationale</Typography>
+    <Box sx={{ width: "100%" }}>
+      <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={rationale}
+              onChange={(_, val) => val && setRationale(val)}
+              sx={{
+                backgroundColor: "#eef2f7",
+                whiteSpace: "nowrap",
+                "& .MuiToggleButtonGroup-grouped": {
+                  border: "none",
+                  px: 1,
+                  fontSize: "0.65rem",
+                  fontWeight: 700,
+                  color: "#6b7280",
+                  "&.Mui-selected": {
+                    backgroundColor: "#4f6bed",
+                    color: "#fff",
+                    "&:hover": {
+                      backgroundColor: "#3b51c5",
                     },
                   },
-                }}
-              >
-                <ToggleButton value="Overbought Condition">Overbought Condition</ToggleButton>
-                <ToggleButton value="Oversold Condition">Oversold Condition</ToggleButton>
-                <ToggleButton value="Momentum Play">Momentum Play</ToggleButton>
-                <ToggleButton value="Break Out Play">Break Out Play</ToggleButton>
-                <ToggleButton value="Break Down Play">Break Down Play</ToggleButton>
-              </ToggleButtonGroup>
-            </Box>
-          </Box>
-        </Box>
+                },
+              }}
+            >
+        <ToggleButton value="Overbought Condition">OVERBOUGHT</ToggleButton>
+        <ToggleButton value="Oversold Condition">OVERSOLD</ToggleButton>
+        <ToggleButton value="Momentum Play">MOMENTUM</ToggleButton>
+        <ToggleButton value="Break Out Play">BREAK OUT</ToggleButton>
+        <ToggleButton value="Break Down Play">BREAK DOWN</ToggleButton>
+      </ToggleButtonGroup>
+    </Box>
+  </Box>
+</Box>
 
         {/* Underlying Study */}
         <Box sx={{ mb: 1 }}>

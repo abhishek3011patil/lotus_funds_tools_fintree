@@ -9,6 +9,7 @@ import {
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import Menu from "../components/common/Menu";
 
 const Performance: React.FC = () => {
   const metrics = {
@@ -194,6 +195,9 @@ const Performance: React.FC = () => {
           </Grid>
         </Grid>
       </Paper>
+      <Box sx={{ flexGrow: 1, overflowX: 'auto' }}>
+  <Menu />
+</Box>
     </Box>
   );
 };
