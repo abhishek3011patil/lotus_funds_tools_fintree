@@ -2,27 +2,28 @@ import { Box } from "@mui/material";
 import { Outlet } from "react-router-dom";
 import { useState } from "react";
 import DashboardIcon from "@mui/icons-material/Dashboard";
-import CheckBoxIcon from "@mui/icons-material/CheckBox";
+import PrivacyTipIcon from '@mui/icons-material/PrivacyTip';
+// import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import FolderIcon from "@mui/icons-material/Folder";
 import Header from "./Header";
-import Sidebar from "./Sidebar";
-import type { SidebarItem } from "../../types/sidebar";
+import Sidebar from "../components/common/Sidebar";
+import type { SidebarItem } from "../types/sidebar";
 
-const appSidebarItems: SidebarItem[] = [
+const automationSidebarItems: SidebarItem[] = [
   {
     label: "Dashboard",
-    path: "/",
+    path: "/admin/dashboard",
     icon: <DashboardIcon sx={{ mr: 1.5 }} />,
   },
   {
     label: "Recommendations",
-    path: "/recommendations",
-    icon: <CheckBoxIcon sx={{ mr: 1.5 }} />,
+    path: "/admin/recommendations",
+    icon: <FolderIcon sx={{ mr: 1.5 }} />,
   },
   {
-    label: "Performance",
-    path: "/performance",
-    icon: <FolderIcon sx={{ mr: 1.5 }} />,
+    label: "AdminApproval",
+    path: "/admin/approval",
+    icon: <PrivacyTipIcon sx={{ mr: 1.5 }} />,
   },
 ];
 
@@ -39,11 +40,11 @@ const AppLayout = () => {
 
   return (
     <Box sx={{ display: "flex" }}>
-      <Header onMenuClick={handleMenuClick} />
+      <Header onMenuClick={handleMenuClick} items={automationSidebarItems} />
       <Sidebar
         open={sidebarOpen}
         onClose={handleSidebarClose}
-        items={appSidebarItems}
+        items={automationSidebarItems}
       />
 
       <Box

@@ -1,0 +1,163 @@
+[
+  {
+    "id": "047d468c-fc26-4d37-9900-4350767582f3",
+    "status": "PUBLISHED",
+    "created_at": "2026-02-09T14:35:28.784186Z",
+
+    "exchange": "BSE",
+    "instrument": "STOCK",
+
+    "symbol": "RELIANCE",
+    "name": "Reliance Industries Ltd",
+
+    "action": "BUY",
+    "call_type": "Cash",
+    "trade_type": "Short Term",
+
+    "entry": { "low": 1050, "ideal": 2460, "high": null },
+    "targets": [2550, 2580],
+    "stop_losses": [2400],
+
+    "holding_period": "30 Days",
+    "rationale": "Momentum Play",
+    "underlying_study": "RSI",
+
+    "flags": { "algo": false, "vested_interest": false },
+    "remarks": "Breakout with strong volume"
+  },
+
+  {
+    "id": "1a2b3c4d-1111-2222-3333-444455556666",
+    "status": "PUBLISHED",
+    "created_at": "2026-02-09T14:50:10.000Z",
+
+    "exchange": "NSE",
+    "instrument": "INDEX",
+
+    "symbol": "NIFTY",
+    "name": "NIFTY 50",
+
+    "action": "BUY",
+    "call_type": "Option Call",
+    "trade_type": "Intraday",
+
+    "entry": { "low": 210, "ideal": 215, "high": 220 },
+    "targets": [245],
+    "stop_losses": [195],
+
+    "holding_period": "Intraday",
+    "rationale": "Break Out Play",
+    "underlying_study": "Open Interest",
+
+    "flags": { "algo": true, "vested_interest": false },
+    "remarks": "Call writing unwinding, strong intraday momentum"
+  },
+
+  {
+    "id": "7e8f9a10-aaaa-bbbb-cccc-ddddeeeeffff",
+    "status": "PUBLISHED",
+    "created_at": "2026-02-09T15:05:40.000Z",
+
+    "exchange": "NSE",
+    "instrument": "STOCK",
+
+    "symbol": "TCS",
+    "name": "Tata Consultancy Services",
+
+    "action": "SELL",
+    "call_type": "Cash",
+    "trade_type": "BTST",
+
+    "entry": { "low": 3820, "ideal": 3810, "high": 3800 },
+    "targets": [3720, 3680],
+    "stop_losses": [3880],
+
+    "holding_period": "1 Day",
+    "rationale": "Overbought Condition",
+    "underlying_study": "RSI + Volume Divergence",
+
+    "flags": { "algo": false, "vested_interest": true },
+    "remarks": "Negative divergence near resistance zone"
+  },
+
+  {
+    "id": "abcd1234-5678-90ef-ghij-klmnopqrst",
+    "status": "PUBLISHED",
+    "created_at": "2026-02-09T15:20:00.000Z",
+
+    "exchange": "NSE",
+    "instrument": "STOCK",
+
+    "symbol": "INFY",
+    "name": "Infosys Ltd",
+
+    "action": "BUY",
+    "call_type": "Cash",
+    "trade_type": "Short Term",
+
+    "entry": { "low": 1520, "ideal": 1540, "high": 1560 },
+    "targets": [1620, 1680],
+    "stop_losses": [1480],
+
+    "holding_period": "30 Days",
+    "rationale": "Momentum Play",
+    "underlying_study": "Moving Average Breakout",
+
+    "flags": { "algo": false, "vested_interest": false },
+    "remarks": "Sustaining above 50 DMA with rising volumes"
+  },
+
+  {
+    "id": "99887766-5544-3322-1100-aabbccddeeff",
+    "status": "PUBLISHED",
+    "created_at": "2026-02-09T15:35:55.000Z",
+
+    "exchange": "BSE",
+    "instrument": "STOCK",
+
+    "symbol": "HDFCBANK",
+    "name": "HDFC Bank Ltd",
+
+    "action": "BUY",
+    "call_type": "Cash",
+    "trade_type": "Long Term",
+
+    "entry": { "low": 1420, "ideal": 1450, "high": 1480 },
+    "targets": [1650, 1800],
+    "stop_losses": [1360],
+
+    "holding_period": "1 Year",
+    "rationale": "Oversold Condition",
+    "underlying_study": "Fundamental + RSI",
+
+    "flags": { "algo": false, "vested_interest": false },
+    "remarks": "Strong balance sheet, valuation comfort zone"
+  },
+
+  {
+    "id": "fedcba98-7654-3210-ffff-eeee11112222",
+    "status": "PUBLISHED",
+    "created_at": "2026-02-09T15:50:30.000Z",
+
+    "exchange": "NSE",
+    "instrument": "INDEX",
+
+    "symbol": "BANKNIFTY",
+    "name": "Bank Nifty",
+
+    "action": "SELL",
+    "call_type": "Futures",
+    "trade_type": "Intraday",
+
+    "entry": { "low": 46300, "ideal": 46200, "high": 46100 },
+    "targets": [45500],
+    "stop_losses": [46800],
+
+    "holding_period": "Intraday",
+    "rationale": "Break Down Play",
+    "underlying_study": "VWAP + OI Build-up",
+
+    "flags": { "algo": true, "vested_interest": false },
+    "remarks": "Failure near VWAP with fresh short build-up"
+  }
+]
