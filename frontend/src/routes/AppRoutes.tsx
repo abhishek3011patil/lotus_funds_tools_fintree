@@ -1,7 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import AppLayout from "../components/layout/AppLayout";
 import Dashboard from "../pages/Dashboard";
-
+import Signup from "../pages/common/Signup";
 import Recommendations from "../pages/Recomendation";
 import Performance from "../pages/Performance";
 import AutomationLayout from "../components/layout_automation/AppLayout";
@@ -31,6 +31,7 @@ const AppRoutes = () => {
         <Route path="Special" element={<Special />} />
         <Route path="Weekly" element={<Weekly />} />
       </Route>
+      <Route path="/signup" element={<Signup />} />
 
       {/* Pages without sidebar (optional) */}
       {/* <Route path="*" element={<NotFound />} /> */}
