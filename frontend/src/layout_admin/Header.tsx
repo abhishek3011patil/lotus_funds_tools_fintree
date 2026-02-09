@@ -2,7 +2,7 @@ import { AppBar, Toolbar, Typography, Box, IconButton } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
-import type { SidebarItem } from "../../types/sidebar";
+import type { SidebarItem } from "../types/sidebar";
 
 interface HeaderProps {
   onMenuClick?: () => void;
