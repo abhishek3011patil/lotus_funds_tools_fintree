@@ -9,35 +9,24 @@ interface TileItem {
 
 const morningTiles: TileItem[] = [
   {
-    label: "a",
+    label: "Emailer",
     id: 1,
     image: "#",
     path: "",
   },
   {
-    label: "b",
+    label: "FII/DLL",
     id: 2,
     image: "#",
     path: "",
   },
   {
-    label: "c",
+    label: "One pager",
     id: 3,
     image: "#",
     path: "",
   },
-  {
-    label: "d",
-    id: 4,
-    image: "#",
-    path: "",
-  },
-  {
-    label: "e",
-    id: 5,
-    image: "#",
-    path: "",
-  },
+
 ];
 
 const Morning = () => {

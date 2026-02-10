@@ -13,6 +13,13 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  CircularProgress
 } from "@mui/material";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import { useRef, useState, useEffect, useMemo } from "react";
@@ -51,8 +58,7 @@ const NewRecommendation = () => {
   const [stopLoss, setStopLoss] = useState("");
   const [rationale, setRationale] = useState("");
   const [tradeType, setTradeType] = useState("Intraday");
-  const [underlyingStudyValue, setUnderlyingStudyValue] =
-    useState<StudyOption | null>(null);
+  const [underlyingStudyValue, setUnderlyingStudyValue] = useState<StudyOption | null>(null);
   const [underlyingStudyInput, setUnderlyingStudyInput] = useState("");
   const [recentStudyOptions, setRecentStudyOptions] = useState<StudyOption[]>([]);
 
@@ -183,8 +189,60 @@ const NewRecommendation = () => {
     }
   }, [expiryDates]);
 
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  const DATA_SOURCE = "/data.json";
 
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(DATA_SOURCE);
+        const data = await response.json();
+        // Handle both single object and array responses
+        setRecommendations(Array.isArray(data) ? data : [data]);
+      } catch (error) {
+        console.error("Failed to fetch recommendations:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRecommendations();
+  }, []);
+
+  // 1. EXIT FUNCTION (Removes the item from the list)
+  const handleExit = (id: string) => {
+    if (window.confirm("Are you sure you want to exit this recommendation?")) {
+      // For now, we update the UI state. 
+      // Later, your Sir will add: await fetch(`${DATA_SOURCE}/${id}`, { method: 'DELETE' });
+      setRecommendations((prev) => prev.filter((item) => item.id !== id));
+    }
+  };
+
+  // 2. MODIFY FUNCTION (Loads data back into the form)
+  const handleModify = (item: any) => {
+    // Populate all your left-panel states with the selected item's data
+    setExchangeType(item.exchange);
+    setAction(item.action);
+    setExchange(item.instrument);
+    setCallType(item.call_type);
+    setTradeType(item.trade_type);
+
+    // Note: Since entry is an object in your JSON {ideal: 2460}
+    setEntry(item.entry.ideal.toString());
+    setTarget(item.targets[0].toString());
+    setStopLoss(item.stop_losses[0].toString());
+
+    // If you are using the Autocomplete hook:
+    // You might need to manually trigger the input change
+    // setInputValue(item.symbol); 
+
+    setRationale(item.rationale);
+
+    // Scroll to top so the user sees the form is ready to edit
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <Box
@@ -480,89 +538,89 @@ const NewRecommendation = () => {
         </Box>
 
         {/* Holding period & Rationale Container */}
-        <Box 
-  sx={{ 
-    display: "flex", 
-    flexDirection: "column", // Stack sections vertically
-    gap: 1.5, 
-    mb: 1 
-  }}
->
-  {/* TOP PART: Holding Period */}
-  <Box sx={{ width: "100%" }}>
-    <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, mb: 0.5 }}>Holding Period</Typography>
-    
-    {/* Intraday Logic */}
-    {tradeType === "Intraday" && (
-      <RadioGroup row value="0">
-        <FormControlLabel value="0" control={<Radio size="small" color="primary" />} label={<Typography sx={{ fontSize: '0.65rem' }}>0</Typography>} checked={true} />
-      </RadioGroup>
-    )}
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column", // Stack sections vertically
+            gap: 1.5,
+            mb: 1
+          }}
+        >
+          {/* TOP PART: Holding Period */}
+          <Box sx={{ width: "100%" }}>
+            <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, mb: 0.5 }}>Holding Period</Typography>
 
-    {/* BTST/STBT Logic */}
-    {(tradeType === "BTST" || tradeType === "STBT") && (
-      <RadioGroup row value={radioValue} onChange={(e) => setRadioValue(e.target.value)}>
-        <FormControlLabel value="0" control={<Radio size="small" color="primary" />} label={<Typography sx={{ fontSize: '0.65rem' }}>0</Typography>} />
-        <FormControlLabel value="1" control={<Radio size="small" color="primary" />} label={<Typography sx={{ fontSize: '0.65rem' }}>1</Typography>} />
-      </RadioGroup>
-    )}
+            {/* Intraday Logic */}
+            {tradeType === "Intraday" && (
+              <RadioGroup row value="0">
+                <FormControlLabel value="0" control={<Radio size="small" color="primary" />} label={<Typography sx={{ fontSize: '0.65rem' }}>0</Typography>} checked={true} />
+              </RadioGroup>
+            )}
 
-    {/* Short Term Logic */}
-    {tradeType === "Short Term" && (
-      <RadioGroup row value={radioValue} onChange={(e) => setRadioValue(e.target.value)}>
-        <FormControlLabel value="7 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 7 Days</Typography>} />
-        <FormControlLabel value="30 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 30 Days</Typography>} />
-        <FormControlLabel value="90 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 90 Days</Typography>} />
-      </RadioGroup>
-    )}
+            {/* BTST/STBT Logic */}
+            {(tradeType === "BTST" || tradeType === "STBT") && (
+              <RadioGroup row value={radioValue} onChange={(e) => setRadioValue(e.target.value)}>
+                <FormControlLabel value="0" control={<Radio size="small" color="primary" />} label={<Typography sx={{ fontSize: '0.65rem' }}>0</Typography>} />
+                <FormControlLabel value="1" control={<Radio size="small" color="primary" />} label={<Typography sx={{ fontSize: '0.65rem' }}>1</Typography>} />
+              </RadioGroup>
+            )}
 
-    {/* Long Term Logic */}
-    {tradeType === "Long Term" && (
-      <RadioGroup row value={radioValue} onChange={(e) => setRadioValue(e.target.value)}>
-        <FormControlLabel value="6 Months" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 6 Months</Typography>} />
-        <FormControlLabel value="1 Year" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 1 Year</Typography>} />
-        <FormControlLabel value="5 Years" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 5 Years</Typography>} />
-      </RadioGroup>
-    )}
-  </Box>
+            {/* Short Term Logic */}
+            {tradeType === "Short Term" && (
+              <RadioGroup row value={radioValue} onChange={(e) => setRadioValue(e.target.value)}>
+                <FormControlLabel value="7 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 7 Days</Typography>} />
+                <FormControlLabel value="30 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 30 Days</Typography>} />
+                <FormControlLabel value="90 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 90 Days</Typography>} />
+              </RadioGroup>
+            )}
 
-  {/* BOTTOM PART: Rationale (Now appears under Holding Period) */}
-  <Box sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 0.5 }}>
-    <Typography sx={{ fontSize: '0.7rem', fontWeight: 700 }}>Rationale</Typography>
-    <Box sx={{ width: "100%" }}>
-      <ToggleButtonGroup
-              size="small"
-              exclusive
-              value={rationale}
-              onChange={(_, val) => val && setRationale(val)}
-              sx={{
-                backgroundColor: "#eef2f7",
-                whiteSpace: "nowrap",
-                "& .MuiToggleButtonGroup-grouped": {
-                  border: "none",
-                  px: 1,
-                  fontSize: "0.65rem",
-                  fontWeight: 700,
-                  color: "#6b7280",
-                  "&.Mui-selected": {
-                    backgroundColor: "#4f6bed",
-                    color: "#fff",
-                    "&:hover": {
-                      backgroundColor: "#3b51c5",
+            {/* Long Term Logic */}
+            {tradeType === "Long Term" && (
+              <RadioGroup row value={radioValue} onChange={(e) => setRadioValue(e.target.value)}>
+                <FormControlLabel value="6 Months" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 6 Months</Typography>} />
+                <FormControlLabel value="1 Year" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 1 Year</Typography>} />
+                <FormControlLabel value="5 Years" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 5 Years</Typography>} />
+              </RadioGroup>
+            )}
+          </Box>
+
+          {/* BOTTOM PART: Rationale (Now appears under Holding Period) */}
+          <Box sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 0.5 }}>
+            <Typography sx={{ fontSize: '0.7rem', fontWeight: 700 }}>Rationale</Typography>
+            <Box sx={{ width: "100%" }}>
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={rationale}
+                onChange={(_, val) => val && setRationale(val)}
+                sx={{
+                  backgroundColor: "#eef2f7",
+                  whiteSpace: "nowrap",
+                  "& .MuiToggleButtonGroup-grouped": {
+                    border: "none",
+                    px: 1,
+                    fontSize: "0.65rem",
+                    fontWeight: 700,
+                    color: "#6b7280",
+                    "&.Mui-selected": {
+                      backgroundColor: "#4f6bed",
+                      color: "#fff",
+                      "&:hover": {
+                        backgroundColor: "#3b51c5",
+                      },
                     },
                   },
-                },
-              }}
-            >
-        <ToggleButton value="Overbought Condition">OVERBOUGHT</ToggleButton>
-        <ToggleButton value="Oversold Condition">OVERSOLD</ToggleButton>
-        <ToggleButton value="Momentum Play">MOMENTUM</ToggleButton>
-        <ToggleButton value="Break Out Play">BREAK OUT</ToggleButton>
-        <ToggleButton value="Break Down Play">BREAK DOWN</ToggleButton>
-      </ToggleButtonGroup>
-    </Box>
-  </Box>
-</Box>
+                }}
+              >
+                <ToggleButton value="Overbought Condition">OVERBOUGHT</ToggleButton>
+                <ToggleButton value="Oversold Condition">OVERSOLD</ToggleButton>
+                <ToggleButton value="Momentum Play">MOMENTUM</ToggleButton>
+                <ToggleButton value="Break Out Play">BREAK OUT</ToggleButton>
+                <ToggleButton value="Break Down Play">BREAK DOWN</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+          </Box>
+        </Box>
 
         {/* Underlying Study */}
         <Box sx={{ mb: 1 }}>
@@ -577,12 +635,12 @@ const NewRecommendation = () => {
             value={
               underlyingStudyValue
                 ? {
-                    ...underlyingStudyValue,
-                    group:
-                      UNDERLYING_STUDIES.find((g) =>
-                        g.options.some((o) => o.value === underlyingStudyValue.value)
-                      )?.group ?? "Fundamental & General Analysis",
-                  }
+                  ...underlyingStudyValue,
+                  group:
+                    UNDERLYING_STUDIES.find((g) =>
+                      g.options.some((o) => o.value === underlyingStudyValue.value)
+                    )?.group ?? "Fundamental & General Analysis",
+                }
                 : null
             }
             inputValue={underlyingStudyInput}
@@ -664,8 +722,139 @@ const NewRecommendation = () => {
 
       {/* RIGHT PANEL */}
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <Paper sx={{ p: 2 }}>
-          <Typography fontWeight={700} sx={{ fontSize: "0.9rem" }}>Active Recommendations</Typography>
+        {/* UPDATED ACTIVE RECOMMENDATIONS PAPER */}
+        <Paper sx={{ p: 2, overflow: 'hidden', borderRadius: 2 }}>
+          {/* Header Section: Title + Counter */}
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            mb: 2
+          }}>
+            <Typography fontWeight={700} sx={{ fontSize: "0.9rem" }}>
+              Active Recommendations
+            </Typography>
+
+            <Box
+              sx={{
+                backgroundColor: '#f0f2f5', // Light grey background for the badge
+                color: '#000',
+                borderRadius: '6px',
+                px: 1.5,
+                py: 0.2,
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                border: '1px solid #e0e0e0'
+              }}
+            >
+              {recommendations.length}
+            </Box>
+          </Box>
+
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : (
+            <TableContainer sx={{ maxHeight: 400 }}>
+              <Table size="small" stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontSize: '0.65rem', color: '#999', fontWeight: 700, px: 1, backgroundColor: '#fff' }}>
+                      Published Date
+                    </TableCell>
+                    <TableCell sx={{ fontSize: '0.65rem', color: '#999', fontWeight: 700, px: 1, backgroundColor: '#fff' }}>
+                      Recommendation
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.65rem', color: '#999', fontWeight: 700, px: 1, backgroundColor: '#fff' }}>
+                      Action
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {recommendations.length > 0 ? (
+                    recommendations.map((item) => {
+                      const dateObj = new Date(item.created_at);
+                      return (
+                        <TableRow
+                          key={item.id}
+                          sx={{ '&:last-child td, &:last-child th': { border: 0 }, '&:hover': { backgroundColor: '#fcfcfc' } }}
+                        >
+                          {/* Column 1: Date & Time */}
+                          <TableCell sx={{ px: 1, py: 1.5 }}>
+                            <Typography sx={{ fontSize: '0.65rem', color: '#666', fontWeight: 500 }}>
+                              {dateObj.toLocaleDateString()}
+                            </Typography>
+                            <Typography sx={{ fontSize: '0.65rem', color: '#999' }}>
+                              {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </Typography>
+                          </TableCell>
+
+                          {/* Column 2: Recommendation Details */}
+                          <TableCell sx={{ px: 1, py: 1.5 }}>
+                            <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: item.action === 'BUY' ? '#2e7d32' : '#d32f2f' }}>
+                              {item.action} {item.instrument} {item.call_type?.toUpperCase()}
+                            </Typography>
+                            <Typography sx={{ fontSize: '0.65rem', color: '#333', fontWeight: 600 }}>
+                              {item.symbol} • {item.trade_type}
+                            </Typography>
+                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#999', mt: 0.5, display: 'block' }}>
+                              @{item.entry?.ideal} | TP {item.targets?.join(', ')} | SL {item.stop_losses?.[0]}
+                            </Typography>
+                          </TableCell>
+
+                          {/* Column 3: Action Buttons */}
+                          <TableCell align="right" sx={{ px: 1, py: 1.5 }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                              <Button
+                                size="small"
+                                onClick={() => handleModify(item)}
+                                sx={{
+                                  fontSize: '0.6rem',
+                                  textTransform: 'none',
+                                  color: '#757575',
+                                  minWidth: 'auto',
+                                  p: 0,
+                                  textAlign: 'right',
+                                  justifyContent: 'flex-end',
+                                  '&:hover': { backgroundColor: 'transparent', textDecoration: 'underline' }
+                                }}
+                              >
+                                Modify/Errata
+                              </Button>
+                              <Button
+                                size="small"
+                                onClick={() => handleExit(item.id)}
+                                sx={{
+                                  fontSize: '0.65rem',
+                                  textTransform: 'none',
+                                  color: '#6200ea',
+                                  fontWeight: 800,
+                                  minWidth: 'auto',
+                                  p: 0,
+                                  textAlign: 'right',
+                                  justifyContent: 'flex-end',
+                                  '&:hover': { backgroundColor: 'transparent', color: '#4500a0' }
+                                }}
+                              >
+                                Exit
+                              </Button>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={3} align="center" sx={{ py: 4, color: '#999', fontSize: '0.8rem' }}>
+                        No active recommendations.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
         </Paper>
         <Paper sx={{ p: 2 }}>
           <Typography fontWeight={700} sx={{ fontSize: "0.9rem" }}>Watchlist</Typography>
@@ -676,4 +865,3 @@ const NewRecommendation = () => {
 };
 
 export default NewRecommendation;
-

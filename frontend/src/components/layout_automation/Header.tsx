@@ -2,19 +2,20 @@ import { AppBar, Toolbar, Typography, Box, IconButton } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { automationSidebarItems } from "../../config/sidebarItems";
+import type { SidebarItem } from "../../types/sidebar";
 
 interface HeaderProps {
   onMenuClick?: () => void;
+  items: SidebarItem[];
 }
 
-const Header = ({ onMenuClick }: HeaderProps) => {
+const Header = ({ onMenuClick, items }: HeaderProps) => {
   const HEADER_HEIGHT = 64;
   const [now, setNow] = useState(new Date());
   const location = useLocation();
 
   const currentTitle = useMemo(() => {
-    const match = automationSidebarItems.find((item) =>
+    const match = items.find((item) =>
       location.pathname.toLowerCase().startsWith(item.path.toLowerCase())
     );
 
@@ -24,7 +25,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
     }
 
     return match?.label ?? "Automation";
-  }, [location.pathname]);
+  }, [items, location.pathname]);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);

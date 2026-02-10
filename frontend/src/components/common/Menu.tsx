@@ -42,20 +42,18 @@ const Menu: React.FC<MenuProps> = ({ tiles, menuType, isAdmin }) => {
       <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', width: '100%' }}>
         {tilesToDisplay.map((tile, i) => (
           <Box key={tile.id} sx={{ width: 'calc(33.33% - 16px)', minWidth: '300px' }}>
-            <Card 
+            <Card
               sx={{ borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.06)', cursor: 'pointer' }}
               onClick={() => handleCardClick(tile.path)}
             >
-              <Box sx={{ 
+              <Box sx={{
                 height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 bgcolor: i % 3 === 0 ? '#e3f2fd' : i % 3 === 1 ? '#f3e5f5' : '#e8f5e9',
                 p: 2,
                 flexDirection: 'column',
                 gap: 1,
               }}>
-                {tile.image && (
-                  <img src={tile.image} alt={tile.label} style={{ height: 60, width: 'auto' }} />
-                )}
+
                 <Typography variant="h6">{tile.label}</Typography>
               </Box>
             </Card>
@@ -63,7 +61,7 @@ const Menu: React.FC<MenuProps> = ({ tiles, menuType, isAdmin }) => {
         ))}
       </Box>
     </Box>
-    
+
   );
 };
 

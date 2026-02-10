@@ -1,10 +1,43 @@
 import { Box } from "@mui/material";
 import { Outlet } from "react-router-dom";
 import { useState } from "react";
+import WbTwilightIcon from "@mui/icons-material/WbTwilight";
+import NightsStayIcon from "@mui/icons-material/NightsStay";
+import WbSunnyIcon from "@mui/icons-material/WbSunny";
+import StarOutlineIcon from "@mui/icons-material/StarOutline";
+import CalendarViewWeekIcon from "@mui/icons-material/CalendarViewWeek";
 import Header from "./Header";
 // import Sidebar from "./Sidebar";
 import Sidebar from "../common/Sidebar";
-import { automationSidebarItems } from "../../config/sidebarItems";
+import type { SidebarItem } from "../../types/sidebar";
+
+const automationSidebarItems: SidebarItem[] = [
+  {
+    label: "Afternoon",
+    path: "/automation/Afternoon",
+    icon: <WbTwilightIcon sx={{ mr: 1.5 }} />,
+  },
+  {
+    label: "Evening",
+    path: "/automation/Evening",
+    icon: <NightsStayIcon sx={{ mr: 1.5 }} />,
+  },
+  {
+    label: "Morning",
+    path: "/automation/Morning",
+    icon: <WbSunnyIcon sx={{ mr: 1.5 }} />,
+  },
+  {
+    label: "Special",
+    path: "/automation/Special",
+    icon: <StarOutlineIcon sx={{ mr: 1.5 }} />,
+  },
+  {
+    label: "Weekly",
+    path: "/automation/Weekly",
+    icon: <CalendarViewWeekIcon sx={{ mr: 1.5 }} />,
+  },
+];
 
 const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -19,7 +52,7 @@ const AppLayout = () => {
 
   return (
     <Box sx={{ display: "flex" }}>
-      <Header onMenuClick={handleMenuClick} />
+      <Header onMenuClick={handleMenuClick} items={automationSidebarItems} />
       <Sidebar
         open={sidebarOpen}
         onClose={handleSidebarClose}
