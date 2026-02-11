@@ -19,7 +19,9 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  CircularProgress
+  CircularProgress,
+  FormControl,
+  FormHelperText
 } from "@mui/material";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import { useRef, useState, useEffect, useMemo } from "react";
@@ -56,7 +58,7 @@ const NewRecommendation = () => {
   const [entry, setEntry] = useState("");
   const [target, setTarget] = useState("");
   const [stopLoss, setStopLoss] = useState("");
-  const [rationale, setRationale] = useState("");
+  const [rationale, setRationale] = useState("Overbought Condition");
   const [tradeType, setTradeType] = useState("Intraday");
   const [underlyingStudyValue, setUnderlyingStudyValue] = useState<StudyOption | null>(null);
   const [underlyingStudyInput, setUnderlyingStudyInput] = useState("");
@@ -244,6 +246,25 @@ const NewRecommendation = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Temporary
+  const [wasValidated, setWasValidated] = useState(false);
+  const validateAndPublish = (event) => {
+  event.preventDefault();
+  setWasValidated(true);
+
+  // Check standard inputs via form
+  const form = event.currentTarget.closest('form');
+  const isFormValid = form.checkValidity();
+  
+  // Check our Radio manually
+  const isRadioValid = radioValue !== "";
+
+  if (isFormValid && isRadioValid) {
+    handlePublish();
+    setWasValidated(false); 
+  }
+};
+
   return (
     <Box
       sx={{
@@ -257,6 +278,8 @@ const NewRecommendation = () => {
     >
       {/* LEFT PANEL */}
       <Paper
+      component= "form"
+      noValidate
         sx={{
           p: { xs: 1.5, sm: 2 },
           backgroundColor: panelBg,
@@ -267,6 +290,18 @@ const NewRecommendation = () => {
           height: "auto",
           minHeight: "100%",
           gap: 1.5,
+          "& .MuiTextField-root": {
+      "& .MuiOutlinedInput-root": {
+        ...(wasValidated && {
+          "& input:invalid": {
+            "& ~ .MuiOutlinedInput-notchedOutline": {
+              borderColor: "red !important",
+              borderWidth: "2px",
+            }
+          }
+        })
+      }
+    }
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
@@ -549,6 +584,11 @@ const NewRecommendation = () => {
         >
           {/* TOP PART: Holding Period */}
           <Box sx={{ width: "100%" }}>
+            <FormControl 
+  fullWidth 
+  error={wasValidated && !radioValue && tradeType !== "Intraday"}
+  sx={{ mt: 1 }}
+>
             <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, mb: 0.5 }}>Holding Period</Typography>
 
             {/* Intraday Logic */}
@@ -583,6 +623,11 @@ const NewRecommendation = () => {
                 <FormControlLabel value="5 Years" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 5 Years</Typography>} />
               </RadioGroup>
             )}
+            {/* This shows the red text below the radios if empty */}
+  {wasValidated && !radioValue && tradeType !== "Intraday" && (
+      <FormHelperText sx={{ fontSize: '0.6rem', mt: 0 }}>Please select a holding period</FormHelperText>
+    )}
+</FormControl>
           </Box>
 
           {/* BOTTOM PART: Rationale (Now appears under Holding Period) */}
@@ -718,7 +763,7 @@ const NewRecommendation = () => {
           </Box>
         </Box>
 
-        <Button variant="contained" fullWidth sx={{ py: 1.5, fontWeight: 700, borderRadius: 2 }}>
+        <Button type="submit" variant="contained" fullWidth sx={{ py: 1.5, fontWeight: 700, borderRadius: 2 }} onClick={validateAndPublish}>
           Generate & Publish
         </Button>
       </Paper>
