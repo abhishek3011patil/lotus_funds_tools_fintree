@@ -60,10 +60,10 @@ const Sidebar = ({ open = false, onClose, items }: SidebarProps) => {
           minHeight: 56,
         }}
       >
-        <Typography 
-          sx={{ 
-            fontWeight: 600, 
-            fontSize: 18, 
+        <Typography
+          sx={{
+            fontWeight: 600,
+            fontSize: 18,
             color: "white",
             display: "block",
           }}
@@ -114,13 +114,13 @@ const Sidebar = ({ open = false, onClose, items }: SidebarProps) => {
       </List>
 
       <Box>
-        <Divider 
-          sx={{ 
-            borderColor: "rgba(255,255,255,0.2)", 
+        <Divider
+          sx={{
+            borderColor: "rgba(255,255,255,0.2)",
             mx: 1.5,
             mt: { xs: 1, sm: 0 },
             display: { xs: "block", sm: "block" },
-          }} 
+          }}
         />
 
         <List sx={{ mt: 2 }}>
@@ -136,20 +136,6 @@ const Sidebar = ({ open = false, onClose, items }: SidebarProps) => {
               <ListItemText primary={item.label} />
             </ListItemButton>
           ))}
-          <ListItemButton
-            sx={{
-              mx: 1.5,
-              mt: 0.5,
-              px: 2,
-              color: "#e5e7eb",
-              "&:hover": {
-                backgroundColor: "rgba(15,23,42,0.15)",
-              },
-            }}
-          >
-            <MoreHorizIcon sx={{ mr: 1.5 }} />
-            <ListItemText primary="Extra option" />
-          </ListItemButton>
         </List>
       </Box>
 
