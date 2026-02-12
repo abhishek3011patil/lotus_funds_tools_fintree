@@ -255,8 +255,8 @@
 
 // export default Sidebar;
 
-import SidebarCommon from "../common/Sidebar";
-import type { SidebarProps as CommonSidebarProps } from "../common/Sidebar";
+import SidebarCommon from "../page_Mainapp/Sidebar";
+import type { SidebarProps as CommonSidebarProps } from "../page_Mainapp/Sidebar";
 
 type SidebarProps = CommonSidebarProps;
 

@@ -8,7 +8,7 @@ import StarOutlineIcon from "@mui/icons-material/StarOutline";
 import CalendarViewWeekIcon from "@mui/icons-material/CalendarViewWeek";
 import Header from "./Header";
 // import Sidebar from "./Sidebar";
-import Sidebar from "../common/Sidebar";
+import Sidebar from "../page_Mainapp/Sidebar";
 import type { SidebarItem } from "../../types/sidebar";
 
 const automationSidebarItems: SidebarItem[] = [

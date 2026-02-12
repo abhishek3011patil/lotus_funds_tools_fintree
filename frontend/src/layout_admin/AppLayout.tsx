@@ -6,7 +6,7 @@ import PrivacyTipIcon from '@mui/icons-material/PrivacyTip';
 // import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import FolderIcon from "@mui/icons-material/Folder";
 import Header from "./Header";
-import Sidebar from "../components/common/Sidebar";
+import Sidebar from "../components/page_Mainapp/Sidebar";
 import type { SidebarItem } from "../types/sidebar";
 
 const automationSidebarItems: SidebarItem[] = [

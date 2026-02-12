@@ -1,4 +1,4 @@
-import Menu from "../components/common/Menu";
+import Menu from "../components/page_Mainapp/Menu";
 
 interface TileItem {
   label: string;
