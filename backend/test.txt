@@ -1,0 +1,4 @@
+SELECT rc.*
+FROM research_calls rc
+JOIN users u ON rc.ra_user_id = u.id
+WHERE u.username = 'ra1'
