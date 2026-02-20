@@ -6,7 +6,7 @@ const MorningReportBuilder: React.FC = () => {
   const reportRef = useRef<HTMLDivElement>(null);
 
   // LOGIC: Same logic from your script tag
-  useEffect(() => {
+useEffect(() => {
     const report = reportRef.current;
     if (!report) return;
 
@@ -25,35 +25,46 @@ const MorningReportBuilder: React.FC = () => {
 
       const headers = Array.from(headerRow.querySelectorAll("th")).map(h => normalize(h.textContent));
       const idx = Array.from(row.querySelectorAll("td,th")).indexOf(cell);
+      
+      // Matches both TREND and BIAS columns
       const targetIdx = headers.findIndex(h => h === "trend" || h === "bias");
       return targetIdx !== -1 && idx === targetIdx;
     }
 
     function updateTrendClass(el: HTMLElement) {
       if (!el || !isTrendOrBiasCell(el)) return;
+      
       const txt = normalize(el.textContent);
+      
+      // Remove all possible classes first
       el.classList.remove("positive", "negative", "neutral");
-      if (/\bneutral\b/.test(txt)) el.classList.add("neutral");
-      else if (/\bpositive\b/.test(txt)) el.classList.add("positive");
-      else if (/\bnegative\b/.test(txt)) el.classList.add("negative");
+      
+      // Apply the correct class based on text content
+      if (txt.includes("neutral")) {
+        el.classList.add("neutral");
+      } else if (txt.includes("positive")) {
+        el.classList.add("positive");
+      } else if (txt.includes("negative")) {
+        el.classList.add("negative");
+      }
     }
 
-    // Initial scan
+    // Initial scan to color existing data
     const editableItems = report.querySelectorAll<HTMLElement>("[contenteditable='true']");
     editableItems.forEach(updateTrendClass);
 
     // Live updates listener
     const handleInput = (e: Event) => {
-      let target = e.target as HTMLElement;
-      if (!target || !target.matches("[contenteditable={true}]")) {
-        target = target.closest("[contentEditable={true}]") as HTMLElement;
+      const target = e.target as HTMLElement;
+      // Check if the element being typed in is a Trend/Bias cell
+      if (target && target.getAttribute('contenteditable') === 'true') {
+        updateTrendClass(target);
       }
-      if (target) updateTrendClass(target);
     };
 
-    report.addEventListener("input", handleInput, true);
+    report.addEventListener("input", handleInput);
 
-    return () => report.removeEventListener("input", handleInput, true);
+    return () => report.removeEventListener("input", handleInput);
   }, []);
 
   const handleSubmit = () => {
@@ -297,7 +308,7 @@ const customStyles = `
   th { background: #aa0365; color: #fff; font-weight: 600; }
   .positive { color: #00C853 !important; font-weight: 600; }
   .negative { color: #D50000 !important; font-weight: 600; }
-  .neutral { color: #0505d6 !important; font-weight: 600; }
+  .neutral { color: #666 !important; font-weight: 600; }
   .highlight { background: #fafafa; color: black; padding: 15px; border-radius: 6px; border: 1px solid #ddd; }
   .small-note { font-size: 0.85rem; color: #666; margin-top: 10px; }
 `;
