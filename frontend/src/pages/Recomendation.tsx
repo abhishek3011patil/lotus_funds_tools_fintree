@@ -32,7 +32,7 @@ import {
   getRecentStudies,
 } from "../assets/UnderlyingStudy";
 import type { StudyOption } from "../assets/UnderlyingStudy";
-
+import axios from "axios";
 const BUY_COLOR = "#22c55e";
 const SELL_COLOR = "#ef4444";
 
@@ -62,6 +62,26 @@ const NewRecommendation = () => {
   const [underlyingStudyValue, setUnderlyingStudyValue] = useState<StudyOption | null>(null);
   const [underlyingStudyInput, setUnderlyingStudyInput] = useState("");
   const [recentStudyOptions, setRecentStudyOptions] = useState<StudyOption[]>([]);
+  // 🔹 Symbol
+  const [symbol, setSymbol] = useState("SYM");
+  const [display_name, setDisplay_name] = useState();
+  // 🔹 Entry Range
+  const [entryLow, setEntryLow] = useState("");
+  const [entryUpper, setEntryUpper] = useState("");
+
+  // 🔹 Secondary Targets
+  const [target2, setTarget2] = useState("");
+  const [target3, setTarget3] = useState("");
+
+  // 🔹 Secondary Stoploss
+  const [stopLoss2, setStopLoss2] = useState("");
+  const [stopLoss3, setStopLoss3] = useState("");
+
+  // 🔹 Holding Period
+  const [holdingPeriod, setHoldingPeriod] = useState(1);
+
+  // 🔹 Remarks
+  const [remark, setRemark] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -90,6 +110,117 @@ const NewRecommendation = () => {
     "Secondary Target": false,
     "Stop Loss 2": false,
   });
+
+
+
+  const handleSubmit = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        alert("Please login again");
+        return;
+      }
+      const finalDisplayName =
+        suggestion &&
+          suggestion.toLowerCase().startsWith(inputValue.toLowerCase())
+          ? suggestion
+          : inputValue;
+
+      const payload = {
+        exchange_type: exchangeType,
+        market_type: exchange,
+
+        // ✅ Hardcoded for now
+        symbol: "SYM",
+        display_name: finalDisplayName,
+
+        action,
+        call_type: callType,
+        trade_type: tradeType,
+
+        // ✅ Use correct state name
+        expiry_date: expiry || null,
+
+        entry_price: entry || null,
+        entry_price_low: null,
+        entry_price_upper: null,
+
+        target_price: target || null,
+        target_price_2: null,
+        target_price_3: null,
+
+        stop_loss: stopLoss || null,
+        stop_loss_2: null,
+        stop_loss_3: null,
+
+        holding_period: 1, // temporary
+
+        rationale,
+        underlying_study: underlyingStudyValue?.label || null,
+
+        is_algo: false,
+        has_vested_interest: false,
+        research_remarks: null
+      };
+
+
+      const res = await axios.post(
+        import.meta.env.VITE_API_URL + "/api/research/calls",
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+
+
+      // Optimistically update the list
+      const newRecommendation = {
+        id: res.data.id,
+        created_at: res.data.created_at,
+        status: "PUBLISHED",
+        exchange: exchangeType,
+        instrument: exchange, // originally market_type
+        symbol: "SYM",
+        name: finalDisplayName,
+        action,
+        call_type: callType,
+        trade_type: tradeType,
+        expiry_date: expiry || null,
+        entry: {
+          low: null,
+          ideal: entry || null,
+          high: null,
+        },
+        targets: [target].filter(Boolean),
+        stop_losses: [stopLoss].filter(Boolean),
+        holding_period: 1,
+        rationale,
+        underlying_study: underlyingStudyValue?.label || null,
+        flags: {
+          algo: false,
+          vested_interest: false,
+        },
+        remarks: null,
+      };
+
+      setRecommendations((prev) => [newRecommendation, ...prev]);
+
+      alert("Research Call Created ✅");
+
+
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.response?.data?.message || "Error creating call");
+    }
+
+
+
+  };
+
 
   const handleToggle = (label: string) => {
     setSwitches((prev) => ({ ...prev, [label]: !prev[label as keyof typeof switches] }));
@@ -193,24 +324,41 @@ const NewRecommendation = () => {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const DATA_SOURCE = "/data.json";
+  const DATA_SOURCE =
+    import.meta.env.VITE_API_URL + "/api/research/calls/my";
 
   useEffect(() => {
     const fetchRecommendations = async () => {
       try {
         setLoading(true);
-        const response = await fetch(DATA_SOURCE);
+
+        const token = localStorage.getItem("token");
+
+        const response = await fetch(DATA_SOURCE, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Unauthorized or failed request");
+        }
+
         const data = await response.json();
-        // Handle both single object and array responses
+
         setRecommendations(Array.isArray(data) ? data : [data]);
+
       } catch (error) {
         console.error("Failed to fetch recommendations:", error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchRecommendations();
   }, []);
+
 
   // 1. EXIT FUNCTION (Removes the item from the list)
   const handleExit = (id: string) => {
@@ -224,6 +372,8 @@ const NewRecommendation = () => {
   // 2. MODIFY FUNCTION (Loads data back into the form)
   const handleModify = (item: any) => {
     // Populate all your left-panel states with the selected item's data
+    console.log(item);
+    setSymbol(item.name);
     setExchangeType(item.exchange);
     setAction(item.action);
     setExchange(item.instrument);
@@ -263,6 +413,47 @@ const NewRecommendation = () => {
       setWasValidated(false);
     }
   };
+
+
+  /// populate 
+  const populateForm = () => {
+    setExchangeType("NSE");
+    setExchange("STOCK");
+    setAction("BUY");
+    setCallType("Cash");
+    setTradeType("Intraday");
+
+    setEntry("250");
+    setTarget("270");
+    setStopLoss("240");
+
+    setExpiry("2026-03-28");
+
+    setRationale("Breakout above resistance");
+    setUnderlyingStudyValue({
+      label: "RSI + Volume Confirmation",
+      value: "rsi_volume"
+    });
+
+    console.log("Form Populated ✅");
+  };
+  useEffect(() => {
+    (window as any).populateForm = populateForm;
+  }, []);
+
+
+  //instiate
+
+  const activeRecommendations = recommendations.filter(
+    (item) => item.status === "PUBLISHED"
+  );
+
+
+  const watchlistRecommendations = recommendations.filter(
+    (item) => item.status === "DRAFT" // 🔥 temporary
+    // later change to === "WATCHLIST"
+  );
+
 
   return (
     <Box
@@ -762,9 +953,13 @@ const NewRecommendation = () => {
           </Box>
         </Box>
 
-        <Button type="submit" variant="contained" fullWidth sx={{ py: 1.5, fontWeight: 700, borderRadius: 2 }} onClick={validateAndPublish}>
-          Generate & Publish
+        <Button
+          variant="contained"
+          onClick={handleSubmit}
+        >
+          Publish Call
         </Button>
+
       </Paper>
 
       {/* RIGHT PANEL */}
@@ -794,7 +989,7 @@ const NewRecommendation = () => {
                 border: '1px solid #e0e0e0'
               }}
             >
-              {recommendations.length}
+              {activeRecommendations.length}
             </Box>
           </Box>
 
@@ -819,8 +1014,8 @@ const NewRecommendation = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {recommendations.length > 0 ? (
-                    recommendations.map((item) => {
+                  {activeRecommendations.length > 0 ? (
+                    activeRecommendations.map((item) => {
                       const dateObj = new Date(item.created_at);
                       return (
                         <TableRow
@@ -843,7 +1038,7 @@ const NewRecommendation = () => {
                               {item.action} {item.instrument} {item.call_type?.toUpperCase()}
                             </Typography>
                             <Typography sx={{ fontSize: '0.65rem', color: '#333', fontWeight: 600 }}>
-                              {item.symbol} • {item.trade_type}
+                              {item.name} • {item.trade_type}
                             </Typography>
                             <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#999', mt: 0.5, display: 'block' }}>
                               @{item.entry?.ideal} | TP {item.targets?.join(', ')} | SL {item.stop_losses?.[0]}
@@ -903,9 +1098,122 @@ const NewRecommendation = () => {
             </TableContainer>
           )}
         </Paper>
-        <Paper sx={{ p: 2 }}>
-          <Typography fontWeight={700} sx={{ fontSize: "0.9rem" }}>Watchlist</Typography>
+        <Paper sx={{ p: 2, overflow: 'hidden', borderRadius: 2, mt: 2 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              mb: 2
+            }}
+          >
+            <Typography fontWeight={700} sx={{ fontSize: "0.9rem" }}>
+              Watchlist
+            </Typography>
+
+            <Box
+              sx={{
+                backgroundColor: '#f0f2f5',
+                color: '#000',
+                borderRadius: '6px',
+                px: 1.5,
+                py: 0.2,
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                border: '1px solid #e0e0e0'
+              }}
+            >
+              {watchlistRecommendations.length}
+            </Box>
+          </Box>
+
+          <TableContainer sx={{ maxHeight: 400 }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontSize: '0.65rem', color: '#999', fontWeight: 700, px: 1, backgroundColor: '#fff' }}>
+                    Published Date
+                  </TableCell>
+                  <TableCell sx={{ fontSize: '0.65rem', color: '#999', fontWeight: 700, px: 1, backgroundColor: '#fff' }}>
+                    Recommendation
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontSize: '0.65rem', color: '#999', fontWeight: 700, px: 1, backgroundColor: '#fff' }}>
+                    Action
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {watchlistRecommendations.length > 0 ? (
+                  watchlistRecommendations.map((item) => {
+                    const dateObj = new Date(item.created_at);
+
+                    return (
+                      <TableRow
+                        key={item.id}
+                        sx={{
+                          '&:last-child td, &:last-child th': { border: 0 },
+                          '&:hover': { backgroundColor: '#fcfcfc' }
+                        }}
+                      >
+                        <TableCell sx={{ px: 1, py: 1.5 }}>
+                          <Typography sx={{ fontSize: '0.65rem', color: '#666', fontWeight: 500 }}>
+                            {dateObj.toLocaleDateString()}
+                          </Typography>
+                          <Typography sx={{ fontSize: '0.65rem', color: '#999' }}>
+                            {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </Typography>
+                        </TableCell>
+
+                        <TableCell sx={{ px: 1, py: 1.5 }}>
+                          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: item.action === 'BUY' ? '#2e7d32' : '#d32f2f' }}>
+                            {item.action} {item.instrument} {item.call_type?.toUpperCase()}
+                          </Typography>
+
+                          <Typography sx={{ fontSize: '0.65rem', color: '#333', fontWeight: 600 }}>
+                            {item.name} • {item.trade_type}
+                          </Typography>
+
+                          <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#999', mt: 0.5, display: 'block' }}>
+                            @{item.entry?.ideal} | TP {item.targets?.join(', ')} | SL {item.stop_losses?.[0]}
+                          </Typography>
+                        </TableCell>
+
+                        {/* 🔥 Only Change Is Here */}
+                        <TableCell align="right" sx={{ px: 1, py: 1.5 }}>
+                          <Button
+                            size="small"
+                            onClick={() => handleModify(item)}  // reuse same logic
+                            sx={{
+                              fontSize: '0.65rem',
+                              textTransform: 'none',
+                              color: '#1976d2',
+                              fontWeight: 700,
+                              minWidth: 'auto',
+                              p: 0,
+                              textAlign: 'right',
+                              justifyContent: 'flex-end',
+                              '&:hover': { backgroundColor: 'transparent', color: '#0d47a1' }
+                            }}
+                          >
+                            Initiate
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={3} align="center" sx={{ py: 4, color: '#999', fontSize: '0.8rem' }}>
+                      No watchlist items.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </Paper>
+
       </Box>
     </Box>
   );

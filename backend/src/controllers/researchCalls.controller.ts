@@ -2,6 +2,9 @@ import { Response } from "express";
 import { pool } from "../db";
 import { AuthRequest } from "../middlewares/auth.middleware";
 
+
+
+
 /* =========================================================
    CREATE RESEARCH CALL  (POST /api/research/calls)
    ========================================================= */
@@ -126,51 +129,24 @@ export const createResearchCall = async (req: AuthRequest, res: Response) => {
 /* =========================================================
    GET MY CALLS  (GET /api/research/calls/my)
    ========================================================= */
-export const getMyCalls = async (req: AuthRequest, res: Response) => {
+export const getResearchCalls = async (req: AuthRequest, res: Response) => {
+    console.log("Logged in user:", req.user);
+
     try {
+        if (!req.user) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
         const query = `
-      SELECT
-        id,
-        status,
-        created_at,
+          SELECT *
+          FROM research_calls
+           WHERE ra_user_id = $1
+          ORDER BY created_at DESC
+        `;
 
-        exchange_type,
-        market_type,
+        const { rows } = await pool.query(query, [req.user.id]);
 
-        symbol,
-        display_name,
-
-        action,
-        call_type,
-        trade_type,
-
-        entry_price_low,
-        entry_price,
-        entry_price_upper,
-
-        target_price,
-        target_price_2,
-        target_price_3,
-
-        stop_loss,
-        stop_loss_2,
-        stop_loss_3,
-
-        holding_period,
-        rationale,
-        underlying_study,
-
-        is_algo,
-        has_vested_interest,
-        research_remarks
-      FROM research_calls
-      WHERE ra_user_id = $1
-      ORDER BY created_at DESC;
-    `;
-
-        const { rows } = await pool.query(query, [req.user!.id]);
-
-        const response = rows.map((row) => ({
+        const formatted = rows.map((row) => ({
             id: row.id,
             status: row.status,
             created_at: row.created_at,
@@ -185,22 +161,24 @@ export const getMyCalls = async (req: AuthRequest, res: Response) => {
             call_type: row.call_type,
             trade_type: row.trade_type,
 
+            expiry_date: row.expiry_date,
+
             entry: {
                 low: row.entry_price_low,
                 ideal: row.entry_price,
-                high: row.entry_price_upper
+                high: row.entry_price_upper,
             },
 
             targets: [
                 row.target_price,
                 row.target_price_2,
-                row.target_price_3
+                row.target_price_3,
             ].filter(Boolean),
 
             stop_losses: [
                 row.stop_loss,
                 row.stop_loss_2,
-                row.stop_loss_3
+                row.stop_loss_3,
             ].filter(Boolean),
 
             holding_period: row.holding_period,
@@ -209,18 +187,19 @@ export const getMyCalls = async (req: AuthRequest, res: Response) => {
 
             flags: {
                 algo: row.is_algo,
-                vested_interest: row.has_vested_interest
+                vested_interest: row.has_vested_interest,
             },
 
-            remarks: row.research_remarks
+            remarks: row.research_remarks,
         }));
 
-        return res.json(response);
+        return res.json(formatted);
     } catch (err) {
         console.error("GET MY CALLS ERROR:", err);
-        return res.status(500).json({ message: "Server error" });
+        return res.status(500).json({ message: "Server Error" });
     }
 };
+
 
 /* =========================================================
    GET PUBLISHED CALLS (GET /api/research/calls/published)
@@ -263,7 +242,6 @@ export const getPublishedCalls = async (_req: AuthRequest, res: Response) => {
         has_vested_interest,
         research_remarks
       FROM research_calls
-      WHERE status = 'PUBLISHED'
       ORDER BY created_at DESC;
     `;
 

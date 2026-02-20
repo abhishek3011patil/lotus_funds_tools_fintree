@@ -1,47 +1,71 @@
 import { Request, Response } from "express";
-import jwt from "jsonwebtoken";
-import bcrypt from "bcrypt";
 import { pool } from "../db";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { AuthRequest } from "../middlewares/auth.middleware";
 
 export const login = async (req: Request, res: Response) => {
     try {
-        const { email, password } = req.body;
+        const { username, password } = req.body;
 
-        if (!email || !password) {
-            return res.status(400).json({ message: "Email & password required" });
-        }
-
+        // 1️⃣ Get user from DB
         const result = await pool.query(
-            "SELECT id, password_hash, role FROM users WHERE email = $1 AND status = 'ACTIVE'",
-            [email]
+            `SELECT id, username, password_hash, role, status
+       FROM users
+       WHERE username = $1`,
+            [username]
         );
 
-        if (result.rowCount === 0) {
-            return res.status(401).json({ message: "Invalid credentials" });
+        if (result.rows.length === 0) {
+            return res.status(400).json({ message: "Invalid username or password" });
         }
 
-        // ✅ DEFINE user properly
         const user = result.rows[0];
 
-        // ✅ bcrypt check (FINAL, CORRECT)
-        const isMatch = await bcrypt.compare(password.trim(), user.password_hash);
-        if (!isMatch) {
-            return res.status(401).json({ message: "Invalid credentials" });
+        // 2️⃣ Check if user is active
+        if (user.status?.toLowerCase() !== "active") {
+            return res.status(403).json({ message: "Account is inactive" });
         }
 
-        // ✅ create JWT
+
+        // 3️⃣ Compare password
+        const isMatch = await bcrypt.compare(password, user.password_hash);
+
+        if (!isMatch) {
+            return res.status(400).json({ message: "Invalid username or password" });
+        }
+
+        // 4️⃣ Generate JWT
         const token = jwt.sign(
             {
-                userId: user.id,
+                id: user.id,
                 role: user.role,
             },
-            process.env.JWT_SECRET!,
-            { expiresIn: "24h" }
+            process.env.JWT_SECRET as string,
+            { expiresIn: "1d" }
         );
 
-        return res.json({ token });
-    } catch (err) {
-        console.error("LOGIN ERROR:", err);
-        return res.status(500).json({ message: "Server error" });
+        res.json({
+            message: "Login successful",
+            token,
+            role: user.role,
+            username: user.username,
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error" });
     }
+};
+
+
+export const getMe = async (req: AuthRequest, res: Response) => {
+    if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    return res.json({
+        id: req.user.id,
+        role: req.user.role
+    });
 };

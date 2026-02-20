@@ -39,19 +39,19 @@ export const authenticate = (
             token,
             process.env.JWT_SECRET!
         ) as {
-            userId: string;
+            id: string;
             role: string;
         };
 
-        // 5️⃣ Attach user to request
         req.user = {
-            id: decoded.userId,
+            id: decoded.id,
             role: decoded.role,
         };
 
+
         next();
     } catch (error) {
-        console.error("JWT AUTH ERROR:", error);
+        console.warn("Invalid JWT attempt");
         return res.status(401).json({ message: "Invalid token" });
     }
 };

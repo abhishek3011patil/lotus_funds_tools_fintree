@@ -2,7 +2,7 @@ import { Router } from "express";
 import { createResearchCall } from "../controllers/researchCalls.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 import {
-    getMyCalls,
+    getResearchCalls,
     getPublishedCalls
 } from "../controllers/researchCalls.controller";
 
@@ -10,7 +10,8 @@ import {
 const router = Router();
 
 router.post("/research/calls", authenticate, createResearchCall);
-router.get("/research/calls/my", authenticate, getMyCalls);
+
+router.get("/research/calls/my", authenticate, getResearchCalls);
 
 // 🔹 Dashboard (already created)
 router.get("/research/calls/published", authenticate, getPublishedCalls);

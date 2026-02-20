@@ -1,0 +1,12 @@
+# Environment file
+.env
+
+# Test file
+test.txt
+
+
+
+# Node cache
+node_modules/
+dist/
+build/

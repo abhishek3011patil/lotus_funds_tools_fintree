@@ -16,7 +16,7 @@ import AdminApproval from "../pages_admin/AdminApproval";
 import AdminRecommendations from "../pages_admin/AdminRecommendations";
 import AdminDashboard from "../pages_admin/AdminDashboard";
 import LoginForm from "../common/LoginForm";
-import BrokerRegistration from "../Registration_pages/BrokerRegistration";
+import ProtectedRoute from "../components/ProtectedRoute";
 // import NotFound from "../pages/NotFound";
 
 const AppRoutes = () => {
@@ -26,26 +26,23 @@ const AppRoutes = () => {
 
       <Route path="/signup" element={<Signup />} />
       <Route path="/registration" element={<RegistrationPage />} />
-      <Route path="/signin" element={<LoginForm />} />
+      <Route path="/login" element={<LoginForm />} />
 
 
       {/* ALL pages that need sidebar go here */}
 
-
-      <Route element={<AppLayout />}>
+      <Route
+        element={
+          <ProtectedRoute>
+            <AppLayout />
+          </ProtectedRoute>
+        }
+      >
         <Route path="/" element={<Dashboard />} />
-        <Route
-          path="/recommendations"
-          element={
-            localStorage.getItem("token")
-              ? <Recommendations />
-              : <Navigate to="/" />
-          }
-        />
-
+        <Route path="/recommendations" element={<Recommendations />} />
         <Route path="/performance" element={<Performance />} />
-
       </Route>
+
 
       {/* Automation layout with its own sidebar/header */}
       <Route path="/automation" element={<AutomationLayout />}>

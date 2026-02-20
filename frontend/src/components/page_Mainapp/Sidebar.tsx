@@ -15,8 +15,10 @@ import {
 } from "@mui/material";
 // import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import CloseIcon from "@mui/icons-material/Close";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { SidebarItem } from "../../types/sidebar";
+import { useState, useEffect } from "react";
+
 
 export interface SidebarProps {
   open?: boolean;
@@ -46,6 +48,25 @@ const Sidebar = ({ open = false, onClose, items }: SidebarProps) => {
       color: "#020617",
     },
   });
+
+  //username 
+  const [username, setUsername] = useState("");
+
+  useEffect(() => {
+    const storedUsername = localStorage.getItem("username");
+    if (storedUsername) {
+      setUsername(storedUsername);
+    }
+  }, []);
+
+
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.clear(); // simpler
+    navigate("/login", { replace: true });
+  };
+
 
   const content = (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -153,13 +174,14 @@ const Sidebar = ({ open = false, onClose, items }: SidebarProps) => {
                 fontSize: 18,
               }}
             >
-              P
+              {username.charAt(0).toUpperCase()}
             </Avatar>
             <Box>
               <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
-                Pradyut Patnaik
+                {username}
               </Typography>
               <Typography
+                onClick={handleLogout}
                 sx={{
                   fontSize: 12,
                   opacity: 0.8,
@@ -169,6 +191,7 @@ const Sidebar = ({ open = false, onClose, items }: SidebarProps) => {
               >
                 Log out
               </Typography>
+
             </Box>
           </Stack>
         </Box>
@@ -225,3 +248,5 @@ const Sidebar = ({ open = false, onClose, items }: SidebarProps) => {
 };
 
 export default Sidebar;
+
+
