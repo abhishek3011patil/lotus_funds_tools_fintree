@@ -371,27 +371,50 @@ const NewRecommendation = () => {
 
   // 2. MODIFY FUNCTION (Loads data back into the form)
   const handleModify = (item: any) => {
-    // Populate all your left-panel states with the selected item's data
-    console.log(item);
-    setSymbol(item.name);
+    console.log("Modifying Item:", item);
+
+    // 1. Fix Script Name / Symbol
+    // We must update 'inputValue' because your Autocomplete uses 'inputValue' from the hook
+    if (handleInputChange) {
+      // 'item.name' is what you used in handleSubmit, 'item.symbol' is the ticker
+      handleInputChange(null, item.name || item.symbol || ""); 
+    }
+
+    // 2. Fix Underlying Study
+    // The state expects a { label, value } object, not just a string
+    if (item.underlying_study) {
+      setUnderlyingStudyValue({
+        label: item.underlying_study,
+        value: item.underlying_study.toLowerCase().replace(/\s+/g, '_') // Fallback value
+      });
+    }
+
+    // 3. Standard States
     setExchangeType(item.exchange);
     setAction(item.action);
     setExchange(item.instrument);
     setCallType(item.call_type);
     setTradeType(item.trade_type);
 
-    // Note: Since entry is an object in your JSON {ideal: 2460}
-    setEntry(item.entry.ideal.toString());
-    setTarget(item.targets[0].toString());
-    setStopLoss(item.stop_losses[0].toString());
-
-    // If you are using the Autocomplete hook:
-    // You might need to manually trigger the input change
-    // setInputValue(item.symbol); 
+    // 4. Prices (with safety checks)
+    if (item.entry) {
+      setEntry(item.entry.ideal?.toString() || "");
+    }
+    if (item.targets && item.targets.length > 0) {
+      setTarget(item.targets[0].toString());
+    }
+    if (item.stop_losses && item.stop_losses.length > 0) {
+      setStopLoss(item.stop_losses[0].toString());
+    }
 
     setRationale(item.rationale);
+    
+    // 5. Expiry Date
+    if (item.expiry_date) {
+      setExpiry(item.expiry_date);
+    }
 
-    // Scroll to top so the user sees the form is ready to edit
+    // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
