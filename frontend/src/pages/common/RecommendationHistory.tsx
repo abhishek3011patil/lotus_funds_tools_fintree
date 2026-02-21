@@ -14,6 +14,8 @@ import {
   Select,
   MenuItem,
   Stack,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 
 import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
@@ -34,17 +36,33 @@ interface HistoryRecord {
   exit: number;
   status: string;
   profitLoss: number;
+  researcherName?: string;
+  researcher?: string;
+  researcher_name?: string;
+  createdBy?: string;
+  created_by?: string;
+  username?: string;
 }
 
 // Added Prop Interface
 interface RecommendationHistoryProps {
   statusFilter?: string;
+  enableAddNotification?: boolean;
 }
 
-export default function RecommendationHistory({ statusFilter = "All" }: RecommendationHistoryProps) {
+const CLIENT_HISTORY_STORAGE_KEY = "clientRecommendationHistory";
+const CLIENT_HISTORY_EVENT = "client-recommendation-history-added";
+const CLIENT_HISTORY_PENDING_NOTIFICATION_KEY = "clientHistoryPendingNotification";
+
+export default function RecommendationHistory({
+  statusFilter = "All",
+  enableAddNotification = false,
+}: RecommendationHistoryProps) {
   // State
   const [data, setData] = useState<HistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notificationText, setNotificationText] = useState("New recommendation added to history.");
 
   // Filters
   const [dateFilter, setDateFilter] = useState("All");
@@ -62,11 +80,69 @@ export default function RecommendationHistory({ statusFilter = "All" }: Recommen
     fetch("/recommendationHistory.json")
       .then((res) => res.json())
       .then((json) => {
-        setData(json.recommendationHistory || []);
+        const fetchedHistory = json.recommendationHistory || [];
+
+        let localHistory: HistoryRecord[] = [];
+        try {
+          const stored = window.localStorage.getItem(CLIENT_HISTORY_STORAGE_KEY);
+          const parsed = stored ? JSON.parse(stored) : [];
+          localHistory = Array.isArray(parsed) ? parsed : [];
+        } catch {
+          localHistory = [];
+        }
+
+        setData([...localHistory, ...fetchedHistory]);
       })
       .catch((err) => console.error("Error fetching active call history:", err))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!enableAddNotification) return;
+
+    const handleHistoryAdded = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        historyRecord?: HistoryRecord;
+        symbol?: string;
+      }>;
+
+      if (customEvent.detail?.historyRecord) {
+        setData((prev) => [customEvent.detail.historyRecord as HistoryRecord, ...prev]);
+      }
+
+      const symbolText = customEvent.detail?.symbol
+        ? ` (${customEvent.detail.symbol})`
+        : "";
+      setNotificationText(`New recommendation added to history${symbolText}.`);
+      setNotificationOpen(true);
+    };
+
+    window.addEventListener(CLIENT_HISTORY_EVENT, handleHistoryAdded as EventListener);
+
+    return () => {
+      window.removeEventListener(CLIENT_HISTORY_EVENT, handleHistoryAdded as EventListener);
+    };
+  }, [enableAddNotification]);
+
+  useEffect(() => {
+    if (!enableAddNotification) return;
+
+    const showPendingNotification = () => {
+      try {
+        const pendingSymbol = window.localStorage.getItem(CLIENT_HISTORY_PENDING_NOTIFICATION_KEY);
+        if (pendingSymbol) {
+          setNotificationText(`New recommendation added to history (${pendingSymbol}).`);
+          setNotificationOpen(true);
+          window.localStorage.removeItem(CLIENT_HISTORY_PENDING_NOTIFICATION_KEY);
+        }
+      } catch {
+        // no-op
+      }
+    };
+
+    const timerId = window.setTimeout(showPendingNotification, 50);
+    return () => window.clearTimeout(timerId);
+  }, [enableAddNotification]);
 
   // Apply filters
   const filteredData = useMemo(() => {
@@ -139,6 +215,18 @@ export default function RecommendationHistory({ statusFilter = "All" }: Recommen
           {d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true })}
         </Typography>
       </Box>
+    );
+  };
+
+  const getResearcherName = (row: HistoryRecord) => {
+    return (
+      row.researcherName ||
+      row.researcher ||
+      row.researcher_name ||
+      row.createdBy ||
+      row.created_by ||
+      row.username ||
+      "-"
     );
   };
 
@@ -333,19 +421,20 @@ export default function RecommendationHistory({ statusFilter = "All" }: Recommen
                 <TableCell sx={historyHeadStyle}>Exit</TableCell>
                 <TableCell sx={historyHeadStyle}>STATUS</TableCell>
                 <TableCell align="right" sx={historyHeadStyle}>Profit / Loss</TableCell>
+                <TableCell sx={historyHeadStyle}>Researcher Name</TableCell>
               </TableRow>
             </TableHead>
 
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={12} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={13} align="center" sx={{ py: 4 }}>
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : paginatedData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={12} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={13} align="center" sx={{ py: 4 }}>
                     No records found
                   </TableCell>
                 </TableRow>
@@ -406,6 +495,7 @@ export default function RecommendationHistory({ statusFilter = "All" }: Recommen
                         {row.profitLoss >= 0 ? `+ ${row.profitLoss.toLocaleString()}` : `- ${Math.abs(row.profitLoss).toLocaleString()}`}
                       </Box>
                     </TableCell>
+                    <TableCell sx={historyBodyStyle}>{getResearcherName(row)}</TableCell>
                   </TableRow>
                 ))
               )}
@@ -445,6 +535,28 @@ export default function RecommendationHistory({ statusFilter = "All" }: Recommen
           </Stack>
         </Box>
       </Paper>
+
+      <Snackbar
+        open={notificationOpen}
+        autoHideDuration={4000}
+        onClose={() => setNotificationOpen(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        sx={{
+          mt: { xs: 8, sm: 9 },
+          mr: { xs: 1, sm: 2 },
+          width: { xs: "calc(100% - 16px)", sm: "auto" },
+          maxWidth: { xs: "calc(100% - 16px)", sm: 420 },
+        }}
+      >
+        <Alert
+          severity="success"
+          variant="filled"
+          onClose={() => setNotificationOpen(false)}
+          sx={{ width: "100%", alignItems: "center" }}
+        >
+          {notificationText}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

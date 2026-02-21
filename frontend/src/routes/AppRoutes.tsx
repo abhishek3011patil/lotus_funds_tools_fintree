@@ -16,6 +16,11 @@ import AdminApproval from "../pages_admin/AdminApproval";
 import AdminRecommendations from "../pages_admin/AdminRecommendations";
 import AdminDashboard from "../pages_admin/AdminDashboard";
 import LoginForm from "../common/LoginForm";
+import ClientLayout from "../components/layout_client/AppLayout";
+import ClientDashboard from "../pages_client/Dashboard";
+import ClientRecommendations from "../pages_client/Recomendation";
+import ClientPerformance from "../pages_client/Performance";
+import ClientNotFound from "../pages_client/Notfound";
 // import NotFound from "../pages/NotFound";
 
 const AppRoutes = () => {
@@ -66,6 +71,14 @@ const AppRoutes = () => {
         <Route path="approval" element={<AdminApproval />} />
       </Route>
 
+      {/* Client layout */}
+      <Route path="/client/*" element={<ClientLayout />}>
+        <Route index element={<ClientDashboard />} />
+        <Route path="dashboard" element={<ClientDashboard />} />
+        <Route path="recommendations" element={<ClientRecommendations />} />
+        <Route path="performance" element={<ClientPerformance />} />
+        <Route path="*" element={<ClientNotFound />} />
+      </Route>
 
 
 
