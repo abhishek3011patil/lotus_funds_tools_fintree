@@ -24,7 +24,8 @@ import {
 } from "@mui/material";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import { useRef, useState, useEffect, useMemo } from "react";
-import { STOCK_DATA } from "../assets/stocks";
+
+import { startTransition } from "react";
 import { useExpiryDates } from "../hooks/useExpiryDates";
 import { useStockAutocomplete } from "../hooks/useStockAutocomplete";
 import {
@@ -48,6 +49,15 @@ const getActionStyles = (current: "BUY" | "SELL", button: "BUY" | "SELL") => {
     },
   };
 };
+
+
+const FLAT_STUDY_OPTIONS = UNDERLYING_STUDIES.flatMap((g) =>
+  g.options.map((opt) => ({
+    ...opt,
+    group: g.group,
+  }))
+);
+
 
 const NewRecommendation = () => {
   console.log("RENDER");
@@ -114,7 +124,32 @@ const NewRecommendation = () => {
     "Secondary Target": false,
     "Stop Loss 2": false,
   });
+  const resetForm = () => {
+    setExchangeType("NSE");
+    setExchange("STOCK");
+    setAction("BUY");
+    setCallType("Cash");
+    setTradeType("Intraday");
 
+    setEntry("");
+    setTarget("");
+    setStopLoss("");
+    setTarget2("");
+    setTarget3("");
+    setStopLoss2("");
+    setStopLoss3("");
+
+    setRationale("");
+    setUnderlyingStudyValue(null);
+    setExpiry("");
+    setRemark("");
+    setRadioValue("");
+
+    setIsErrataMode(false);
+    setErrataSourceId(null);
+
+    setDirectValue("");
+  };
 
 
   const handleSubmit = async () => {
@@ -161,12 +196,29 @@ const NewRecommendation = () => {
       let res;
 
       if (isErrataMode && errataSourceId) {
-        // 🔥 ERRATA FLOW
+
+        // Build only fields that are allowed to be updated
+        const updates = {
+          entry_price: entry || undefined,
+          target_price: target || undefined,
+          stop_loss: stopLoss || undefined,
+          target_price_2: target2 || undefined,
+          target_price_3: target3 || undefined,
+          stop_loss_2: stopLoss2 || undefined,
+          stop_loss_3: stopLoss3 || undefined,
+          entry_price_low: entryLow || undefined,
+          entry_price_upper: entryUpper || undefined,
+          holding_period: holdingPeriod || undefined,
+          rationale: rationale || undefined,
+          underlying_study: underlyingStudyValue?.label || undefined,
+          research_remarks: remark || undefined,
+        };
+
         res = await axios.post(
           import.meta.env.VITE_API_URL + "/api/research/calls/errata",
           {
             call_id: errataSourceId,
-            updates: payload,
+            updates,
           },
           {
             headers: {
@@ -174,6 +226,7 @@ const NewRecommendation = () => {
             },
           }
         );
+
 
         alert("Errata Created ✅");
 
@@ -200,7 +253,7 @@ const NewRecommendation = () => {
           ...createdCall,
           name: createdCall.display_name,
         },
-        ...prev.filter((c) => c.id !== errataSourceId), // remove old version
+        ...prev.filter((c) => c.id !== errataSourceId),
       ]);
 
       // Reset errata mode
@@ -211,7 +264,10 @@ const NewRecommendation = () => {
       console.error(err);
       alert(err?.response?.data?.message || "Error submitting call");
     }
+    await fetchRecommendations();
+    resetForm();
   };
+
 
 
   const handleToggle = (label: string) => {
@@ -230,15 +286,25 @@ const NewRecommendation = () => {
     exchangeType as any
   );
 
+  const autocomplete = useStockAutocomplete(exchangeType as "NSE" | "BSE");
+
   const {
     inputValue,
     suggestion,
     setDirectValue,
     matches,
-    open,
     handleInputChange,
     handleKeyDown,
-  } = useStockAutocomplete(exchangeType as "NSE" | "BSE");
+  } = isErrataMode
+      ? {
+        inputValue: autocomplete.inputValue,
+        suggestion: "",
+        setDirectValue: autocomplete.setDirectValue,
+        matches: [],
+        handleInputChange: () => { },
+        handleKeyDown: () => { },
+      }
+      : autocomplete;
 
   // =============================
   // Underlying Study helpers
@@ -262,22 +328,16 @@ const NewRecommendation = () => {
   const studyOptions: StudyAutocompleteOption[] = useMemo(() => {
     const recentValues = new Set(recentStudyOptions.map((o) => o.value));
 
-    const recent: StudyAutocompleteOption[] = recentStudyOptions.map((o) => ({
+    const recent = recentStudyOptions.map((o) => ({
       ...o,
       group: "Recently Selected",
     }));
 
-    const groupedBase: StudyAutocompleteOption[] = UNDERLYING_STUDIES.flatMap(
-      (g) =>
-        g.options
-          .filter((opt) => !recentValues.has(opt.value))
-          .map((opt) => ({
-            ...opt,
-            group: g.group,
-          }))
+    const base = FLAT_STUDY_OPTIONS.filter(
+      (opt) => !recentValues.has(opt.value)
     );
 
-    return [...recent, ...groupedBase];
+    return [...recent, ...base];
   }, [recentStudyOptions]);
 
   const handleUnderlyingStudyChange = (
@@ -307,11 +367,15 @@ const NewRecommendation = () => {
   };
 
   useEffect(() => {
-    if (expiryDates.length > 0) {
-      setExpiry(expiryDates[0].toISOString());
-    } else {
+    if (!expiryDates.length) {
       setExpiry("");
+      return;
     }
+
+    const first = expiryDates[0].toISOString();
+
+    setExpiry(prev => (prev !== first ? first : prev));
+
   }, [expiryDates]);
 
   const [recommendations, setRecommendations] = useState<any[]>([]);
@@ -384,61 +448,42 @@ const NewRecommendation = () => {
 
   // 2. MODIFY FUNCTION (Loads data back into the form)
   const handleModify = (item: any) => {
-    console.log("Preparing Errata for:", item);
+    startTransition(() => {
+      setIsErrataMode(true);
+      setErrataSourceId(item.id);
 
-    // 1️⃣ Script / Symbol
-    //setDirectValue(item.display_name || item.symbol || "");
-    // 2️⃣ Underlying Study
-    if (item.underlying_study) {
-      setUnderlyingStudyValue({
-        label: item.underlying_study,
-        value: item.underlying_study
-          .toLowerCase()
-          .replace(/\s+/g, "_"),
-      });
-    }
+      setDirectValue(item.name || item.symbol || "");
 
-    // 3️⃣ Core Fields
-    setExchangeType(item.exchange_type);
-    setExchange(item.market_type);
-    setAction(item.action);
-    setCallType(item.call_type);
-    setTradeType(item.trade_type);
+      if (item.underlying_study) {
+        setUnderlyingStudyValue({
+          label: item.underlying_study,
+          value: item.underlying_study.toLowerCase().replace(/\s+/g, "_"),
+        });
+      } else {
+        setUnderlyingStudyValue(null);
+      }
 
-    // 4️⃣ Prices
-    setEntry(item.entry_price?.toString() || "");
-    setTarget(item.target_price?.toString() || "");
-    setStopLoss(item.stop_loss?.toString() || "");
+      setExchangeType(item.exchange);
+      setExchange(item.instrument);
+      setAction(item.action);
+      setCallType(item.call_type);
+      setTradeType(item.trade_type);
 
-    // Optional multi targets
-    if (item.target_price_2) {
-      setTarget2(item.target_price_2.toString());
-    }
+      setEntry(item.entry?.ideal?.toString() || "");
+      setTarget(item.targets?.[0]?.toString() || "");
+      setStopLoss(item.stop_losses?.[0]?.toString() || "");
 
-    if (item.target_price_3) {
-      setTarget3(item.target_price_3.toString());
-    }
+      setTarget2(item.target_price_2?.toString() || "");
+      setTarget3(item.target_price_3?.toString() || "");
+      setStopLoss2(item.stop_loss_2?.toString() || "");
+      setStopLoss3(item.stop_loss_3?.toString() || "");
 
-    if (item.stop_loss_2) {
-      setStopLoss2(item.stop_loss_2.toString());
-    }
+      setRationale(item.rationale || "");
+      setExpiry(item.expiry_date || "");
+    });
 
-    if (item.stop_loss_3) {
-      setStopLoss3(item.stop_loss_3.toString());
-    }
-
-    // 5️⃣ Rationale
-    setRationale(item.rationale || "");
-
-    // 6️⃣ Expiry
-    if (item.expiry_date) {
-      setExpiry(item.expiry_date);
-    }
-
-    // Scroll up
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0 });
   };
-
   // Temporary
   const [wasValidated, setWasValidated] = useState(false);
   const validateAndPublish = (event) => {
@@ -488,14 +533,14 @@ const NewRecommendation = () => {
 
   //instiate
 
-  const activeRecommendations = recommendations.filter(
-    (item) => item.status === "PUBLISHED"
+  const activeRecommendations = useMemo(
+    () => recommendations.filter((item) => item.status === "PUBLISHED"),
+    [recommendations]
   );
 
-
-  const watchlistRecommendations = recommendations.filter(
-    (item) => item.status === "DRAFT" // 🔥 temporary
-    // later change to === "WATCHLIST"
+  const watchlistRecommendations = useMemo(
+    () => recommendations.filter((item) => item.status === "DRAFT"),
+    [recommendations]
   );
 
 
@@ -538,7 +583,25 @@ const NewRecommendation = () => {
           }
         }}
       >
+        {isErrataMode && (
+          <Box
+            sx={{
+              backgroundColor: "#fff3cd",
+              border: "1px solid #ffeeba",
+              color: "#856404",
+              px: 2,
+              py: 1,
+              borderRadius: 1,
+              mb: 1,
+              fontSize: "0.75rem",
+              fontWeight: 600
+            }}
+          >
+            You are creating an ERRATA for Call ID: {errataSourceId}
+          </Box>
+        )}
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+
           <Typography variant="subtitle1" fontWeight={700} sx={{ fontSize: { xs: "0.9rem", sm: "1.1rem" } }}>
             New Recommendation
           </Typography>
@@ -688,6 +751,7 @@ const NewRecommendation = () => {
             )}
 
             <Autocomplete
+              disabled={isErrataMode}
               freeSolo
               options={matches}
               inputValue={inputValue}
@@ -1066,6 +1130,7 @@ const NewRecommendation = () => {
                   {activeRecommendations.length > 0 ? (
                     activeRecommendations.map((item) => {
                       const dateObj = new Date(item.created_at);
+
                       return (
                         <TableRow
                           key={item.id}
@@ -1076,9 +1141,24 @@ const NewRecommendation = () => {
                             <Typography sx={{ fontSize: '0.65rem', color: '#666', fontWeight: 500 }}>
                               {dateObj.toLocaleDateString()}
                             </Typography>
+
                             <Typography sx={{ fontSize: '0.65rem', color: '#999' }}>
                               {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </Typography>
+
+                            {/* 🔥 Modified Label */}
+                            {item.version_type === "ERRATA" && (
+                              <Typography
+                                sx={{
+                                  fontSize: '0.6rem',
+                                  fontWeight: 700,
+                                  color: '#d97706',
+                                  mt: 0.3
+                                }}
+                              >
+                                Modified
+                              </Typography>
+                            )}
                           </TableCell>
 
                           {/* Column 2: Recommendation Details */}

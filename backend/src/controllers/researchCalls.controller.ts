@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { pool } from "../db";
 import { AuthRequest } from "../middlewares/auth.middleware";
-
+import { Router } from "express";
 
 
 
@@ -138,11 +138,12 @@ export const getResearchCalls = async (req: AuthRequest, res: Response) => {
         }
 
         const query = `
-          SELECT *
-          FROM research_calls
-           WHERE ra_user_id = $1
-          ORDER BY created_at DESC
-        `;
+  SELECT *
+  FROM research_calls
+  WHERE ra_user_id = $1
+  AND is_latest = true
+  ORDER BY created_at DESC
+`;
 
         const { rows } = await pool.query(query, [req.user.id]);
 
@@ -153,6 +154,10 @@ export const getResearchCalls = async (req: AuthRequest, res: Response) => {
 
             exchange: row.exchange_type,
             instrument: row.market_type,
+
+
+            version_type: row.version_type,
+            parent_call_id: row.parent_call_id,
 
             symbol: row.symbol,
             name: row.display_name,
@@ -305,6 +310,7 @@ export const getPublishedCalls = async (_req: AuthRequest, res: Response) => {
 
 
 export const createErrata = async (
+
     req: AuthRequest,
     res: Response
 ) => {
@@ -443,4 +449,6 @@ export const createErrata = async (
     } finally {
         client.release();
     }
+
+
 };
