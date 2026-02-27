@@ -49,7 +49,13 @@ const getActionStyles = (current: "BUY" | "SELL", button: "BUY" | "SELL") => {
     },
   };
 };
-
+const rootGridSx = {
+  display: "grid",
+  gridTemplateColumns: "3fr 1.5fr",
+  gap: 2,
+  height: "auto",
+  boxSizing: "border-box",
+};
 
 const FLAT_STUDY_OPTIONS = UNDERLYING_STUDIES.flatMap((g) =>
   g.options.map((opt) => ({
@@ -543,6 +549,10 @@ const NewRecommendation = () => {
     [recommendations]
   );
 
+
+  function handleTrack(event: MouseEvent<HTMLButtonElement, MouseEvent>): void {
+    throw new Error("Function not implemented.");
+  }
 
   return (
     <Box
@@ -1066,12 +1076,28 @@ const NewRecommendation = () => {
           </Box>
         </Box>
 
-        <Button
-          variant="contained"
-          onClick={handleSubmit}
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            mt: 2,
+            justifyContent: "flex-start", // change to "space-between" if needed
+          }}
         >
-          {isErrataMode ? "Create Errata" : "Publish Call"}
-        </Button>
+          <Button
+            variant="contained"
+            onClick={handleSubmit}
+          >
+            {isErrataMode ? "Create Errata" : "Publish Call"}
+          </Button>
+
+          <Button
+            variant="outlined"
+            onClick={handleTrack}   // <-- create this function
+          >
+            Track
+          </Button>
+        </Box>
 
       </Paper>
 
@@ -1312,7 +1338,7 @@ const NewRecommendation = () => {
                         <TableCell align="right" sx={{ px: 1, py: 1.5 }}>
                           <Button
                             size="small"
-                            onClick={() => handleModify(item)}  // reuse same logic
+                            onClick={() => handleInstiate(item)} // reuse same logic
                             sx={{
                               fontSize: '0.65rem',
                               textTransform: 'none',
