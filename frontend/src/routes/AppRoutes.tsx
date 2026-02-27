@@ -19,11 +19,14 @@ import LoginForm from "../common/LoginForm";
 import BrokerRegistration from "../pages_registration/BrokerRegistration";
 
 // --- NEW IMPORTS FOR MORNING REPORT ---
-import MorningReportBuilder from "../morning-report/MorningReportBuilder";
-import MorningReport from "../morning-report/MorningReport";
-import Logotheme from "../morning-report/Logotheme";
-import Generator from "../morning-report/Generator";
+import MorningReportBuilder from "../tools/morning-report/MorningReportBuilder";
+import MorningReport from "../tools/morning-report/MorningReport";
+import Logotheme from "../tools/morning-report/Logotheme";
+import Generator from "../tools/morning-report/Generator";
 import ProtectedRoute from "../components/ProtectedRoute";
+
+// Tool import
+import { ExceltoJSONTool } from "../tools/ExceltoJSONtool";
 
 const AppRoutes = () => {
   return (
@@ -59,6 +62,7 @@ const AppRoutes = () => {
         <Route path="Morning" element={<Morning />} />
         <Route path="Special" element={<Special />} />
         <Route path="Weekly" element={<Weekly />} />
+        <Route path="ExcelTool" element={<ExceltoJSONTool/>}/>
       </Route>
 
       {/* --- 4. Admin Layout --- */}

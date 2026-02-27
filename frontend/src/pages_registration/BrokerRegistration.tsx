@@ -16,7 +16,6 @@ import {
   Stack,
   Radio,
   RadioGroup,
-  FormHelperText,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -25,6 +24,7 @@ import {
   StepLabel,
   StepConnector,
   stepConnectorClasses,
+  Chip,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import type { StepIconProps } from "@mui/material/StepIcon";
@@ -110,7 +110,11 @@ const label = (text: string, required = false) => (
 );
 
 const errMsg = (msg = "This field is required") => (
-  <Typography variant="caption" sx={{ color: "#EF4444", fontSize: "0.72rem" }}>{msg}</Typography>
+  <Box sx={{ height: "20px", mt: 0.5 }}> 
+    <Typography variant="caption" sx={{ color: "#EF4444", fontSize: "0.72rem", display: 'block' }}>
+      {msg}
+    </Typography>
+  </Box>
 );
 
 // ─────────────────────────────────────────────
@@ -184,8 +188,86 @@ const BrokerRegistration = () => {
     membershipCode: "", segCash: false, segFO: false, segCurrency: false,
   });
   const [sebiCertFile, setSebiCertFile] = useState<File | null>(null);
-  const [exchangeCertFile, setExchangeCertFile] = useState<File | null>(null);
   const [s2Err, setS2Err] = useState<Record<string, boolean>>({});
+  // --- STATE ---
+const [exchangeCertFiles, setExchangeCertFiles] = useState<File[]>([]);
+
+const handleFileUpload = (data: any) => {
+  // Logic to handle both standard input events and direct file arrays
+  const incomingFiles = data?.target?.files ? data.target.files : data;
+  
+  if (incomingFiles) {
+    const filesArray = Array.from(incomingFiles) as File[];
+    setExchangeCertFiles((prev) => [...prev, ...filesArray]);
+    
+    // Clear error
+    if (s2Err.exchangeCertFiles) {
+      setS2Err((prev) => ({ ...prev, exchangeCertFiles: false }));
+    }
+  }
+};
+
+const handleRemoveFile = (indexToRemove: number) => {
+  setExchangeCertFiles((prev) => prev.filter((_, index) => index !== indexToRemove));
+};
+
+const FileUploadBox = ({
+  fieldLabel,
+  files,
+  onChange,
+  error,
+  multiple = false,
+}: {
+  fieldLabel: string;
+  files: File | File[] | null;
+  onChange: (f: any) => void;
+  error?: boolean;
+  multiple?: boolean;
+}) => {
+  const ref = useRef<HTMLInputElement>(null);
+  
+  const getDisplayName = () => {
+    if (!files) return "Drag & drop or click to browse";
+    if (Array.isArray(files)) {
+      return files.length > 0 ? `${files.length} files selected` : "Drag & drop or click to browse";
+    }
+    // @ts-ignore
+    return files.name;
+  };
+
+  return (
+    <Box sx={{ width: "100%" }}>
+      {label(fieldLabel)}
+      <Box
+        onClick={() => ref.current?.click()}
+        sx={{
+          border: `1px dashed ${error ? "#EF4444" : "#CBD5E1"}`,
+          borderRadius: "8px", px: 2, py: 1.5,
+          bgcolor: error ? "#FFF5F5" : "#F8FAFC",
+          cursor: "pointer", display: "flex", alignItems: "center", gap: 2,
+          "&:hover": { borderColor: "#2563EB", bgcolor: "#F0F6FF" },
+        }}
+      >
+        <input 
+          type="file" 
+          hidden 
+          ref={ref} 
+          multiple={multiple} 
+          onChange={(e) => onChange(e.target.files)} 
+        />
+        <Box sx={{ width: 34, height: 34, borderRadius: "6px", bgcolor: "#E2E8F0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <CloudUploadIcon sx={{ fontSize: 18, color: "#475569" }} />
+        </Box>
+        <Box sx={{ overflow: "hidden" }}>
+          <Typography variant="caption" sx={{ fontWeight: 600, color: "#475569", display: "block" }}>
+            {getDisplayName()}
+          </Typography>
+          <Typography variant="caption" sx={{ fontSize: "0.7rem", color: "#94A3B8" }}>PDF • Max 5 MB</Typography>
+        </Box>
+      </Box>
+    </Box>
+  );
+};
 
   // Step 3 starts here - state
   const [s3, setS3] = useState({
@@ -199,14 +281,23 @@ const BrokerRegistration = () => {
   const [s3Err, setS3Err] = useState<Record<string, boolean>>({});
 
   // Step 4 starts here - state
-  const [s4, setS4] = useState({
-    fullName: "", pan: "", designation: "", email: "", aadhaar: "", mobile: "",
-    role: "Super Admin",
-    segments: { equity: true, fno: true, currency: true, commodity: true },
-    permissions: { createCall: true, modifyCall: true, uploadResearch: true, viewReports: true },
-  });
-  const [authFile, setAuthFile] = useState<File | null>(null);
-  const [s4Err, setS4Err] = useState<Record<string, boolean>>({});
+const [s4, setS4] = useState({
+  fullName: "", 
+  pan: "", 
+  designation: "", 
+  email: "", 
+  aadhaar: "", 
+  mobile: "",
+  // Keep these as hidden defaults so the backend doesn't crash
+  role: "Super Admin",
+  segments: { equity: true, fno: true, currency: true, commodity: true },
+  permissions: { createCall: true, modifyCall: true, uploadResearch: true, viewReports: true },
+});
+
+// Since the upload UI is removed, you can likely remove this too:
+// const [authFile, setAuthFile] = useState<File | null>(null); 
+
+const [s4Err, setS4Err] = useState<Record<string, boolean>>({});
 
   // Step 5 starts here - state
   const [declarations, setDeclarations] = useState({
@@ -238,6 +329,7 @@ const BrokerRegistration = () => {
     if (!s2.regDate) errs.regDate = true;
     if (!sebiCertFile) errs.sebiCertFile = true;
     if (!s2.exchangeNSE && !s2.exchangeBSE && !s2.exchangeSMI && !s2.exchangeNCDEX) errs.exchange = true;
+    if (exchangeCertFiles.length === 0) errs.exchangeCertFiles = true;
     setS2Err(errs);
     return Object.keys(errs).length === 0;
   };
@@ -258,9 +350,9 @@ const BrokerRegistration = () => {
   const validateStep4 = () => {
     const errs: Record<string, boolean> = {};
     if (!s4.fullName.trim()) errs.fullName = true;
-    if (!s4.pan.trim()) errs.pan = true;
     if (!s4.email.trim()) errs.email = true;
     if (!s4.mobile.trim()) errs.mobile = true;
+    if (!s4.aadhaar.trim()) errs.aadhaar = true;
     setS4Err(errs);
     return Object.keys(errs).length === 0;
   };
@@ -404,93 +496,209 @@ const BrokerRegistration = () => {
 
   // Step 2 starts here - UI
   const renderStep2 = () => (
-    <Box>
-      <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 3, color: "#1E293B" }}>SEBI & Exchange Details</Typography>
-      <Grid container spacing={3}>
-        {/* SEBI Registration - Heading */}
-        <Grid item xs={12}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, pb: 1, borderBottom: "1px solid #E2E8F0", mb: 2 }}>SEBI Registration</Typography>
-        </Grid>
-        {/* SEBI Registration - Fields below heading */}
-        <Grid item xs={12} sm={6} md={4}>
-          {label("SEBI Registration Number", true)}
-          <TextField fullWidth placeholder="INZ0123456789" sx={s2Err.sebiRegNo ? inputSxErr : inputSx}
-            value={s2.sebiRegNo} onChange={(e) => setS2({ ...s2, sebiRegNo: e.target.value })} />
-          {s2Err.sebiRegNo && errMsg()}
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          {label("Registration Category", true)}
-          <Select fullWidth displayEmpty value={s2.regCategory} onChange={(e) => setS2({ ...s2, regCategory: e.target.value })}
-            sx={{ ...(s2Err.regCategory ? inputSxErr : inputSx), height: 40, fontSize: "0.85rem" }}>
-            <MenuItem value="" disabled><span style={{ color: "#94A3B8" }}>Select Category</span></MenuItem>
-            <MenuItem value="Stock Broker">Stock Broker</MenuItem>
-            <MenuItem value="Sub Broker">Sub Broker</MenuItem>
-            <MenuItem value="Depository Participant">Depository Participant</MenuItem>
-          </Select>
-          {s2Err.regCategory && errMsg()}
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          {label("Registration Date", true)}
-          <TextField fullWidth type="date" sx={s2Err.regDate ? inputSxErr : inputSx}
-            value={s2.regDate} onChange={(e) => setS2({ ...s2, regDate: e.target.value })}
-            InputLabelProps={{ shrink: true }} />
-          {s2Err.regDate && errMsg()}
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          {label("Validity of Registration")}
-          <TextField fullWidth placeholder="e.g. Perpetual / DD-MM-YYYY" sx={inputSx}
-            value={s2.regValidity} onChange={(e) => setS2({ ...s2, regValidity: e.target.value })} />
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          <FileUploadBox fieldLabel="Upload SEBI Certificate (PDF)" file={sebiCertFile} onChange={setSebiCertFile} error={s2Err.sebiCertFile} />
-        </Grid>
+  <Box>
+    <Typography variant="h6" sx={{ fontWeight: 800, mb: 3, color: "#1E293B", letterSpacing: '-0.02em' }}>
+      SEBI & Exchange Details
+    </Typography>
 
-        {/* Exchange */}
-        <Grid item xs={12} sx={{ mt: 1 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 700, pb: 1, borderBottom: "1px solid #E2E8F0", mb: 2 }}>Stock Exchange Membership</Typography>
-          <Typography variant="caption" sx={{ fontWeight: 700, mb: 1, display: "block" }}>
-            Select Exchange(s) <span style={{ color: "#EF4444" }}>*</span>
-          </Typography>
-          <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap", mb: 1 }}>
-            {(["NSE", "BSE", "SMI", "NCDEX"] as const).map((ex) => {
-              const key = `exchange${ex}` as keyof typeof s2;
-              return (
-                <FormControlLabel key={ex}
-                  control={<Checkbox size="small" checked={s2[key] as boolean} onChange={(e) => setS2({ ...s2, [key]: e.target.checked })}
-                    sx={{ color: "#CBD5E1", "&.Mui-checked": { color: "#2563EB" } }} />}
-                  label={<Typography variant="caption" sx={{ fontWeight: 700 }}>{ex}</Typography>} />
-              );
-            })}
-          </Stack>
-          {s2Err.exchange && errMsg("Please select at least one exchange")}
-        </Grid>
+    <Grid container spacing={5}>
+      {/* --- SEBI SECTION --- */}
+<Grid item xs={12}>
+  <Paper variant="outlined" sx={{ p: 4, borderRadius: 3, bgcolor: "#F8FAFC", border: "1px solid #E2E8F0" }}>
+    <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 3, color: "#475569", textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: '0.05em' }}>
+      SEBI Registration Information
+    </Typography>
+    
+    <Grid container spacing={4}>
+      {/* Left Column: Form Fields (Takes 8/12 of the space) */}
+      <Grid item xs={12} md={8.5}>
+        <Grid container spacing={3}>
+          <Grid item xs={12} sm={6}>
+            <Box sx={{ mb: 1.2 }}>{label("SEBI Registration Number", true)}</Box>
+            <TextField 
+              fullWidth 
+              placeholder="INZ0123456789" 
+              sx={s2Err.sebiRegNo ? inputSxErr : inputSx}
+              value={s2.sebiRegNo} 
+              onChange={(e) => setS2({ ...s2, sebiRegNo: e.target.value })} 
+            />
+            <Box sx={{ height: 20 }}>{s2Err.sebiRegNo && errMsg()}</Box>
+          </Grid>
 
-        <Grid item xs={12} sm={6} md={4}>
-          {label("Membership Code")}
-          <TextField fullWidth placeholder="INB1223456789" sx={inputSx}
-            value={s2.membershipCode} onChange={(e) => setS2({ ...s2, membershipCode: e.target.value })} />
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          {label("Segments")}
-          <Stack direction="row" sx={{ flexWrap: "wrap" }}>
-            {(["Cash", "F&O", "Currency"] as const).map((seg) => {
-              const keyMap: Record<string, keyof typeof s2> = { "Cash": "segCash", "F&O": "segFO", "Currency": "segCurrency" };
-              const k = keyMap[seg];
-              return (
-                <FormControlLabel key={seg}
-                  control={<Checkbox size="small" checked={s2[k] as boolean} onChange={(e) => setS2({ ...s2, [k]: e.target.checked })}
-                    sx={{ color: "#CBD5E1", "&.Mui-checked": { color: "#2563EB" } }} />}
-                  label={<Typography variant="caption" sx={{ fontWeight: 600 }}>{seg}</Typography>} />
-              );
-            })}
-          </Stack>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          <FileUploadBox fieldLabel="Upload Exchange Membership Certificate (PDF)" file={exchangeCertFile} onChange={setExchangeCertFile} />
+          <Grid item xs={12} sm={6}>
+            <Box sx={{ mb: 1.2 }}>{label("Registration Category", true)}</Box>
+            <Select 
+              fullWidth 
+              displayEmpty 
+              value={s2.regCategory} 
+              onChange={(e) => setS2({ ...s2, regCategory: e.target.value })}
+              sx={{ ...(s2Err.regCategory ? inputSxErr : inputSx), height: 40, fontSize: "0.85rem" }}
+            >
+              <MenuItem value="" disabled><span style={{ color: "#94A3B8" }}>Select Category</span></MenuItem>
+              <MenuItem value="Stock Broker">Stock Broker</MenuItem>
+              <MenuItem value="Sub Broker">Sub Broker</MenuItem>
+              <MenuItem value="Depository Participant">Depository Participant</MenuItem>
+            </Select>
+            <Box sx={{ height: 20 }}>{s2Err.regCategory && errMsg()}</Box>
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <Box sx={{ mb: 1.2 }}>{label("Registration Date", true)}</Box>
+            <TextField 
+              fullWidth 
+              type="date" 
+              sx={s2Err.regDate ? inputSxErr : inputSx}
+              value={s2.regDate} 
+              onChange={(e) => setS2({ ...s2, regDate: e.target.value })}
+              InputLabelProps={{ shrink: true }} 
+            />
+            <Box sx={{ height: 20 }}>{s2Err.regDate && errMsg()}</Box>
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <Box sx={{ mb: 1.2 }}>{label("Validity of Registration")}</Box>
+            <TextField 
+              fullWidth 
+              placeholder="Perpetual" 
+              sx={inputSx}
+              value={s2.regValidity} 
+              onChange={(e) => setS2({ ...s2, regValidity: e.target.value })} 
+            />
+          </Grid>
         </Grid>
       </Grid>
-    </Box>
-  );
+
+      {/* Right Column: Upload (Takes 3.5/12 of the space) */}
+      <Grid item xs={12} md={3.5}>
+        <Box sx={{ mb: 1.2 }}>{label("Upload Certificate", true)}</Box>
+        <FileUploadBox 
+  fieldLabel="SEBI Certificate (PDF)" 
+  files={sebiCertFile} // Changed from 'file' to 'files'
+  onChange={(files) => setSebiCertFile(files[0])} // Just take the first one
+  error={s2Err.sebiCertFile} 
+/>
+        <Box sx={{ height: 20 }}>{s2Err.sebiCertFile && errMsg("Certificate required")}</Box>
+      </Grid>
+    </Grid>
+  </Paper>
+</Grid>
+
+      {/* --- EXCHANGE SECTION --- */}
+      <Grid item xs={12}>
+        <Paper variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 3, color: "#475569", textTransform: 'uppercase', fontSize: '0.75rem' }}>
+            Stock Exchange Membership
+          </Typography>
+
+          <Grid container spacing={3}>
+            {/* Row 1: Select Exchanges */}
+            <Grid item xs={12} md={4}>
+              <Box sx={{ mb: 1 }}>{label("Select Exchange(s)", true)}</Box>
+              <Box sx={{ p: 1, border: '1px solid #E2E8F0', borderRadius: 1, minHeight: 42, display: 'flex', alignItems: 'center' }}>
+                <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+                  {(["NSE", "BSE", "SMI", "NCDEX"] as const).map((ex) => {
+                    const key = `exchange${ex}` as keyof typeof s2;
+                    return (
+                      <FormControlLabel 
+                        key={ex}
+                        control={
+                          <Checkbox 
+                            size="small" 
+                            checked={!!s2[key]} 
+                            onChange={(e) => setS2({ ...s2, [key]: e.target.checked })} 
+                          />
+                        }
+                        label={<Typography variant="caption" sx={{ fontWeight: 700 }}>{ex}</Typography>} 
+                      />
+                    );
+                  })}
+                </Stack>
+              </Box>
+              <Box sx={{ height: 18 }}>{s2Err.exchange && errMsg("Please select at least one")}</Box>
+            </Grid>
+
+            {/* Row 1: Membership Code */}
+            <Grid item xs={12} md={4}>
+              <Box sx={{ mb: 1 }}>{label("Membership Code")}</Box>
+              <TextField 
+                fullWidth 
+                placeholder="INB1223456789" 
+                sx={inputSx}
+                value={s2.membershipCode} 
+                onChange={(e) => setS2({ ...s2, membershipCode: e.target.value })} 
+              />
+            </Grid>
+
+            {/* Row 1: Segments */}
+            <Grid item xs={12} md={4}>
+              <Box sx={{ mb: 1 }}>{label("Segments")}</Box>
+              <Stack direction="row" sx={{ flexWrap: "wrap", pt: 0.5 }}>
+                {["Cash", "F&O", "Currency"].map((seg) => {
+                  const keyMap: any = { "Cash": "segCash", "F&O": "segFO", "Currency": "segCurrency" };
+                  const k = keyMap[seg];
+                  return (
+                    <FormControlLabel 
+                      key={seg} 
+                      control={
+                        <Checkbox 
+                          size="small" 
+                          checked={!!s2[k as keyof typeof s2]} 
+                          onChange={(e) => setS2({ ...s2, [k]: e.target.checked })} 
+                        />
+                      } 
+                      label={<Typography variant="caption" sx={{ fontWeight: 600 }}>{seg}</Typography>} 
+                    />
+                  );
+                })}
+              </Stack>
+            </Grid>
+
+           {/* Row 2: Multi-File Upload */}
+<Grid item xs={12}>
+  <Box sx={{ mb: 1.5 }}>
+    {label("Upload Exchange Membership Certificate(s)", true)}
+  </Box>
+
+  {/* CALL the component, don't paste its internal code here */}
+  <FileUploadBox 
+    fieldLabel="Click to upload or drag multiple files" 
+    files={exchangeCertFiles} 
+    onChange={handleFileUpload} 
+    multiple={true}
+    error={s2Err.exchangeCertFiles}
+  />
+
+  {/* This is what shows the files once uploaded */}
+  {exchangeCertFiles.length > 0 && (
+    <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", mt: 1.5 }}>
+      {exchangeCertFiles.map((file: File, index: number) => (
+        <Chip
+          key={`${file.name}-${index}`}
+          label={file.name}
+          onDelete={() => handleRemoveFile(index)}
+          variant="outlined"
+          size="small"
+          sx={{ 
+            borderRadius: "4px", 
+            bgcolor: "#F8FAFC",
+            fontSize: "0.72rem",
+            fontWeight: 500,
+            border: "1px solid #E2E8F0"
+          }}
+        />
+      ))}
+    </Stack>
+  )}
+  <Box sx={{ height: 18 }}>
+    {s2Err.exchangeCertFiles && errMsg("File upload is required")}
+  </Box>
+</Grid>
+          </Grid>
+        </Paper>
+      </Grid>
+    </Grid>
+  </Box>
+);
 
   // Step 3 starts here - UI
   const renderStep3 = () => (
@@ -576,114 +784,108 @@ const BrokerRegistration = () => {
     </Box>
   );
 
-  // Step 4 starts here - UI
-  const renderStep4 = () => {
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    return (
-      <Box>
-        <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 3, color: "#1E293B" }}>Authorized Person Setup</Typography>
-        <Accordion defaultExpanded elevation={0} sx={{ borderRadius: "10px!important", border: "1px solid #E2E8F0", mb: 3, "&:before": { display: "none" } }}>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: "#F8FAFC", borderBottom: "1px solid #E2E8F0", px: 3 }}>
-            <Typography sx={{ fontWeight: 700 }}>Authorized Person Details</Typography>
-          </AccordionSummary>
-          <AccordionDetails sx={{ px: 4, py: 4 }}>
-            <Grid container spacing={3}>
-              <Grid item xs={12} sm={6}>
-                {label("Full Name", true)}
-                <TextField fullWidth placeholder="Enter Full Name" sx={s4Err.fullName ? inputSxErr : inputSx}
-                  value={s4.fullName} onChange={(e) => setS4({ ...s4, fullName: e.target.value })} />
-                {s4Err.fullName && errMsg()}
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                {label("PAN", true)}
-                <TextField fullWidth placeholder="Enter PAN" sx={s4Err.pan ? inputSxErr : inputSx}
-                  value={s4.pan} onChange={(e) => setS4({ ...s4, pan: e.target.value.toUpperCase() })} />
-                {s4Err.pan && errMsg()}
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                {label("Designation")}
-                <TextField fullWidth placeholder="Enter Designation" sx={inputSx}
-                  value={s4.designation} onChange={(e) => setS4({ ...s4, designation: e.target.value })} />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                {label("Official Email ID", true)}
-                <TextField fullWidth placeholder="Enter Email" sx={s4Err.email ? inputSxErr : inputSx}
-                  value={s4.email} onChange={(e) => setS4({ ...s4, email: e.target.value })} />
-                {s4Err.email && errMsg()}
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                {label("Aadhaar (Optional)")}
-                <TextField fullWidth placeholder="XXXX XXXX XXXX" sx={inputSx}
-                  value={s4.aadhaar} onChange={(e) => setS4({ ...s4, aadhaar: e.target.value })} />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                {label("Mobile Number", true)}
-                <TextField fullWidth placeholder="Enter Mobile" sx={s4Err.mobile ? inputSxErr : inputSx}
-                  value={s4.mobile} onChange={(e) => setS4({ ...s4, mobile: e.target.value })} />
-                {s4Err.mobile && errMsg()}
-              </Grid>
-            </Grid>
-          </AccordionDetails>
-        </Accordion>
+  // Step 4 starts here - UI (Roles & Permissions removed)
+const renderStep4 = () => {
+  return (
+    <Box>
+      <Typography variant="h6" sx={{ fontWeight: 800, mb: 3, color: "#1E293B", letterSpacing: '-0.02em' }}>
+        Authorized Person Setup
+      </Typography>
 
-        <Accordion defaultExpanded elevation={0} sx={{ borderRadius: "10px!important", border: "1px solid #E2E8F0", "&:before": { display: "none" } }}>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ bgcolor: "#F8FAFC", borderBottom: "1px solid #E2E8F0", px: 3 }}>
-            <Typography sx={{ fontWeight: 700 }}>Role & Permissions</Typography>
-          </AccordionSummary>
-          <AccordionDetails sx={{ px: 4, py: 4 }}>
-            <Grid container spacing={4}>
-              <Grid item xs={12} md={6}>
-                {label("Role Selection")}
-                <RadioGroup row value={s4.role} onChange={(e) => setS4({ ...s4, role: e.target.value })}>
-                  {["Super Admin", "Analyst", "Compliance", "View"].map((role) => (
-                    <FormControlLabel key={role} value={role}
-                      control={<Radio size="small" sx={{ color: "#CBD5E1", "&.Mui-checked": { color: "#2563EB" } }} />}
-                      label={<Typography variant="caption" sx={{ fontWeight: 600 }}>{role}</Typography>} />
-                  ))}
-                </RadioGroup>
-                <Box sx={{ mt: 3, border: "1px dashed #CBD5E1", borderRadius: "8px", p: 3, textAlign: "center", bgcolor: "#F8FAFC", cursor: "pointer", "&:hover": { borderColor: "#2563EB", bgcolor: "#EFF6FF" } }}
-                  onClick={() => fileInputRef.current?.click()}>
-                  <input type="file" hidden ref={fileInputRef} accept=".pdf" onChange={(e) => setAuthFile(e.target.files?.[0] || null)} />
-                  <FileUploadOutlinedIcon sx={{ color: "#94A3B8", fontSize: 30, mb: 1 }} />
-                  <Typography variant="caption" sx={{ display: "block", color: "#64748B" }}>
-                    {authFile ? <span style={{ color: "#2563EB", fontWeight: 700 }}>Selected: {authFile.name}</span>
-                      : <>Upload Authorization Letter – <span style={{ color: "#2563EB" }}>click to browse</span></>}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: "#94A3B8", fontSize: "0.65rem" }}>PDF Max 5MB</Typography>
-                </Box>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                {label("Segments Allowed")}
-                <Box sx={{ display: "flex", flexWrap: "wrap", mb: 3 }}>
-                  {(Object.keys(s4.segments) as Array<keyof typeof s4.segments>).map((seg) => (
-                    <FormControlLabel key={seg}
-                      control={<Checkbox size="small" checked={s4.segments[seg]}
-                        onChange={(e) => setS4({ ...s4, segments: { ...s4.segments, [seg]: e.target.checked } })}
-                        sx={{ color: "#CBD5E1", "&.Mui-checked": { color: "#2563EB" } }} />}
-                      label={<Typography variant="caption" sx={{ fontWeight: 600, textTransform: "capitalize" }}>{seg === "fno" ? "F&O" : seg}</Typography>} />
-                  ))}
-                </Box>
-                {label("Permissions")}
-                <Grid container spacing={1}>
-                  {(Object.keys(s4.permissions) as Array<keyof typeof s4.permissions>).map((perm) => (
-                    <Grid item xs={6} key={perm}>
-                      <FormControlLabel
-                        control={<Checkbox size="small" checked={s4.permissions[perm]}
-                          onChange={(e) => setS4({ ...s4, permissions: { ...s4.permissions, [perm]: e.target.checked } })}
-                          sx={{ color: "#CBD5E1", "&.Mui-checked": { color: "#2563EB" } }} />}
-                        label={<Typography variant="caption" sx={{ fontWeight: 600 }}>
-                          {perm.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())}
-                        </Typography>} />
-                    </Grid>
-                  ))}
-                </Grid>
-              </Grid>
+      <Accordion 
+        defaultExpanded 
+        elevation={0} 
+        sx={{ 
+          borderRadius: "10px!important", 
+          border: "1px solid #E2E8F0", 
+          mb: 3, 
+          "&:before": { display: "none" } 
+        }}
+      >
+        <AccordionSummary 
+          expandIcon={<ExpandMoreIcon />} 
+          sx={{ bgcolor: "#F8FAFC", borderBottom: "1px solid #E2E8F0", px: 3 }}
+        >
+          <Typography sx={{ fontWeight: 700 }}>Authorized Person Details</Typography>
+        </AccordionSummary>
+        
+        <AccordionDetails sx={{ px: 4, py: 4 }}>
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6}>
+              {label("Full Name", true)}
+              <TextField 
+                fullWidth 
+                placeholder="Enter Full Name" 
+                sx={s4Err.fullName ? inputSxErr : inputSx}
+                value={s4.fullName} 
+                onChange={(e) => setS4({ ...s4, fullName: e.target.value })} 
+              />
+              <Box sx={{ height: 20 }}>{s4Err.fullName && errMsg()}</Box>
             </Grid>
-          </AccordionDetails>
-        </Accordion>
-      </Box>
-    );
-  };
+
+            <Grid item xs={12} sm={6}>
+              {label("PAN(Optional)")}
+              <TextField 
+                fullWidth 
+                placeholder="Enter PAN" 
+                sx={inputSx}
+                value={s4.pan} 
+                onChange={(e) => setS4({ ...s4, pan: e.target.value.toUpperCase() })} 
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              {label("Designation")}
+              <TextField 
+                fullWidth 
+                placeholder="Enter Designation" 
+                sx={inputSx}
+                value={s4.designation} 
+                onChange={(e) => setS4({ ...s4, designation: e.target.value })} 
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              {label("Official Email ID", true)}
+              <TextField 
+                fullWidth 
+                placeholder="Enter Email" 
+                sx={s4Err.email ? inputSxErr : inputSx}
+                value={s4.email} 
+                onChange={(e) => setS4({ ...s4, email: e.target.value })} 
+              />
+              <Box sx={{ height: 20 }}>{s4Err.email && errMsg()}</Box>
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              {label("Aadhaar", true)}
+              <TextField 
+                fullWidth 
+                placeholder="XXXX XXXX XXXX" 
+                sx={s4Err.aadhaar ? inputSxErr : inputSx}
+                value={s4.aadhaar} 
+                onChange={(e) => setS4({ ...s4, aadhaar: e.target.value })} 
+              />
+              <Box sx={{ height: 20 }}>{s4Err.aadhar && errMsg()}</Box>
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              {label("Mobile Number", true)}
+              <TextField 
+                fullWidth 
+                placeholder="Enter Mobile" 
+                sx={s4Err.mobile ? inputSxErr : inputSx}
+                value={s4.mobile} 
+                onChange={(e) => setS4({ ...s4, mobile: e.target.value })} 
+              />
+              <Box sx={{ height: 20 }}>{s4Err.mobile && errMsg()}</Box>
+            </Grid>
+          </Grid>
+        </AccordionDetails>
+      </Accordion>
+    </Box>
+  );
+};
 
   // Step 5 starts here - UI
   const sectionHdrSx = { display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1, pb: 1, borderBottom: "1px solid #F1F5F9" };
