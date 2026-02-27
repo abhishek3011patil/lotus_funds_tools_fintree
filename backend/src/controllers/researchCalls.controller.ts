@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { pool } from "../db";
 import { AuthRequest } from "../middlewares/auth.middleware";
-
+import { Router } from "express";
 
 
 
@@ -138,11 +138,12 @@ export const getResearchCalls = async (req: AuthRequest, res: Response) => {
         }
 
         const query = `
-          SELECT *
-          FROM research_calls
-           WHERE ra_user_id = $1
-          ORDER BY created_at DESC
-        `;
+  SELECT *
+  FROM research_calls
+  WHERE ra_user_id = $1
+  AND is_latest = true
+  ORDER BY created_at DESC
+`;
 
         const { rows } = await pool.query(query, [req.user.id]);
 
@@ -153,6 +154,10 @@ export const getResearchCalls = async (req: AuthRequest, res: Response) => {
 
             exchange: row.exchange_type,
             instrument: row.market_type,
+
+
+            version_type: row.version_type,
+            parent_call_id: row.parent_call_id,
 
             symbol: row.symbol,
             name: row.display_name,
@@ -305,6 +310,7 @@ export const getPublishedCalls = async (_req: AuthRequest, res: Response) => {
 
 
 export const createErrata = async (
+
     req: AuthRequest,
     res: Response
 ) => {
@@ -443,4 +449,43 @@ export const createErrata = async (
     } finally {
         client.release();
     }
+
+
 };
+
+/* =========================================================
+   publish Draft (POST /api/research/calls/:id/publish)
+   ========================================================= */
+
+
+export const publishDraftCall = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const result = await pool.query(
+            `UPDATE research_calls
+       SET status = 'PUBLISHED'
+       WHERE id = $1
+       AND status = 'DRAFT'
+       AND ra_user_id = $2
+       RETURNING id`,
+            [id, req.user!.id]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(400).json({
+                message: "Cannot publish this call"
+            });
+        }
+
+        return res.json({
+            message: "Call published successfully"
+        });
+
+    } catch (err) {
+        console.error("PUBLISH ERROR:", err);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
+

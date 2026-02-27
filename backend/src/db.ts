@@ -27,7 +27,6 @@ pool.on("connect", () => {
 
 pool.on("error", (err) => {
     console.error("❌ PostgreSQL pool error", err);
-    process.exit(1);
 });
 
 

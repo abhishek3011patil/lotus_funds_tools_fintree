@@ -3,37 +3,59 @@ import { STOCK_DATA } from "../assets/stocks";
 
 type ExchangeType = "NSE" | "BSE";
 
+// 🔥 PRECOMPUTE LOWERCASE ONCE (outside hook)
+const PREPARED_STOCK_DATA: Record<
+    ExchangeType,
+    { original: string; lower: string }[]
+> = {
+    NSE: (STOCK_DATA.NSE || []).map((s) => ({
+        original: s,
+        lower: s.toLowerCase(),
+    })),
+    BSE: (STOCK_DATA.BSE || []).map((s) => ({
+        original: s,
+        lower: s.toLowerCase(),
+    })),
+};
+
 export function useStockAutocomplete(exchangeType: ExchangeType) {
     const [inputValue, setInputValue] = useState("");
     const [suggestion, setSuggestion] = useState("");
 
-    const options = useMemo(() => {
-        const raw = STOCK_DATA[exchangeType] || [];
-        return raw.map((s) => ({
-            original: s,
-            lower: s.toLowerCase(),
-        }));
-    }, [exchangeType]);
+    // 🔥 No more mapping on every render
+    const options = PREPARED_STOCK_DATA[exchangeType];
 
     const matches = useMemo(() => {
         if (!inputValue) return [];
 
         const lowerInput = inputValue.toLowerCase();
 
-        return options
-            .filter((s) => s.lower.startsWith(lowerInput))
-            .slice(0, 20)
-            .map((s) => s.original);
+        const results: string[] = [];
+
+        for (let i = 0; i < options.length; i++) {
+            if (options[i].lower.startsWith(lowerInput)) {
+                results.push(options[i].original);
+                if (results.length === 20) break; // 🔥 stop early
+            }
+        }
+
+        return results;
     }, [inputValue, options]);
 
     const handleInputChange = (_: any, value: string) => {
         setInputValue(value);
 
         if (value.length > 0) {
-            const firstMatch = options.find((s) =>
-                s.lower.startsWith(value.toLowerCase())
-            );
-            setSuggestion(firstMatch?.original || "");
+            const lowerValue = value.toLowerCase();
+
+            for (let i = 0; i < options.length; i++) {
+                if (options[i].lower.startsWith(lowerValue)) {
+                    setSuggestion(options[i].original);
+                    return;
+                }
+            }
+
+            setSuggestion("");
         } else {
             setSuggestion("");
         }
@@ -54,8 +76,8 @@ export function useStockAutocomplete(exchangeType: ExchangeType) {
 
     return {
         inputValue,
-        setDirectValue,
         suggestion,
+        setDirectValue,
         matches,
         handleInputChange,
         handleKeyDown,
