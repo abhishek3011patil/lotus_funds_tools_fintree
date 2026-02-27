@@ -196,7 +196,7 @@ const NewRecommendation = () => {
         underlying_study: underlyingStudyValue?.label || null,
         is_algo: false,
         has_vested_interest: false,
-        research_remarks: null
+        research_remarks: remark || undefined
       };
 
       let res;
@@ -609,7 +609,7 @@ const NewRecommendation = () => {
         underlying_study: underlyingStudyValue?.label || null,
         is_algo: false,
         has_vested_interest: false,
-        research_remarks: null
+        research_remarks: remark || undefined
       };
 
       const res = await axios.post(
@@ -1122,7 +1122,16 @@ const NewRecommendation = () => {
 
         {/* Remarks & Upload */}
         <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1.5, mb: 2 }}>
-          <TextField required multiline rows={2} placeholder="Research Analyst's Remarks" sx={{ flexGrow: 1 }} />
+          <TextField
+            required
+            multiline
+            rows={2}
+            placeholder="Research Analyst's Remarks"
+            value={remark}
+            onChange={(e) => setRemark(e.target.value)}
+            sx={{ flexGrow: 1 }}
+          />
+
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: { xs: "100%", sm: 160 } }}>
             <input
               required
