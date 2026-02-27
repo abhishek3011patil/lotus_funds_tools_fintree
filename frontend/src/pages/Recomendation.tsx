@@ -623,12 +623,12 @@ const NewRecommendation = () => {
       );
 
       // Update state instantly
+      const createdCall = res.data.data || res.data;
+
       setRecommendations(prev => [
         {
-          ...payload,
-          id: res.data.id,
-          created_at: res.data.created_at,
-          status: "DRAFT"
+          ...createdCall,
+          name: createdCall.display_name,
         },
         ...prev
       ]);
@@ -1410,7 +1410,7 @@ const NewRecommendation = () => {
                           </Typography>
 
                           <Typography sx={{ fontSize: '0.65rem', color: '#333', fontWeight: 600 }}>
-                            {item.display_name} • {item.trade_type}
+                            {item.name} • {item.trade_type}
                           </Typography>
 
                           <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#999', mt: 0.5, display: 'block' }}>
