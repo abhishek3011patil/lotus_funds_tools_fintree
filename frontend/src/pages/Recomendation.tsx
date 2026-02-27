@@ -511,33 +511,59 @@ const NewRecommendation = () => {
 
 
   /// populate 
-  const populateForm = () => {
-    setExchangeType("NSE");
-    setExchange("STOCK");
-    setAction("BUY");
-    setCallType("Cash");
-    setTradeType("Intraday");
-
-    setEntry("250");
-    setTarget("270");
-    setStopLoss("240");
-
-    setExpiry("2026-03-28");
-
-    setRationale("Breakout above resistance");
-    setUnderlyingStudyValue({
-      label: "RSI + Volume Confirmation",
-      value: "rsi_volume"
-    });
-
-    console.log("Form Populated ✅");
-  };
   useEffect(() => {
-    (window as any).populateForm = populateForm;
+    (window as any).populateForm = () => {
+      setExchangeType("NSE");
+      setExchange("STOCK");
+      setAction("BUY");
+      setCallType("Cash");
+      setTradeType("Intraday");
+
+      setEntry("250");
+      setTarget("270");
+      setStopLoss("240");
+
+      setExpiry("2026-03-28");
+
+      setRationale("Breakout above resistance");
+      setUnderlyingStudyValue({
+        label: "RSI + Volume Confirmation",
+        value: "rsi_volume"
+      });
+
+      console.log("Form Populated ✅");
+    };
   }, []);
 
 
   //instiate
+  const token = localStorage.getItem("token");
+  const handleInitiate = async (item: any) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      await axios.patch(
+        `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/publish`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setRecommendations((prev) =>
+        prev.map((rec) =>
+          rec.id === item.id
+            ? { ...rec, status: "PUBLISHED" }
+            : rec
+        )
+      );
+
+    } catch (error) {
+      console.error("Publish failed:", error);
+    }
+  };
 
   const activeRecommendations = useMemo(
     () => recommendations.filter((item) => item.status === "PUBLISHED"),
@@ -550,9 +576,67 @@ const NewRecommendation = () => {
   );
 
 
-  function handleTrack(event: MouseEvent<HTMLButtonElement, MouseEvent>): void {
-    throw new Error("Function not implemented.");
-  }
+  const handleTrack = async () => {
+
+    const finalDisplayName =
+      typeof suggestion === "object" && suggestion !== null
+        ? suggestion.display_name
+        : inputValue.trim();
+
+    try {
+      const payload = {
+        status: "DRAFT",   // 👈 Add this line
+
+        exchange_type: exchangeType,
+        market_type: exchange,
+        symbol: "SYM",
+        display_name: finalDisplayName,
+        action,
+        call_type: callType,
+        trade_type: tradeType,
+        expiry_date: expiry || null,
+        entry_price: entry || null,
+        entry_price_low: null,
+        entry_price_upper: null,
+        target_price: target || null,
+        target_price_2: null,
+        target_price_3: null,
+        stop_loss: stopLoss || null,
+        stop_loss_2: null,
+        stop_loss_3: null,
+        holding_period: 1,
+        rationale,
+        underlying_study: underlyingStudyValue?.label || null,
+        is_algo: false,
+        has_vested_interest: false,
+        research_remarks: null
+      };
+
+      const res = await axios.post(
+        import.meta.env.VITE_API_URL + "/api/research/calls",
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+        }
+      );
+
+      // Update state instantly
+      setRecommendations(prev => [
+        {
+          ...payload,
+          id: res.data.id,
+          created_at: res.data.created_at,
+          status: "DRAFT"
+        },
+        ...prev
+      ]);
+
+    } catch (err) {
+      console.error("Track failed:", err);
+    }
+  };
 
   return (
     <Box
@@ -1326,7 +1410,7 @@ const NewRecommendation = () => {
                           </Typography>
 
                           <Typography sx={{ fontSize: '0.65rem', color: '#333', fontWeight: 600 }}>
-                            {item.name} • {item.trade_type}
+                            {item.display_name} • {item.trade_type}
                           </Typography>
 
                           <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#999', mt: 0.5, display: 'block' }}>
@@ -1338,7 +1422,8 @@ const NewRecommendation = () => {
                         <TableCell align="right" sx={{ px: 1, py: 1.5 }}>
                           <Button
                             size="small"
-                            onClick={() => handleInstiate(item)} // reuse same logic
+                            onClick={() => handleInitiate(item)}
+                            disabled={item.status !== "DRAFT"}
                             sx={{
                               fontSize: '0.65rem',
                               textTransform: 'none',
@@ -1348,7 +1433,10 @@ const NewRecommendation = () => {
                               p: 0,
                               textAlign: 'right',
                               justifyContent: 'flex-end',
-                              '&:hover': { backgroundColor: 'transparent', color: '#0d47a1' }
+                              '&:hover': {
+                                backgroundColor: 'transparent',
+                                color: '#0d47a1'
+                              }
                             }}
                           >
                             Initiate

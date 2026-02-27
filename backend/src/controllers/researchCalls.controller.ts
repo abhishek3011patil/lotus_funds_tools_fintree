@@ -454,7 +454,38 @@ export const createErrata = async (
 };
 
 /* =========================================================
-   CREATE ERRATA (POST /api/research/calls/${item.id}/status`)
+   publish Draft (POST /api/research/calls/:id/publish)
    ========================================================= */
+
+
+export const publishDraftCall = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const result = await pool.query(
+            `UPDATE research_calls
+       SET status = 'PUBLISHED'
+       WHERE id = $1
+       AND status = 'DRAFT'
+       AND ra_user_id = $2
+       RETURNING id`,
+            [id, req.user!.id]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(400).json({
+                message: "Cannot publish this call"
+            });
+        }
+
+        return res.json({
+            message: "Call published successfully"
+        });
+
+    } catch (err) {
+        console.error("PUBLISH ERROR:", err);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
 
 
