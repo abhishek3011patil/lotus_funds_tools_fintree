@@ -23,7 +23,8 @@
     "underlying_study": "RSI",
 
     "flags": { "algo": false, "vested_interest": false },
-    "remarks": "Breakout with strong volume"
+    "remarks": "Breakout with strong volume",
+    "researcherName": "Vishal Dadlani"
   },
 
   {
@@ -50,7 +51,8 @@
     "underlying_study": "Open Interest",
 
     "flags": { "algo": true, "vested_interest": false },
-    "remarks": "Call writing unwinding, strong intraday momentum"
+    "remarks": "Call writing unwinding, strong intraday momentum",
+    "researcherName": "Sidharth Sharma"
   },
 
   {
@@ -77,7 +79,8 @@
     "underlying_study": "RSI + Volume Divergence",
 
     "flags": { "algo": false, "vested_interest": true },
-    "remarks": "Negative divergence near resistance zone"
+    "remarks": "Negative divergence near resistance zone",
+    "researcherName": "Sunidhi Chauhan"
   },
 
   {
@@ -104,7 +107,8 @@
     "underlying_study": "Moving Average Breakout",
 
     "flags": { "algo": false, "vested_interest": false },
-    "remarks": "Sustaining above 50 DMA with rising volumes"
+    "remarks": "Sustaining above 50 DMA with rising volumes",
+    "researcherName": "Bhuvan bam"
   },
 
   {
@@ -131,7 +135,8 @@
     "underlying_study": "Fundamental + RSI",
 
     "flags": { "algo": false, "vested_interest": false },
-    "remarks": "Strong balance sheet, valuation comfort zone"
+    "remarks": "Strong balance sheet, valuation comfort zone",
+    "researcherName": "Atif Aslam"
   },
 
   {
@@ -158,6 +163,7 @@
     "underlying_study": "VWAP + OI Build-up",
 
     "flags": { "algo": true, "vested_interest": false },
-    "remarks": "Failure near VWAP with fresh short build-up"
+    "remarks": "Failure near VWAP with fresh short build-up",
+    "researcherName": "Arijit Singh"
   }
 ]

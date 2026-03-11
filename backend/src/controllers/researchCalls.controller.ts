@@ -11,6 +11,7 @@ import { Router } from "express";
 export const createResearchCall = async (req: AuthRequest, res: Response) => {
     try {
         const {
+            status = "PUBLISHED",  // default if not provided
             exchange_type,
             market_type,
             symbol,
@@ -37,81 +38,92 @@ export const createResearchCall = async (req: AuthRequest, res: Response) => {
         } = req.body;
 
         const query = `
-      INSERT INTO research_calls (
-        ra_user_id,
-        status,
+     INSERT INTO research_calls (
+  ra_user_id,
+  status,
 
-        exchange_type,
-        market_type,
+  exchange_type,
+  market_type,
 
-        symbol,
-        display_name,
+  symbol,
+  display_name,
 
-        action,
-        call_type,
-        trade_type,
-        expiry_date,
+  action,
+  call_type,
+  trade_type,
+  expiry_date,
 
-        entry_price,
-        entry_price_low,
-        entry_price_upper,
+  entry_price,
+  entry_price_low,
+  entry_price_upper,
 
-        target_price,
-        target_price_2,
-        target_price_3,
+  target_price,
+  target_price_2,
+  target_price_3,
 
-        stop_loss,
-        stop_loss_2,
-        stop_loss_3,
+  stop_loss,
+  stop_loss_2,
+  stop_loss_3,
 
-        holding_period,
-        rationale,
-        underlying_study,
+  holding_period,
+  rationale,
+  underlying_study,
 
-        is_algo,
-        has_vested_interest,
-        research_remarks
-      )
-      VALUES (
-        $1, 'PUBLISHED',
-        $2, $3,
-        $4, $5,
-        $6, $7, $8, $9,
-        $10, $11, $12,
-        $13, $14, $15,
-        $16, $17, $18,
-        $19, $20, $21,
-        $22, $23, $24
-      )
-      RETURNING id, created_at;
+  is_algo,
+  has_vested_interest,
+  research_remarks
+)
+VALUES (
+  $1, $2,
+  $3, $4,
+  $5, $6,
+  $7, $8, $9, $10,
+  $11, $12, $13,
+  $14, $15, $16,
+  $17, $18, $19,
+  $20, $21, $22,
+  $23, $24, $25
+)
+RETURNING id, created_at;
     `;
 
         const values = [
-            req.user!.id,
-            exchange_type,
-            market_type,
-            symbol,
-            display_name,
-            action,
-            call_type,
-            trade_type,
-            expiry_date,
-            entry_price,
-            entry_price_low,
-            entry_price_upper,
-            target_price,
-            target_price_2,
-            target_price_3,
-            stop_loss,
-            stop_loss_2,
-            stop_loss_3,
-            holding_period,
-            rationale,
-            underlying_study,
-            is_algo,
-            has_vested_interest,
-            research_remarks
+
+            req.user!.id,          // $1
+            status,                // $2
+
+            exchange_type,         // $3
+            market_type,           // $4
+
+            symbol,                // $5
+            display_name,          // $6
+
+            action,                // $7
+            call_type,             // $8
+            trade_type,            // $9
+            expiry_date,           // $10
+
+            entry_price,           // $11
+            entry_price_low,       // $12
+            entry_price_upper,     // $13
+
+            target_price,          // $14
+            target_price_2,        // $15
+            target_price_3,        // $16
+
+            stop_loss,             // $17
+            stop_loss_2,           // $18
+            stop_loss_3,           // $19
+
+            holding_period,        // $20
+            rationale,             // $21
+            underlying_study,      // $22
+
+            is_algo,               // $23
+            has_vested_interest,   // $24
+            research_remarks       // $25
         ];
+
 
         const { rows } = await pool.query(query, values);
 
@@ -123,6 +135,44 @@ export const createResearchCall = async (req: AuthRequest, res: Response) => {
     } catch (err) {
         console.error("CREATE CALL ERROR:", err);
         return res.status(500).json({ message: "Server error" });
+    }
+};
+
+
+/* =========================================================
+   CREATE RESEARCH CALL  (POST /api/research/performance)
+   ========================================================= */
+export const getResearchPerformance = async (req: AuthRequest, res: Response) => {
+    try {
+
+        const query = `
+      SELECT
+        rc.created_at AS date_time,
+        rc.action,
+        rc.exchange_type AS exchange,
+        rc.call_type AS type,
+        rc.trade_type AS category,
+        rc.display_name AS instrument,
+        rc.symbol,
+        rc.expiry_date AS expiry,
+        rc.entry_price AS entry,
+        '--' AS exit,
+        rc.status,
+        NULL AS profit_loss,
+        u.name AS researcher_name
+      FROM research_calls rc
+      JOIN users u ON u.id = rc.ra_user_id
+      WHERE rc.is_latest = true
+      ORDER BY rc.created_at DESC
+    `;
+
+        const { rows } = await pool.query(query);
+
+        res.json(rows);
+
+    } catch (err) {
+        console.error("PERFORMANCE API ERROR:", err);
+        res.status(500).json({ message: "Server error" });
     }
 };
 
@@ -204,7 +254,6 @@ export const getResearchCalls = async (req: AuthRequest, res: Response) => {
         return res.status(500).json({ message: "Server Error" });
     }
 };
-
 
 /* =========================================================
    GET PUBLISHED CALLS (GET /api/research/calls/published)

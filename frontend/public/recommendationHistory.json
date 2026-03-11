@@ -12,7 +12,8 @@
       "entry": 25865,
       "exit": 25823,
       "status": "Closed",
-      "profitLoss": 3150
+      "profitLoss": 3150,
+      "researcherName": "Vishal Dadlani"
     },
     {
       "dateTime": "2026-01-09T13:02:31",
@@ -26,7 +27,8 @@
       "entry": 1627.4,
       "exit": 1613.6,
       "status": "Active",
-      "profitLoss": -5520
+      "profitLoss": -5520,
+      "researcherName": "Sidharth Sharma"
     },
     {
       "dateTime": "2026-12-24T14:50:31",
@@ -40,7 +42,8 @@
       "entry": 357,
       "exit": 396,
       "status": "Closed",
-      "profitLoss": 1365
+      "profitLoss": 1365,
+      "researcherName": "Sunidhi Chauhan"
     },
     {
       "dateTime": "2026-02-12T09:30:31",
@@ -54,7 +57,8 @@
       "entry": 25865,
       "exit": 25823,
       "status": "Closed",
-      "profitLoss": 3150
+      "profitLoss": 3150,
+      "researcherName": "Bhuvan bam"
     },
     {
       "dateTime": "2026-01-09T13:02:31",
@@ -68,7 +72,8 @@
       "entry": 1627.4,
       "exit": 1613.6,
       "status": "Active",
-      "profitLoss": -5520
+      "profitLoss": -5520,
+      "researcherName": "Atif Aslam"
     },
     {
       "dateTime": "2026-12-24T14:50:31",
@@ -82,7 +87,8 @@
       "entry": 357,
       "exit": 396,
       "status": "Closed",
-      "profitLoss": 1365
+      "profitLoss": 1365,
+      "researcherName": "Arijit Singh"
     },
     {
       "dateTime": "2026-02-10T11:45:12",
@@ -96,7 +102,8 @@
       "entry": 412.5,
       "exit": 398.0,
       "status": "Active",
-      "profitLoss": 725
+      "profitLoss": 725,
+      "researcherName": "Armaan malik"
     },
     {
       "dateTime": "2026-12-24T14:50:31",
@@ -110,7 +117,23 @@
       "entry": 357,
       "exit": 396,
       "status": "Closed",
-      "profitLoss": 1365
-    }
+      "profitLoss": 1365,
+      "researcherName": "Shreya Ghoshal"
+    },
+      {
+        "dateTime": "2026-02-10T11:45:12",
+        "action": "SELL",
+        "exchange": "NSE",
+        "type": "options put",
+        "category": "Intraday",
+        "instrument": "Stock",
+        "symbol": "TCS",
+        "expiry": "February",
+        "entry": 412.5,
+        "exit": 398.0,
+        "status": "Active",
+        "profitLoss": 725,
+        "researcherName": "Kishor Kumar"
+      }
   ]
 }
