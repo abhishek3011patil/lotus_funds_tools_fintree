@@ -14,17 +14,12 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  CircularProgress,
 } from "@mui/material";
+import RecommendationsPanel from "../components/page_Mainapp/RecommendationsPanel";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
-import { useRef, useState, useEffect, useMemo } from "react";
-import { STOCK_DATA } from "../assets/stocks";
+import { useRef, useState, useEffect, useMemo, useCallback, useReducer } from "react";
+import { FormHelperText } from "@mui/material";
+import { startTransition } from "react";
 import { useExpiryDates } from "../hooks/useExpiryDates";
 import { useStockAutocomplete } from "../hooks/useStockAutocomplete";
 import {
@@ -33,8 +28,13 @@ import {
 } from "../assets/UnderlyingStudy";
 import type { StudyOption } from "../assets/UnderlyingStudy";
 import axios from "axios";
+import React from "react";
 const BUY_COLOR = "#22c55e";
 const SELL_COLOR = "#ef4444";
+
+
+const MemoRecommendationsPanel = React.memo(RecommendationsPanel);
+
 
 const getActionStyles = (current: "BUY" | "SELL", button: "BUY" | "SELL") => {
   const isActive = current === button;
@@ -48,52 +48,36 @@ const getActionStyles = (current: "BUY" | "SELL", button: "BUY" | "SELL") => {
     },
   };
 };
+const rootGridSx = {
+  display: "grid",
+  gridTemplateColumns: "3fr 1.5fr",
+  gap: 2,
+  height: "auto",
+  boxSizing: "border-box",
+};
+
+const FLAT_STUDY_OPTIONS = UNDERLYING_STUDIES.flatMap((g) =>
+  g.options.map((opt) => ({
+    ...opt,
+    group: g.group,
+  }))
+);
+
 
 const NewRecommendation = () => {
+
+
+
+
   console.log("RENDER");
-  const [exchangeType, setExchangeType] = useState("NSE");
-  const [action, setAction] = useState<"BUY" | "SELL">("BUY");
-  const [exchange, setExchange] = useState("STOCK");
-  const [callType, setCallType] = useState("Cash");
-  const [entry, setEntry] = useState("");
-  const [target, setTarget] = useState("");
-  const [stopLoss, setStopLoss] = useState("");
-  const [rationale, setRationale] = useState("Overbought Condition");
-  const [tradeType, setTradeType] = useState("Intraday");
-  const [underlyingStudyValue, setUnderlyingStudyValue] = useState<StudyOption | null>(null);
   const [underlyingStudyInput, setUnderlyingStudyInput] = useState("");
   const [recentStudyOptions, setRecentStudyOptions] = useState<StudyOption[]>([]);
-  // 🔹 Symbol
-  const [symbol, setSymbol] = useState("SYM");
-  const [display_name, setDisplay_name] = useState();
-  // 🔹 Entry Range
-  const [entryLow, setEntryLow] = useState("");
-  const [entryUpper, setEntryUpper] = useState("");
-
-  // 🔹 Secondary Targets
-  const [target2, setTarget2] = useState("");
-  const [target3, setTarget3] = useState("");
-
-  // 🔹 Secondary Stoploss
-  const [stopLoss2, setStopLoss2] = useState("");
-  const [stopLoss3, setStopLoss3] = useState("");
-
-  // 🔹 Holding Period
-  const [holdingPeriod, setHoldingPeriod] = useState(1);
-
-  // 🔹 Remarks
-  const [remark, setRemark] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const [radioValue, setRadioValue] = useState("");
-  const [expiry, setExpiry] = useState<string>("");
 
   const [isErrataMode, setIsErrataMode] = useState(false);
   const [errataSourceId, setErrataSourceId] = useState<string | null>(null);
 
-  const panelBg = action === "BUY" ? "#eef9ee" : "#fee2e2";
-  const panelBorder = action === "BUY" ? "#7ac77a" : SELL_COLOR;
 
   const transparentInputSx = {
     backgroundColor: "transparent",
@@ -109,12 +93,96 @@ const NewRecommendation = () => {
     }
   };
 
-  const [switches, setSwitches] = useState({
-    Range: false,
-    "Secondary Target": false,
-    "Stop Loss 2": false,
-  });
+  type RecommendationForm = {
+    exchangeType: "NSE" | "BSE";
+    action: "BUY" | "SELL";
+    exchange: "STOCK" | "INDEX";
+    callType: "Cash" | "Futures" | "Option Call" | "Option Put";
+    tradeType: "Intraday" | "BTST" | "STBT" | "Short Term" | "Long Term";
+    symbol: string;
+    display_name: string;
+    entry: string;
+    entryLow: string;
+    entryUpper: string;
+    target: string;
+    target2: string;
+    target3: string;
+    stopLoss: string;
+    stopLoss2: string;
+    stopLoss3: string;
+    expiry: string;
+    holdingPeriod: string;
+    rationale: string;
+    remark: string;
+    underlyingStudy: StudyOption | null;
+    rangeEnabled: boolean;
+    secondaryTargetEnabled: boolean;
+    stopLoss2Enabled: boolean;
+  };
 
+  const initialForm: RecommendationForm = {
+    exchangeType: "NSE",
+    action: "BUY",
+    exchange: "STOCK",
+    callType: "Cash",
+    tradeType: "Intraday",
+    symbol: "SYM",
+    display_name: "",
+    entry: "",
+    entryLow: "",
+    entryUpper: "",
+    target: "",
+    target2: "",
+    target3: "",
+    stopLoss: "",
+    stopLoss2: "",
+    stopLoss3: "",
+    expiry: "",
+    holdingPeriod: "",
+    rationale: "Overbought Condition",
+    remark: "",
+    underlyingStudy: null,
+    rangeEnabled: false,
+    secondaryTargetEnabled: false,
+    stopLoss2Enabled: false,
+  };
+
+  type FormAction =
+    | {
+      type: "SET_FIELD";
+      field: keyof RecommendationForm;
+      value: RecommendationForm[keyof RecommendationForm];
+    }
+    | { type: "SET_FORM"; payload: Partial<RecommendationForm> }
+    | { type: "RESET" };
+
+  function formReducer(
+    state: RecommendationForm,
+    action: FormAction
+  ): RecommendationForm {
+    switch (action.type) {
+      case "SET_FIELD":
+        return { ...state, [action.field]: action.value };
+      case "SET_FORM":
+        return { ...state, ...action.payload };
+      case "RESET":
+        return initialForm;
+      default:
+        return state;
+    }
+  }
+
+  const [form, dispatch] = useReducer(formReducer, initialForm);
+
+  const panelBg = form.action === "BUY" ? "#eef9ee" : "#fee2e2";
+  const panelBorder = form.action === "BUY" ? "#7ac77a" : SELL_COLOR;
+
+  const resetForm = () => {
+    dispatch({ type: "RESET" });
+    setIsErrataMode(false);
+    setErrataSourceId(null);
+    setDirectValue("");
+  };
 
 
   const handleSubmit = async () => {
@@ -133,40 +201,57 @@ const NewRecommendation = () => {
           : inputValue;
 
       const payload = {
-        exchange_type: exchangeType,
-        market_type: exchange,
+        exchange_type: form.exchangeType,
+        market_type: form.exchange,
         symbol: "SYM",
         display_name: finalDisplayName,
-        action,
-        call_type: callType,
-        trade_type: tradeType,
-        expiry_date: expiry || null,
-        entry_price: entry || null,
-        entry_price_low: null,
-        entry_price_upper: null,
-        target_price: target || null,
-        target_price_2: null,
-        target_price_3: null,
-        stop_loss: stopLoss || null,
-        stop_loss_2: null,
-        stop_loss_3: null,
-        holding_period: 1,
-        rationale,
-        underlying_study: underlyingStudyValue?.label || null,
+        action: form.action,
+        call_type: form.callType,
+        trade_type: form.tradeType,
+        expiry_date: form.expiry || null,
+        entry_price: form.entry || null,
+        entry_price_low: form.entryLow || null,
+        entry_price_upper: form.entryUpper || null,
+        target_price: form.target || null,
+        target_price_2: form.target2 || null,
+        target_price_3: form.target3 || null,
+        stop_loss: form.stopLoss || null,
+        stop_loss_2: form.stopLoss2 || null,
+        stop_loss_3: form.stopLoss3 || null,
+        holding_period: form.holdingPeriod || null,
+        rationale: form.rationale,
+        underlying_study: form.underlyingStudy?.label || null,
         is_algo: false,
         has_vested_interest: false,
-        research_remarks: null
+        research_remarks: form.remark || undefined
       };
 
       let res;
 
       if (isErrataMode && errataSourceId) {
-        // 🔥 ERRATA FLOW
+
+        // Build only fields that are allowed to be updated
+        const updates = {
+          entry_price: form.entry || undefined,
+          target_price: form.target || undefined,
+          stop_loss: form.stopLoss || undefined,
+          target_price_2: form.target2 || undefined,
+          target_price_3: form.target3 || undefined,
+          stop_loss_2: form.stopLoss2 || undefined,
+          stop_loss_3: form.stopLoss3 || undefined,
+          entry_price_low: form.entryLow || undefined,
+          entry_price_upper: form.entryUpper || undefined,
+          holding_period: form.holdingPeriod || undefined,
+          rationale: form.rationale || undefined,
+          underlying_study: form.underlyingStudy?.label || undefined,
+          research_remarks: form.remark || undefined,
+        };
+
         res = await axios.post(
           import.meta.env.VITE_API_URL + "/api/research/calls/errata",
           {
             call_id: errataSourceId,
-            updates: payload,
+            updates,
           },
           {
             headers: {
@@ -174,6 +259,7 @@ const NewRecommendation = () => {
             },
           }
         );
+
 
         alert("Errata Created ✅");
 
@@ -200,7 +286,7 @@ const NewRecommendation = () => {
           ...createdCall,
           name: createdCall.display_name,
         },
-        ...prev.filter((c) => c.id !== errataSourceId), // remove old version
+        ...prev.filter((c) => c.id !== errataSourceId),
       ]);
 
       // Reset errata mode
@@ -211,34 +297,54 @@ const NewRecommendation = () => {
       console.error(err);
       alert(err?.response?.data?.message || "Error submitting call");
     }
+    await fetchRecommendations();
+    resetForm();
   };
 
 
-  const handleToggle = (label: string) => {
-    setSwitches((prev) => ({ ...prev, [label]: !prev[label as keyof typeof switches] }));
-  };
+  const handleToggle = useCallback(
+    (field: keyof RecommendationForm) => {
+      dispatch({ type: "SET_FIELD", field, value: !form[field] });
+    },
+    [form]
+  );
 
-  const handlePriceChange = (setter: React.Dispatch<React.SetStateAction<string>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    if (val.includes("-")) return;
-    setter(val);
-  };
+  const handlePriceChange = useCallback(
+    (field: keyof RecommendationForm) =>
+      (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        if (val.includes("-")) return;
+
+        dispatch({ type: "SET_FIELD", field, value: val });
+      },
+    []
+  );
 
   // hooks 
   const expiryDates = useExpiryDates(
-    callType as any,
-    exchangeType as any
+    form.callType as any,
+    form.exchangeType as any
   );
+
+  const autocomplete = useStockAutocomplete(form.exchangeType as "NSE" | "BSE");
 
   const {
     inputValue,
     suggestion,
     setDirectValue,
     matches,
-    open,
     handleInputChange,
     handleKeyDown,
-  } = useStockAutocomplete(exchangeType as "NSE" | "BSE");
+  } = isErrataMode
+      ? {
+        inputValue: autocomplete.inputValue,
+        suggestion: "",
+        setDirectValue: autocomplete.setDirectValue,
+        matches: [],
+        handleInputChange: () => { },
+        handleKeyDown: () => { },
+      }
+      : autocomplete;
 
   // =============================
   // Underlying Study helpers
@@ -262,29 +368,23 @@ const NewRecommendation = () => {
   const studyOptions: StudyAutocompleteOption[] = useMemo(() => {
     const recentValues = new Set(recentStudyOptions.map((o) => o.value));
 
-    const recent: StudyAutocompleteOption[] = recentStudyOptions.map((o) => ({
+    const recent = recentStudyOptions.map((o) => ({
       ...o,
       group: "Recently Selected",
     }));
 
-    const groupedBase: StudyAutocompleteOption[] = UNDERLYING_STUDIES.flatMap(
-      (g) =>
-        g.options
-          .filter((opt) => !recentValues.has(opt.value))
-          .map((opt) => ({
-            ...opt,
-            group: g.group,
-          }))
+    const base = FLAT_STUDY_OPTIONS.filter(
+      (opt) => !recentValues.has(opt.value)
     );
 
-    return [...recent, ...groupedBase];
+    return [...recent, ...base];
   }, [recentStudyOptions]);
 
   const handleUnderlyingStudyChange = (
     _: unknown,
     newValue: StudyOption | null
   ) => {
-    setUnderlyingStudyValue(newValue);
+    dispatch({ type: "SET_FIELD", field: "underlyingStudy", value: newValue });
     if (!newValue) return;
 
     // update "recently selected" list (max 10, most recent first)
@@ -307,10 +407,15 @@ const NewRecommendation = () => {
   };
 
   useEffect(() => {
-    if (expiryDates.length > 0) {
-      setExpiry(expiryDates[0].toISOString());
-    } else {
-      setExpiry("");
+    if (!expiryDates.length) {
+      dispatch({ type: "SET_FIELD", field: "expiry", value: "" });
+      return;
+    }
+
+    const first = expiryDates[0].toISOString();
+
+    if (form.expiry !== first) {
+      dispatch({ type: "SET_FIELD", field: "expiry", value: first });
     }
   }, [expiryDates]);
 
@@ -353,7 +458,7 @@ const NewRecommendation = () => {
   }, []);
 
   // 1. EXIT FUNCTION (Removes the item from the list)
-  const handleExit = async (id: string) => {
+  const handleExit = useCallback(async (id: string) => {
     if (!window.confirm("Are you sure you want to exit this recommendation?")) {
       return;
     }
@@ -380,65 +485,47 @@ const NewRecommendation = () => {
     } catch (error) {
       console.error("Exit failed:", error);
     }
-  };
+  }, []);
 
   // 2. MODIFY FUNCTION (Loads data back into the form)
-  const handleModify = (item: any) => {
-    console.log("Preparing Errata for:", item);
+  const handleModify = useCallback((item) => {
+    startTransition(() => {
+      const formUpdate: Partial<RecommendationForm> = {
+        rangeEnabled: Boolean(item.entry?.low || item.entry?.high),
+        secondaryTargetEnabled: Boolean(item.targets?.[1] || item.targets?.[2]),
+        stopLoss2Enabled: Boolean(item.stop_losses?.[1] || item.stop_losses?.[2]),
+        exchangeType: item.exchange,
+        exchange: item.instrument,
+        action: item.action,
+        callType: item.call_type,
+        tradeType: item.trade_type,
+        expiry: item.expiry_date || "",
+        entry: item.entry?.ideal?.toString() || "",
+        target: item.targets?.[0]?.toString() || "",
+        stopLoss: item.stop_losses?.[0]?.toString() || "",
+        holdingPeriod: item.holding_period?.toString() || "",
+        entryLow: item.entry?.low?.toString() || "",
+        entryUpper: item.entry?.high?.toString() || "",
+        target2: item.targets?.[1]?.toString() || "",
+        target3: item.targets?.[2]?.toString() || "",
+        stopLoss2: item.stop_losses?.[1]?.toString() || "",
+        stopLoss3: item.stop_losses?.[2]?.toString() || "",
+        rationale: item.rationale || "",
+        remark: item.research_remarks || item.remark || "",
+        underlyingStudy: item.underlying_study ? {
+          label: item.underlying_study,
+          value: item.underlying_study.toLowerCase().replace(/\s+/g, "_"),
+        } : null,
+      };
 
-    // 1️⃣ Script / Symbol
-    //setDirectValue(item.display_name || item.symbol || "");
-    // 2️⃣ Underlying Study
-    if (item.underlying_study) {
-      setUnderlyingStudyValue({
-        label: item.underlying_study,
-        value: item.underlying_study
-          .toLowerCase()
-          .replace(/\s+/g, "_"),
-      });
-    }
+      dispatch({ type: "SET_FORM", payload: formUpdate });
+      setIsErrataMode(true);
+      setErrataSourceId(item.id);
+      setDirectValue(item.name || item.symbol || "");
+    });
 
-    // 3️⃣ Core Fields
-    setExchangeType(item.exchange_type);
-    setExchange(item.market_type);
-    setAction(item.action);
-    setCallType(item.call_type);
-    setTradeType(item.trade_type);
-
-    // 4️⃣ Prices
-    setEntry(item.entry_price?.toString() || "");
-    setTarget(item.target_price?.toString() || "");
-    setStopLoss(item.stop_loss?.toString() || "");
-
-    // Optional multi targets
-    if (item.target_price_2) {
-      setTarget2(item.target_price_2.toString());
-    }
-
-    if (item.target_price_3) {
-      setTarget3(item.target_price_3.toString());
-    }
-
-    if (item.stop_loss_2) {
-      setStopLoss2(item.stop_loss_2.toString());
-    }
-
-    if (item.stop_loss_3) {
-      setStopLoss3(item.stop_loss_3.toString());
-    }
-
-    // 5️⃣ Rationale
-    setRationale(item.rationale || "");
-
-    // 6️⃣ Expiry
-    if (item.expiry_date) {
-      setExpiry(item.expiry_date);
-    }
-
-    // Scroll up
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
+    window.scrollTo({ top: 0 });
+  }, []);
   // Temporary
   const [wasValidated, setWasValidated] = useState(false);
   const validateAndPublish = (event) => {
@@ -446,59 +533,165 @@ const NewRecommendation = () => {
     setWasValidated(true);
 
     // Check standard inputs via form
-    const form = event.currentTarget.closest('form');
-    const isFormValid = form.checkValidity();
+    const formEl = event.currentTarget.closest('form');
+    const isFormValid = formEl.checkValidity();
 
     // Check our Radio manually
-    const isRadioValid = radioValue !== "";
+    const isRadioValid = form.holdingPeriod !== "";
 
     if (isFormValid && isRadioValid) {
-      handlePublish();
+      handleSubmit();
       setWasValidated(false);
     }
   };
 
 
   /// populate 
-  const populateForm = () => {
-    setExchangeType("NSE");
-    setExchange("STOCK");
-    setAction("BUY");
-    setCallType("Cash");
-    setTradeType("Intraday");
-
-    setEntry("250");
-    setTarget("270");
-    setStopLoss("240");
-
-    setExpiry("2026-03-28");
-
-    setRationale("Breakout above resistance");
-    setUnderlyingStudyValue({
-      label: "RSI + Volume Confirmation",
-      value: "rsi_volume"
-    });
-
-    console.log("Form Populated ✅");
-  };
   useEffect(() => {
-    (window as any).populateForm = populateForm;
+    (window as any).populateForm = () => {
+      dispatch({
+        type: "SET_FORM",
+        payload: {
+          exchangeType: "NSE",
+          exchange: "STOCK",
+          action: "BUY",
+          callType: "Cash",
+          tradeType: "Short Term",
+          symbol: "SYM",
+          entry: "250",
+          entryLow: "240",
+          entryUpper: "260",
+          target: "270",
+          target2: "285",
+          target3: "300",
+          stopLoss: "230",
+          stopLoss2: "220",
+          stopLoss3: "210",
+          expiry: "2026-03-28",
+          holdingPeriod: "30 Days",
+          rationale: "Break Out Play",
+          underlyingStudy: {
+            label: "RSI + Volume Confirmation",
+            value: "rsi_volume",
+          },
+          rangeEnabled: true,
+          secondaryTargetEnabled: true,
+          stopLoss2Enabled: true,
+          remark: "Strong breakout with volume confirmation.",
+        }
+      });
+      setDirectValue("A.F. Enterprises Ltd");
+      console.log("Form Populated ✅");
+    };
   }, []);
 
 
   //instiate
+  const token = localStorage.getItem("token");
+  const handleInitiate = useCallback(async (item: any) => {
+    try {
+      const token = localStorage.getItem("token");
 
-  const activeRecommendations = recommendations.filter(
-    (item) => item.status === "PUBLISHED"
-  );
+      await axios.patch(
+        `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/publish`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setRecommendations((prev) =>
+        prev.map((rec) =>
+          rec.id === item.id
+            ? { ...rec, status: "PUBLISHED" }
+            : rec
+        )
+      );
+
+    } catch (error) {
+      console.error("Publish failed:", error);
+    }
+  }, []);
 
 
-  const watchlistRecommendations = recommendations.filter(
-    (item) => item.status === "DRAFT" // 🔥 temporary
-    // later change to === "WATCHLIST"
-  );
 
+  const handleTrack = async () => {
+    try {
+      const finalDisplayName =
+        typeof suggestion === "object" && suggestion !== null
+          ? suggestion.display_name
+          : inputValue.trim();
 
+      const payload = {
+        status: "DRAFT",
+
+        exchange_type: form.exchangeType,
+        market_type: form.exchange,
+        symbol: form.symbol || finalDisplayName,
+        display_name: finalDisplayName,
+
+        action: form.action,
+        call_type: form.callType,
+        trade_type: form.tradeType,
+        expiry_date: form.expiry || null,
+
+        // 🔹 Entry
+        entry_price: form.entry || null,
+        entry_price_low: form.rangeEnabled ? form.entryLow || null : null,
+        entry_price_upper: form.rangeEnabled ? form.entryUpper || null : null,
+
+        // 🔹 Targets
+        target_price: form.target || null,
+        target_price_2: form.secondaryTargetEnabled
+          ? form.target2 || null
+          : null,
+        target_price_3: form.secondaryTargetEnabled
+          ? form.target3 || null
+          : null,
+
+        // 🔹 Stop Loss
+        stop_loss: form.stopLoss || null,
+        stop_loss_2: form.stopLoss2Enabled
+          ? form.stopLoss2 || null
+          : null,
+        stop_loss_3: form.stopLoss2Enabled
+          ? form.stopLoss3 || null
+          : null,
+
+        holding_period: form.holdingPeriod || null,
+
+        rationale: form.rationale,
+        underlying_study: form.underlyingStudy?.label || null,
+
+        is_algo: false,
+        has_vested_interest: false,
+        research_remarks: form.remark || null,
+      };
+
+      console.log("TRACK PAYLOAD:", payload);
+
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/research/calls`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      // 🔥 IMPORTANT: Refetch because backend does not return full object
+      await fetchRecommendations();
+
+      // Optional: Reset form after tracking
+      // resetForm();
+
+    } catch (err: any) {
+      console.error("Track failed:", err?.response?.data || err);
+    }
+  };
   return (
     <Box
       sx={{
@@ -538,15 +731,33 @@ const NewRecommendation = () => {
           }
         }}
       >
+        {isErrataMode && (
+          <Box
+            sx={{
+              backgroundColor: "#fff3cd",
+              border: "1px solid #ffeeba",
+              color: "#856404",
+              px: 2,
+              py: 1,
+              borderRadius: 1,
+              mb: 1,
+              fontSize: "0.75rem",
+              fontWeight: 600
+            }}
+          >
+            You are creating an ERRATA for Call ID: {errataSourceId}
+          </Box>
+        )}
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+
           <Typography variant="subtitle1" fontWeight={700} sx={{ fontSize: { xs: "0.9rem", sm: "1.1rem" } }}>
             New Recommendation
           </Typography>
           <ToggleButtonGroup
             size="small"
             exclusive
-            value={exchangeType}
-            onChange={(_, val) => val && setExchangeType(val)}
+            value={form.exchangeType}
+            onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "exchangeType", value: val })}
             sx={{
               backgroundColor: "#eef2f7",
               "& .MuiToggleButtonGroup-grouped": {
@@ -563,14 +774,14 @@ const NewRecommendation = () => {
         {/* Action & Call Type Row */}
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 1 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
-            <ToggleButtonGroup size="small" exclusive value={action} onChange={(_, val) => val && setAction(val)}>
-              <ToggleButton value="BUY" sx={{ fontWeight: 700, px: 2, fontSize: "0.7rem", ...getActionStyles(action, "BUY") }}>BUY</ToggleButton>
-              <ToggleButton value="SELL" sx={{ fontWeight: 700, px: 2, fontSize: "0.7rem", ...getActionStyles(action, "SELL") }}>SELL</ToggleButton>
+            <ToggleButtonGroup size="small" exclusive value={form.action} onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "action", value: val })}>
+              <ToggleButton value="BUY" sx={{ fontWeight: 700, px: 2, fontSize: "0.7rem", ...getActionStyles(form.action, "BUY") }}>BUY</ToggleButton>
+              <ToggleButton value="SELL" sx={{ fontWeight: 700, px: 2, fontSize: "0.7rem", ...getActionStyles(form.action, "SELL") }}>SELL</ToggleButton>
             </ToggleButtonGroup>
 
             <Box sx={{ overflowX: "auto", maxWidth: "100%" }}>
               <ToggleButtonGroup
-                size="small" exclusive value={callType} onChange={(_, val) => val && setCallType(val)}
+                size="small" exclusive value={form.callType} onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "callType", value: val })}
                 sx={{
                   backgroundColor: "#eef2f7",
                   display: "flex",
@@ -597,12 +808,11 @@ const NewRecommendation = () => {
           <ToggleButtonGroup
             size="small"
             exclusive
-            value={exchange}
-            onChange={(_, val) => val && setExchange(val)}
+            value={form.exchange}
+            onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "exchange", value: val })}
             sx={{
               backgroundColor: "#eef2f7",
               "& .MuiToggleButtonGroup-grouped": {
-
                 border: "none",
                 px: 1.5,
                 fontSize: "0.65rem",
@@ -627,8 +837,8 @@ const NewRecommendation = () => {
             <ToggleButtonGroup
               size="small"
               exclusive
-              value={tradeType}
-              onChange={(_, val) => val && setTradeType(val)}
+              value={form.tradeType}
+              onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "tradeType", value: val })}
               sx={{
                 backgroundColor: "#eef2f7",
                 whiteSpace: "nowrap",
@@ -658,7 +868,7 @@ const NewRecommendation = () => {
               <ToggleButton value="Short Term">Short Term</ToggleButton>
               <ToggleButton
                 value="Long Term"
-                disabled={["Futures", "Option Call", "Option Put"].includes(callType)}
+                disabled={["Futures", "Option Call", "Option Put"].includes(form.callType)}
               >
                 Long Term
               </ToggleButton>
@@ -688,6 +898,7 @@ const NewRecommendation = () => {
             )}
 
             <Autocomplete
+              disabled={isErrataMode}
               freeSolo
               options={matches}
               inputValue={inputValue}
@@ -719,9 +930,9 @@ const NewRecommendation = () => {
           <Box sx={{ display: "flex", gap: 1, flexGrow: { xs: 1, sm: 0 } }}>
             <Select
               size="small"
-              value={expiry}
-              onChange={(e) => setExpiry(e.target.value)}
-              disabled={callType === "Cash"}
+              value={form.expiry}
+              onChange={(e) => dispatch({ type: "SET_FIELD", field: "expiry", value: e.target.value })}
+              disabled={form.callType === "Cash"}
               displayEmpty
               sx={{
                 flexGrow: 1,
@@ -730,7 +941,7 @@ const NewRecommendation = () => {
                 fontSize: "0.8rem",
               }}
             >
-              {callType === "Cash" && (
+              {form.callType === "Cash" && (
                 <MenuItem value="">
                   No Expiry
                 </MenuItem>
@@ -748,62 +959,136 @@ const NewRecommendation = () => {
 
         {/* Prices Row */}
         <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1, mb: 1 }}>
-          <TextField required label="Entry" size="small" type="number" value={entry} onChange={handlePriceChange(setEntry)} sx={{ ...transparentInputSx, flex: 1 }} />
-          <TextField required label="Target" size="small" type="number" value={target} onChange={handlePriceChange(setTarget)} sx={{ ...transparentInputSx, flex: 1 }} />
-          <TextField required label="Stop Loss" size="small" type="number" value={stopLoss} onChange={handlePriceChange(setStopLoss)} sx={{ ...transparentInputSx, flex: 1 }} />
+          <TextField required label="Entry" size="small" type="number" value={form.entry} onChange={handlePriceChange("entry")} sx={{ ...transparentInputSx, flex: 1 }} />
+          <TextField required label="Target" size="small" type="number" value={form.target} onChange={handlePriceChange("target")} sx={{ ...transparentInputSx, flex: 1 }} />
+          <TextField required label="Stop Loss" size="small" type="number" value={form.stopLoss} onChange={handlePriceChange("stopLoss")} sx={{ ...transparentInputSx, flex: 1 }} />
         </Box>
 
         {/* Switched Options Row */}
-        <Box sx={{
-          display: "flex",
-          flexDirection: { xs: "column", md: "row" },
-          justifyContent: "space-between",
-          mb: 1,
-          gap: { xs: 2, md: 1.5 }
-        }}>
-          {["Range", "Secondary Target", "Stop Loss 2"].map((label) => {
-            const isActive = switches[label as keyof typeof switches];
-            let p1 = "Disabled", p2 = "Disabled";
-            if (label === "Range") { p1 = "Lower Entry"; p2 = "Upper Entry"; }
-            if (label === "Secondary Target") { p1 = "T2"; p2 = "T3"; }
-            if (label === "Stop Loss 2") { p1 = "SL2"; p2 = "SL3"; }
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", md: "row" },
+            justifyContent: "space-between",
+            mb: 1,
+            gap: { xs: 2, md: 1.5 },
+          }}
+        >
+          {[
+            { label: "Range", field: "rangeEnabled" as const, p1: "Lower Entry", p2: "Upper Entry", v1: "entryLow" as const, v2: "entryUpper" as const },
+            { label: "Secondary Target", field: "secondaryTargetEnabled" as const, p1: "T2", p2: "T3", v1: "target2" as const, v2: "target3" as const },
+            { label: "Stop Loss 2", field: "stopLoss2Enabled" as const, p1: "SL2", p2: "SL3", v1: "stopLoss2" as const, v2: "stopLoss3" as const },
+          ].map((cfg) => {
+            const isActive = form[cfg.field];
 
             return (
-              <Box key={label} sx={{
-                textAlign: 'center',
-                flex: 1,
-                border: { xs: '1px solid rgba(0,0,0,0.1)', md: 'none' },
-                borderRadius: 1,
-                p: 1
-              }}>
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: 'center', gap: 1, mb: 1 }}>
-                  <Typography sx={{ fontSize: '0.75rem', fontWeight: 700 }}>{label}</Typography>
-                  <Switch size="small" checked={isActive} onChange={() => handleToggle(label)} />
+              <Box
+                key={cfg.label}
+                sx={{
+                  textAlign: "center",
+                  flex: 1,
+                  border: { xs: "1px solid rgba(0,0,0,0.1)", md: "none" },
+                  borderRadius: 1,
+                  p: 1,
+                }}
+              >
+                {/* Header */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 1,
+                    mb: 1,
+                  }}
+                >
+                  <Typography sx={{ fontSize: "0.75rem", fontWeight: 700 }}>
+                    {cfg.label}
+                  </Typography>
+                  <Switch
+                    size="small"
+                    checked={isActive}
+                    onChange={() => handleToggle(cfg.field)}
+                  />
                 </Box>
 
-                <Box sx={{ display: "flex", gap: 1, justifyContent: 'center' }}>
+                {/* Inputs */}
+                <Box sx={{ display: "flex", gap: 1, justifyContent: "center" }}>
                   {isActive ? (
                     <>
                       <TextField
-                        placeholder={p1} size="small" variant="outlined"
-                        sx={{ flex: 1, "& .MuiInputBase-input": { py: 1, fontSize: '0.7rem', textAlign: 'center' } }}
+                        value={form[cfg.v1]}
+                        onChange={handlePriceChange(cfg.v1)}
+                        placeholder={cfg.p1}
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                          flex: 1,
+                          "& .MuiInputBase-input": {
+                            py: 1,
+                            fontSize: "0.7rem",
+                            textAlign: "center",
+                          },
+                        }}
                       />
                       <TextField
-                        placeholder={p2} size="small" variant="outlined"
-                        sx={{ flex: 1, "& .MuiInputBase-input": { py: 1, fontSize: '0.7rem', textAlign: 'center' } }}
+                        value={form[cfg.v2]}
+                        onChange={handlePriceChange(cfg.v2)}
+                        placeholder={cfg.p2}
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                          flex: 1,
+                          "& .MuiInputBase-input": {
+                            py: 1,
+                            fontSize: "0.7rem",
+                            textAlign: "center",
+                          },
+                        }}
                       />
                     </>
                   ) : (
                     <>
-                      <Button size="small" variant="outlined"
+                      <Button
+                        size="small"
+                        variant="outlined"
                         sx={{
-                          py: 0, fontSize: '0.6rem', flex: 1, height: 24, color: "#9ca3af", borderColor: "#e5e7eb", backgroundColor: "#e1e6eaf7", textTransform: "none",
-                          "&:hover": { backgroundColor: "#f3f4f6", borderColor: "#d1d5db" }
-                        }}> Disabled </Button>
-                      <Button size="small" variant="outlined" sx={{
-                        py: 0, fontSize: '0.6rem', flex: 1, height: 24, color: "#9ca3af", borderColor: "#e5e7eb", backgroundColor: "#e1e6eaf7", textTransform: "none",
-                        "&:hover": { backgroundColor: "#f3f4f6", borderColor: "#d1d5db" }
-                      }}> Disabled </Button>
+                          py: 0,
+                          fontSize: "0.6rem",
+                          flex: 1,
+                          height: 24,
+                          color: "#9ca3af",
+                          borderColor: "#e5e7eb",
+                          backgroundColor: "#e1e6eaf7",
+                          textTransform: "none",
+                          "&:hover": {
+                            backgroundColor: "#f3f4f6",
+                            borderColor: "#d1d5db",
+                          },
+                        }}
+                      >
+                        Disabled
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                          py: 0,
+                          fontSize: "0.6rem",
+                          flex: 1,
+                          height: 24,
+                          color: "#9ca3af",
+                          borderColor: "#e5e7eb",
+                          backgroundColor: "#e1e6eaf7",
+                          textTransform: "none",
+                          "&:hover": {
+                            backgroundColor: "#f3f4f6",
+                            borderColor: "#d1d5db",
+                          },
+                        }}
+                      >
+                        Disabled
+                      </Button>
                     </>
                   )}
                 </Box>
@@ -825,29 +1110,29 @@ const NewRecommendation = () => {
           <Box sx={{ width: "100%" }}>
             <FormControl
               fullWidth
-              error={wasValidated && !radioValue && tradeType !== "Intraday"}
+              error={wasValidated && !form.holdingPeriod && form.tradeType !== "Intraday"}
               sx={{ mt: 1 }}
             >
               <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, mb: 0.5 }}>Holding Period</Typography>
 
               {/* Intraday Logic */}
-              {tradeType === "Intraday" && (
+              {form.tradeType === "Intraday" && (
                 <RadioGroup row value="0">
                   <FormControlLabel value="0" control={<Radio size="small" color="primary" />} label={<Typography sx={{ fontSize: '0.65rem' }}>0</Typography>} checked={true} />
                 </RadioGroup>
               )}
 
               {/* BTST/STBT Logic */}
-              {(tradeType === "BTST" || tradeType === "STBT") && (
-                <RadioGroup row value={radioValue} onChange={(e) => setRadioValue(e.target.value)}>
+              {(form.tradeType === "BTST" || form.tradeType === "STBT") && (
+                <RadioGroup row value={form.holdingPeriod} onChange={(e) => dispatch({ type: "SET_FIELD", field: "holdingPeriod", value: e.target.value })}>
                   <FormControlLabel value="0" control={<Radio size="small" color="primary" />} label={<Typography sx={{ fontSize: '0.65rem' }}>0</Typography>} />
                   <FormControlLabel value="1" control={<Radio size="small" color="primary" />} label={<Typography sx={{ fontSize: '0.65rem' }}>1</Typography>} />
                 </RadioGroup>
               )}
 
               {/* Short Term Logic */}
-              {tradeType === "Short Term" && (
-                <RadioGroup row value={radioValue} onChange={(e) => setRadioValue(e.target.value)}>
+              {form.tradeType === "Short Term" && (
+                <RadioGroup row value={form.holdingPeriod} onChange={(e) => dispatch({ type: "SET_FIELD", field: "holdingPeriod", value: e.target.value })}>
                   <FormControlLabel value="7 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 7 Days</Typography>} />
                   <FormControlLabel value="30 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 30 Days</Typography>} />
                   <FormControlLabel value="90 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 90 Days</Typography>} />
@@ -855,15 +1140,15 @@ const NewRecommendation = () => {
               )}
 
               {/* Long Term Logic */}
-              {tradeType === "Long Term" && (
-                <RadioGroup row value={radioValue} onChange={(e) => setRadioValue(e.target.value)}>
+              {form.tradeType === "Long Term" && (
+                <RadioGroup row value={form.holdingPeriod} onChange={(e) => dispatch({ type: "SET_FIELD", field: "holdingPeriod", value: e.target.value })}>
                   <FormControlLabel value="6 Months" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 6 Months</Typography>} />
                   <FormControlLabel value="1 Year" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 1 Year</Typography>} />
                   <FormControlLabel value="5 Years" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 5 Years</Typography>} />
                 </RadioGroup>
               )}
               {/* This shows the red text below the radios if empty */}
-              {wasValidated && !radioValue && tradeType !== "Intraday" && (
+              {wasValidated && !form.holdingPeriod && form.tradeType !== "Intraday" && (
                 <FormHelperText sx={{ fontSize: '0.6rem', mt: 0 }}>Please select a holding period</FormHelperText>
               )}
             </FormControl>
@@ -876,8 +1161,8 @@ const NewRecommendation = () => {
               <ToggleButtonGroup
                 size="small"
                 exclusive
-                value={rationale}
-                onChange={(_, val) => val && setRationale(val)}
+                value={form.rationale}
+                onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "rationale", value: val })}
                 sx={{
                   backgroundColor: "#eef2f7",
                   whiteSpace: "nowrap",
@@ -918,12 +1203,12 @@ const NewRecommendation = () => {
             fullWidth
             options={studyOptions}
             value={
-              underlyingStudyValue
+              form.underlyingStudy
                 ? {
-                  ...underlyingStudyValue,
+                  ...form.underlyingStudy,
                   group:
                     UNDERLYING_STUDIES.find((g) =>
-                      g.options.some((o) => o.value === underlyingStudyValue.value)
+                      g.options.some((o) => o.value === form.underlyingStudy?.value)
                     )?.group ?? "Fundamental & General Analysis",
                 }
                 : null
@@ -964,7 +1249,16 @@ const NewRecommendation = () => {
 
         {/* Remarks & Upload */}
         <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1.5, mb: 2 }}>
-          <TextField required multiline rows={2} placeholder="Research Analyst's Remarks" sx={{ flexGrow: 1 }} />
+          <TextField
+            required
+            multiline
+            rows={2}
+            placeholder="Research Analyst's Remarks"
+            value={form.remark}
+            onChange={(e) => dispatch({ type: "SET_FIELD", field: "remark", value: e.target.value })}
+            sx={{ flexGrow: 1 }}
+          />
+
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: { xs: "100%", sm: 160 } }}>
             <input
               required
@@ -1002,268 +1296,41 @@ const NewRecommendation = () => {
           </Box>
         </Box>
 
-        <Button
-          variant="contained"
-          onClick={handleSubmit}
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            mt: 2,
+            justifyContent: "flex-start", // change to "space-between" if needed
+          }}
         >
-          {isErrataMode ? "Create Errata" : "Publish Call"}
-        </Button>
+          <Button
+            variant="contained"
+            onClick={handleSubmit}
+          >
+            {isErrataMode ? "Create Errata" : "Publish Call"}
+          </Button>
+
+          <Button
+            variant="outlined"
+            onClick={handleTrack}   // <-- create this function
+          >
+            Track
+          </Button>
+        </Box>
 
       </Paper>
 
+      <MemoRecommendationsPanel
+        loading={loading}
+        recommendations={recommendations}
+        onModify={handleModify}
+        onExit={handleExit}
+        onInitiate={handleInitiate}
+      />
+
       {/* RIGHT PANEL */}
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {/* UPDATED ACTIVE RECOMMENDATIONS PAPER */}
-        <Paper sx={{ p: 2, overflow: 'hidden', borderRadius: 2 }}>
-          {/* Header Section: Title + Counter */}
-          <Box sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            mb: 2
-          }}>
-            <Typography fontWeight={700} sx={{ fontSize: "0.9rem" }}>
-              Active Recommendations
-            </Typography>
 
-            <Box
-              sx={{
-                backgroundColor: '#f0f2f5', // Light grey background for the badge
-                color: '#000',
-                borderRadius: '6px',
-                px: 1.5,
-                py: 0.2,
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                border: '1px solid #e0e0e0'
-              }}
-            >
-              {activeRecommendations.length}
-            </Box>
-          </Box>
-
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
-              <CircularProgress size={24} />
-            </Box>
-          ) : (
-            <TableContainer sx={{ maxHeight: 400 }}>
-              <Table size="small" stickyHeader>
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontSize: '0.65rem', color: '#999', fontWeight: 700, px: 1, backgroundColor: '#fff' }}>
-                      Published Date
-                    </TableCell>
-                    <TableCell sx={{ fontSize: '0.65rem', color: '#999', fontWeight: 700, px: 1, backgroundColor: '#fff' }}>
-                      Recommendation
-                    </TableCell>
-                    <TableCell align="right" sx={{ fontSize: '0.65rem', color: '#999', fontWeight: 700, px: 1, backgroundColor: '#fff' }}>
-                      Action
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {activeRecommendations.length > 0 ? (
-                    activeRecommendations.map((item) => {
-                      const dateObj = new Date(item.created_at);
-                      return (
-                        <TableRow
-                          key={item.id}
-                          sx={{ '&:last-child td, &:last-child th': { border: 0 }, '&:hover': { backgroundColor: '#fcfcfc' } }}
-                        >
-                          {/* Column 1: Date & Time */}
-                          <TableCell sx={{ px: 1, py: 1.5 }}>
-                            <Typography sx={{ fontSize: '0.65rem', color: '#666', fontWeight: 500 }}>
-                              {dateObj.toLocaleDateString()}
-                            </Typography>
-                            <Typography sx={{ fontSize: '0.65rem', color: '#999' }}>
-                              {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </Typography>
-                          </TableCell>
-
-                          {/* Column 2: Recommendation Details */}
-                          <TableCell sx={{ px: 1, py: 1.5 }}>
-                            <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: item.action === 'BUY' ? '#2e7d32' : '#d32f2f' }}>
-                              {item.action} {item.instrument} {item.call_type?.toUpperCase()}
-                            </Typography>
-                            <Typography sx={{ fontSize: '0.65rem', color: '#333', fontWeight: 600 }}>
-                              {item.name} • {item.trade_type}
-                            </Typography>
-                            <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#999', mt: 0.5, display: 'block' }}>
-                              @{item.entry?.ideal} | TP {item.targets?.join(', ')} | SL {item.stop_losses?.[0]}
-                            </Typography>
-                          </TableCell>
-
-                          {/* Column 3: Action Buttons */}
-                          <TableCell align="right" sx={{ px: 1, py: 1.5 }}>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                              <Button
-                                size="small"
-                                onClick={() => handleModify(item)}
-                                sx={{
-                                  fontSize: '0.6rem',
-                                  textTransform: 'none',
-                                  color: '#757575',
-                                  minWidth: 'auto',
-                                  p: 0,
-                                  textAlign: 'right',
-                                  justifyContent: 'flex-end',
-                                  '&:hover': { backgroundColor: 'transparent', textDecoration: 'underline' }
-                                }}
-                              >
-                                Modify/Errata
-                              </Button>
-                              <Button
-                                size="small"
-                                onClick={() => handleExit(item.id)}
-                                sx={{
-                                  fontSize: '0.65rem',
-                                  textTransform: 'none',
-                                  color: '#6200ea',
-                                  fontWeight: 800,
-                                  minWidth: 'auto',
-                                  p: 0,
-                                  textAlign: 'right',
-                                  justifyContent: 'flex-end',
-                                  '&:hover': { backgroundColor: 'transparent', color: '#4500a0' }
-                                }}
-                              >
-                                Exit
-                              </Button>
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={3} align="center" sx={{ py: 4, color: '#999', fontSize: '0.8rem' }}>
-                        No active recommendations.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </Paper>
-        <Paper sx={{ p: 2, overflow: 'hidden', borderRadius: 2, mt: 2 }}>
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              mb: 2
-            }}
-          >
-            <Typography fontWeight={700} sx={{ fontSize: "0.9rem" }}>
-              Watchlist
-            </Typography>
-
-            <Box
-              sx={{
-                backgroundColor: '#f0f2f5',
-                color: '#000',
-                borderRadius: '6px',
-                px: 1.5,
-                py: 0.2,
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                border: '1px solid #e0e0e0'
-              }}
-            >
-              {watchlistRecommendations.length}
-            </Box>
-          </Box>
-
-          <TableContainer sx={{ maxHeight: 400 }}>
-            <Table size="small" stickyHeader>
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontSize: '0.65rem', color: '#999', fontWeight: 700, px: 1, backgroundColor: '#fff' }}>
-                    Published Date
-                  </TableCell>
-                  <TableCell sx={{ fontSize: '0.65rem', color: '#999', fontWeight: 700, px: 1, backgroundColor: '#fff' }}>
-                    Recommendation
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontSize: '0.65rem', color: '#999', fontWeight: 700, px: 1, backgroundColor: '#fff' }}>
-                    Action
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-
-              <TableBody>
-                {watchlistRecommendations.length > 0 ? (
-                  watchlistRecommendations.map((item) => {
-                    const dateObj = new Date(item.created_at);
-
-                    return (
-                      <TableRow
-                        key={item.id}
-                        sx={{
-                          '&:last-child td, &:last-child th': { border: 0 },
-                          '&:hover': { backgroundColor: '#fcfcfc' }
-                        }}
-                      >
-                        <TableCell sx={{ px: 1, py: 1.5 }}>
-                          <Typography sx={{ fontSize: '0.65rem', color: '#666', fontWeight: 500 }}>
-                            {dateObj.toLocaleDateString()}
-                          </Typography>
-                          <Typography sx={{ fontSize: '0.65rem', color: '#999' }}>
-                            {dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </Typography>
-                        </TableCell>
-
-                        <TableCell sx={{ px: 1, py: 1.5 }}>
-                          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: item.action === 'BUY' ? '#2e7d32' : '#d32f2f' }}>
-                            {item.action} {item.instrument} {item.call_type?.toUpperCase()}
-                          </Typography>
-
-                          <Typography sx={{ fontSize: '0.65rem', color: '#333', fontWeight: 600 }}>
-                            {item.name} • {item.trade_type}
-                          </Typography>
-
-                          <Typography variant="caption" sx={{ fontSize: '0.65rem', color: '#999', mt: 0.5, display: 'block' }}>
-                            @{item.entry?.ideal} | TP {item.targets?.join(', ')} | SL {item.stop_losses?.[0]}
-                          </Typography>
-                        </TableCell>
-
-                        {/* 🔥 Only Change Is Here */}
-                        <TableCell align="right" sx={{ px: 1, py: 1.5 }}>
-                          <Button
-                            size="small"
-                            onClick={() => handleModify(item)}  // reuse same logic
-                            sx={{
-                              fontSize: '0.65rem',
-                              textTransform: 'none',
-                              color: '#1976d2',
-                              fontWeight: 700,
-                              minWidth: 'auto',
-                              p: 0,
-                              textAlign: 'right',
-                              justifyContent: 'flex-end',
-                              '&:hover': { backgroundColor: 'transparent', color: '#0d47a1' }
-                            }}
-                          >
-                            Initiate
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={3} align="center" sx={{ py: 4, color: '#999', fontSize: '0.8rem' }}>
-                      No watchlist items.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-
-      </Box>
     </Box>
   );
 };

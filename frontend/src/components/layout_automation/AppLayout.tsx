@@ -6,6 +6,7 @@ import NightsStayIcon from "@mui/icons-material/NightsStay";
 import WbSunnyIcon from "@mui/icons-material/WbSunny";
 import StarOutlineIcon from "@mui/icons-material/StarOutline";
 import CalendarViewWeekIcon from "@mui/icons-material/CalendarViewWeek";
+import TableChartIcon from "@mui/icons-material/TableChart";
 import Header from "./Header";
 // import Sidebar from "./Sidebar";
 import Sidebar from "../page_Mainapp/Sidebar";
@@ -36,7 +37,7 @@ const automationSidebarItems: SidebarItem[] = [
     label: "Weekly",
     path: "/automation/Weekly",
     icon: <CalendarViewWeekIcon sx={{ mr: 1.5 }} />,
-  },
+  }
 ];
 
 const AppLayout = () => {

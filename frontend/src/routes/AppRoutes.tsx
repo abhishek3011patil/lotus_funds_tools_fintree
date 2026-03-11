@@ -16,14 +16,23 @@ import AdminApproval from "../pages_admin/AdminApproval";
 import AdminRecommendations from "../pages_admin/AdminRecommendations";
 import AdminDashboard from "../pages_admin/AdminDashboard";
 import LoginForm from "../common/LoginForm";
+import ClientLayout from "../components/layout_client/AppLayout";
+import ClientDashboard from "../pages_client/Dashboard";
+import ClientRecommendations from "../pages_client/Recomendation";
+import ClientPerformance from "../pages_client/Performance";
+import ClientNotFound from "../pages_client/Notfound";
+// import NotFound from "../pages/NotFound";
 import BrokerRegistration from "../pages_registration/BrokerRegistration";
 
 // --- NEW IMPORTS FOR MORNING REPORT ---
-import MorningReportBuilder from "../morning-report/MorningReportBuilder";
-import MorningReport from "../morning-report/MorningReport";
-import Logotheme from "../morning-report/Logotheme";
-import Generator from "../morning-report/Generator";
+import MorningReportBuilder from "../tools/morning-report/MorningReportBuilder";
+import MorningReport from "../tools/morning-report/MorningReport";
+import Logotheme from "../tools/morning-report/Logotheme";
+import Generator from "../tools/morning-report/Generator";
 import ProtectedRoute from "../components/ProtectedRoute";
+
+// Tool import
+import { ExceltoJSONTool } from "../tools/ExceltoJSONtool";
 
 const AppRoutes = () => {
   return (
@@ -59,6 +68,7 @@ const AppRoutes = () => {
         <Route path="Morning" element={<Morning />} />
         <Route path="Special" element={<Special />} />
         <Route path="Weekly" element={<Weekly />} />
+        <Route path="ExcelTool" element={<ExceltoJSONTool/>}/>
       </Route>
 
       {/* --- 4. Admin Layout --- */}
@@ -69,6 +79,19 @@ const AppRoutes = () => {
         <Route path="approval" element={<AdminApproval />} />
       </Route>
 
+      {/* Client layout */}
+      <Route path="/client/*" element={<ClientLayout />}>
+        <Route index element={<ClientDashboard />} />
+        <Route path="dashboard" element={<ClientDashboard />} />
+        <Route path="recommendations" element={<ClientRecommendations />} />
+        <Route path="performance" element={<ClientPerformance />} />
+        <Route path="*" element={<ClientNotFound />} />
+      </Route>
+
+
+
+      {/* Pages without sidebar (optional) */}
+      {/* <Route path="*" element={<NotFound />} /> */}
       {/* Catch-all for 404s */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

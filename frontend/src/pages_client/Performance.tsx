@@ -9,8 +9,7 @@ import {
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import RecommendationHistory from "./common/RecommendationHistory";
-import axios from "axios";
+import RecommendationHistory from "../pages/common/RecommendationHistory";
 
 interface PerformanceMetrics {
   total: number;
@@ -38,40 +37,6 @@ const Performance: React.FC = () => {
       })
       .catch((err) => console.error("Error fetching performance data:", err));
   }, []);
-
-
-  useEffect(() => {
-
-    const fetchPerformance = async () => {
-      try {
-        const token = localStorage.getItem("token");
-
-        if (!token) {
-          console.log("No token found");
-          return;
-        }
-
-        const res = await axios.get(
-          import.meta.env.VITE_API_URL + "/api/research/performance",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        console.log("Performance API Response:");
-        console.log(res.data);          // full array
-        console.table(res.data);        // nice table view
-
-      } catch (err: any) {
-        console.error("Performance API Error:", err);
-      }
-    };
-
-    fetchPerformance();
-
-  }, []); // runs once when page loads
 
   const BigCard = ({ title, value, green = false, red = false }: any) => (
     <Paper sx={cardStyle}>
