@@ -10,7 +10,8 @@ import {
   IconButton,
   InputAdornment,
   Select,
-  CircularProgress
+  CircularProgress,
+  Link
 } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
 
@@ -241,6 +242,18 @@ const LoginForm: React.FC = () => {
             "Login"
           )}
         </Button>
+
+        <Link sx={{ py: 1.5,
+        justifyContent: "center",
+        display: "flex",
+        fontWeight: 600,
+        backgroundColor: "#4F6CF8",
+        color: "white",
+        borderRadius: 2,
+        mt: 1 }}
+        href="/registration" > 
+        Register Now
+        </Link>
 
         {message && (
           <Typography

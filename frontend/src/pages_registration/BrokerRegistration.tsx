@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import axios from "axios";
 import {
   Box,
   Grid,
@@ -14,8 +15,6 @@ import {
   InputAdornment,
   Divider,
   Stack,
-  Radio,
-  RadioGroup,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -38,7 +37,6 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import EditIcon from "@mui/icons-material/Edit";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
-import FileUploadOutlinedIcon from "@mui/icons-material/FileUploadOutlined";
 
 // ─────────────────────────────────────────────
 // Qonto-style Stepper connector & icon
@@ -116,55 +114,6 @@ const errMsg = (msg = "This field is required") => (
     </Typography>
   </Box>
 );
-
-// ─────────────────────────────────────────────
-// FileUploadBox
-// ─────────────────────────────────────────────
-const FileUploadBox = ({
-  fieldLabel,
-  file,
-  onChange,
-  error,
-}: {
-  fieldLabel: string;
-  file: File | null;
-  onChange: (f: File | null) => void;
-  error?: boolean;
-}) => {
-  const ref = useRef<HTMLInputElement>(null);
-  return (
-    <Box sx={{ width: "100%" }}>
-      {label(fieldLabel)}
-      <Box
-        onClick={() => ref.current?.click()}
-        sx={{
-          border: `1px dashed ${error ? "#EF4444" : "#CBD5E1"}`,
-          borderRadius: "8px",
-          px: 2,
-          py: 1.5,
-          bgcolor: error ? "#FFF5F5" : "#F8FAFC",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: 2,
-          "&:hover": { borderColor: "#2563EB", bgcolor: "#F0F6FF" },
-        }}
-      >
-        <input type="file" hidden ref={ref} onChange={(e) => onChange(e.target.files?.[0] || null)} />
-        <Box sx={{ width: 34, height: 34, borderRadius: "6px", bgcolor: "#E2E8F0", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <CloudUploadIcon sx={{ fontSize: 18, color: "#475569" }} />
-        </Box>
-        <Box sx={{ overflow: "hidden" }}>
-          <Typography variant="caption" sx={{ fontWeight: 600, color: "#475569", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {file ? file.name : "Drag & drop or click to browse"}
-          </Typography>
-          <Typography variant="caption" sx={{ fontSize: "0.7rem", color: "#94A3B8" }}>PDF • Max 5 MB</Typography>
-        </Box>
-      </Box>
-      {error && errMsg("Please upload a file")}
-    </Box>
-  );
-};
 
 // ─────────────────────────────────────────────
 // Main Component
@@ -274,6 +223,7 @@ const FileUploadBox = ({
     coName: "", coDesignation: "", coPan: "", coMobile: "",
     netWorth: "", auditorName: "", auditorMembership: "",
   });
+
   const [appointmentFile, setAppointmentFile] = useState<File | null>(null);
   const [networthFile, setNetworthFile] = useState<File | null>(null);
   const [financialFile, setFinancialFile] = useState<File | null>(null);
@@ -293,6 +243,7 @@ const [s4, setS4] = useState({
   segments: { equity: true, fno: true, currency: true, commodity: true },
   permissions: { createCall: true, modifyCall: true, uploadResearch: true, viewReports: true },
 });
+
 
 // Since the upload UI is removed, you can likely remove this too:
 // const [authFile, setAuthFile] = useState<File | null>(null); 
@@ -366,11 +317,87 @@ const [s4Err, setS4Err] = useState<Record<string, boolean>>({});
     return Object.keys(errs).length === 0;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     const validators = [validateStep1, validateStep2, validateStep3, validateStep4, validateStep5];
     if (validators[activeStep]()) {
       if (activeStep < 4) { setActiveStep((s) => s + 1); window.scrollTo(0, 0); }
-      else { alert("Application Submitted Successfully!"); }
+      else {
+  const formData = new FormData();
+
+  formData.append("legal_name", s1.legalName);
+  formData.append("trade_name", s1.tradeName);
+  formData.append("entity_type", s1.entityType);
+  formData.append("incorporation_date", s1.incDay);
+  formData.append("pan", s1.pan);
+  formData.append("cin", s1.cin);
+  formData.append("gstin", s1.gstin);
+  formData.append("registered_address", s1.registeredAddress);
+  formData.append("correspondence_address", s1.correspondenceAddress);
+  formData.append("email", s1.email);
+  formData.append("mobile", s1.mobile);
+  formData.append("website", s1.website);
+
+  formData.append("sebi_registration_no", s2.sebiRegNo);
+  formData.append("registration_category", s2.regCategory);
+  formData.append("registration_date", s2.regDate);
+  formData.append("registration_validity", s2.regValidity);
+  formData.append("membership_code", s2.membershipCode);
+
+  formData.append("exchange_nse", String(s2.exchangeNSE));
+  formData.append("exchange_bse", String(s2.exchangeBSE));
+  formData.append("exchange_smi", String(s2.exchangeSMI));
+  formData.append("exchange_ncdex", String(s2.exchangeNCDEX));
+
+  formData.append("segment_cash", String(s2.segCash));
+  formData.append("segment_fo", String(s2.segFO));
+  formData.append("segment_currency", String(s2.segCurrency));
+
+  if (sebiCertFile) {
+    formData.append("sebi_certificate", sebiCertFile);
+  }
+
+  exchangeCertFiles.forEach((file) => {
+    formData.append("exchange_certificates", file);
+  });
+
+  if (appointmentFile) formData.append("appointment_letter", appointmentFile);
+  if (networthFile) formData.append("networth_certificate", networthFile);
+  if (financialFile) formData.append("financial_statements", financialFile);
+  if (caFile) formData.append("ca_certificate", caFile);
+
+  formData.append("compliance_officer_name", s3.coName);
+  formData.append("compliance_designation", s3.coDesignation);
+  formData.append("compliance_pan", s3.coPan);
+  formData.append("compliance_mobile", s3.coMobile);
+
+  formData.append("net_worth", s3.netWorth);
+  formData.append("auditor_name", s3.auditorName);
+  formData.append("auditor_membership", s3.auditorMembership);
+
+  formData.append("authorized_person_name", s4.fullName);
+  formData.append("authorized_person_pan", s4.pan);
+  formData.append("authorized_person_designation", s4.designation);
+  formData.append("authorized_person_email", s4.email);
+  formData.append("authorized_person_aadhaar", s4.aadhaar);
+  formData.append("authorized_person_mobile", s4.mobile);
+
+  formData.append("role", s4.role);
+
+  formData.append("no_disciplinary_action", String(declarations.noDisciplinary));
+  formData.append("no_suspension", String(declarations.noSuspension));
+  formData.append("no_criminal_case", String(declarations.noCriminal));
+  formData.append("agree_sebi_circulars", String(declarations.agreeCirculars));
+  formData.append("agree_code_of_conduct", String(declarations.agreeConduct));
+  
+  try {
+    await axios.post("http://localhost:3000/api/broker/register-broker", formData);
+
+    alert("Broker Registered Successfully");
+  } catch (err) {
+    console.error(err);
+    alert("Error submitting form");
+  }
+}
     }
   };
 
@@ -740,8 +767,13 @@ const [s4Err, setS4Err] = useState<Record<string, boolean>>({});
               {s3Err.coMobile && errMsg()}
             </Grid>
             <Grid item xs={12} sm={6}>
-              <FileUploadBox fieldLabel="Upload Appointment Letter (PDF)" file={appointmentFile} onChange={setAppointmentFile} error={s3Err.appointmentFile} />
-            </Grid>
+  <FileUploadBox
+  fieldLabel="Upload Appointment Letter (PDF)"
+  files={appointmentFile}
+  onChange={(files) => setAppointmentFile(files?.[0] || null)}
+  error={s3Err.appointmentFile}
+/>
+</Grid>
           </Grid>
         </AccordionDetails>
       </Accordion>
@@ -770,13 +802,25 @@ const [s4Err, setS4Err] = useState<Record<string, boolean>>({});
                 value={s3.auditorMembership} onChange={(e) => setS3({ ...s3, auditorMembership: e.target.value })} />
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <FileUploadBox fieldLabel="Upload Networth Certificate (PDF)" file={networthFile} onChange={setNetworthFile} />
+              <FileUploadBox
+  fieldLabel="Upload Networth Certificate (PDF)"
+  files={networthFile}
+  onChange={(files) => setNetworthFile(files?.[0] || null)}
+/>
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <FileUploadBox fieldLabel="Upload Financial Statements (PDF)" file={financialFile} onChange={setFinancialFile} />
+              <FileUploadBox
+  fieldLabel="Upload Financial Statements (PDF)"
+  files={financialFile}
+  onChange={(files) => setFinancialFile(files?.[0] || null)}
+/>
             </Grid>
             <Grid item xs={12} sm={6} md={4}>
-              <FileUploadBox fieldLabel="Upload CA Certificate (PDF)" file={caFile} onChange={setCaFile} />
+              <FileUploadBox
+  fieldLabel="Upload CA Certificate (PDF)"
+  files={caFile}
+  onChange={(files) => setCaFile(files?.[0] || null)}
+/>
             </Grid>
           </Grid>
         </AccordionDetails>

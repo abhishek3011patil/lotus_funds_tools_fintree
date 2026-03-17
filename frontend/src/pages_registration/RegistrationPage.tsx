@@ -117,6 +117,7 @@ const handleSave = async () => {
       try {
 
         const token = localStorage.getItem("token");
+        console.log("TOKEN:", token);
 
 if (!token) {
   alert("User not logged in. Please login first.");
