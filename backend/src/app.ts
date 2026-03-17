@@ -10,7 +10,11 @@ import path from "path";
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true,  // allows Authorization headers
+}));
+
 app.use(express.json());
 
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
@@ -21,7 +25,6 @@ app.use("/api/auth", authRoutes);
 app.use("/api/broker", brokerRoutes);
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 app.use("/api/registration", registrationRoutes);
-
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "OK" });

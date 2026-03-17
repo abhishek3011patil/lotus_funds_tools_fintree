@@ -13,18 +13,25 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import InputAdornment from "@mui/material/InputAdornment";
 import SearchIcon from "@mui/icons-material/Search";
-import Pagination from '@mui/material/Pagination';
-import PaginationItem from '@mui/material/PaginationItem';
-import Stack from '@mui/material/Stack';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import Pagination from "@mui/material/Pagination";
+import PaginationItem from "@mui/material/PaginationItem";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import AdminFilter, { type AdminFilterValue } from "../assets/adminFilter";
-
 
 type AdminRow = {
   id: string;
   name: string;
   phone: string;
+
+  profile?: string;
+  pan?: string;
+  address?: string;
+  sebi?: string;
+  sebi_receipt?: string;
+  nism?: string;
+  cheque?: string;
+
   status: "Pending" | "Approved" | "Rejected" | string;
   "age/time": string;
 };
@@ -36,13 +43,35 @@ const AdminApproval = () => {
   const [filter, setFilter] = useState<AdminFilterValue>("All");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [page, setPage] = useState(1);
+  const [selectedRA, setSelectedRA] = useState<AdminRow | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   useEffect(() => {
     const load = async () => {
       try {
-        const response = await fetch("/admin.json");
-        const data = (await response.json()) as AdminRow[];
-        setRows(data);
+        const response = await fetch(
+          "http://localhost:3000/api/registration/all-registrations"
+        );
+        const data = await response.json();
+
+        const formatted = data.map((item: any) => ({
+          id: item.id,
+          name: `${item.first_name || ""} ${item.surname || ""}`,
+          phone: item.mobile || "",
+
+          profile: item.profile_image,
+          pan: item.pan_card,
+          address: item.address_proof_document,
+          sebi: item.sebi_certificate,
+          sebi_receipt: item.sebi_receipt,
+          nism: item.nism_certificate,
+          cheque: item.cancelled_cheque,
+
+          status: item.status || "Pending",
+          "age/time": "Just now",
+        }));
+
+        setRows(formatted);
       } catch (error) {
         console.error("Failed to load admin data:", error);
       }
@@ -51,32 +80,43 @@ const AdminApproval = () => {
     load();
   }, []);
 
-  // Reset to first page when searching or filtering
   useEffect(() => {
     setPage(1);
   }, [searchQuery, filter]);
 
-  const statusColor = (status: AdminRow["status"]) => {
-    if (status === "Approved") return "success";
-    if (status === "Rejected") return "error";
-    if (status === "Pending") return "warning";
-    return "default";
-  };
+const statusColor = (status: AdminRow["status"]) => {
+  const s = status.toLowerCase();
+  if (s === "approved") return "success";
+  if (s === "rejected") return "error";
+  if (s === "pending") return "warning";
+  return "default";
+};
 
   const filteredRows = rows.filter((row) => {
     const matchesFilter = filter === "All" || row.status === filter;
     const query = searchQuery.toLowerCase();
     const matchesSearch =
-      row.name.toLowerCase().includes(query) ||
-      row.phone.includes(query);
+      row.name.toLowerCase().includes(query) || row.phone.includes(query);
+
     return matchesFilter && matchesSearch;
   });
 
   const pageCount = Math.ceil(filteredRows.length / ITEMS_PER_PAGE);
+
   const paginatedRows = filteredRows.slice(
     (page - 1) * ITEMS_PER_PAGE,
     page * ITEMS_PER_PAGE
   );
+
+  const openFile = (file?: string) => {
+    if (!file || file.trim() === "") {
+      alert("File not uploaded");
+      return;
+    }
+
+    const url = `http://localhost:3000/uploads/${encodeURIComponent(file)}`;
+    window.open(url, "_blank");
+  };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -97,70 +137,55 @@ const AdminApproval = () => {
             </InputAdornment>
           ),
         }}
-        sx={{
-          "& .MuiOutlinedInput-root": {
-            borderRadius: "12px",
-            backgroundColor: "#fff",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-            "& fieldset": {
-              borderColor: "rgba(0, 0, 0, 0.15)",
-            },
-            "&:hover fieldset": {
-              borderColor: "primary.main",
-            },
-          },
-        }}
       />
 
-      <Box sx={{ overflowX: "auto", pb: 1, width: "100%" }}>
+      <Box sx={{ overflowX: "auto", pb: 1 }}>
         <AdminFilter value={filter} onChange={setFilter} />
       </Box>
 
-      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: "12px", overflowX: "auto" }}>
-        <Table size="small" sx={{ minWidth: 650 }}>
+      <TableContainer component={Paper} variant="outlined">
+        <Table size="small">
           <TableHead sx={{ backgroundColor: "rgba(0,0,0,0.02)" }}>
             <TableRow>
-              <TableCell sx={{ fontWeight: 600, py: 1.5 }}>Name</TableCell>
-              <TableCell sx={{ fontWeight: 600, py: 1.5 }}>Phone</TableCell>
-              <TableCell sx={{ fontWeight: 600, py: 1.5 }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: 600, py: 1.5 }}>Age / Time</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 600, py: 1.5 }}>
-                Action
-              </TableCell>
+              <TableCell>Name</TableCell>
+              <TableCell>Phone</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Age / Time</TableCell>
+              <TableCell align="right">Action</TableCell>
             </TableRow>
           </TableHead>
+
           <TableBody>
             {paginatedRows.map((row) => (
               <TableRow key={row.id} hover>
-                <TableCell sx={{ py: 1 }}>{row.name}</TableCell>
-                <TableCell sx={{ py: 1 }}>{row.phone}</TableCell>
-                <TableCell sx={{ py: 1 }}>
+                <TableCell>{row.name}</TableCell>
+                <TableCell>{row.phone}</TableCell>
+
+                <TableCell>
                   <Chip
                     size="small"
                     label={row.status}
                     color={statusColor(row.status)}
-                    sx={{ fontWeight: 500, borderRadius: "6px" }}
                   />
                 </TableCell>
-                <TableCell sx={{ py: 1 }}>{row["age/time"]}</TableCell>
-                <TableCell align="right" sx={{ py: 1 }}>
+
+                <TableCell>{row["age/time"]}</TableCell>
+
+                <TableCell align="right">
                   <Button
                     size="small"
                     variant="outlined"
-                    sx={{
-                      borderRadius: "8px",
-                      textTransform: "none",
-                      px: 2
-                    }}
+                    onClick={() => setSelectedRA(row)}
                   >
                     View
                   </Button>
                 </TableCell>
               </TableRow>
             ))}
+
             {filteredRows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} align="center" sx={{ py: 4, color: "text.secondary" }}>
+                <TableCell colSpan={5} align="center">
                   No matching results found
                 </TableCell>
               </TableRow>
@@ -168,6 +193,83 @@ const AdminApproval = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {selectedRA && (
+        <Paper
+          elevation={4}
+          sx={{
+            position: "fixed",
+            right: 20,
+            top: 120,
+            width: 330,
+            p: 2,
+            borderRadius: 2,
+          }}
+        >
+          <Button
+            size="small"
+            onClick={() => setSelectedRA(null)}
+            sx={{ position: "absolute", right: 10, top: 10 }}
+          >
+            X
+          </Button>
+
+          <Typography fontWeight={600}>RA Verification</Typography>
+
+          <Typography sx={{ mt: 1 }}>{selectedRA.name}</Typography>
+          <Typography color="text.secondary">{selectedRA.phone}</Typography>
+
+          <Box sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 1 }}>
+            <Button onClick={() => openFile(selectedRA.profile)}>
+              View Profile
+            </Button>
+
+            <Button onClick={() => openFile(selectedRA.pan)}>
+              View PAN Card
+            </Button>
+
+            <Button onClick={() => openFile(selectedRA.address)}>
+              View Address Proof
+            </Button>
+
+            <Button onClick={() => openFile(selectedRA.sebi)}>
+              View SEBI Certificate
+            </Button>
+
+            <Button onClick={() => openFile(selectedRA.sebi_receipt)}>
+              View SEBI Receipt
+            </Button>
+
+            <Button onClick={() => openFile(selectedRA.nism)}>
+              View NISM Certificate
+            </Button>
+
+            <Button onClick={() => openFile(selectedRA.cheque)}>
+              View Cancelled Cheque
+            </Button>
+          </Box>
+
+          <TextField
+            fullWidth
+            multiline
+            rows={2}
+            placeholder="Rejection Reason"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            sx={{ mt: 2 }}
+          />
+
+          <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
+            <Button variant="contained" color="success" fullWidth>
+              Approve
+            </Button>
+
+            <Button variant="contained" color="error" fullWidth>
+              Reject
+            </Button>
+          </Box>
+        </Paper>
+      )}
 
       {pageCount > 1 && (
         <Pagination

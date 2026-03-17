@@ -1,8 +1,7 @@
 import express from "express";
-import { registerRA } from "../controllers/registration.controller";
+import { registerRA, getAllRegistrations } from "../controllers/registration.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 import multer from "multer";
-
 
 const router = express.Router();
 console.log("Registration route loaded");
@@ -36,5 +35,10 @@ router.post(
   ]),
   registerRA
 );
+
+router.get("/all-registrations", getAllRegistrations);
+router.get("/test", (req, res) => {
+  res.send("Registration route working");
+});
 
 export default router;

@@ -1,6 +1,35 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { pool } from "../db";
+
+
+export const getAllRegistrations = async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        id,
+        first_name,
+        surname,
+        mobile,
+        profile_image,
+        pan_card,
+        address_proof_document,
+        sebi_certificate,
+        sebi_receipt,
+        nism_certificate,
+        cancelled_cheque,
+        status
+      FROM ra_details
+      ORDER BY created_at DESC
+    `);
+
+    res.status(200).json(result.rows);
+
+  } catch (error) {
+    console.error("Error fetching registrations:", error);
+    res.status(500).json({ message: "Error fetching registrations" });
+  }
+};
 
 export const registerRA = async (req: AuthRequest, res: Response) => {
   try {
