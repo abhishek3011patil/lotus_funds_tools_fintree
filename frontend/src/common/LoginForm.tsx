@@ -193,17 +193,27 @@ const LoginForm: React.FC = () => {
           )}
         </Button>
 
-        <Link sx={{ py: 1.5,
-        justifyContent: "center",
-        display: "flex",
-        fontWeight: 600,
-        backgroundColor: "#4F6CF8",
-        color: "white",
-        borderRadius: 2,
-        mt: 1 }}
-        href="/registration" > 
-        Register Now
-        </Link>
+        <Typography
+          sx={{
+            mt: 2,
+            textAlign: "center",
+            color: "#555",
+            fontSize: "14px",
+          }}
+        >
+          Don’t have an account?{" "}
+          <Link
+            href="/registration"
+            underline="none"
+            sx={{
+              color: "#4F6CF8",
+              fontWeight: 500,
+              cursor: "pointer",
+            }}
+          >
+           Register Now
+          </Link>
+        </Typography>
 
         {message && (
           <Typography
