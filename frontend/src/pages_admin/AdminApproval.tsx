@@ -57,6 +57,9 @@ const AdminApproval = () => {
   const [confirmType, setConfirmType] = useState<"approve" | "reject" | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  const [brokerRows, setBrokerRows] = useState<any[]>([]);
+  const [selectedBroker, setSelectedBroker] = useState<any | null>(null);
+
   /* ================= LOAD DATA ================= */
 
   useEffect(() => {
@@ -101,6 +104,26 @@ const AdminApproval = () => {
     setPage(1);
   }, [searchQuery, filter]);
 
+  useEffect(() => {
+  const loadBrokers = async () => {
+    try {
+      const response = await fetch("http://localhost:3000/api/broker/all-registrations");
+      const data = await response.json();
+      
+      const formatted = data.map((item: any) => ({
+        ...item,
+        name: item.legal_name, // Mapping database field to "Name"
+        phone: item.mobile,
+        "age/time": "Just now", // Replace with item.created_at if available
+      }));
+      setBrokerRows(formatted);
+    } catch (error) {
+      console.error("Failed to load broker data:", error);
+    }
+  };
+  loadBrokers();
+}, []);
+
   /* ================= STATUS COLOR ================= */
 
   const statusColor = (status: AdminRow["status"]) => {
@@ -137,6 +160,29 @@ const AdminApproval = () => {
     page * ITEMS_PER_PAGE
   );
 
+  /* ================= BROKER FILTER ================= */
+const filteredBrokerRows = brokerRows.filter((row) => {
+  // Check if status matches (handles 'All' or specific case-insensitive match)
+  const matchesFilter =
+    filter === "All" || 
+    (row.status || "Pending").toLowerCase() === filter.toLowerCase();
+
+  const query = searchQuery.toLowerCase();
+  
+  // Matches name (legal_name) or phone (mobile)
+  const matchesSearch =
+    (row.name || "").toLowerCase().includes(query) ||
+    (row.phone || "").includes(query);
+
+  return matchesFilter && matchesSearch;
+});
+
+// If you want pagination for brokers too:
+const brokerPaginatedRows = filteredBrokerRows.slice(
+  (page - 1) * ITEMS_PER_PAGE,
+  page * ITEMS_PER_PAGE
+);
+
   /* ================= FILE VIEW ================= */
 
   const openFile = (file?: string) => {
@@ -151,89 +197,68 @@ const AdminApproval = () => {
     window.open(url, "_blank");
   };
 
-  /* ================= APPROVE ================= */
+  /* ================= UPDATED APPROVE ================= */
+const handleApprove = async (id: string) => {
+  const isBroker = !!selectedBroker;
+  const endpoint = isBroker
+    ? `http://localhost:3000/api/broker/approve/${id}`
+    : `http://localhost:3000/api/registration/approve/${id}`;
 
-  const handleApprove = async (id: string) => {
-
-    try {
-
-      const res = await fetch(
-        `http://localhost:3000/api/registration/approve/${id}`,
-        { method: "PUT" }
-      );
-
-      const data = await res.json();
-
-      if (res.ok) {
-
-        alert("User Approved Successfully");
-
-        setRows((prev) =>
-          prev.map((r) =>
-            r.id === id ? { ...r, status: "Approved" } : r
-          )
-        );
-
-        setSelectedRA(null);
-
+  try {
+    const res = await fetch(endpoint, { method: "PUT" });
+    if (res.ok) {
+      alert(`${isBroker ? "Broker" : "User"} Approved Successfully`);
+      
+      // Update the specific state list
+      if (isBroker) {
+        setBrokerRows((prev) => prev.map((r) => (r.id === id ? { ...r, status: "Approved" } : r)));
+        setSelectedBroker(null);
       } else {
-
-        alert(data.message || "Failed to approve");
-      }
-
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  /* ================= REJECT ================= */
-
-  const handleReject = async (id: string) => {
-
-    if (!rejectReason.trim()) {
-      alert("Please enter rejection reason");
-      return;
-    }
-
-    try {
-
-      const res = await fetch(
-        `http://localhost:3000/api/registration/reject/${id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            reason: rejectReason,
-          }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (res.ok) {
-
-        alert("User Rejected Successfully");
-
-        setRows((prev) =>
-          prev.map((r) =>
-            r.id === id ? { ...r, status: "Rejected" } : r
-          )
-        );
-
+        setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status: "Approved" } : r)));
         setSelectedRA(null);
-        setRejectReason("");
-
-      } else {
-
-        alert(data.message || "Reject failed");
       }
-
-    } catch (error) {
-      console.error(error);
+    } else {
+      const data = await res.json();
+      alert(data.message || "Failed to approve");
     }
-  };
+  } catch (error) {
+    console.error("Approval Error:", error);
+  }
+};
+
+/* ================= UPDATED REJECT ================= */
+const handleReject = async (id: string) => {
+  const isBroker = !!selectedBroker;
+  const endpoint = isBroker
+    ? `http://localhost:3000/api/broker/reject/${id}`
+    : `http://localhost:3000/api/registration/reject/${id}`;
+
+  try {
+    const res = await fetch(endpoint, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: rejectReason }),
+    });
+
+    if (res.ok) {
+      alert(`${isBroker ? "Broker" : "User"} Rejected Successfully`);
+      
+      if (isBroker) {
+        setBrokerRows((prev) => prev.map((r) => (r.id === id ? { ...r, status: "Rejected" } : r)));
+        setSelectedBroker(null);
+      } else {
+        setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status: "Rejected" } : r)));
+        setSelectedRA(null);
+      }
+      setRejectReason("");
+    } else {
+      const data = await res.json();
+      alert(data.message || "Reject failed");
+    }
+  } catch (error) {
+    console.error("Rejection Error:", error);
+  }
+};
 
   /* ================= UI ================= */
 
@@ -328,6 +353,62 @@ const AdminApproval = () => {
 
       </TableContainer>
 
+      <Box sx={{ overflowX: "auto" }}>
+        <AdminFilter value={filter} onChange={setFilter} />
+      </Box>
+
+      <Typography variant="h5" fontWeight={600} sx={{ mt: 5, mb: 2 }}>
+  Broker Approvals
+</Typography>
+
+<TableContainer component={Paper} variant="outlined">
+  <Table size="small">
+    <TableHead sx={{ backgroundColor: "#f6f6f6" }}>
+      <TableRow>
+        <TableCell>Name</TableCell>
+        <TableCell>Phone</TableCell>
+        <TableCell>Status</TableCell>
+        <TableCell>Age / Time</TableCell>
+        <TableCell align="right">Action</TableCell>
+      </TableRow>
+    </TableHead>
+    <TableBody>
+  {/* Change brokerRows to filteredBrokerRows here */}
+  {filteredBrokerRows.length > 0 ? (
+    filteredBrokerRows.map((row) => (
+      <TableRow key={row.id}>
+        <TableCell>{row.name}</TableCell>
+        <TableCell>{row.phone}</TableCell>
+        <TableCell>
+          <Chip
+            size="small"
+            label={row.status || "Pending"}
+            color={statusColor(row.status || "Pending") as any}
+          />
+        </TableCell>
+        <TableCell>{row["age/time"]}</TableCell>
+        <TableCell align="right">
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => setSelectedBroker(row)}
+          >
+            View
+          </Button>
+        </TableCell>
+      </TableRow>
+    ))
+  ) : (
+    <TableRow>
+      <TableCell colSpan={5} align="center">
+        No matching {filter !== "All" ? filter.toLowerCase() : ""} brokers found
+      </TableCell>
+    </TableRow>
+  )}
+</TableBody>
+  </Table>
+</TableContainer>
+
       {/* SIDE PANEL */}
 
       {selectedRA && (
@@ -410,6 +491,102 @@ const AdminApproval = () => {
         </Paper>
       )}
 
+      {selectedBroker && (
+  <Paper
+    elevation={4}
+    sx={{
+      position: "fixed",
+      right: 20,
+      top: 80,
+      width: 350,
+      p: 2,
+      borderRadius: 2,
+      zIndex: 1000,
+      maxHeight: "85vh",
+      overflowY: "auto", // Crucial since Brokers have many files
+    }}
+  >
+    <Button
+      size="small"
+      onClick={() => {
+        setSelectedBroker(null);
+        setRejectReason("");
+      }}
+      sx={{ position: "absolute", right: 10, top: 10 }}
+    >
+      X
+    </Button>
+
+    <Typography fontWeight={600} variant="h6">Broker Verification</Typography>
+    <Box sx={{ mb: 2, mt: 1 }}>
+      <Typography variant="subtitle1" sx={{ lineHeight: 1.2 }}>{selectedBroker.legal_name}</Typography>
+      <Typography color="text.secondary" variant="body2">{selectedBroker.mobile}</Typography>
+    </Box>
+
+    <Typography variant="overline" sx={{ color: "gray", fontWeight: "bold" }}>Documents</Typography>
+    
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 1 }}>
+      <Button variant="text" sx={{ justifyContent: "center" }} onClick={() => openFile(selectedBroker.sebi_certificate)}>View SEBI Certificate</Button>
+      <Button variant="text" sx={{ justifyContent: "center" }} onClick={() => openFile(selectedBroker.pan)}>View PAN Card</Button>
+      <Button variant="text" sx={{ justifyContent: "center" }} onClick={() => openFile(selectedBroker.networth_certificate)}>View Networth Certificate</Button>
+      <Button variant="text" sx={{ justifyContent: "center" }} onClick={() => openFile(selectedBroker.financial_statements)}>View Financial Statements</Button>
+      <Button variant="text" sx={{ justifyContent: "center" }} onClick={() => openFile(selectedBroker.appointment_letter)}>View Appointment Letter</Button>
+      <Button variant="text" sx={{ justifyContent: "center" }} onClick={() => openFile(selectedBroker.ca_certificate)}>View CA Certificate</Button>
+      
+      {/* Dynamic Exchange Certificates (Arrays) */}
+      {selectedBroker.exchange_certificates?.map((file: string, index: number) => (
+        <Button key={index} variant="text" sx={{ justifyContent: "center" }} onClick={() => openFile(file)}>
+          View Exchange Cert {index + 1}
+        </Button>
+      ))}
+    </Box>
+
+    {/* REJECTION REASON BOX */}
+    <TextField
+      fullWidth
+      multiline
+      rows={3}
+      placeholder="Rejection Reason"
+      variant="outlined"
+      value={rejectReason}
+      onChange={(e) => setRejectReason(e.target.value)}
+      sx={{ mt: 3, mb: 2 }}
+    />
+
+    <Box sx={{ display: "flex", gap: 1 }}>
+      <Button
+        variant="contained"
+        color="success"
+        fullWidth
+        sx={{ textTransform: "none", py: 1 }}
+        onClick={() => {
+          setSelectedId(selectedBroker.id);
+          setConfirmType("approve");
+          setConfirmOpen(true);
+        }}
+      >
+        Approve
+      </Button>
+      <Button
+        variant="contained"
+        sx={{ backgroundColor: "#d32f2f", color: "white", textTransform: "none", py: 1 }}
+        fullWidth
+        onClick={() => {
+          if (!rejectReason.trim()) {
+            alert("Please enter a rejection reason first.");
+            return;
+          }
+          setSelectedId(selectedBroker.id);
+          setConfirmType("reject");
+          setConfirmOpen(true);
+        }}
+      >
+        Reject
+      </Button>
+    </Box>
+  </Paper>
+)}
+
       {/* CONFIRM DIALOG */}
 
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
@@ -425,23 +602,22 @@ const AdminApproval = () => {
           </Button>
 
           <Button
-            variant="contained"
-            color={confirmType === "approve" ? "success" : "error"}
-            onClick={() => {
+  variant="contained"
+  color={confirmType === "approve" ? "success" : "error"}
+  onClick={() => {
+    if (!selectedId) return;
 
-              if (!selectedId) return;
+    if (confirmType === "approve") {
+      handleApprove(selectedId);
+    } else {
+      handleReject(selectedId);
+    }
 
-              if (confirmType === "approve") {
-                handleApprove(selectedId);
-              } else {
-                handleReject(selectedId);
-              }
-
-              setConfirmOpen(false);
-            }}
-          >
-            Yes
-          </Button>
+    setConfirmOpen(false);
+  }}
+>
+  Yes
+</Button>
 
         </DialogActions>
 
