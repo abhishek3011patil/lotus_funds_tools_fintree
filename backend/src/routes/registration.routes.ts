@@ -1,9 +1,16 @@
-import express from "express";
-import { registerRA, getAllRegistrations } from "../controllers/registration.controller";
-import { authenticate } from "../middlewares/auth.middleware";
+import express, { Request, Response } from "express";
 import multer from "multer";
+import { authenticate } from "../middlewares/auth.middleware";
+
+import {
+  registerRA,
+  getAllRegistrations,
+  approveRegistration,
+  rejectRegistration
+} from "../controllers/registration.controller";
 
 const router = express.Router();
+
 console.log("Registration route loaded");
 
 /* ================= MULTER CONFIG ================= */
@@ -31,13 +38,22 @@ router.post(
     { name: "nismCert", maxCount: 1 },
     { name: "cancelledCheque", maxCount: 1 },
     { name: "panCard", maxCount: 1 },
-    { name: "addressProofDoc", maxCount: 1 },
+    { name: "addressProofDoc", maxCount: 1 }
   ]),
   registerRA
 );
 
+/* ================= ADMIN APIs ================= */
+
 router.get("/all-registrations", getAllRegistrations);
-router.get("/test", (req, res) => {
+
+router.put("/approve/:id", approveRegistration);
+
+router.put("/reject/:id", rejectRegistration);
+
+/* ================= TEST ROUTE ================= */
+
+router.get("/test", (req: Request, res: Response) => {
   res.send("Registration route working");
 });
 

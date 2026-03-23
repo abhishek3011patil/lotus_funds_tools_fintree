@@ -11,7 +11,7 @@ import path from "path";
 const app = express();
 
 app.use(cors({
-  origin: "https://sqlqqjtf-5173.inc1.devtunnels.ms",
+  origin: "http://localhost:5173",
   credentials: true,  // allows Authorization headers
 }));
 

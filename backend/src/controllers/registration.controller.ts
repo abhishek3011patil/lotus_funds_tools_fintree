@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { pool } from "../db";
 
+/* ================= GET ALL REGISTRATIONS ================= */
 
 export const getAllRegistrations = async (req: Request, res: Response) => {
   try {
@@ -18,7 +19,8 @@ export const getAllRegistrations = async (req: Request, res: Response) => {
         sebi_receipt,
         nism_certificate,
         cancelled_cheque,
-        status
+        status,
+        rejection_reason
       FROM ra_details
       ORDER BY created_at DESC
     `);
@@ -30,6 +32,9 @@ export const getAllRegistrations = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Error fetching registrations" });
   }
 };
+
+
+/* ================= REGISTER RA ================= */
 
 export const registerRA = async (req: AuthRequest, res: Response) => {
   try {
@@ -45,17 +50,16 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
     const files = req.files as any;
 
     data.noGuaranteedReturns = data.noGuaranteedReturns === "true";
-data.conflictOfInterest = data.conflictOfInterest === "true";
-data.personalTrading = data.personalTrading === "true";
-data.sebiCompliance = data.sebiCompliance === "true";
-data.platformPolicy = data.platformPolicy === "true";
-data.declare1 = data.declare1 === "true";
-data.declare2 = data.declare2 === "true";
+    data.conflictOfInterest = data.conflictOfInterest === "true";
+    data.personalTrading = data.personalTrading === "true";
+    data.sebiCompliance = data.sebiCompliance === "true";
+    data.platformPolicy = data.platformPolicy === "true";
+    data.declare1 = data.declare1 === "true";
+    data.declare2 = data.declare2 === "true";
 
     const query = `
     INSERT INTO ra_details (
       user_id,
-
       salutation,
       first_name,
       middle_name,
@@ -66,7 +70,6 @@ data.declare2 = data.declare2 === "true";
       email,
       mobile,
       telephone,
-
       country,
       state,
       city,
@@ -74,44 +77,35 @@ data.declare2 = data.declare2 === "true";
       address_line1,
       address_line2,
       profile_image,
-
       sebi_reg_no,
       sebi_start_date,
       sebi_expiry_date,
       sebi_certificate,
       sebi_receipt,
-
       nism_reg_no,
       nism_valid_till,
       nism_certificate,
-
       academic_qualification,
       professional_qualification,
       market_experience,
       expertise,
       markets,
-
       bank_name,
       account_holder,
       account_number,
       ifsc_code,
       cancelled_cheque,
-
       pan_number,
       pan_card,
       address_proof_type,
       address_proof_document,
-
       declare_info_true,
       consent_verification,
-
       no_guaranteed_returns,
       conflict_of_interest,
       personal_trading,
       sebi_compliance,
-      platform_policy,
-      additional_comments
-
+      platform_policy
     )
     VALUES (
       $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
@@ -122,70 +116,60 @@ data.declare2 = data.declare2 === "true";
       $32,$33,$34,$35,$36,
       $37,$38,$39,$40,
       $41,$42,
-      $43,$44,$45,$46,$47,$48
+      $43,$44,$45,$46,$47
     )
     RETURNING id
     `;
 
     const values = [
-  userId,
-
-  data.salutation,
-  data.firstName,
-  data.middleName,
-  data.surname,
-  data.orgName,
-  data.designation,
-  data.shortBio,
-  data.email,
-  data.mobile,
-  data.telephone,
-
-  data.country,
-  data.state,
-  data.city,
-  data.pincode,
-  data.address1,
-  data.address2,
- files?.profileImage?.[0]?.filename || null,
-
-  data.sebiRegNo,
-  data.sebiStartDate,
-  data.sebiExpiryDate,
-  files?.sebiCert?.[0]?.filename || null,
- files?.sebiReceipt?.[0]?.filename || null,
-
-  data.nismRegNo,
-  data.nismValidTill,
-  files?.nismCert?.[0]?.filename || null,
-
-  data.academicQual,
-  data.profQual,
-  data.marketExp,
-  data.expertise,
-  data.markets,
-
-  data.bankName,
-  data.accountHolder,
-  data.accountNumber,
-  data.ifscCode,
-  files?.cancelledCheque?.[0]?.filename || null,
-
-  data.panNumber,
-  files?.panCard?.[0]?.filename || null,
-  data.addressProofType,
- files?.addressProofDoc?.[0]?.filename || null,
-
-  data.declare1,
-  data.declare2,
-
-  data.noGuaranteedReturns,
-  data.conflictOfInterest,
-  data.personalTrading,
-  data.sebiCompliance,
-  data.platformPolicy,
-  data.additionalComments,
-];
+      userId,
+      data.salutation,
+      data.firstName,
+      data.middleName,
+      data.surname,
+      data.orgName,
+      data.designation,
+      data.shortBio,
+      data.email,
+      data.mobile,
+      data.telephone,
+      data.country,
+      data.state,
+      data.city,
+      data.pincode,
+      data.address1,
+      data.address2,
+      files?.profileImage?.[0]?.filename || null,
+      data.sebiRegNo,
+      data.sebiStartDate,
+      data.sebiExpiryDate,
+      files?.sebiCert?.[0]?.filename || null,
+      files?.sebiReceipt?.[0]?.filename || null,
+      data.nismRegNo,
+      data.nismValidTill,
+      files?.nismCert?.[0]?.filename || null,
+      data.academicQual,
+      data.profQual,
+      data.marketExp,
+      data.expertise,
+      data.markets,
+      data.bankName,
+      data.accountHolder,
+      data.accountNumber,
+      data.ifscCode,
+      files?.cancelledCheque?.[0]?.filename || null,
+      data.panNumber,
+      files?.panCard?.[0]?.filename || null,
+      data.addressProofType,
+      files?.addressProofDoc?.[0]?.filename || null,
+      data.declare1,
+      data.declare2,
+      data.noGuaranteedReturns,
+      data.conflictOfInterest,
+      data.personalTrading,
+      data.sebiCompliance,
+      data.platformPolicy
+    ];
 
     const result = await pool.query(query, values);
 
@@ -200,6 +184,85 @@ data.declare2 = data.declare2 === "true";
 
     return res.status(500).json({
       success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
+/* ================= APPROVE REGISTRATION ================= */
+
+export const approveRegistration = async (req: Request, res: Response) => {
+  try {
+
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `UPDATE ra_details
+       SET status='approved',
+           rejection_reason=NULL
+       WHERE id=$1
+       RETURNING id,status`,
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        message: "Registration not found"
+      });
+    }
+
+    res.status(200).json({
+      message: "Registration approved successfully",
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error("Approve error:", error);
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
+};
+
+
+/* ================= REJECT REGISTRATION ================= */
+
+export const rejectRegistration = async (req: Request, res: Response) => {
+  try {
+
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({
+        message: "Rejection reason is required",
+      });
+    }
+
+    const result = await pool.query(
+      `UPDATE ra_details
+       SET status='rejected',
+           rejection_reason=$1
+       WHERE id=$2
+       RETURNING id,status,rejection_reason`,
+      [reason, id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        message: "Registration not found",
+      });
+    }
+
+    res.status(200).json({
+      message: "Registration rejected",
+      data: result.rows[0],
+    });
+
+  } catch (error) {
+    console.error("Reject error:", error);
+    res.status(500).json({
       message: "Server error",
     });
   }

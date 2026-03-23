@@ -17,6 +17,10 @@ import Pagination from "@mui/material/Pagination";
 import PaginationItem from "@mui/material/PaginationItem";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogActions from "@mui/material/DialogActions";
+
 import AdminFilter, { type AdminFilterValue } from "../assets/adminFilter";
 
 type AdminRow = {
@@ -33,18 +37,27 @@ type AdminRow = {
   cheque?: string;
 
   status: "Pending" | "Approved" | "Rejected" | string;
+  rejectionReason?: string;
+
   "age/time": string;
 };
 
 const ITEMS_PER_PAGE = 10;
 
 const AdminApproval = () => {
+
   const [rows, setRows] = useState<AdminRow[]>([]);
   const [filter, setFilter] = useState<AdminFilterValue>("All");
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [selectedRA, setSelectedRA] = useState<AdminRow | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmType, setConfirmType] = useState<"approve" | "reject" | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  /* ================= LOAD DATA ================= */
 
   useEffect(() => {
     const load = async () => {
@@ -52,6 +65,7 @@ const AdminApproval = () => {
         const response = await fetch(
           "http://localhost:3000/api/registration/all-registrations"
         );
+
         const data = await response.json();
 
         const formatted = data.map((item: any) => ({
@@ -68,10 +82,13 @@ const AdminApproval = () => {
           cheque: item.cancelled_cheque,
 
           status: item.status || "Pending",
+          rejectionReason: item.rejection_reason || "",
+
           "age/time": "Just now",
         }));
 
         setRows(formatted);
+
       } catch (error) {
         console.error("Failed to load admin data:", error);
       }
@@ -84,19 +101,31 @@ const AdminApproval = () => {
     setPage(1);
   }, [searchQuery, filter]);
 
-const statusColor = (status: AdminRow["status"]) => {
-  const s = status.toLowerCase();
-  if (s === "approved") return "success";
-  if (s === "rejected") return "error";
-  if (s === "pending") return "warning";
-  return "default";
-};
+  /* ================= STATUS COLOR ================= */
+
+  const statusColor = (status: AdminRow["status"]) => {
+    const s = status.toLowerCase();
+
+    if (s === "approved") return "success";
+    if (s === "rejected") return "error";
+    if (s === "pending") return "warning";
+
+    return "default";
+  };
+
+  /* ================= FILTER ================= */
 
   const filteredRows = rows.filter((row) => {
-    const matchesFilter = filter === "All" || row.status === filter;
+
+    const matchesFilter =
+      filter === "All" ||
+      row.status.toLowerCase() === filter.toLowerCase();
+
     const query = searchQuery.toLowerCase();
+
     const matchesSearch =
-      row.name.toLowerCase().includes(query) || row.phone.includes(query);
+      row.name.toLowerCase().includes(query) ||
+      row.phone.includes(query);
 
     return matchesFilter && matchesSearch;
   });
@@ -108,21 +137,115 @@ const statusColor = (status: AdminRow["status"]) => {
     page * ITEMS_PER_PAGE
   );
 
+  /* ================= FILE VIEW ================= */
+
   const openFile = (file?: string) => {
+
     if (!file || file.trim() === "") {
       alert("File not uploaded");
       return;
     }
 
     const url = `http://localhost:3000/uploads/${encodeURIComponent(file)}`;
+
     window.open(url, "_blank");
   };
 
+  /* ================= APPROVE ================= */
+
+  const handleApprove = async (id: string) => {
+
+    try {
+
+      const res = await fetch(
+        `http://localhost:3000/api/registration/approve/${id}`,
+        { method: "PUT" }
+      );
+
+      const data = await res.json();
+
+      if (res.ok) {
+
+        alert("User Approved Successfully");
+
+        setRows((prev) =>
+          prev.map((r) =>
+            r.id === id ? { ...r, status: "Approved" } : r
+          )
+        );
+
+        setSelectedRA(null);
+
+      } else {
+
+        alert(data.message || "Failed to approve");
+      }
+
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  /* ================= REJECT ================= */
+
+  const handleReject = async (id: string) => {
+
+    if (!rejectReason.trim()) {
+      alert("Please enter rejection reason");
+      return;
+    }
+
+    try {
+
+      const res = await fetch(
+        `http://localhost:3000/api/registration/reject/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            reason: rejectReason,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (res.ok) {
+
+        alert("User Rejected Successfully");
+
+        setRows((prev) =>
+          prev.map((r) =>
+            r.id === id ? { ...r, status: "Rejected" } : r
+          )
+        );
+
+        setSelectedRA(null);
+        setRejectReason("");
+
+      } else {
+
+        alert(data.message || "Reject failed");
+      }
+
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  /* ================= UI ================= */
+
   return (
+
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+
       <Typography variant="h5" fontWeight={600}>
         Admin Approval
       </Typography>
+
+      {/* SEARCH */}
 
       <TextField
         placeholder="Search by name or mobile"
@@ -132,20 +255,24 @@ const statusColor = (status: AdminRow["status"]) => {
         onChange={(e) => setSearchQuery(e.target.value)}
         InputProps={{
           startAdornment: (
-            <InputAdornment position="start" sx={{ pl: 1 }}>
-              <SearchIcon color="action" fontSize="small" />
+            <InputAdornment position="start">
+              <SearchIcon fontSize="small" />
             </InputAdornment>
           ),
         }}
       />
 
-      <Box sx={{ overflowX: "auto", pb: 1 }}>
+      <Box sx={{ overflowX: "auto" }}>
         <AdminFilter value={filter} onChange={setFilter} />
       </Box>
 
+      {/* TABLE */}
+
       <TableContainer component={Paper} variant="outlined">
+
         <Table size="small">
-          <TableHead sx={{ backgroundColor: "rgba(0,0,0,0.02)" }}>
+
+          <TableHead sx={{ backgroundColor: "#f6f6f6" }}>
             <TableRow>
               <TableCell>Name</TableCell>
               <TableCell>Phone</TableCell>
@@ -156,8 +283,11 @@ const statusColor = (status: AdminRow["status"]) => {
           </TableHead>
 
           <TableBody>
+
             {paginatedRows.map((row) => (
-              <TableRow key={row.id} hover>
+
+              <TableRow key={row.id}>
+
                 <TableCell>{row.name}</TableCell>
                 <TableCell>{row.phone}</TableCell>
 
@@ -165,7 +295,7 @@ const statusColor = (status: AdminRow["status"]) => {
                   <Chip
                     size="small"
                     label={row.status}
-                    color={statusColor(row.status)}
+                    color={statusColor(row.status) as any}
                   />
                 </TableCell>
 
@@ -180,21 +310,28 @@ const statusColor = (status: AdminRow["status"]) => {
                     View
                   </Button>
                 </TableCell>
+
               </TableRow>
             ))}
 
             {filteredRows.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} align="center">
-                  No matching results found
+                  No matching results
                 </TableCell>
               </TableRow>
             )}
+
           </TableBody>
+
         </Table>
+
       </TableContainer>
 
+      {/* SIDE PANEL */}
+
       {selectedRA && (
+
         <Paper
           elevation={4}
           sx={{
@@ -206,6 +343,7 @@ const statusColor = (status: AdminRow["status"]) => {
             borderRadius: 2,
           }}
         >
+
           <Button
             size="small"
             onClick={() => setSelectedRA(null)}
@@ -220,33 +358,13 @@ const statusColor = (status: AdminRow["status"]) => {
           <Typography color="text.secondary">{selectedRA.phone}</Typography>
 
           <Box sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 1 }}>
-            <Button onClick={() => openFile(selectedRA.profile)}>
-              View Profile
-            </Button>
-
-            <Button onClick={() => openFile(selectedRA.pan)}>
-              View PAN Card
-            </Button>
-
-            <Button onClick={() => openFile(selectedRA.address)}>
-              View Address Proof
-            </Button>
-
-            <Button onClick={() => openFile(selectedRA.sebi)}>
-              View SEBI Certificate
-            </Button>
-
-            <Button onClick={() => openFile(selectedRA.sebi_receipt)}>
-              View SEBI Receipt
-            </Button>
-
-            <Button onClick={() => openFile(selectedRA.nism)}>
-              View NISM Certificate
-            </Button>
-
-            <Button onClick={() => openFile(selectedRA.cheque)}>
-              View Cancelled Cheque
-            </Button>
+            <Button onClick={() => openFile(selectedRA.profile)}>View Profile</Button>
+            <Button onClick={() => openFile(selectedRA.pan)}>View PAN</Button>
+            <Button onClick={() => openFile(selectedRA.address)}>View Address</Button>
+            <Button onClick={() => openFile(selectedRA.sebi)}>View SEBI</Button>
+            <Button onClick={() => openFile(selectedRA.sebi_receipt)}>View SEBI Receipt</Button>
+            <Button onClick={() => openFile(selectedRA.nism)}>View NISM</Button>
+            <Button onClick={() => openFile(selectedRA.cheque)}>View Cheque</Button>
           </Box>
 
           <TextField
@@ -260,18 +378,79 @@ const statusColor = (status: AdminRow["status"]) => {
           />
 
           <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
-            <Button variant="contained" color="success" fullWidth>
+
+            <Button
+              variant="contained"
+              color="success"
+              fullWidth
+              onClick={() => {
+                setSelectedId(selectedRA.id);
+                setConfirmType("approve");
+                setConfirmOpen(true);
+              }}
+            >
               Approve
             </Button>
 
-            <Button variant="contained" color="error" fullWidth>
+            <Button
+              variant="contained"
+              color="error"
+              fullWidth
+              onClick={() => {
+                setSelectedId(selectedRA.id);
+                setConfirmType("reject");
+                setConfirmOpen(true);
+              }}
+            >
               Reject
             </Button>
+
           </Box>
+
         </Paper>
       )}
 
+      {/* CONFIRM DIALOG */}
+
+      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+
+        <DialogTitle>
+          Are you sure you want to {confirmType === "approve" ? "approve" : "reject"} this registration?
+        </DialogTitle>
+
+        <DialogActions>
+
+          <Button onClick={() => setConfirmOpen(false)}>
+            No
+          </Button>
+
+          <Button
+            variant="contained"
+            color={confirmType === "approve" ? "success" : "error"}
+            onClick={() => {
+
+              if (!selectedId) return;
+
+              if (confirmType === "approve") {
+                handleApprove(selectedId);
+              } else {
+                handleReject(selectedId);
+              }
+
+              setConfirmOpen(false);
+            }}
+          >
+            Yes
+          </Button>
+
+        </DialogActions>
+
+      </Dialog>
+
+      {/* PAGINATION */}
+
       {pageCount > 1 && (
+
         <Pagination
           sx={{ alignSelf: "center", mt: 2 }}
           count={pageCount}
@@ -284,7 +463,9 @@ const statusColor = (status: AdminRow["status"]) => {
             />
           )}
         />
+
       )}
+
     </Box>
   );
 };
