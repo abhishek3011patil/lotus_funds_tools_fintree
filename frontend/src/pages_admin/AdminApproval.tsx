@@ -20,6 +20,7 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogActions from "@mui/material/DialogActions";
+import { useNavigate } from "react-router-dom";
 
 import AdminFilter, { type AdminFilterValue } from "../assets/adminFilter";
 
@@ -56,6 +57,7 @@ const AdminApproval = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmType, setConfirmType] = useState<"approve" | "reject" | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   /* ================= LOAD DATA ================= */
 
@@ -185,6 +187,12 @@ const AdminApproval = () => {
       console.error(error);
     }
   };
+
+  /* ================= EDIT ================= */
+
+const handleEdit = (id: string) => {
+  navigate(`/admin/edit-ra/${id}`);
+};
 
   /* ================= REJECT ================= */
 
@@ -404,6 +412,14 @@ const AdminApproval = () => {
             >
               Reject
             </Button>
+             <Button
+    variant="contained"
+    color="warning"
+    fullWidth
+    onClick={() => handleEdit(selectedRA.id)}
+  >
+    Edit
+  </Button>
 
           </Box>
 

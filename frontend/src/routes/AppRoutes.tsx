@@ -21,6 +21,7 @@ import ClientDashboard from "../pages_client/Dashboard";
 import ClientRecommendations from "../pages_client/Recomendation";
 import ClientPerformance from "../pages_client/Performance";
 import ClientNotFound from "../pages_client/Notfound";
+import EditRA from "../pages/EditRA";
 // import NotFound from "../pages/NotFound";
 import BrokerRegistration from "../pages_registration/BrokerRegistration";
 
@@ -130,6 +131,7 @@ s      {/* --- 4. Admin Layout (ADMIN ONLY) --- */}
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="recommendations" element={<AdminRecommendations />} />
         <Route path="approval" element={<AdminApproval />} />
+        <Route path="edit-ra/:id" element={<EditRA />} /> 
       </Route>
 
       {/* --- 5. Client Layout (CLIENT ONLY) --- */}
