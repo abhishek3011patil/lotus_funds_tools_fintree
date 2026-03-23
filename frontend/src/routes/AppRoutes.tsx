@@ -53,7 +53,7 @@ const AppRoutes = () => {
       {/* --- 1. Main Dashboard Layout (EMPLOYEE + ADMIN) --- */}
       <Route
         element={
-          <ProtectedRoute allowedRoles={["ADMIN", "RA"]}>
+          <ProtectedRoute allowedRoles={["ADMIN", "RESEARCH_ANALYST"]}>
             <AppLayout />
           </ProtectedRoute>
         }
@@ -115,7 +115,9 @@ const AppRoutes = () => {
         <Route path="ExcelTool" element={<ExceltoJSONTool />} />
       </Route>
 
-      {/* --- 4. Admin Layout (ADMIN ONLY) --- */}
+
+
+s      {/* --- 4. Admin Layout (ADMIN ONLY) --- */}
       <Route
         path="/admin"
         element={

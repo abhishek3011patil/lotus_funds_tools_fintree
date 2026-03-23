@@ -51,8 +51,7 @@ export const login = async (req: Request, res: Response) => {
         }
 
         // Normalize role
-        const normalizedRole =
-            user.role === "RESEARCH_ANALYST" ? "RA" : user.role;
+      const normalizedRole = user.role;
 
         // Generate JWT
         const token = jwt.sign(
@@ -65,21 +64,12 @@ export const login = async (req: Request, res: Response) => {
             { expiresIn: "1d" }
         );
 
-        // Response
-        res.json({
-            message: "Login successful",
-            token,
-            role: normalizedRole,
-            username: user.username
-        });
-
-        res.json({
-            message: "Login successful",
-            token,
-            role: user.role,
-            username: user.username
-        });
-
+        return res.json({
+        message: "Login successful",
+        token,
+        role: normalizedRole,
+        username: user.username
+    });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Server error" });

@@ -194,117 +194,131 @@ const Performance: React.FC = () => {
   const isComingSoon = true;
 
   return (
-    <Box sx={{ position: "relative" }}>
+    <Box sx={{}}>
 
-    <Box
-    sx={{
-      p: 3,
-      backgroundColor: "#fff",
-      filter: isComingSoon ? "blur(6px)" : "none",
-      pointerEvents: isComingSoon ? "none" : "auto",
-    }}
-  >
-      <Typography fontSize="1.625rem" fontWeight={700} mb={3}>
-        Performance
-      </Typography>
 
-      <Paper
+      <Box
         sx={{
-          p: 2.5,
-          borderRadius: "0.1875rem",
-          border: "1px solid #eee",
-          backgroundColor: "#fff",
-          boxShadow: "none",
+          p: 3,
+          backgroundColor: "#fff"
+
         }}
       >
-        <Grid container spacing={2}>
-          {/* ===== COLUMN 1 ===== */}
-          <Grid size={{ xs: 12, md: 3 }}>
-            <Grid container spacing={2}>
-              <Grid size={12}>
-                <BigCard title="Total Recommendations" value={metrics.total} />
-              </Grid>
-              <Grid size={6}>
-                <SmallCard title="Active" value={metrics.active} green />
-              </Grid>
-              <Grid size={6}>
-                <SmallCard title="Exited" value={metrics.exited} />
+        <Typography fontSize="1.625rem" fontWeight={700} mb={3}>
+          Performance
+        </Typography>
+
+        <Paper
+          sx={{
+            p: 2.5,
+            borderRadius: "0.1875rem",
+            border: "1px solid #eee",
+            backgroundColor: "#fff",
+            boxShadow: "none",
+            position: "relative",
+            filter: isComingSoon ? "blur(6px)" : "none",
+            pointerEvents: isComingSoon ? "none" : "auto",
+
+          }}
+        >
+          <Grid container spacing={2}
+            sx={{
+
+            }}>
+            {/* ===== COLUMN 1 ===== */}
+            <Grid size={{ xs: 12, md: 3 }}>
+              <Grid container spacing={2}>
+                <Grid size={12}>
+                  <BigCard title="Total Recommendations" value={metrics.total} />
+                </Grid>
+                <Grid size={6}>
+                  <SmallCard title="Active" value={metrics.active} green />
+                </Grid>
+                <Grid size={6}>
+                  <SmallCard title="Exited" value={metrics.exited} />
+                </Grid>
               </Grid>
             </Grid>
-          </Grid>
 
-          {/* ===== COLUMN 2 ===== */}
-          <Grid size={{ xs: 12, md: 3 }}>
-            <Grid container spacing={2}>
-              <Grid size={12}>
-                <BigCard
-                  title="Accuracy"
-                  value={`${metrics.accuracy}%`}
-                  green={metrics.accuracy >= 80}
-                  red={metrics.accuracy < 80}
-                />
-              </Grid>
-              <Grid size={6}>
-                <SmallCard title="Profitable" value={metrics.profit} green />
-              </Grid>
-              <Grid size={6}>
-                <SmallCard title="Adverse" value={metrics.adverse} red />
+            {/* ===== COLUMN 2 ===== */}
+            <Grid size={{ xs: 12, md: 3 }}>
+              <Grid container spacing={2}>
+                <Grid size={12}>
+                  <BigCard
+                    title="Accuracy"
+                    value={`${metrics.accuracy}%`}
+                    green={metrics.accuracy >= 80}
+                    red={metrics.accuracy < 80}
+                  />
+                </Grid>
+                <Grid size={6}>
+                  <SmallCard title="Profitable" value={metrics.profit} green />
+                </Grid>
+                <Grid size={6}>
+                  <SmallCard title="Adverse" value={metrics.adverse} red />
+                </Grid>
               </Grid>
             </Grid>
-          </Grid>
 
-          {/* ===== COLUMN 3 ===== */}
-          <Grid size={{ xs: 12, md: 3 }}>
-            <Grid container spacing={2}>
-              <Grid size={12}>
-                <BigCard title="Target Strike Rate" value={`${metrics.strike}%`} />
-              </Grid>
-              <Grid size={6}>
-                <SmallCard title="SL Hit Rate" value={`${metrics.sl}%`} />
-              </Grid>
-              <Grid size={6}>
-                <SmallCard title="Early Exit" value={`${metrics.early}%`} />
+            {/* ===== COLUMN 3 ===== */}
+            <Grid size={{ xs: 12, md: 3 }}>
+              <Grid container spacing={2}>
+                <Grid size={12}>
+                  <BigCard title="Target Strike Rate" value={`${metrics.strike}%`} />
+                </Grid>
+                <Grid size={6}>
+                  <SmallCard title="SL Hit Rate" value={`${metrics.sl}%`} />
+                </Grid>
+                <Grid size={6}>
+                  <SmallCard title="Early Exit" value={`${metrics.early}%`} />
+                </Grid>
               </Grid>
             </Grid>
-          </Grid>
 
-          {/* ===== COLUMN 4 ===== */}
-          <Grid size={{ xs: 12, md: 3 }}>
-            <Grid container spacing={2}>
-              <Grid size={12}>
-                <BigCard title="Risk : Reward Ratio" value={metrics.rr} />
-              </Grid>
-              <Grid size={12}>
-                <Last10 />
+            {/* ===== COLUMN 4 ===== */}
+            <Grid size={{ xs: 12, md: 3 }}>
+              <Grid container spacing={2}>
+                <Grid size={12}>
+                  <BigCard title="Risk : Reward Ratio" value={metrics.rr} />
+                </Grid>
+                <Grid size={12}>
+                  <Last10 />
+                </Grid>
               </Grid>
             </Grid>
-          </Grid>
-        </Grid>
-      </Paper>
 
-      <RecommendationHistory />
-    </Box>
-    {/* 🔹 OVERLAY (NOT blurred) */}
-  {isComingSoon && (
-    <Typography
-      sx={{
-        position: "absolute",
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
-        fontSize: "1.8rem",
-        fontWeight: 700,
-        background: "#4F6EF7",
-        color: "#fff",
-        px: 3,
-        py: 1,
-        borderRadius: "999px",
-        zIndex: 10,
-      }}
-    >
-      Coming Soon
-    </Typography>
-  )}
+
+          </Grid>
+
+
+        </Paper>
+
+
+        <RecommendationHistory />
+
+      </Box>
+      {/* 🔹 OVERLAY (NOT blurred) */}
+      {isComingSoon && (
+        <Typography
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            fontSize: "1.8rem",
+            fontWeight: 700,
+            background: "#4F6EF7",
+            color: "#fff",
+            px: 3,
+            py: 1,
+            borderRadius: "999px",
+            zIndex: 30,
+          }}
+        >
+          Coming Soon
+        </Typography>
+      )}
+
 
     </Box>
   );

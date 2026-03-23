@@ -74,13 +74,13 @@ const LoginForm: React.FC = () => {
       localStorage.setItem("role", role);
       console.log("LOGIN:", res.data);
 
-      if (role === "RA") {
-        navigate("/");
-      } else {
-        setMessage("Use company login for this account");
-        localStorage.clear();
-      }
 
+   if (role === "RESEARCH_ANALYST") {
+  navigate("/");
+} else {
+  setMessage("Use company login for this account");
+  localStorage.clear();
+}
     } catch (err: any) {
       setMessage(
         err.response?.data?.message ||

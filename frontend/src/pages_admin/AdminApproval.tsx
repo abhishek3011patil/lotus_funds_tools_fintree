@@ -84,13 +84,13 @@ const AdminApproval = () => {
     setPage(1);
   }, [searchQuery, filter]);
 
-const statusColor = (status: AdminRow["status"]) => {
-  const s = status.toLowerCase();
-  if (s === "approved") return "success";
-  if (s === "rejected") return "error";
-  if (s === "pending") return "warning";
-  return "default";
-};
+  const statusColor = (status: AdminRow["status"]) => {
+    const s = status.toLowerCase();
+    if (s === "approved") return "success";
+    if (s === "rejected") return "error";
+    if (s === "pending") return "warning";
+    return "default";
+  };
 
   const filteredRows = rows.filter((row) => {
     const matchesFilter = filter === "All" || row.status === filter;
