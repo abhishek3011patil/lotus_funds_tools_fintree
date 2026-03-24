@@ -1,15 +1,9 @@
 import express from "express";
-import { 
-  createBroker, 
-  getAllBrokers, 
-  approveBroker, 
-  rejectBroker 
-} from "../controllers/broker.controller";
+import { createBroker } from "../controllers/broker.controller";
 import { upload } from "../middlewares/upload";
 
 const router = express.Router();
 
-// Existing Registration Route
 router.post(
   "/register-broker",
   upload.fields([
@@ -22,16 +16,5 @@ router.post(
   ]),
   createBroker
 );
-
-/* ================= ADMIN APPROVAL ROUTES ================= */
-
-// Fetch all brokers for the admin table
-router.get("/all-registrations", getAllBrokers);
-
-// Approve a broker by ID
-router.put("/approve/:id", approveBroker);
-
-// Reject a broker by ID (expects { reason: "..." } in body)
-router.put("/reject/:id", rejectBroker);
 
 export default router;

@@ -5,7 +5,8 @@ import authRoutes from "./routes/auth.routes";
 //import debugRoutes from "./routes/debug.routes";
 import brokerRoutes from "./routes/broker.routes";
 import registrationRoutes from "./routes/registration.routes";
-import path from "path"; 
+import telegramRoutes from "./routes/telegram.routes";
+import path from "path";
 
 
 const app = express();
@@ -35,6 +36,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/broker", brokerRoutes);
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 app.use("/api/registration", registrationRoutes);
+app.use("/api", telegramRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "OK" });

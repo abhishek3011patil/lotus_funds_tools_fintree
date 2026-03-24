@@ -267,3 +267,168 @@ export const rejectRegistration = async (req: Request, res: Response) => {
     });
   }
 };
+/* ================= GET SINGLE REGISTRATION ================= */
+
+export const getRegistrationById = async (req: Request, res: Response) => {
+  try {
+
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `SELECT * FROM ra_details WHERE id=$1`,
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        message: "Registration not found"
+      });
+    }
+
+    res.status(200).json(result.rows[0]);
+
+  } catch (error) {
+    console.error("Fetch single registration error:", error);
+
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
+};
+/* ================= UPDATE RA REGISTRATION ================= */
+
+export const updateRARegistration = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+    const files = req.files as any;
+
+    // Convert boolean strings to actual booleans
+    data.noGuaranteedReturns = data.noGuaranteedReturns === "true";
+    data.conflictOfInterest = data.conflictOfInterest === "true";
+    data.personalTrading = data.personalTrading === "true";
+    data.sebiCompliance = data.sebiCompliance === "true";
+    data.platformPolicy = data.platformPolicy === "true";
+    data.declare1 = data.declare1 === "true";
+    data.declare2 = data.declare2 === "true";
+
+    const query = `
+      UPDATE ra_details
+      SET
+        salutation = $1,
+        first_name = $2,
+        middle_name = $3,
+        surname = $4,
+        org_name = $5,
+        designation = $6,
+        short_bio = $7,
+        email = $8,
+        mobile = $9,
+        telephone = $10,
+        country = $11,
+        state = $12,
+        city = $13,
+        pincode = $14,
+        address_line1 = $15,
+        address_line2 = $16,
+        profile_image = COALESCE($17, profile_image),
+        sebi_reg_no = $18,
+        sebi_start_date = $19,
+        sebi_expiry_date = $20,
+        sebi_certificate = COALESCE($21, sebi_certificate),
+        sebi_receipt = COALESCE($22, sebi_receipt),
+        nism_reg_no = $23,
+        nism_valid_till = $24,
+        nism_certificate = COALESCE($25, nism_certificate),
+        academic_qualification = $26,
+        professional_qualification = $27,
+        market_experience = $28,
+        expertise = $29,
+        markets = $30,
+        bank_name = $31,
+        account_holder = $32,
+        account_number = $33,
+        ifsc_code = $34,
+        cancelled_cheque = COALESCE($35, cancelled_cheque),
+        pan_number = $36,
+        pan_card = COALESCE($37, pan_card),
+        address_proof_type = $38,
+        address_proof_document = COALESCE($39, address_proof_document),
+        declare_info_true = $40,
+        consent_verification = $41,
+        no_guaranteed_returns = $42,
+        conflict_of_interest = $43,
+        personal_trading = $44,
+        sebi_compliance = $45,
+        platform_policy = $46
+      WHERE id = $47
+      RETURNING *
+    `;
+
+    const values = [
+      data.salutation,
+      data.first_name,
+      data.middle_name,
+      data.surname,
+      data.org_name,
+      data.designation,
+      data.short_bio,
+      data.email,
+      data.mobile,
+      data.telephone,
+      data.country,
+      data.state,
+      data.city,
+      data.pincode,
+      data.address_line1,
+      data.address_line2,
+      files?.profile_image?.[0]?.filename || null,
+      data.sebi_reg_no,
+      data.sebi_start_date,
+      data.sebi_expiry_date,
+      files?.sebi_certificate?.[0]?.filename || null,
+      files?.sebi_receipt?.[0]?.filename || null,
+      data.nism_reg_no,
+      data.nism_valid_till,
+      files?.nism_certificate?.[0]?.filename || null,
+      data.academic_qualification,
+      data.professional_qualification,
+      data.market_experience,
+      data.expertise,
+      data.markets,
+      data.bank_name,
+      data.account_holder,
+      data.account_number,
+      data.ifsc_code,
+      files?.cancelled_cheque?.[0]?.filename || null,
+      data.pan_number,
+      files?.pan_card?.[0]?.filename || null,
+      data.address_proof_type,
+      files?.address_proof_document?.[0]?.filename || null,
+      data.declare1,
+      data.declare2,
+      data.noGuaranteedReturns,
+      data.conflictOfInterest,
+      data.personalTrading,
+      data.sebiCompliance,
+      data.platformPolicy,
+      id
+    ];
+
+    const result = await pool.query(query, values);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Registration not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "RA updated successfully",
+      data: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error("Update RA Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};

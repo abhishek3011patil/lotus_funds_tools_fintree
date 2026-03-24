@@ -276,6 +276,33 @@ const NewRecommendation = () => {
         );
 
         alert("Research Call Created ✅");
+
+        // 📤 Send Telegram notification after successful creation
+        try {
+          await axios.post(
+            import.meta.env.VITE_API_URL + "/api/telegram/send",
+            {
+              ra_user_id: res.data?.id || res.data?.data?.ra_user_id,
+              action: form.action,
+              symbol: finalDisplayName,
+              callType: form.callType,
+              tradeType: form.tradeType,
+              entry: form.entry,
+              target: form.target,
+              stopLoss: form.stopLoss,
+              rationale: form.rationale,
+              holding: form.holdingPeriod,
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          console.log("✅ Telegram notification sent");
+        } catch (telegramErr: any) {
+          console.error("⚠️ Telegram send failed:", telegramErr?.response?.data || telegramErr?.message);
+        }
       }
 
       const createdCall = res.data.data || res.data;
@@ -609,6 +636,33 @@ const NewRecommendation = () => {
             : rec
         )
       );
+
+      // 📤 Send Telegram notification after publishing draft
+      try {
+        await axios.post(
+          `${import.meta.env.VITE_API_URL}/api/telegram/send`,
+          {
+            ra_user_id: item.id,
+            action: item.action,
+            symbol: item.name || item.symbol,
+            callType: item.call_type,
+            tradeType: item.trade_type,
+            entry: item.entry?.ideal || item.entry,
+            target: item.targets?.[0] || item.target_price,
+            stopLoss: item.stop_losses?.[0] || item.stop_loss,
+            rationale: item.rationale || "",
+            holding: item.holding_period || "",
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        console.log("✅ Telegram notification sent after publish");
+      } catch (telegramErr: any) {
+        console.error("⚠️ Telegram send failed:", telegramErr?.response?.data || telegramErr?.message);
+      }
 
     } catch (error) {
       console.error("Publish failed:", error);

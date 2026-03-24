@@ -1,3 +1,4 @@
+
 import express, { Request, Response } from "express";
 import multer from "multer";
 import { authenticate } from "../middlewares/auth.middleware";
@@ -6,8 +7,10 @@ import {
   registerRA,
   getAllRegistrations,
   approveRegistration,
-  rejectRegistration
-} from "../controllers/registration.controller";
+  rejectRegistration,
+  getRegistrationById,
+  updateRARegistration 
+} from "../controllers/registration.controller"; 
 
 const router = express.Router();
 
@@ -50,11 +53,27 @@ router.get("/all-registrations", getAllRegistrations);
 router.put("/approve/:id", approveRegistration);
 
 router.put("/reject/:id", rejectRegistration);
+router.get("/:id", getRegistrationById);
 
 /* ================= TEST ROUTE ================= */
 
 router.get("/test", (req: Request, res: Response) => {
   res.send("Registration route working");
 });
+
+router.put(
+  "/edit/:id",
+  authenticate,
+  upload.fields([
+    { name: "profile_image", maxCount: 1 },
+    { name: "pan_card", maxCount: 1 },
+    { name: "address_proof_document", maxCount: 1 },
+    { name: "sebi_certificate", maxCount: 1 },
+    { name: "sebi_receipt", maxCount: 1 },
+    { name: "nism_certificate", maxCount: 1 },
+    { name: "cancelled_cheque", maxCount: 1 },
+  ]),
+  updateRARegistration 
+);
 
 export default router;
