@@ -218,7 +218,7 @@ const NewRecommendation = () => {
         stop_loss: form.stopLoss || null,
         stop_loss_2: form.stopLoss2 || null,
         stop_loss_3: form.stopLoss3 || null,
-        holding_period: form.holdingPeriod || null,
+        holding: form.holdingPeriod || "0",
         rationale: form.rationale,
         underlying_study: form.underlyingStudy?.label || null,
         is_algo: false,
@@ -280,25 +280,39 @@ const NewRecommendation = () => {
         // 📤 Send Telegram notification after successful creation
         try {
           await axios.post(
-            import.meta.env.VITE_API_URL + "/api/telegram/send",
-            {
-              ra_user_id: res.data?.id || res.data?.data?.ra_user_id,
-              action: form.action,
-              symbol: finalDisplayName,
-              callType: form.callType,
-              tradeType: form.tradeType,
-              entry: form.entry,
-              target: form.target,
-              stopLoss: form.stopLoss,
-              rationale: form.rationale,
-              holding: form.holdingPeriod,
-            },
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
+  import.meta.env.VITE_API_URL + "/api/telegram/send",
+  {
+    ra_user_id: res.data?.id || res.data?.data?.ra_user_id,
+
+    action: form.action,
+    symbol: finalDisplayName,
+    callType: form.callType,
+    tradeType: form.tradeType,
+
+    // ✅ MAIN
+    entry: form.entry,
+    target: form.target,
+    stopLoss: form.stopLoss,
+
+    // ✅ ADD THESE (IMPORTANT)
+    entryLow: form.rangeEnabled ? form.entryLow : null,
+    entryUpper: form.rangeEnabled ? form.entryUpper : null,
+
+    target2: form.secondaryTargetEnabled ? form.target2 : null,
+    target3: form.secondaryTargetEnabled ? form.target3 : null,
+
+    stopLoss2: form.stopLoss2Enabled ? form.stopLoss2 : null,
+    stopLoss3: form.stopLoss2Enabled ? form.stopLoss3 : null,
+
+    rationale: form.rationale,
+    holding: form.holdingPeriod,
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
           console.log("✅ Telegram notification sent");
         } catch (telegramErr: any) {
           console.error("⚠️ Telegram send failed:", telegramErr?.response?.data || telegramErr?.message);
@@ -480,6 +494,13 @@ const NewRecommendation = () => {
     }
   };
 
+
+  useEffect(() => {
+  if (form.tradeType === "Intraday") {
+    dispatch({ type: "SET_FIELD", field: "holdingPeriod", value: "0" });
+  }
+}, [form.tradeType]);
+
   useEffect(() => {
     fetchRecommendations();
   }, []);
@@ -641,32 +662,33 @@ const NewRecommendation = () => {
       );
 
       // 📤 Send Telegram notification after publishing draft
-      try {
-        await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/telegram/send`,
-          {
-            ra_user_id: item.id,
-            action: item.action,
-            symbol: item.name || item.symbol,
-            callType: item.call_type,
-            tradeType: item.trade_type,
-            entry: item.entry?.ideal || item.entry,
-            target: item.targets?.[0] || item.target_price,
-            stopLoss: item.stop_losses?.[0] || item.stop_loss,
-            rationale: item.rationale || "",
-            holding: item.holding_period || "",
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        console.log("✅ Telegram notification sent after publish");
-      } catch (telegramErr: any) {
-        console.error("⚠️ Telegram send failed:", telegramErr?.response?.data || telegramErr?.message);
-      }
+ try {
+  const telegramRes = await axios.post(
+    `${import.meta.env.VITE_API_URL}/api/telegram/send`,
+    {
+      ra_user_id: res.data?.id || res.data?.data?.ra_user_id,
+      action: form.action,
+      symbol: finalDisplayName,
+      callType: form.callType,
+      tradeType: form.tradeType,
+      entry: form.entry,
+      target: form.target,
+      stopLoss: form.stopLoss,
+      rationale: form.rationale,
+      holding: form.holdingPeriod,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
 
+  console.log("✅ Telegram Response:", telegramRes.data);
+
+} catch (err: any) {
+  console.error("❌ Telegram FULL ERROR:", err);
+}
     } catch (error) {
       console.error("Publish failed:", error);
     }
@@ -1282,8 +1304,14 @@ const getPriceError = (field: string, currentForm: any): string | null => {
 
               {/* Intraday Logic */}
               {form.tradeType === "Intraday" && (
-                <RadioGroup row value="0">
-                  <FormControlLabel value="0" control={<Radio size="small" color="primary" />} label={<Typography sx={{ fontSize: '0.65rem' }}>0</Typography>} checked={true} />
+                <RadioGroup
+  row
+  value="0"
+  onChange={(e) =>
+    dispatch({ type: "SET_FIELD", field: "holdingPeriod", value: "0" })
+  }
+>
+                  <FormControlLabel value={form.holdingPeriod} control={<Radio size="small" color="primary" />} label={<Typography sx={{ fontSize: '0.65rem' }}>0</Typography>} checked={form.holdingPeriod === "0"} />
                 </RadioGroup>
               )}
 
