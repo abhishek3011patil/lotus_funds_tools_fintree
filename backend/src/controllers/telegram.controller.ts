@@ -50,50 +50,50 @@ export const sendTelegram = async (req: AuthRequest, res: Response) => {
     const message = formatRecommendationMessage(data);
 
     // 1️⃣ Save message to DB
-await pool.query(
-  `INSERT INTO telegram_messages
+    await pool.query(
+      `INSERT INTO telegram_messages
    (ra_user_id, message_text, action, symbol, call_type, trade_type,
     entry_price, entry_low, entry_upper,
     target_price, target_price_2, target_price_3,
     stop_loss, stop_loss_2, stop_loss_3,
     rationale, holding_period)
    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
-  [
-    raUserId,
-    message,
-    data.action,
-    data.symbol,
-    data.callType,
-    data.tradeType,
+      [
+        raUserId,
+        message,
+        data.action,
+        data.symbol,
+        data.callType,
+        data.tradeType,
 
-    data.entry,
-    data.entryLow || null,
-    data.entryUpper || null,
+        data.entry,
+        data.entryLow || null,
+        data.entryUpper || null,
 
-    data.target,
-    data.target2 || null,
-    data.target3 || null,
+        data.target,
+        data.target2 || null,
+        data.target3 || null,
 
-    data.stopLoss,
-    data.stopLoss2 || null,
-    data.stopLoss3 || null,
+        data.stopLoss,
+        data.stopLoss2 || null,
+        data.stopLoss3 || null,
 
-    data.rationale,
-    data.holding,
-  ]
-);
+        data.rationale,
+        data.holding,
+      ]
+    );
     console.log("✅ Message saved to DB");
 
-// ✅ Store user IDs in variable
-let chatIds: number[] = [];
+    // ✅ Store user IDs in variable
+    let chatIds: number[] = [];
 
-const users = await pool.query(
-  "SELECT telegram_user_id FROM telegram_users WHERE telegram_user_id IS NOT NULL"
-);
+    const users = await pool.query(
+      "SELECT telegram_user_id FROM telegram_users WHERE telegram_user_id IS NOT NULL"
+    );
 
-chatIds = users.rows
-  .map((u: { telegram_user_id: string }) => Number(u.telegram_user_id.trim()))
-  .filter(Boolean);
+    chatIds = users.rows
+      .map((u: { telegram_user_id: string }) => Number(u.telegram_user_id.trim()))
+      .filter(Boolean);
 
 
     // 3️⃣ Send messages only to valid users
@@ -125,32 +125,48 @@ export const verifyTelegramUser = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: "Telegram ID is required" });
     }
 
+    if (!/^\d+$/.test(telegram_user_id)) {
+      return res.status(400).json({ error: "Invalid Telegram ID format" });
+    }
+
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    // 🔥 STEP 1: VERIFY by sending test message
+    let msg;
+
     try {
-      await bot.sendMessage(
+      msg = await bot.sendMessage(
         telegram_user_id,
         "✅ Verification successful! Your Telegram is connected."
       );
     } catch (err: any) {
+      console.error("Telegram error:", err.response?.body || err.message);
       return res.status(400).json({
-        error: "Invalid Telegram ID OR user has not started the bot",
+        error: "Invalid Telegram ID or user has not started the bot",
       });
     }
 
-    // 🔥 STEP 2: SAVE TO DB
+    // ✅ Validate username (optional but recommended)
+    const realUsername = msg.chat.username;
+
+    if (
+      telegram_client_name &&
+      realUsername &&
+      realUsername !== telegram_client_name.replace("@", "")
+    ) {
+      return res.status(400).json({
+        error: "Username does not match Telegram ID",
+      });
+    }
+
     await pool.query(
-      `INSERT INTO telegram_users (user_id, telegram_user_id, telegram_client_name)
+      `INSERT INTO telegram_users (user_id, telegram_user_id, username)
        VALUES ($1, $2, $3)
        ON CONFLICT (telegram_user_id) DO UPDATE 
-       SET telegram_client_name = EXCLUDED.telegram_client_name`,
+       SET username = EXCLUDED.username`,
       [userId, telegram_user_id, telegram_client_name || null]
     );
-
-    console.log("✅ Telegram user verified & saved");
 
     return res.json({
       success: true,
@@ -158,7 +174,9 @@ export const verifyTelegramUser = async (req: AuthRequest, res: Response) => {
     });
 
   } catch (err: any) {
-    console.error("🔥 Verification failed:", err);
-    return res.status(500).json({ error: "Verification failed" });
-  }
-};
+  console.error("🔥 FULL ERROR:", err);
+
+  return res.status(500).json({
+    error: err.message || "Verification failed",
+  });
+}}; 

@@ -7,7 +7,7 @@ console.log("🚀 Telegram routes file is running");
 
 router.post("/send", authenticate, sendTelegram);
 router.post("/verify", authenticate, verifyTelegramUser);
-router.post("/save-user", authenticate, verifyTelegramUser); 
+router.post("/save-user", authenticate, verifyTelegramUser);
 router.get("/test", (req, res) => {
   res.send("Telegram route working");
 });
