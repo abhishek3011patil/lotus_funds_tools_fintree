@@ -14,7 +14,10 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Typography,
+  InputAdornment, 
+  Tooltip
 } from "@mui/material";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import RecommendationsPanel from "../components/page_Mainapp/RecommendationsPanel";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import { useRef, useState, useEffect, useMemo, useCallback, useReducer } from "react";
@@ -65,9 +68,6 @@ const FLAT_STUDY_OPTIONS = UNDERLYING_STUDIES.flatMap((g) =>
 
 
 const NewRecommendation = () => {
-
-
-
 
   console.log("RENDER");
   const [underlyingStudyInput, setUnderlyingStudyInput] = useState("");
@@ -576,22 +576,25 @@ const NewRecommendation = () => {
   }, []);
   // Temporary
   const [wasValidated, setWasValidated] = useState(false);
-  const validateAndPublish = (event) => {
-    event.preventDefault();
-    setWasValidated(true);
+  const validateAndPublish = (event: React.MouseEvent<HTMLButtonElement>) => {
+  event.preventDefault();
+  setWasValidated(true);
 
-    // Check standard inputs via form
-    const formEl = event.currentTarget.closest('form');
-    const isFormValid = formEl.checkValidity();
-
-    // Check our Radio manually
-    const isRadioValid = form.holdingPeriod !== "";
-
-    if (isFormValid && isRadioValid) {
-      handleSubmit();
-      setWasValidated(false);
+  const priceErr = getPriceError("entry", form) || 
+                   getPriceError("target", form) || 
+                   getPriceError("stopLoss", form);
+  if (!priceErr) {
+    console.log("✅ Price logic passed, submitting...");
+    handleSubmit(); 
+    setWasValidated(false);
+  } else {
+    console.log("❌ Price logic failed");
+    const priceRow = document.getElementById("prices-row");
+    if (priceRow) {
+      priceRow.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-  };
+  }
+};
 
 
   /// populate 
@@ -768,6 +771,75 @@ const NewRecommendation = () => {
       console.error("Track failed:", err?.response?.data || err);
     }
   };
+
+  // Add this helper function outside or inside your component
+const getPriceError = (field: string, currentForm: any): string | null => {
+  const action = currentForm.action;
+
+  // Group 1: Top Switched Row
+  const eLow = parseFloat(currentForm.entryLow) || 0;
+  const t2 = parseFloat(currentForm.target2) || 0;
+  const sl2 = parseFloat(currentForm.stopLoss2) || 0;
+
+  // Group 2: Bottom Switched Row
+  const eUpper = parseFloat(currentForm.entryUpper) || 0;
+  const t3 = parseFloat(currentForm.target3) || 0;
+  const sl3 = parseFloat(currentForm.stopLoss3) || 0;
+
+  // --- BUY LOGIC ---
+  if (action === "BUY") {
+    // Top Row: SL2 < Lower Entry < T2
+    if (field === "entryLow") {
+      if (t2 && eLow >= t2) return "Must be < T2";
+      if (sl2 && eLow <= sl2) return "Must be > SL2";
+    }
+    if (field === "target2" && t2 <= eLow && eLow !== 0) return "T2 must be > Lower Entry";
+    if (field === "stopLoss2" && sl2 >= eLow && eLow !== 0) return "SL2 must be < Lower Entry";
+
+    // Bottom Row: SL3 < Upper Entry < T3
+    if (field === "entryUpper") {
+      if (t3 && eUpper >= t3) return "Must be < T3";
+      if (sl3 && eUpper <= sl3) return "Must be > SL3";
+    }
+    if (field === "target3" && t3 <= eUpper && eUpper !== 0) return "T3 must be > Upper Entry";
+    if (field === "stopLoss3" && sl3 >= eUpper && eUpper !== 0) return "SL3 must be < Upper Entry";
+  } 
+  
+  // --- SELL LOGIC ---
+  else {
+    // Top Row: T2 < Lower Entry < SL2
+    if (field === "entryLow") {
+      if (t2 && eLow <= t2) return "Must be > T2";
+      if (sl2 && eLow >= sl2) return "Must be < SL2";
+    }
+    if (field === "target2" && t2 >= eLow && eLow !== 0) return "T2 must be < Lower Entry";
+    if (field === "stopLoss2" && sl2 <= eLow && eLow !== 0) return "SL2 must be > Lower Entry";
+
+    // Bottom Row: T3 < Upper Entry < SL3
+    if (field === "entryUpper") {
+      if (t3 && eUpper <= t3) return "Must be > T3";
+      if (sl3 && eUpper >= sl3) return "Must be < SL3";
+    }
+    if (field === "target3" && t3 >= eUpper && eUpper !== 0) return "T3 must be < Upper Entry";
+    if (field === "stopLoss3" && sl3 <= eUpper && eUpper !== 0) return "SL3 must be > Upper Entry";
+  }
+
+  // --- MAIN ROW (Entry, Target, StopLoss) ---
+  const entry = parseFloat(currentForm.entry) || 0;
+  const t1 = parseFloat(currentForm.target) || 0;
+  const sl1 = parseFloat(currentForm.stopLoss) || 0;
+
+  if (action === "BUY") {
+    if (field === "target" && t1 <= entry && entry !== 0) return "T1 must be > Entry";
+    if (field === "stopLoss" && sl1 >= entry && entry !== 0) return "SL1 must be < Entry";
+  } else {
+    if (field === "target" && t1 >= entry && entry !== 0) return "T1 must be < Entry";
+    if (field === "stopLoss" && sl1 <= entry && entry !== 0) return "SL1 must be > Entry";
+  }
+
+  return null;
+};
+
   return (
     <Box
       sx={{
@@ -1034,144 +1106,183 @@ const NewRecommendation = () => {
         </Box>
 
         {/* Prices Row */}
-        <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1, mb: 1 }}>
-          <TextField required label="Entry" size="small" type="number" value={form.entry} onChange={handlePriceChange("entry")} sx={{ ...transparentInputSx, flex: 1 }} />
-          <TextField required label="Target" size="small" type="number" value={form.target} onChange={handlePriceChange("target")} sx={{ ...transparentInputSx, flex: 1 }} />
-          <TextField required label="Stop Loss" size="small" type="number" value={form.stopLoss} onChange={handlePriceChange("stopLoss")} sx={{ ...transparentInputSx, flex: 1 }} />
-        </Box>
+<Box 
+  id="prices-row" 
+  sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1, mb: 1 }}
+>
+  {(["entry", "target", "stopLoss"] as const).map((field) => {
+    const errorMsg = getPriceError(field, form);
+    const label = field === "entry" ? "Entry" : field === "target" ? "Target" : "Stop Loss";
+
+    return (
+      <TextField
+        key={field}
+        required
+        label={label}
+        size="small"
+        type="number"
+        value={form[field]}
+        onChange={handlePriceChange(field)}
+        // Only shows red if validation was attempted and failed
+        error={!!errorMsg && wasValidated} 
+        sx={{ ...transparentInputSx, flex: 1 }}
+        InputProps={{
+          endAdornment: errorMsg && wasValidated ? (
+            <InputAdornment position="end">
+              <Tooltip title={errorMsg} arrow placement="top">
+                <ErrorOutlineIcon color="error" sx={{ cursor: "pointer", fontSize: '1.1rem' }} />
+              </Tooltip>
+            </InputAdornment>
+          ) : null,
+        }}
+      />
+    );
+  })}
+</Box>
 
         {/* Switched Options Row */}
         <Box
+  sx={{
+    display: "flex",
+    flexDirection: { xs: "column", md: "row" },
+    justifyContent: "space-between",
+    mb: 1,
+    gap: { xs: 2, md: 1.5 },
+  }}
+>
+  {[
+    { label: "Range", field: "rangeEnabled" as const, p1: "Lower Entry", p2: "Upper Entry", v1: "entryLow" as const, v2: "entryUpper" as const },
+    { label: "Secondary Target", field: "secondaryTargetEnabled" as const, p1: "T2", p2: "T3", v1: "target2" as const, v2: "target3" as const },
+    { label: "Stop Loss 2", field: "stopLoss2Enabled" as const, p1: "SL2", p2: "SL3", v1: "stopLoss2" as const, v2: "stopLoss3" as const },
+  ].map((cfg) => {
+    const isActive = form[cfg.field];
+
+    return (
+      <Box
+        key={cfg.label}
+        sx={{
+          textAlign: "center",
+          flex: 1,
+          border: "1px solid rgba(0,0,0,0.08)",
+          borderRadius: 2,
+          p: 1.5,
+          backgroundColor: isActive ? "rgba(25, 118, 210, 0.02)" : "transparent",
+          transition: "all 0.2s ease",
+        }}
+      >
+        {/* Header with Switch */}
+        <Box
           sx={{
             display: "flex",
-            flexDirection: { xs: "column", md: "row" },
-            justifyContent: "space-between",
-            mb: 1,
-            gap: { xs: 2, md: 1.5 },
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 1,
+            mb: 1.5,
           }}
         >
-          {[
-            { label: "Range", field: "rangeEnabled" as const, p1: "Lower Entry", p2: "Upper Entry", v1: "entryLow" as const, v2: "entryUpper" as const },
-            { label: "Secondary Target", field: "secondaryTargetEnabled" as const, p1: "T2", p2: "T3", v1: "target2" as const, v2: "target3" as const },
-            { label: "Stop Loss 2", field: "stopLoss2Enabled" as const, p1: "SL2", p2: "SL3", v1: "stopLoss2" as const, v2: "stopLoss3" as const },
-          ].map((cfg) => {
-            const isActive = form[cfg.field];
+          <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: isActive ? "primary.main" : "text.secondary" }}>
+            {cfg.label}
+          </Typography>
+          <Switch
+            size="small"
+            checked={isActive}
+            onChange={() => handleToggle(cfg.field)}
+          />
+        </Box>
 
-            return (
-              <Box
-                key={cfg.label}
+        {/* Inputs Column */}
+        <Box 
+          sx={{ 
+            display: "flex", 
+            flexDirection: "column", 
+            gap: 1.5, 
+            justifyContent: "center",
+            alignItems: "center" 
+          }}
+        >
+          {isActive ? (
+            <>
+              {[
+                { id: cfg.v1, placeholder: cfg.p1 },
+                { id: cfg.v2, placeholder: cfg.p2 }
+              ].map((input) => {
+                const errorMsg = getPriceError(input.id, form);
+                return (
+                  <TextField
+                    key={input.id}
+                    value={form[input.id]}
+                    onChange={handlePriceChange(input.id)}
+                    placeholder={input.placeholder}
+                    size="small"
+                    variant="outlined"
+                    error={!!errorMsg && wasValidated}
+                    sx={{
+                      width: "100%",
+                      "& .MuiInputBase-input": {
+                        py: 1,
+                        fontSize: "0.7rem",
+                        textAlign: "center",
+                      },
+                    }}
+                    InputProps={{
+                      endAdornment: errorMsg && wasValidated ? (
+                        <InputAdornment position="end">
+                          <Tooltip title={errorMsg} arrow placement="top">
+                            <ErrorOutlineIcon color="error" sx={{ fontSize: '1rem' }} />
+                          </Tooltip>
+                        </InputAdornment>
+                      ) : null,
+                    }}
+                  />
+                );
+              })}
+            </>
+          ) : (
+            <>
+              {/* Stacked Disabled Placeholders */}
+              <Button
+                disabled
+                fullWidth
+                size="small"
+                variant="outlined"
                 sx={{
-                  textAlign: "center",
-                  flex: 1,
-                  border: { xs: "1px solid rgba(0,0,0,0.1)", md: "none" },
-                  borderRadius: 1,
-                  p: 1,
+                  py: 0.5,
+                  fontSize: "0.65rem",
+                  height: 32,
+                  backgroundColor: "#f9fafb",
+                  borderColor: "#f3f4f6",
+                  color: "#9ca3af !important",
+                  textTransform: "none",
+                  borderStyle: "dashed"
                 }}
               >
-                {/* Header */}
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 1,
-                    mb: 1,
-                  }}
-                >
-                  <Typography sx={{ fontSize: "0.75rem", fontWeight: 700 }}>
-                    {cfg.label}
-                  </Typography>
-                  <Switch
-                    size="small"
-                    checked={isActive}
-                    onChange={() => handleToggle(cfg.field)}
-                  />
-                </Box>
-
-                {/* Inputs */}
-                <Box sx={{ display: "flex", gap: 1, justifyContent: "center" }}>
-                  {isActive ? (
-                    <>
-                      <TextField
-                        value={form[cfg.v1]}
-                        onChange={handlePriceChange(cfg.v1)}
-                        placeholder={cfg.p1}
-                        size="small"
-                        variant="outlined"
-                        sx={{
-                          flex: 1,
-                          "& .MuiInputBase-input": {
-                            py: 1,
-                            fontSize: "0.7rem",
-                            textAlign: "center",
-                          },
-                        }}
-                      />
-                      <TextField
-                        value={form[cfg.v2]}
-                        onChange={handlePriceChange(cfg.v2)}
-                        placeholder={cfg.p2}
-                        size="small"
-                        variant="outlined"
-                        sx={{
-                          flex: 1,
-                          "& .MuiInputBase-input": {
-                            py: 1,
-                            fontSize: "0.7rem",
-                            textAlign: "center",
-                          },
-                        }}
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        sx={{
-                          py: 0,
-                          fontSize: "0.6rem",
-                          flex: 1,
-                          height: 24,
-                          color: "#9ca3af",
-                          borderColor: "#e5e7eb",
-                          backgroundColor: "#e1e6eaf7",
-                          textTransform: "none",
-                          "&:hover": {
-                            backgroundColor: "#f3f4f6",
-                            borderColor: "#d1d5db",
-                          },
-                        }}
-                      >
-                        Disabled
-                      </Button>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        sx={{
-                          py: 0,
-                          fontSize: "0.6rem",
-                          flex: 1,
-                          height: 24,
-                          color: "#9ca3af",
-                          borderColor: "#e5e7eb",
-                          backgroundColor: "#e1e6eaf7",
-                          textTransform: "none",
-                          "&:hover": {
-                            backgroundColor: "#f3f4f6",
-                            borderColor: "#d1d5db",
-                          },
-                        }}
-                      >
-                        Disabled
-                      </Button>
-                    </>
-                  )}
-                </Box>
-              </Box>
-            );
-          })}
+                Disabled
+              </Button>
+              <Button
+                disabled
+                fullWidth
+                size="small"
+                variant="outlined"
+                sx={{
+                  py: 0.5,
+                  fontSize: "0.65rem",
+                  height: 32,
+                  backgroundColor: "#f9fafb",
+                  borderColor: "#f3f4f6",
+                  color: "#9ca3af !important",
+                  textTransform: "none",
+                  borderStyle: "dashed"
+                }}
+              >
+                Disabled
+              </Button>
+            </>
+          )}
         </Box>
+      </Box>
+    );
+  })}
+</Box>
 
         {/* Holding period & Rationale Container */}
         <Box
@@ -1387,11 +1498,12 @@ const NewRecommendation = () => {
           }}
         >
           <Button
-            variant="contained"
-            onClick={handleSubmit}
-          >
-            {isErrataMode ? "Create Errata" : "Publish Call"}
-          </Button>
+  variant="contained"
+  onClick={validateAndPublish} // Hits validation first
+  sx={{ fontWeight: 700, px: 4 }}
+>
+  {isErrataMode ? "Create Errata" : "Publish Call"}
+</Button>
 
           <Button
             variant="outlined"

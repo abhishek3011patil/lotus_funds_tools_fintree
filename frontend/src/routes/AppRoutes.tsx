@@ -36,6 +36,9 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import { ExceltoJSONTool } from "../tools/ExceltoJSONtool";
 import LoginFormAdmin from "../common/LoginFormAdmin";
 
+// NewPasswordSet Route
+import NewPassword from "../common/NewPassword";
+
 const AppRoutes = () => {
   return (
     <Routes>
@@ -152,6 +155,10 @@ s      {/* --- 4. Admin Layout (ADMIN ONLY) --- */}
 
       {/* Catch-all for 404s */}
       <Route path="*" element={<Navigate to="/" replace />} />
+
+      {/*NewPassword Route*/}
+      <Route path="setpassword" element={<NewPassword/>}/>
+      
     </Routes>
   );
 }
