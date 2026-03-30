@@ -162,3 +162,119 @@ export const verifyTelegramUser = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ error: "Verification failed" });
   }
 };
+
+/* ─── CRUD: TELEGRAM PARTICIPANTS (telegram_users) ─────────────── */
+
+export const getTelegramParticipant = async (req: AuthRequest, res: Response) => {
+  try {
+    const telegram_user_id = req.params.telegram_user_id;
+
+    if (!telegram_user_id) {
+      return res.status(400).json({ error: "telegram_user_id is required" });
+    }
+
+    const result = await pool.query(
+      `SELECT telegram_user_id, telegram_client_name
+       FROM telegram_users
+       WHERE telegram_user_id = $1`,
+      [telegram_user_id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Telegram participant not found" });
+    }
+
+    const row = result.rows[0];
+    return res.status(200).json({
+      telegram_id: row.telegram_user_id,
+      telegram_client_name: row.telegram_client_name,
+    });
+  } catch (error: any) {
+    console.error("getTelegramParticipant error:", error);
+    return res.status(500).json({ error: "Server error", detail: error?.message });
+  }
+};
+
+export const updateTelegramParticipant = async (req: AuthRequest, res: Response) => {
+  try {
+    const telegram_user_id = req.params.telegram_user_id;
+    const { telegram_client_name } = req.body as {
+      telegram_client_name?: string;
+    };
+
+    if (!telegram_user_id) {
+      return res.status(400).json({ error: "telegram_user_id is required" });
+    }
+
+    if (telegram_client_name === undefined) {
+      return res.status(400).json({ error: "telegram_client_name is required" });
+    }
+
+    const result = await pool.query(
+      `UPDATE telegram_users
+       SET telegram_client_name = $1
+       WHERE telegram_user_id = $2
+       RETURNING telegram_user_id, telegram_client_name`,
+      [telegram_client_name, telegram_user_id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Telegram participant not found" });
+    }
+
+    const row = result.rows[0];
+    return res.status(200).json({
+      telegram_id: row.telegram_user_id,
+      telegram_client_name: row.telegram_client_name,
+    });
+  } catch (error: any) {
+    console.error("updateTelegramParticipant error:", error);
+    return res.status(500).json({ error: "Server error", detail: error?.message });
+  }
+};
+
+export const deleteTelegramParticipant = async (req: AuthRequest, res: Response) => {
+  try {
+    const telegram_user_id = req.params.telegram_user_id;
+
+    if (!telegram_user_id) {
+      return res.status(400).json({ error: "telegram_user_id is required" });
+    }
+
+    const result = await pool.query(
+      `DELETE FROM telegram_users
+       WHERE telegram_user_id = $1`,
+      [telegram_user_id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Telegram participant not found" });
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (error: any) {
+    console.error("deleteTelegramParticipant error:", error);
+    return res.status(500).json({ error: "Server error", detail: error?.message });
+  }
+};
+
+/* ─── LIST: TELEGRAM PARTICIPANTS (telegram_users) ───────────── */
+export const getTelegramParticipants = async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT telegram_user_id, telegram_client_name
+       FROM telegram_users
+       ORDER BY telegram_client_name ASC NULLS LAST`
+    );
+
+    const participants = result.rows.map((row: any) => ({
+      telegram_id: row.telegram_user_id,
+      telegram_client_name: row.telegram_client_name || "",
+    }));
+
+    return res.status(200).json({ participants });
+  } catch (error: any) {
+    console.error("getTelegramParticipants error:", error);
+    return res.status(500).json({ error: "Server error", detail: error?.message });
+  }
+};
