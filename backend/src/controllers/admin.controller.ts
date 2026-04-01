@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import crypto from "crypto";
 import { pool } from "../db";
 import { sendApprovalMail } from "../config/mailer";
+import bcrypt from "bcrypt";
 
 export const approveUser = async (req: Request, res: Response) => {
     console.log("Approve API HIT");
@@ -31,28 +32,36 @@ export const approveUser = async (req: Request, res: Response) => {
 
     /* ================= 2. CHECK IF USER EXISTS ================= */
 
-    const existingUser = await pool.query(
-      `SELECT id FROM users WHERE id = $1`,
-      [ra.user_id]
-    );
+const existingUser = await pool.query(
+  `SELECT id FROM users WHERE email = $1`,
+  [ra.email]
+);
 
-    /* ================= 3. INSERT USER IF NOT EXISTS ================= */
+/* ================= 3. INSERT USER IF NOT EXISTS ================= */
 
-    if (existingUser.rows.length === 0) {
-      await pool.query(
-        `INSERT INTO users 
-         (id, name, email, username, role, status, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-        [
-          ra.user_id,
-          `${ra.first_name} ${ra.surname}`,
-          ra.email,
-          ra.email, // username = email
-          "RA",
-          "inactive"
-        ]
-      );
-    }
+if (existingUser.rows.length === 0) {
+  const username = `${ra.first_name}${ra.surname}`
+    .toLowerCase()
+    .replace(/\s+/g, "");
+
+  // ✅ temporary password (will be replaced after OTP)
+  const tempPassword = await bcrypt.hash("temp123", 10);
+
+  await pool.query(
+    `INSERT INTO users 
+     (name, email, username, password_hash, role, status, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+    [
+      ra.user_id,
+      `${ra.first_name} ${ra.surname}`,
+      ra.email,
+      username,
+      tempPassword, // ✅ FIX
+      "RESEARCH_ANALYST",
+      "inactive"
+    ]
+  );
+}
 
     /* ================= 4. GENERATE TOKEN ================= */
 
@@ -62,14 +71,13 @@ export const approveUser = async (req: Request, res: Response) => {
     /* ================= 5. UPDATE USERS ================= */
 
     await pool.query(
-      `UPDATE users
-       SET reset_token = $1,
-           token_expiry = $2,
-           updated_at = NOW()
-       WHERE id = $3`,
-      [token, expiry, ra.user_id]
-    );
-
+  `UPDATE users
+   SET reset_token = $1,
+       token_expiry = $2,
+       updated_at = NOW()
+   WHERE email = $3`,
+  [token, expiry, ra.email]
+);
     /* ================= 6. UPDATE RA STATUS ================= */
 
     await pool.query(

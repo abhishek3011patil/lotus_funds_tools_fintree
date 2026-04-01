@@ -268,40 +268,55 @@ export const approveRegistration = async (req: Request, res: Response) => {
 
 export const rejectRegistration = async (req: Request, res: Response) => {
   try {
-
     const { id } = req.params;
     const { reason } = req.body;
 
     if (!reason) {
-      return res.status(400).json({
-        message: "Rejection reason is required",
-      });
+      return res.status(400).json({ message: "Rejection reason required" });
     }
 
-    const result = await pool.query(
+    /* ================= 1. GET RA DETAILS ================= */
+
+    const raRes = await pool.query(
+      `SELECT email FROM ra_details WHERE id = $1`,
+      [id]
+    );
+
+    if (raRes.rows.length === 0) {
+      return res.status(404).json({ message: "RA not found" });
+    }
+
+    const ra = raRes.rows[0];
+
+    /* ================= 2. UPDATE USER USING EMAIL ================= */
+
+    await pool.query(
+      `UPDATE users 
+       SET status = 'rejected' 
+       WHERE email = $1`,
+      [ra.email]
+    );
+
+    /* ================= 3. UPDATE RA STATUS ================= */
+
+    await pool.query(
       `UPDATE ra_details
-       SET status='rejected',
-           rejection_reason=$1
-       WHERE id=$2
-       RETURNING id,status,rejection_reason`,
+       SET status = 'rejected',
+           rejection_reason = $1
+       WHERE id = $2`,
       [reason, id]
     );
 
-    if (result.rowCount === 0) {
-      return res.status(404).json({
-        message: "Registration not found",
-      });
-    }
-
-    res.status(200).json({
-      message: "Registration rejected",
-      data: result.rows[0],
+    return res.json({
+      success: true,
+      message: "User rejected successfully",
     });
 
-  } catch (error) {
-    console.error("Reject error:", error);
-    res.status(500).json({
-      message: "Server error",
+  } catch (error: any) {
+    console.error("Reject Error:", error.message);
+
+    return res.status(500).json({
+      message: error.message || "Internal server error",
     });
   }
 };

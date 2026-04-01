@@ -36,7 +36,7 @@ app.use(express.json());
 console.log("🔥 Admin route import:", adminRoutes);
 
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
-app.use("/api", authRoutes);
+//app.use("/api", authRoutes);
 app.use("/api", researchRoutes);
 //app.use("/api", debugRoutes);
 app.use("/api/auth", authRoutes);
