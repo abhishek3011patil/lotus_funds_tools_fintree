@@ -42,18 +42,15 @@ app.use("/api", researchRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/broker", brokerRoutes);
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
-app.use("/api/registration", registrationRoutes);
-<<<<<<< HEAD
+// app.use("/api/registration", registrationRoutes);
 // app.use("/api", telegramRoutes);
-app.use("/api/telegram", telegramRoutes);
-=======
+// app.use("/api/telegram", telegramRoutes);
 app.use("/api", telegramRoutes);
 app.use("/admin", adminRoutes);
 
->>>>>>> d9838f04fc3929acc30e4629d0b67f6ef38da0a9
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "OK" });
-});
+// app.get("/api/health", (_req, res) => {
+//   res.json({ status: "OK" });
+// });
 
 
 
