@@ -522,7 +522,7 @@ const AdminDashboard = () => {
                 <TextField
                   fullWidth
                   size="small"
-                  placeholder="Search by User ID or Username"
+                  placeholder="Search by Phone or Username"
                   value={participantSearchQuery}
                   onChange={(e) => setParticipantSearchQuery(e.target.value)}
                   sx={{ mb: 1 }}
@@ -541,7 +541,7 @@ const AdminDashboard = () => {
                   <Table size="small">
                     <TableHead>
                       <TableRow>
-                        <TableCell>User ID</TableCell>
+                        <TableCell>Phone</TableCell>
                         <TableCell>Username</TableCell>
                       </TableRow>
                     </TableHead>
