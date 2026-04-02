@@ -1,15 +1,28 @@
-import { Router } from "express";
-import { sendTelegram, verifyTelegramUser } from "../controllers/telegram.controller";
-import { authenticate } from "../middlewares/auth.middleware";
+import express from "express";
+import {
+  sendTelegramMessage,
+  sendBulkTelegramMessages,
+} from "../controllers/telegram.controller";
 
-const router = Router();
-console.log("🚀 Telegram routes file is running");
+const router = express.Router();
 
+<<<<<<< HEAD
 router.post("/send", authenticate, sendTelegram);
 router.post("/verify", authenticate, verifyTelegramUser);
 router.post("/save-user", authenticate, verifyTelegramUser);
 router.get("/test", (req, res) => {
   res.send("Telegram route working");
 });
+=======
+/**
+ * Send message to one user
+ */
+router.post("/send", sendTelegramMessage);
+
+/**
+ * Send bulk messages
+ */
+router.post("/send-bulk", sendBulkTelegramMessages);
+>>>>>>> telegram-changes
 
 export default router;

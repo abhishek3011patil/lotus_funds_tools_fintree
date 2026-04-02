@@ -11,7 +11,8 @@ export const getAllRegistrations = async (req: Request, res: Response) => {
   try {
     const result = await pool.query(`
       SELECT 
-        id,
+        rd.id,
+        rd.user_id,
         first_name,
         surname,
         mobile,
@@ -23,9 +24,12 @@ export const getAllRegistrations = async (req: Request, res: Response) => {
         nism_certificate,
         cancelled_cheque,
         status,
-        rejection_reason
-      FROM ra_details
-      ORDER BY created_at DESC
+        rejection_reason,
+        tu.telegram_user_id,
+        tu.telegram_client_name
+      FROM ra_details rd
+      LEFT JOIN telegram_users tu ON tu.user_id = rd.user_id
+      ORDER BY rd.created_at DESC
     `);
 
     res.status(200).json(result.rows);

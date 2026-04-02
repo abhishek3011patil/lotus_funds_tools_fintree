@@ -1,5 +1,5 @@
 const AdminRecommendations = () => {
-  return <div>Recommendations Page</div>;
+  return <h3>Admin Recommendations</h3>;
 };
 
 export default AdminRecommendations;

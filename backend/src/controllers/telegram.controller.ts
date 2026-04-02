@@ -1,47 +1,19 @@
-// telegram.controller.ts
-import { Response } from "express";
-import { pool } from "../db";
-import { AuthRequest } from "../middlewares/auth.middleware";
-import { RecommendationPayload, sendMessageSplit } from "../bot";
-import { bot } from "../bot";
+import { Request, Response } from "express";
+import { client } from "../telegramClient";
 
-/* ─── FORMAT MESSAGE ─────────────────────────────────────────────────── */
-function formatRecommendationMessage(data: RecommendationPayload): string {
-  let message = `📊 *New Recommendation*\n
-*Action:* ${data.action}
-*Symbol:* ${data.symbol}
-*Type:* ${data.callType}
-*Trade:* ${data.tradeType}\n`;
-
-  // ✅ Entry
-  if (data.entryLow && data.entryUpper) {
-    message += `\n*Entry Range:* ${data.entryLow} - ${data.entryUpper}`;
-  } else {
-    message += `\n*Entry:* ${data.entry}`;
-  }
-
-  // ✅ Targets
-  message += `\n*Target 1:* ${data.target}`;
-  if (data.target2) message += `\n*Target 2:* ${data.target2}`;
-  if (data.target3) message += `\n*Target 3:* ${data.target3}`;
-
-  // ✅ Stop Loss
-  message += `\n*Stop Loss:* ${data.stopLoss}`;
-  if (data.stopLoss2) message += `\n*SL 2:* ${data.stopLoss2}`;
-  if (data.stopLoss3) message += `\n*SL 3:* ${data.stopLoss3}`;
-
-  // ✅ Other
-  message += `\n\n*Rationale:* ${data.rationale}`;
-  message += `\n*Holding:* ${data.holding}`;
-
-  message += `\n\n#StockMarket #Trading`;
-
-  return message;
+/**
+ * Utility: sleep (for flood wait handling)
+ */
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/* ─── MAIN CONTROLLER ───────────────────────────────────────────────── */
-export const sendTelegram = async (req: AuthRequest, res: Response) => {
+/**
+ * Safe message sender (handles Telegram rate limits)
+ */
+async function safeSendMessage(userId: any, message: string) {
   try {
+<<<<<<< HEAD
     const data = req.body as RecommendationPayload;
     const raUserId = req.user?.id ?? data?.ra_user_id;
 
@@ -108,19 +80,37 @@ export const sendTelegram = async (req: AuthRequest, res: Response) => {
       tip: "Messages saved to DB and sent to active users",
     });
 
+=======
+    await client.sendMessage(userId, { message });
+    return { success: true };
+>>>>>>> telegram-changes
   } catch (err: any) {
-    console.error("🔥 Failed to send Telegram message:", err);
-    return res.status(500).json({ error: "Failed to send message", detail: err?.message });
+    console.error("Telegram Error:", err);
+
+    if (err.errorMessage?.includes("FLOOD_WAIT")) {
+      const seconds = parseInt(err.errorMessage.split("_").pop());
+      console.log(`⏳ Flood wait for ${seconds} seconds`);
+
+      await sleep(seconds * 1000);
+
+      // retry once
+      await client.sendMessage(userId, { message });
+      return { success: true, retried: true };
+    }
+
+    return { success: false, error: err.message };
   }
-};
+}
 
-/* ─── VERIFY & SAVE TELEGRAM USER ───────────────────────────── */
-
-export const verifyTelegramUser = async (req: AuthRequest, res: Response) => {
+/**
+ * Send message to a single user
+ * Body: { userId, message }
+ */
+export const sendTelegramMessage = async (req: Request, res: Response) => {
   try {
-    const { telegram_user_id, telegram_client_name } = req.body;
-    const userId = req.user?.id;
+    const { userId, message } = req.body;
 
+<<<<<<< HEAD
     if (!telegram_user_id) {
       return res.status(400).json({ error: "Telegram ID is required" });
     }
@@ -169,10 +159,34 @@ export const verifyTelegramUser = async (req: AuthRequest, res: Response) => {
     );
 
     return res.json({
-      success: true,
-      message: "Telegram user verified and saved",
-    });
+=======
+    if (!userId || !message) {
+      return res.status(400).json({
+        success: false,
+        message: "userId and message are required",
+      });
+    }
 
+    const result = await safeSendMessage(userId, message);
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send message",
+        error: result.error,
+      });
+    }
+
+    return res.status(200).json({
+>>>>>>> telegram-changes
+      success: true,
+      message: "Message sent successfully",
+      retried: result.retried || false,
+    });
+  } catch (error: any) {
+    console.error("Controller Error:", error);
+
+<<<<<<< HEAD
   } catch (err: any) {
   console.error("🔥 FULL ERROR:", err);
 
@@ -180,3 +194,67 @@ export const verifyTelegramUser = async (req: AuthRequest, res: Response) => {
     error: err.message || "Verification failed",
   });
 }}; 
+=======
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Send bulk messages (with delay)
+ * Body: { users: [userId1, userId2], message }
+ */
+export const sendBulkTelegramMessages = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { users, message } = req.body;
+
+    if (!users || !Array.isArray(users) || users.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "users array is required",
+      });
+    }
+
+    if (!message) {
+      return res.status(400).json({
+        success: false,
+        message: "message is required",
+      });
+    }
+
+    const results: any[] = [];
+
+    for (const userId of users) {
+      const result = await safeSendMessage(userId, message);
+
+      results.push({
+        userId,
+        ...result,
+      });
+
+      // 🔥 IMPORTANT: delay to avoid ban
+      await sleep(2000);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Bulk messages processed",
+      results,
+    });
+  } catch (error: any) {
+    console.error("Bulk Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+>>>>>>> telegram-changes
