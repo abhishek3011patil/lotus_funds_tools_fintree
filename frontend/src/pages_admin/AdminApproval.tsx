@@ -553,7 +553,7 @@ const handleApprove = async (id: string) => {
 
       {/* ================= BROKER TABLE ================= */}
 <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 6 }}>
-  <Typography variant="h5" fontWeight={600} color="primary">
+  <Typography variant="h5" fontWeight={600}>
     Broker Approval
   </Typography>
 
