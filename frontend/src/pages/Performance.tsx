@@ -197,31 +197,28 @@ const Performance: React.FC = () => {
     <Box sx={{}}>
 
 
-      <Box
-        sx={{
-          p: 3,
-          backgroundColor: "#fff"
-
-        }}
-      >
+      <Box sx={{ p: 3, backgroundColor: "#fff"}}>
         <Typography fontSize="1.625rem" fontWeight={700} mb={3}>
           Performance
         </Typography>
 
-        <Paper
-          sx={{
-            p: 2.5,
-            borderRadius: "0.1875rem",
-            border: "1px solid #eee",
-            backgroundColor: "#fff",
-            boxShadow: "none",
-            position: "relative",
-            filter: isComingSoon ? "blur(6px)" : "none",
-            pointerEvents: isComingSoon ? "none" : "auto",
-
-          }}
-        >
-          <Grid container spacing={2}
+        {/* 1. This is your main wrapper that defines the boundaries */}
+        <Box sx={{ position: "relative", width: "100%" }}>
+          {/* 2. The Paper (Blurred Content) */}
+  <Paper
+    sx={{
+      p: 2.5,
+      borderRadius: "0.1875rem",
+      border: "1px solid #eee",
+      backgroundColor: "#fff",
+      boxShadow: "none",
+      position: "relative", // Keeps the blur contained
+      overflow: "hidden",
+      filter: isComingSoon ? "blur(6px)" : "none",
+      pointerEvents: isComingSoon ? "none" : "auto",
+    }}
+  >
+    <Grid container spacing={2}
             sx={{
 
             }}>
@@ -289,37 +286,35 @@ const Performance: React.FC = () => {
 
 
           </Grid>
-
-
         </Paper>
 
-
+        {/* 3. The Overlay (Outside the Paper so it stays SHARP) */}
+  {isComingSoon && (
+    <Typography
+      sx={{
+        position: "absolute",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        fontSize: "1.8rem",
+        fontWeight: 700,
+        background: "#4F6EF7",
+        color: "#fff",
+        px: 3,
+        py: 1,
+        borderRadius: "999px",
+        zIndex: 30,
+        boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
+        whiteSpace: "nowrap", // Prevents text weirdness on zoom
+      }}
+    >
+      Coming Soon
+    </Typography>
+  )}
+</Box>
         <RecommendationHistory />
 
       </Box>
-      {/* 🔹 OVERLAY (NOT blurred) */}
-      {isComingSoon && (
-        <Typography
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            fontSize: "1.8rem",
-            fontWeight: 700,
-            background: "#4F6EF7",
-            color: "#fff",
-            px: 3,
-            py: 1,
-            borderRadius: "999px",
-            zIndex: 30,
-          }}
-        >
-          Coming Soon
-        </Typography>
-      )}
-
-
     </Box>
   );
 };
