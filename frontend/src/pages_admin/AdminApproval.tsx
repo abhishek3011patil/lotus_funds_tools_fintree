@@ -384,7 +384,7 @@ const handleApprove = async (id: string) => {
                     variant="outlined"
                     onClick={() => setSelectedRA(row)}
                   >
-                    View
+                    View Details
                   </Button>
                 </TableCell>
 
@@ -418,6 +418,7 @@ const handleApprove = async (id: string) => {
             width: 330,
             p: 2,
             borderRadius: 2,
+            zIndex: 1200,
           }}
         >
 
