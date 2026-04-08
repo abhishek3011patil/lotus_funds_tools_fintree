@@ -323,6 +323,7 @@ export const rejectRegistration = async (req: Request, res: Response) => {
       message: error.message || "Internal server error",
     });
   }
+  
 };
 /* ================= GET SINGLE REGISTRATION ================= */
 

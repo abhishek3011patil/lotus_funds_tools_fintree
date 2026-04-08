@@ -37,20 +37,13 @@ export const sendApprovalMail = async (
 
 /* ✅ ADD THIS FUNCTION */
 export const sendOtpMail = async (to: string, otp: string) => {
-  try {
-    console.log("Sending OTP to:", to);
-
-    const info = await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to,
-      subject: "Your OTP Code",
-      html: `<h2>Your OTP is: ${otp}</h2>`,
-    });
-
-    console.log("OTP email sent:", info.response);
-
-  } catch (error) {
-    console.error("OTP email error:", error);
-    throw error;
-  }
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to,
+    subject: "Your OTP Code",
+    html: `
+      <h2>Your OTP is: ${otp}</h2>
+      <p>This OTP will expire in 5 minutes.</p>
+    `,
+  });
 };
