@@ -84,7 +84,8 @@ const [selectedBroker, setSelectedBroker] = useState<AdminRow | null>(null);
         const data = await response.json();
 
         const formatted = data.map((item: any) => ({
-           id: item.user_id || item.id,
+           id: item.id,
+           type: "RA",
           name: `${item.first_name || ""} ${item.surname || ""}`,
           phone: item.mobile || "",
 
@@ -193,117 +194,120 @@ useEffect(() => {
 
   /* ================= FILE VIEW ================= */
 
-  const openFile = (file?: string) => {
+ const openFile = (file?: string) => {
+  if (!file) return alert("File not uploaded");
 
-    if (!file || file.trim() === "") {
-      alert("File not uploaded");
-      return;
+  // Handle multiple files (comma separated)
+  const files = file.split(",");
+
+  files.forEach((f) => {
+    const cleanFile = f.trim();
+    if (cleanFile) {
+      const url = `http://localhost:3000/uploads/${encodeURIComponent(cleanFile)}`;
+      window.open(url, "_blank");
     }
-
-    const url = `http://localhost:3000/uploads/${encodeURIComponent(file)}`;
-
-    window.open(url, "_blank");
-  };
-
+  });
+};
   /* ================= APPROVE ================= */
 
 const handleApprove = async (id: string, type: "RA" | "BROKER") => {
   try {
-    const res = await fetch(
-      "http://localhost:3000/admin/approve-user",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId: id,
-          type,
-        }),
-      }
-    );
+    const res = await fetch("http://localhost:3000/admin/approve-user", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ userId: id, type }),
+    });
 
     const data = await res.json();
 
-    if (res.ok) {
-      alert("Approved & Email Sent ✅");
+    // If backend says success is false (duplicate email etc)
+    if (!res.ok || data.success === false) {
+      alert(data.message || "Approval failed ❌");
+      return; // stop further execution
+    }
 
-      if (type === "RA") {
-        setRows(prev =>
-          prev.map(r => r.id === id ? { ...r, status: "Approved" } : r)
-        );
-        setSelectedRA(null);
-      } else {
-        setBrokerRows(prev =>
-          prev.map(b => b.id === id ? { ...b, status: "Approved" } : b)
-        );
-        setSelectedBroker(null);
-      }
+    // ✅ Success: user approved
+    alert("Approved & Email Sent ✅");
 
+    if (type === "RA") {
+      setRows(prev =>
+        prev.map(r => (r.id === id ? { ...r, status: "Approved" } : r))
+      );
+      setSelectedRA(null);
     } else {
-      alert(data.message || "Failed");
+      setBrokerRows(prev =>
+        prev.map(b => (b.id === id ? { ...b, status: "Approved" } : b))
+      );
+      setSelectedBroker(null);
     }
 
   } catch (error) {
     console.error(error);
+    alert("Server error while approving ❌");
   }
 };
 
-  /* ================= EDIT ================= */
+/* ================= Edit ================= */
+const handleEdit = (id: string, type: "RA" | "BROKER") => {
+  navigate(`/admin/edit/${type}/${id}`);
+};
 
-  const handleEdit = (id: string) => {
-    navigate(`/admin/edit-ra/${id}`);
-  };
+/* ================= REJECT ================= */
+const handleReject = async (id: string, type: "RA" | "BROKER") => {
+  if (!rejectReason || rejectReason.trim() === "") {
+    alert("Please enter a rejection reason ❌");
+    return;
+  }
 
-  /* ================= REJECT ================= */
+  try {
+    const res = await fetch(
+      `http://localhost:3000/api/registration/reject/${type.toLowerCase()}/${id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reason: rejectReason }),
+      }
+    );
 
-  const handleReject = async (id: string) => {
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error("Invalid JSON response");
+    }
 
-    if (!rejectReason.trim()) {
-      alert("Please enter rejection reason");
+    console.log("Reject response:", data);
+
+    if (!res.ok || data.success === false) {
+      alert(data.message);
       return;
     }
 
-    try {
+    alert(data.message || "Rejected successfully ❌");
 
-      const res = await fetch(
-        `http://localhost:3000/api/registration/reject/${id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            reason: rejectReason,
-          }),
-        }
+    if (type === "RA") {
+      setRows(prev =>
+        prev.map(r => (r.id === id ? { ...r, status: "Rejected" } : r))
       );
-
-      const data = await res.json();
-
-      if (res.ok) {
-
-        alert("User Rejected Successfully");
-
-        setRows((prev) =>
-          prev.map((r) =>
-            r.id === id ? { ...r, status: "Rejected" } : r
-          )
-        );
-
-        setSelectedRA(null);
-        setRejectReason("");
-
-      } else {
-
-        alert(data.message || "Reject failed");
-      }
-
-    } catch (error) {
-      console.error(error);
+      setSelectedRA(null);
+    } else {
+      setBrokerRows(prev =>
+        prev.map(b => (b.id === id ? { ...b, status: "Rejected" } : b))
+      );
+      setSelectedBroker(null);
     }
-  };
 
+    setRejectReason("");
+
+  } catch (error) {
+    console.error("Reject Error:", error);
+    alert("Server error while rejecting ❌");
+  }
+};
   /* ================= UI ================= */
 
   return (
@@ -372,12 +376,15 @@ const handleApprove = async (id: string, type: "RA" | "BROKER") => {
 
                 <TableCell align="right">
                   <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => setSelectedRA(row)}
-                  >
-                    View Details
-                  </Button>
+  size="small"
+  variant="outlined"
+  onClick={() => {
+    setSelectedRA(row);
+    setSelectedBroker(null); // ✅ VERY IMPORTANT FIX
+  }}
+>
+  View Details
+</Button>
                 </TableCell>
 
               </TableRow>
@@ -475,13 +482,13 @@ const handleApprove = async (id: string, type: "RA" | "BROKER") => {
               Reject
             </Button>
             <Button
-              variant="contained"
-              color="warning"
-              fullWidth
-              onClick={() => handleEdit(selectedRA.id)}
-            >
-              Edit
-            </Button>
+  variant="contained"
+  color="warning"
+  fullWidth
+  onClick={() => handleEdit(selectedRA.id, "RA")}
+>
+  Edit
+</Button>
 
           </Box>
 
@@ -510,9 +517,13 @@ const handleApprove = async (id: string, type: "RA" | "BROKER") => {
     if (!selectedId) return;
 
     if (confirmType === "approve") {
-      handleApprove(selectedId, "RA");  // ✅ FIX HERE
-    } else {
-      handleReject(selectedId);
+  if (selectedRA) {
+    handleApprove(selectedId, "RA");
+  } else if (selectedBroker) {
+    handleApprove(selectedId, "BROKER");
+  }
+} else {
+      handleReject(selectedId, selectedRA ? "RA" : "BROKER");
     }
 
     setConfirmOpen(false);
@@ -596,7 +607,10 @@ const handleApprove = async (id: string, type: "RA" | "BROKER") => {
                 <Button
                   size="small"
                   variant="outlined"
-                  onClick={() => setSelectedBroker(broker)}
+                  onClick={() => {
+  setSelectedBroker(broker);
+  setSelectedRA(null); // ✅ avoid confusion
+}}
                 >
                   View Details
                 </Button>
@@ -668,39 +682,54 @@ const handleApprove = async (id: string, type: "RA" | "BROKER") => {
   ))}
 </Box>
 
-    <Box sx={{ display: "flex", gap: 1, mt: 3 }}>
-      <Button
-  variant="contained"
-  color="success"
-  fullWidth
-  onClick={() => handleApprove(selectedBroker.id, "BROKER")}
->
-  Approve
-</Button>
-      <Button
-  variant="contained"
-  color="error"
-  fullWidth
-  onClick={() => {
-    if (!selectedBroker) return;
-    handleReject(selectedBroker.id);
-  }}
->
-  Reject
-</Button>
 <TextField
-            fullWidth
-            multiline
-            rows={2}
-            placeholder="Rejection Reason"
-            value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)}
-            sx={{ mt: 2 }}
-          />
-    </Box>
-  </Paper>
-)}
+  fullWidth
+  multiline
+  rows={2}
+  placeholder="Rejection Reason"
+  value={rejectReason}
+  onChange={(e) => setRejectReason(e.target.value)}
+  sx={{ mt: 2 }}
+/>
 
+   <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
+  <Button
+    variant="contained"
+    color="success"
+    fullWidth
+    onClick={() => {
+      setSelectedId(selectedBroker.id);
+      setConfirmType("approve");
+      setConfirmOpen(true);
+    }}
+  >
+    Approve
+  </Button>
+      <Button
+    variant="contained"
+    color="error"
+    fullWidth
+    onClick={() => {
+      setSelectedId(selectedBroker.id);
+      setConfirmType("reject");
+      setConfirmOpen(true);
+    }}
+  >
+    Reject
+  </Button>
+
+   <Button
+  variant="contained"
+  color="warning"
+  fullWidth
+  onClick={() => handleEdit(selectedBroker.id, "BROKER")}
+>
+  Edit
+</Button>
+
+</Box>
+  </Paper> 
+)}
     </Box>
   );
 };

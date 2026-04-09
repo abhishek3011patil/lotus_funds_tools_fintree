@@ -45,7 +45,7 @@ export const getAllRegistrations = async (req: Request, res: Response) => {
 
 export const registerRA = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = null;
+    const userId = req.user?.id;
 
     if (!userId) {
       return res.status(401).json({
@@ -268,63 +268,90 @@ export const approveRegistration = async (req: Request, res: Response) => {
 };
 
 
-/* ================= REJECT REGISTRATION ================= */
+/* ================= REJECT USER (RA/BROKER) ================= */
+export const rejectUser = async (req: Request, res: Response) => {
+  const client = await pool.connect();
 
-export const rejectRegistration = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const { id, type } = req.params;
     const { reason } = req.body;
 
-    if (!reason) {
-      return res.status(400).json({ message: "Rejection reason required" });
+    /* ================= VALIDATION ================= */
+    if (!id || !type) {
+      return res.status(400).json({ success: false, message: "ID and type are required" });
     }
 
-    /* ================= 1. GET RA DETAILS ================= */
+    if (!reason || reason.trim() === "") {
+      return res.status(400).json({ success: false, message: "Rejection reason required" });
+    }
 
-    const raRes = await pool.query(
-      `SELECT email FROM ra_details WHERE id = $1`,
+    const normalizedType = String(type).toLowerCase();
+    let table: "ra_details" | "broker_details";
+
+    if (normalizedType === "ra") table = "ra_details";
+    else if (normalizedType === "broker") table = "broker_details";
+    else return res.status(400).json({ success: false, message: "Invalid type" });
+
+    await client.query("BEGIN");
+
+    /* ================= FETCH SPECIFIC RECORD ================= */
+    const recordRes = await client.query(
+      `SELECT id, user_id FROM ${table} WHERE id = $1`,
       [id]
     );
 
-    if (raRes.rows.length === 0) {
-      return res.status(404).json({ message: "RA not found" });
+    if (recordRes.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ success: false, message: `${normalizedType.toUpperCase()} not found` });
     }
 
-    const ra = raRes.rows[0];
+    const record = recordRes.rows[0];
+    const userId = record.user_id;
 
-    /* ================= 2. UPDATE USER USING EMAIL ================= */
-
-    await pool.query(
-      `UPDATE users 
-       SET status = 'rejected' 
-       WHERE email = $1`,
-      [ra.email]
-    );
-
-    /* ================= 3. UPDATE RA STATUS ================= */
-
-    await pool.query(
-      `UPDATE ra_details
+    /* ================= REJECT THE RECORD ================= */
+    await client.query(
+      `UPDATE ${table}
        SET status = 'rejected',
            rejection_reason = $1
        WHERE id = $2`,
       [reason, id]
     );
 
-    return res.json({
+    /* ================= UPDATE THE USER (SAFE) ================= */
+    if (userId) {
+      const role = normalizedType === "ra" ? "RESEARCH_ANALYST" : "BROKER";
+
+      const userCheck = await client.query(
+        `SELECT id FROM users WHERE id = $1 AND role = $2`,
+        [userId, role]
+      );
+
+      if (userCheck && userCheck.rowCount && userCheck.rowCount === 1) {
+        await client.query(
+          `UPDATE users
+           SET status = 'REJECTED'
+           WHERE id = $1`,
+          [userId]
+        );
+      }
+    }
+
+    await client.query("COMMIT");
+
+    return res.status(200).json({
       success: true,
-      message: "User rejected successfully",
+      message: `${normalizedType.toUpperCase()} rejected successfully`
     });
 
-  } catch (error: any) {
-    console.error("Reject Error:", error.message);
-
-    return res.status(500).json({
-      message: error.message || "Internal server error",
-    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Reject Error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  } finally {
+    client.release();
   }
-  
 };
+
 /* ================= GET SINGLE REGISTRATION ================= */
 
 export const getRegistrationById = async (req: Request, res: Response) => {
@@ -353,6 +380,29 @@ export const getRegistrationById = async (req: Request, res: Response) => {
     });
   }
 };
+
+/* ================= Broker id  ================= */
+export const getBrokerById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `SELECT * FROM broker_details WHERE id = $1`,
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Broker not found" });
+    }
+
+    res.status(200).json(result.rows[0]);
+
+  } catch (error) {
+    console.error("Fetch broker error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 /* ================= UPDATE RA REGISTRATION ================= */
 
 export const updateRARegistration = async (req: AuthRequest, res: Response) => {
@@ -490,3 +540,136 @@ export const updateRARegistration = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+/* ================= UPDATE Broker REGISTRATION ================= */
+
+export const updateBroker = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+    const files = req.files as any;
+
+    const query = `
+      UPDATE broker_details SET
+        legal_name = $1,
+        trade_name = $2,
+        entity_type = $3,
+        incorporation_date = $4,
+        pan = $5,
+        cin = $6,
+        gstin = $7,
+        registered_address = $8,
+        correspondence_address = $9,
+        email = $10,
+        mobile = $11,
+        website = $12,
+        sebi_registration_no = $13,
+        registration_category = $14,
+        registration_date = $15,
+        registration_validity = $16,
+        membership_code = $17,
+        exchange_nse = $18,
+        exchange_bse = $19,
+        exchange_smi = $20,
+        exchange_ncdex = $21,
+        segment_cash = $22,
+        segment_fo = $23,
+        segment_currency = $24,
+        sebi_certificate = COALESCE($25, sebi_certificate),
+        exchange_certificates = COALESCE($26, exchange_certificates),
+        compliance_officer_name = $27,
+        compliance_designation = $28,
+        compliance_pan = $29,
+        compliance_mobile = $30,
+        net_worth = $31,
+        auditor_name = $32,
+        auditor_membership = $33,
+        appointment_letter = COALESCE($34, appointment_letter),
+        networth_certificate = COALESCE($35, networth_certificate),
+        financial_statements = COALESCE($36, financial_statements),
+        ca_certificate = COALESCE($37, ca_certificate),
+        authorized_person_name = $38,
+        authorized_person_pan = $39,
+        authorized_person_designation = $40,
+        authorized_person_email = $41,
+        authorized_person_aadhaar = $42,
+        authorized_person_mobile = $43,
+        no_disciplinary_action = $44,
+        no_suspension = $45,
+        no_criminal_case = $46,
+        agree_sebi_circulars = $47,
+        agree_code_of_conduct = $48
+      WHERE id = $49
+      RETURNING *
+    `;
+
+    const values = [
+      data.legal_name,
+      data.trade_name,
+      data.entity_type,
+      data.incorporation_date,
+      data.pan,
+      data.cin,
+      data.gstin,
+      data.registered_address,
+      data.correspondence_address,
+      data.email,
+      data.mobile,
+      data.website,
+      data.sebi_registration_no,
+      data.registration_category,
+      data.registration_date,
+      data.registration_validity,
+      data.membership_code,
+      data.exchange_nse,
+      data.exchange_bse,
+      data.exchange_smi,
+      data.exchange_ncdex,
+      data.segment_cash,
+      data.segment_fo,
+      data.segment_currency,
+      files?.sebi_certificate?.[0]?.filename || null,
+      files?.exchange_certificates?.[0]?.filename || null,
+      data.compliance_officer_name,
+      data.compliance_designation,
+      data.compliance_pan,
+      data.compliance_mobile,
+      data.net_worth,
+      data.auditor_name,
+      data.auditor_membership,
+      files?.appointment_letter?.[0]?.filename || null,
+      files?.networth_certificate?.[0]?.filename || null,
+      files?.financial_statements?.[0]?.filename || null,
+      files?.ca_certificate?.[0]?.filename || null,
+      data.authorized_person_name,
+      data.authorized_person_pan,
+      data.authorized_person_designation,
+      data.authorized_person_email,
+      data.authorized_person_aadhaar,
+      data.authorized_person_mobile,
+      data.no_disciplinary_action,
+      data.no_suspension,
+      data.no_criminal_case,
+      data.agree_sebi_circulars,
+      data.agree_code_of_conduct,
+      id
+    ];
+
+    const result = await pool.query(query, values);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Broker not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Broker updated successfully",
+      data: result.rows[0],
+    });
+
+  } catch (error) {
+    console.error("Update Broker Error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+

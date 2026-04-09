@@ -7,9 +7,11 @@ import {
   registerRA,
   getAllRegistrations,
   approveRegistration,
-  rejectRegistration,
+  rejectUser, 
   getRegistrationById,
-  updateRARegistration
+   getBrokerById,
+  updateRARegistration,
+   updateBroker 
 } from "../controllers/registration.controller";
 
 const router = express.Router();
@@ -31,19 +33,34 @@ const upload = multer({ storage });
 
 /* ================= RA REGISTRATION ================= */
 
-router.post(
-  "/register-ra",
+router.put(
+  "/edit/ra/:id",
   authenticate,
   upload.fields([
-    { name: "profileImage", maxCount: 1 },
-    { name: "sebiCert", maxCount: 1 },
-    { name: "sebiReceipt", maxCount: 1 },
-    { name: "nismCert", maxCount: 1 },
-    { name: "cancelledCheque", maxCount: 1 },
-    { name: "panCard", maxCount: 1 },
-    { name: "addressProofDoc", maxCount: 1 }
+    { name: "profile_image", maxCount: 1 },
+    { name: "pan_card", maxCount: 1 },
+    { name: "address_proof_document", maxCount: 1 },
+    { name: "sebi_certificate", maxCount: 1 },
+    { name: "sebi_receipt", maxCount: 1 },
+    { name: "nism_certificate", maxCount: 1 },
+    { name: "cancelled_cheque", maxCount: 1 },
   ]),
-  registerRA
+  updateRARegistration
+);
+
+// BROKER UPDATE
+router.put(
+  "/edit/broker/:id",
+  authenticate,
+  upload.fields([
+    { name: "sebi_certificate", maxCount: 1 },
+    { name: "exchange_certificates", maxCount: 1 },
+    { name: "appointment_letter", maxCount: 1 },
+    { name: "networth_certificate", maxCount: 1 },
+    { name: "financial_statements", maxCount: 1 },
+    { name: "ca_certificate", maxCount: 1 }
+  ]),
+  updateBroker
 );
 
 /* ================= ADMIN APIs ================= */
@@ -52,8 +69,11 @@ router.get("/all-registrations", getAllRegistrations);
 
 router.put("/approve/:id", approveRegistration);
 
-router.put("/reject/:id", rejectRegistration);
-router.get("/:id", getRegistrationById);
+//router.put("/reject/:id", rejectRegistration);
+router.put("/reject/:type/:id", rejectUser);
+//router.get("/:id", getRegistrationById);
+router.get("/ra/:id", getRegistrationById);
+router.get("/broker/:id", getBrokerById);
 
 /* ================= TEST ROUTE ================= */
 
