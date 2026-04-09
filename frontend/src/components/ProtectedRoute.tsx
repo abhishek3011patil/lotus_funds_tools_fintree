@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { JSX, useEffect, useState } from "react";
 import axios from "axios";
 
 interface Props {
@@ -8,22 +8,20 @@ interface Props {
 }
 
 const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
-  const [isValid, setIsValid] = useState<boolean | null>(null);
+  const [status, setStatus] = useState<"loading" | "unauth" | "forbidden" | "allowed">("loading");
   const location = useLocation();
 
-  // ✅ Public routes that do NOT require token
   const publicRoutes = ["/set-password"];
 
   if (publicRoutes.some((route) => location.pathname.startsWith(route))) {
-    return children; // allow freely
+    return children;
   }
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
 
     if (!token) {
-      setIsValid(false);
+      setStatus("unauth"); // ❌ not logged in
       return;
     }
 
@@ -31,22 +29,32 @@ const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
       .get(`${import.meta.env.VITE_API_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      .then(() => {
-        if (allowedRoles && !allowedRoles.includes(role || "")) {
-          setIsValid(false);
+      .then((res) => {
+        const userRole = res.data.role;
+
+        if (allowedRoles && !allowedRoles.includes(userRole)) {
+          setStatus("forbidden"); // ❌ wrong role
         } else {
-          setIsValid(true);
+          setStatus("allowed"); // ✅ correct
         }
       })
       .catch(() => {
         localStorage.clear();
-        setIsValid(false);
+        setStatus("unauth");
       });
   }, []);
 
-  if (isValid === null) return <div>Loading...</div>;
+  if (status === "loading") return <div>Loading...</div>;
 
-  return isValid ? children : <Navigate to="/login" replace />;
+  if (status === "unauth") {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (status === "forbidden") {
+    return <Navigate to="/" replace />; // ✅ redirect to dashboard
+  }
+
+  return children;
 };
 
 export default ProtectedRoute;

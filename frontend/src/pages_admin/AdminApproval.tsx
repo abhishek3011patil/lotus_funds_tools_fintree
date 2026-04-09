@@ -209,10 +209,8 @@ useEffect(() => {
 
   /* ================= APPROVE ================= */
 
-const handleApprove = async (id: string) => {
+const handleApprove = async (id: string, type: "RA" | "BROKER") => {
   try {
-    console.log("Calling API...");
-
     const res = await fetch(
       "http://localhost:3000/admin/approve-user",
       {
@@ -222,40 +220,34 @@ const handleApprove = async (id: string) => {
         },
         body: JSON.stringify({
           userId: id,
+          type,
         }),
       }
     );
 
-    console.log("Response received");
-
-    // ✅ SAFE PARSE (VERY IMPORTANT)
-    const text = await res.text();
-
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      console.error("Invalid JSON:", text);
-      alert("Server error");
-      return;
-    }
+    const data = await res.json();
 
     if (res.ok) {
-      alert("User Approved & Email Sent ✅");
+      alert("Approved & Email Sent ✅");
 
-      // ✅ UPDATE UI (IMPORTANT)
-      setRows((prev) =>
-        prev.map((r) =>
-          r.id === id ? { ...r, status: "Approved" } : r
-        )
-      );
+      if (type === "RA") {
+        setRows(prev =>
+          prev.map(r => r.id === id ? { ...r, status: "Approved" } : r)
+        );
+        setSelectedRA(null);
+      } else {
+        setBrokerRows(prev =>
+          prev.map(b => b.id === id ? { ...b, status: "Approved" } : b)
+        );
+        setSelectedBroker(null);
+      }
 
     } else {
-      alert(data.message || "Failed to approve");
+      alert(data.message || "Failed");
     }
 
   } catch (error) {
-    console.error("FETCH ERROR:", error);
+    console.error(error);
   }
 };
 
@@ -551,23 +543,23 @@ const paginatedBrokers = filteredBrokers.slice(
           </Button>
 
           <Button
-            variant="contained"
-            color={confirmType === "approve" ? "success" : "error"}
-            onClick={() => {
+  variant="contained"
+  color={confirmType === "approve" ? "success" : "error"}
+  onClick={() => {
 
-              if (!selectedId) return;
+    if (!selectedId) return;
 
-              if (confirmType === "approve") {
-                handleApprove(selectedId);
-              } else {
-                handleReject(selectedId);
-              }
+    if (confirmType === "approve") {
+      handleApprove(selectedId, "RA");  // ✅ FIX HERE
+    } else {
+      handleReject(selectedId);
+    }
 
-              setConfirmOpen(false);
-            }}
-          >
-            Yes
-          </Button>
+    setConfirmOpen(false);
+  }}
+>
+  Yes
+</Button>
 
         </DialogActions>
 
@@ -726,8 +718,34 @@ const paginatedBrokers = filteredBrokers.slice(
 </Box>
 
     <Box sx={{ display: "flex", gap: 1, mt: 3 }}>
-      <Button variant="contained" color="success" fullWidth>Approve</Button>
-      <Button variant="contained" color="error" fullWidth>Reject</Button>
+      <Button
+  variant="contained"
+  color="success"
+  fullWidth
+  onClick={() => handleApprove(selectedBroker.id, "BROKER")}
+>
+  Approve
+</Button>
+      <Button
+  variant="contained"
+  color="error"
+  fullWidth
+  onClick={() => {
+    if (!selectedBroker) return;
+    handleReject(selectedBroker.id);
+  }}
+>
+  Reject
+</Button>
+<TextField
+            fullWidth
+            multiline
+            rows={2}
+            placeholder="Rejection Reason"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            sx={{ mt: 2 }}
+          />
     </Box>
   </Paper>
 )}

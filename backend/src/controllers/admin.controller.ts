@@ -1,115 +1,102 @@
 import { Request, Response } from "express";
-import crypto from "crypto";
 import { pool } from "../db";
-import { sendApprovalMail } from "../config/mailer";
 import bcrypt from "bcrypt";
+import { sendApprovalMail } from "../config/mailer";
+import { v4 as uuidv4 } from "uuid";
+import crypto from "crypto";
 
 export const approveUser = async (req: Request, res: Response) => {
-    console.log("Approve API HIT");
   try {
-    const { userId } = req.body;
+    const { userId, type } = req.body;
 
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
+    if (!userId || !type) {
+      return res.status(400).json({ message: "userId and type required" });
     }
 
-    /* ================= 1. GET RA DETAILS ================= */
+    let userData: { id: string; name: string; email: string; role: string };
 
-    const raRes = await pool.query(
-      `SELECT user_id, first_name, surname, email 
-       FROM ra_details 
-       WHERE id = $1`,
-      [userId]
+    /* ================= GET DATA ================= */
+    if (type === "RA") {
+      const result = await pool.query(
+        `SELECT first_name, surname, email FROM ra_details WHERE id=$1`,
+        [userId]
+      );
+      if (result.rows.length === 0) return res.status(404).json({ message: "RA not found" });
+
+      const ra = result.rows[0];
+      userData = {
+        id: uuidv4(),
+        name: `${ra.first_name} ${ra.surname}`,
+        email: ra.email.trim().toLowerCase(),
+        role: "RESEARCH_ANALYST",
+      };
+
+    } else if (type === "BROKER") {
+      const result = await pool.query(
+        `SELECT legal_name, email FROM broker_details WHERE id=$1`,
+        [userId]
+      );
+      if (result.rows.length === 0) return res.status(404).json({ message: "Broker not found" });
+
+      const broker = result.rows[0];
+      userData = {
+        id: uuidv4(),
+        name: broker.legal_name,
+        email: broker.email.trim().toLowerCase(),
+        role: "BROKER",
+      };
+
+    } else {
+      return res.status(400).json({ message: "Invalid type" });
+    }
+
+    /* ================= CHECK IF USER EXISTS ================= */
+    const existingUser = await pool.query(
+      `SELECT id FROM users WHERE LOWER(TRIM(email))=$1`,
+      [userData.email]
     );
 
-    if (raRes.rows.length === 0) {
-      return res.status(404).json({ message: "RA not found" });
+    if (existingUser.rows.length > 0) {
+      // User already exists, block approval and stop email
+      console.log(`❌ DUPLICATE EMAIL BLOCKED: ${userData.email}`);
+      return res.status(400).json({
+        success: false,
+        message: `Email ${userData.email} already registered. Cannot approve again ❌`,
+      });
     }
 
-    const ra = raRes.rows[0];
+    /* ================= INSERT USER ================= */
+    const tempPassword = await bcrypt.hash("temp123", 10);
+    await pool.query(
+      `INSERT INTO users 
+        (id, name, email, username, password_hash, role, status, created_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())`,
+      [userData.id, userData.name, userData.email, userData.email.split("@")[0], tempPassword, userData.role, "inactive"]
+    );
 
-    console.log("RA EMAIL:", ra.email);
-
-    /* ================= 2. CHECK IF USER EXISTS ================= */
-
-const existingUser = await pool.query(
-  `SELECT id FROM users WHERE email = $1`,
-  [ra.email]
-);
-
-/* ================= 3. INSERT USER IF NOT EXISTS ================= */
-
-if (existingUser.rows.length === 0) {
-  const username = `${ra.first_name}${ra.surname}`
-    .toLowerCase()
-    .replace(/\s+/g, "");
-
-  // ✅ temporary password (will be replaced after OTP)
-  const tempPassword = await bcrypt.hash("temp123", 10);
-
-  await pool.query(
-    `INSERT INTO users 
-     (name, email, username, password_hash, role, status, created_at)
-     VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
-    [
-      ra.user_id,
-      `${ra.first_name} ${ra.surname}`,
-      ra.email,
-      username,
-      tempPassword, // ✅ FIX
-      "RESEARCH_ANALYST",
-      "inactive"
-    ]
-  );
-}
-
-    /* ================= 4. GENERATE TOKEN ================= */
-
+    /* ================= GENERATE RESET TOKEN ================= */
     const token = crypto.randomBytes(32).toString("hex");
-    const expiry = new Date(Date.now() + 60 * 60 * 1000);
-
-    /* ================= 5. UPDATE USERS ================= */
-
+    const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
     await pool.query(
-  `UPDATE users
-   SET reset_token = $1,
-       token_expiry = $2,
-       updated_at = NOW()
-   WHERE email = $3`,
-  [token, expiry, ra.email]
-);
-    /* ================= 6. UPDATE RA STATUS ================= */
-
-    await pool.query(
-      `UPDATE ra_details
-       SET status = 'approved'
-       WHERE user_id = $1`,
-      [ra.user_id]
+      `UPDATE users SET reset_token=$1, token_expiry=$2 WHERE email=$3`,
+      [token, expiry, userData.email]
     );
 
-    /* ================= 7. SEND EMAIL ================= */
+    /* ================= UPDATE STATUS IN DETAILS TABLE ================= */
+    if (type === "RA") {
+      await pool.query(`UPDATE ra_details SET status='approved' WHERE email=$1`, [userData.email]);
+    } else {
+      await pool.query(`UPDATE broker_details SET status='approved' WHERE email=$1`, [userData.email]);
+    }
 
+    /* ================= SEND EMAIL ================= */
     const link = `${process.env.FRONTEND_URL}/set-password?token=${token}`;
+    await sendApprovalMail(userData.email, userData.name, link);
 
-    await sendApprovalMail(
-      ra.email,
-      `${ra.first_name} ${ra.surname}`,
-      link
-    );
-
-    /* ================= RESPONSE ================= */
-
-    return res.json({
-      success: true,
-      message: "User approved and email sent",
-    });
+    return res.json({ success: true, message: `${type} approved and set-password email sent ✅` });
 
   } catch (error) {
     console.error("Approve Error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-    });
+    return res.status(500).json({ message: "Server error" });
   }
 };

@@ -59,13 +59,12 @@ const LoginForm: React.FC = () => {
 
     try {
       const res = await axios.post(
-        `${API_URL}/api/auth/login`,
-        {
-          username: formData.username,
-          password: formData.password,
-        }
-      );
-
+  `${API_URL}/api/auth/login`,
+  {
+    loginId: formData.username,   // ✅ FIX HERE
+    password: formData.password,
+  }
+);
       const { token, role } = res.data;
 
       localStorage.setItem("token", token);
@@ -75,10 +74,14 @@ const LoginForm: React.FC = () => {
       console.log("LOGIN:", res.data);
 
 
-   if (role === "RESEARCH_ANALYST") {
-  navigate("/");
+if (role === "RESEARCH_ANALYST") {
+  navigate("/ra-dashboard");
+} else if (role === "BROKER") {
+  navigate("/broker-dashboard");
+} else if (role === "ADMIN") {
+  navigate("/admin-dashboard");
 } else {
-  setMessage("Use company login for this account");
+  setMessage("Invalid role");
   localStorage.clear();
 }
     } catch (err: any) {

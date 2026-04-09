@@ -43,8 +43,8 @@ const AppRoutes = () => {
   return (
     <Routes>
 
-           {/* New Password Route MUST be above wildcard */}
-<Route path="/set-password" element={<NewPassword />} /> 
+      {/* New Password Route MUST be above wildcard */}
+      <Route path="/set-password" element={<NewPassword />} />
 
       {/* --- Auth & Public Routes --- */}
       <Route path="/login" element={<LoginForm />} />
@@ -60,16 +60,24 @@ const AppRoutes = () => {
 
       {/* --- 1. Main Dashboard Layout (EMPLOYEE + ADMIN) --- */}
       <Route
-        element={
-          <ProtectedRoute allowedRoles={["RESEARCH_ANALYST"]}>
-            <AppLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/recommendations" element={<Recommendations />} />
-        <Route path="/performance" element={<Performance />} />
-      </Route>
+  element={
+    <ProtectedRoute allowedRoles={["RESEARCH_ANALYST", "BROKER"]}>
+      <AppLayout />
+    </ProtectedRoute>
+  }
+>
+  <Route path="/" element={<Dashboard />} />
+  <Route path="/performance" element={<Performance />} />
+
+  <Route
+    path="/recommendations"
+    element={
+      <ProtectedRoute allowedRoles={["RESEARCH_ANALYST"]}>
+        <Recommendations />
+      </ProtectedRoute>
+    }
+  />
+</Route>
 
       {/* --- 2. Morning Report Workflow (EMPLOYEE + ADMIN) --- */}
       <Route
@@ -157,9 +165,9 @@ const AppRoutes = () => {
         <Route path="*" element={<ClientNotFound />} />
       </Route>
 
-{/* Catch-all should ALWAYS be LAST */}
-<Route path="*" element={<Navigate to="/" replace />} />
-      
+      {/* Catch-all should ALWAYS be LAST */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+
     </Routes>
   );
 }

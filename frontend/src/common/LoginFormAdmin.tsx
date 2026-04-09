@@ -45,14 +45,13 @@ const LoginFormAdmin: React.FC = () => {
     setLoading(true);
 
     try {
-      const res = await axios.post(
-        `${API_URL}/api/auth/login`,
-        {
-          username: formData.username,
-          password: formData.password,
-        }
-      );
-
+     const res = await axios.post(
+  `${API_URL}/api/auth/login`,
+  {
+    loginId: formData.username, // send loginId instead of username
+    password: formData.password,
+  }
+);
       const { token, role, username } = res.data;
 
 
@@ -71,7 +70,9 @@ const LoginFormAdmin: React.FC = () => {
       setMessage(
         err.response?.data?.message ||
         "Server error. Please try again."
+
       );
+      console.log(err.response?.data);
     } finally {
       setLoading(false);
     }

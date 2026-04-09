@@ -41,6 +41,56 @@ export const getAllRegistrations = async (req: Request, res: Response) => {
 };
 
 
+/* ================= GET ALL REGISTRATIONS via users table (ACTIVE users with role RESEARCH_ANALYST)================= */
+
+export const getAllRegistrationsActiveUsers = async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(`
+     SELECT 
+  u.id AS user_id,
+  u.name,
+  u.email,
+  u.username,
+  u.role,
+  u.status AS user_status,
+
+  rd.id AS ra_id,
+  rd.first_name,
+  rd.surname,
+  rd.mobile,
+  rd.profile_image,
+  rd.pan_card,
+  rd.address_proof_document,
+  rd.sebi_certificate,
+  rd.sebi_receipt,
+  rd.nism_certificate,
+  rd.cancelled_cheque,
+  rd.status AS ra_status,
+  rd.rejection_reason,
+
+  tu.telegram_user_id,
+  tu.telegram_client_name
+
+FROM users u
+
+LEFT JOIN ra_details rd 
+  ON rd.user_id = u.id
+
+LEFT JOIN telegram_users tu 
+  ON tu.user_id = u.id
+
+WHERE u.role = 'RESEARCH_ANALYST'
+
+ORDER BY u.created_at DESC;
+    `);
+
+    res.status(200).json(result.rows);
+
+  } catch (error) {
+    console.error("Error fetching registrations:", error);
+    res.status(500).json({ message: "Error fetching registrations" });
+  }
+};
 /* ================= REGISTER RA ================= */
 
 export const registerRA = async (req: AuthRequest, res: Response) => {
