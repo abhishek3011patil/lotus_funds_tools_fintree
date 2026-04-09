@@ -43,8 +43,8 @@ const AppRoutes = () => {
   return (
     <Routes>
 
-           {/* New Password Route MUST be above wildcard */}
-<Route path="/set-password" element={<NewPassword />} /> 
+      {/* New Password Route MUST be above wildcard */}
+      <Route path="/set-password" element={<NewPassword />} />
 
       {/* --- Auth & Public Routes --- */}
       <Route path="/login" element={<LoginForm />} />
@@ -157,9 +157,9 @@ const AppRoutes = () => {
         <Route path="*" element={<ClientNotFound />} />
       </Route>
 
-{/* Catch-all should ALWAYS be LAST */}
-<Route path="*" element={<Navigate to="/" replace />} />
-      
+      {/* Catch-all should ALWAYS be LAST */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+
     </Routes>
   );
 }
