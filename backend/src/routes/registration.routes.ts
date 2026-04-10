@@ -9,7 +9,8 @@ import {
   approveRegistration,
   rejectRegistration,
   getRegistrationById,
-  updateRARegistration
+  updateRARegistration,
+  getAllRegistrationsActiveUsers
 } from "../controllers/registration.controller";
 
 const router = express.Router();
@@ -49,6 +50,7 @@ router.post(
 /* ================= ADMIN APIs ================= */
 
 router.get("/all-registrations", getAllRegistrations);
+router.get("/all-registrations-active-users", getAllRegistrationsActiveUsers);
 
 router.put("/approve/:id", approveRegistration);
 

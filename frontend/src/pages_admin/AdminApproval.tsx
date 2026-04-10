@@ -67,8 +67,10 @@ const AdminApproval = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const [brokerRows, setBrokerRows] = useState<AdminRow[]>([]);
-const [brokerSearch, setBrokerSearch] = useState("");
-const [selectedBroker, setSelectedBroker] = useState<AdminRow | null>(null);
+  const [brokerSearch, setBrokerSearch] = useState("");
+  const [selectedBroker, setSelectedBroker] = useState<AdminRow | null>(null);
+  const [brokerFilter, setBrokerFilter] = useState<AdminFilterValue>("All");
+  const [brokerPage, setBrokerPage] = useState(1);
 
   const navigate = useNavigate();
 
@@ -207,10 +209,8 @@ useEffect(() => {
 
   /* ================= APPROVE ================= */
 
-const handleApprove = async (id: string) => {
+const handleApprove = async (id: string, type: "RA" | "BROKER") => {
   try {
-    console.log("Calling API...");
-
     const res = await fetch(
       "http://localhost:3000/admin/approve-user",
       {
@@ -220,40 +220,34 @@ const handleApprove = async (id: string) => {
         },
         body: JSON.stringify({
           userId: id,
+          type,
         }),
       }
     );
 
-    console.log("Response received");
-
-    // ✅ SAFE PARSE (VERY IMPORTANT)
-    const text = await res.text();
-
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      console.error("Invalid JSON:", text);
-      alert("Server error");
-      return;
-    }
+    const data = await res.json();
 
     if (res.ok) {
-      alert("User Approved & Email Sent ✅");
+      alert("Approved & Email Sent ✅");
 
-      // ✅ UPDATE UI (IMPORTANT)
-      setRows((prev) =>
-        prev.map((r) =>
-          r.id === id ? { ...r, status: "Approved" } : r
-        )
-      );
+      if (type === "RA") {
+        setRows(prev =>
+          prev.map(r => r.id === id ? { ...r, status: "Approved" } : r)
+        );
+        setSelectedRA(null);
+      } else {
+        setBrokerRows(prev =>
+          prev.map(b => b.id === id ? { ...b, status: "Approved" } : b)
+        );
+        setSelectedBroker(null);
+      }
 
     } else {
-      alert(data.message || "Failed to approve");
+      alert(data.message || "Failed");
     }
 
   } catch (error) {
-    console.error("FETCH ERROR:", error);
+    console.error(error);
   }
 };
 
@@ -311,6 +305,44 @@ const handleApprove = async (id: string) => {
       console.error(error);
     }
   };
+  // RA RESET
+  useEffect(() => {
+    setSelectedRA(null);
+  }, [filter, searchQuery, page]);
+
+  // BROKER RESET
+  useEffect(() => {
+    setBrokerPage(1);
+    setSelectedBroker(null);
+  }, [brokerSearch, brokerFilter]);
+
+  // BROKER FILTER
+  const filteredBrokers = brokerRows.filter((b) => {
+
+  const matchesFilter =
+    brokerFilter === "All" ||
+    b.status.toLowerCase() === brokerFilter.toLowerCase();
+
+  const query = brokerSearch.toLowerCase();
+
+  const matchesSearch =
+    b.name.toLowerCase().includes(query) ||
+    b.phone.includes(query);
+
+  return matchesFilter && matchesSearch;
+});
+
+// BROKER PAGINATION
+const BROKER_ITEMS_PER_PAGE = 10;
+
+const brokerPageCount = Math.ceil(
+  filteredBrokers.length / BROKER_ITEMS_PER_PAGE
+);
+
+const paginatedBrokers = filteredBrokers.slice(
+  (brokerPage - 1) * BROKER_ITEMS_PER_PAGE,
+  brokerPage * BROKER_ITEMS_PER_PAGE
+);
 
   /* ================= UI ================= */
 
@@ -511,23 +543,23 @@ const handleApprove = async (id: string) => {
           </Button>
 
           <Button
-            variant="contained"
-            color={confirmType === "approve" ? "success" : "error"}
-            onClick={() => {
+  variant="contained"
+  color={confirmType === "approve" ? "success" : "error"}
+  onClick={() => {
 
-              if (!selectedId) return;
+    if (!selectedId) return;
 
-              if (confirmType === "approve") {
-                handleApprove(selectedId);
-              } else {
-                handleReject(selectedId);
-              }
+    if (confirmType === "approve") {
+      handleApprove(selectedId, "RA");  // ✅ FIX HERE
+    } else {
+      handleReject(selectedId);
+    }
 
-              setConfirmOpen(false);
-            }}
-          >
-            Yes
-          </Button>
+    setConfirmOpen(false);
+  }}
+>
+  Yes
+</Button>
 
         </DialogActions>
 
@@ -573,6 +605,10 @@ const handleApprove = async (id: string) => {
     }}
   />
 
+  <Box sx={{ overflowX: "auto" }}>
+  <AdminFilter value={brokerFilter} onChange={setBrokerFilter} />
+</Box>
+
   <TableContainer component={Paper} variant="outlined">
     <Table size="small">
       <TableHead sx={{ backgroundColor: "#f0f7ff" }}>
@@ -584,34 +620,39 @@ const handleApprove = async (id: string) => {
         </TableRow>
       </TableHead>
       <TableBody>
-        {brokerRows
-          .filter(b => 
-            b.name.toLowerCase().includes(brokerSearch.toLowerCase()) || 
-            b.phone.includes(brokerSearch)
-          )
-          .map((broker) => (
-            <TableRow key={broker.id}>
-              <TableCell>{broker.name}</TableCell>
-              <TableCell>{broker.phone}</TableCell>
-              <TableCell>
-                <Chip
-                  size="small"
-                  label={broker.status}
-                  color={statusColor(broker.status) as any}
-                />
-              </TableCell>
-              <TableCell align="right">
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => setSelectedBroker(broker)}
-                >
-                  View Details
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-      </TableBody>
+  {paginatedBrokers.map((broker) => (
+    <TableRow key={broker.id}>
+      <TableCell>{broker.name}</TableCell>
+      <TableCell>{broker.phone}</TableCell>
+
+      <TableCell>
+        <Chip
+          size="small"
+          label={broker.status}
+          color={statusColor(broker.status) as any}
+        />
+      </TableCell>
+
+      <TableCell align="right">
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => setSelectedBroker(broker)}
+        >
+          View Details
+        </Button>
+      </TableCell>
+    </TableRow>
+  ))}
+
+  {filteredBrokers.length === 0 && (
+    <TableRow>
+      <TableCell colSpan={4} align="center">
+        No brokers found
+      </TableCell>
+    </TableRow>
+  )}
+</TableBody>
     </Table>
   </TableContainer>
 </Box>
@@ -677,10 +718,51 @@ const handleApprove = async (id: string) => {
 </Box>
 
     <Box sx={{ display: "flex", gap: 1, mt: 3 }}>
-      <Button variant="contained" color="success" fullWidth>Approve</Button>
-      <Button variant="contained" color="error" fullWidth>Reject</Button>
+      <Button
+  variant="contained"
+  color="success"
+  fullWidth
+  onClick={() => handleApprove(selectedBroker.id, "BROKER")}
+>
+  Approve
+</Button>
+      <Button
+  variant="contained"
+  color="error"
+  fullWidth
+  onClick={() => {
+    if (!selectedBroker) return;
+    handleReject(selectedBroker.id);
+  }}
+>
+  Reject
+</Button>
+<TextField
+            fullWidth
+            multiline
+            rows={2}
+            placeholder="Rejection Reason"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            sx={{ mt: 2 }}
+          />
     </Box>
   </Paper>
+)}
+
+{brokerPageCount > 1 && (
+  <Pagination
+    sx={{ alignSelf: "center", mt: 2 }}
+    count={brokerPageCount}
+    page={brokerPage}
+    onChange={(_, value) => setBrokerPage(value)}
+    renderItem={(item) => (
+      <PaginationItem
+        slots={{ previous: ArrowBackIcon, next: ArrowForwardIcon }}
+        {...item}
+      />
+    )}
+  />
 )}
 
     </Box>
