@@ -53,6 +53,14 @@ type AdminRow = {
 
 const ITEMS_PER_PAGE = 10;
 
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || ""
+).replace(/\/$/, "");
+
+const buildApiUrl = (path: string) => `${API_BASE_URL}${path}`;
+const buildUploadUrl = (file: string) =>
+  `${API_BASE_URL}/uploads/${encodeURIComponent(file)}`;
+
 const AdminApproval = () => {
 
   const [rows, setRows] = useState<AdminRow[]>([]);
@@ -80,7 +88,7 @@ const AdminApproval = () => {
     const load = async () => {
       try {
         const response = await fetch(
-          "http://localhost:3000/api/registration/all-registrations"
+          buildApiUrl("/api/registration/all-registrations")
         );
 
         const data = await response.json();
@@ -120,7 +128,7 @@ useEffect(() => {
   const loadBrokers = async () => {
     try {
       // Make sure this matches the route you just created: /all-brokers
-      const response = await fetch("http://localhost:3000/api/broker/all-brokers");
+      const response = await fetch(buildApiUrl("/api/broker/all-brokers"));
 
       if (!response.ok) {
          throw new Error("Route not found");
@@ -205,7 +213,7 @@ useEffect(() => {
   files.forEach((f) => {
     const cleanFile = f.trim();
     if (cleanFile) {
-      const url = `http://localhost:3000/uploads/${encodeURIComponent(cleanFile)}`;
+      const url = buildUploadUrl(cleanFile);
       window.open(url, "_blank");
     }
   });
@@ -214,7 +222,7 @@ useEffect(() => {
 
 const handleApprove = async (id: string, type: "RA" | "BROKER") => {
   try {
-    const res = await fetch("http://localhost:3000/admin/approve-user", {
+    const res = await fetch(buildApiUrl("/admin/approve-user"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -265,7 +273,7 @@ const handleReject = async (id: string, type: "RA" | "BROKER") => {
 
   try {
     const res = await fetch(
-      `http://localhost:3000/api/registration/reject/${type.toLowerCase()}/${id}`,
+      `${buildApiUrl("/api/registration/reject")}/${type.toLowerCase()}/${id}`,
       {
         method: "PUT",
         headers: {

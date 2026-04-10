@@ -45,6 +45,14 @@ type AdminRow = {
 
 const ITEMS_PER_PAGE = 10;
 
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || ""
+).replace(/\/$/, "");
+
+const buildApiUrl = (path: string) => `${API_BASE_URL}${path}`;
+const buildUploadUrl = (file: string) =>
+  `${API_BASE_URL}/uploads/${encodeURIComponent(file)}`;
+
 const AdminDashboard = () => {
   const [rows, setRows] = useState<AdminRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -79,7 +87,7 @@ const AdminDashboard = () => {
     const load = async () => {
       try {
         const response = await fetch(
-          "http://localhost:3000/api/registration/all-registrations-active-users"
+          buildApiUrl("/api/registration/all-registrations-active-users")
         );
         const data = await response.json();
 
@@ -164,7 +172,7 @@ const AdminDashboard = () => {
       return;
     }
 
-    const url = `http://localhost:3000/uploads/${encodeURIComponent(file)}`;
+    const url = buildUploadUrl(file);
     window.open(url, "_blank");
   };
 
@@ -201,7 +209,7 @@ const AdminDashboard = () => {
     try {
       setParticipantLoading(true); // ✅ START loading
 
-      let url = "http://localhost:3000/api/telegram/participants";
+      let url = buildApiUrl("/api/telegram/participants");
 
       if (telegram_user_id) {
         url += `?telegram_user_id=${telegram_user_id}`;
@@ -239,7 +247,7 @@ const AdminDashboard = () => {
     const token = localStorage.getItem("token");
     try {
       const res = await fetch(
-        `http://localhost:3000/api/telegram/participant/${encodeURIComponent(
+        `${buildApiUrl("/api/telegram/participant")}/${encodeURIComponent(
           participant.telegram_user_id
         )}`,
         {
@@ -291,7 +299,7 @@ const AdminDashboard = () => {
     }
 
     const res = await fetch(
-      `http://localhost:3000/api/telegram/participant/${encodeURIComponent(
+      `${buildApiUrl("/api/telegram/participant")}/${encodeURIComponent(
         participant.telegram_user_id
       )}`,
       {
@@ -327,7 +335,7 @@ const AdminDashboard = () => {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(
-        `http://localhost:3000/api/telegram/participant/${encodeURIComponent(p.telegram_user_id)}`,
+        `${buildApiUrl("/api/telegram/participant")}/${encodeURIComponent(p.telegram_user_id)}`,
         {
           method: "PUT",
           headers: {
