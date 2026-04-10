@@ -36,7 +36,8 @@ type AdminRow = {
 
   telegram?: string;
   telegram_id?: string;
-  status: "Pending" | "Approved" | "Rejected" | string;
+  status: string;
+  raStatus?: string;
   rejectionReason?: string;
 
   "age/time": string;
@@ -85,7 +86,10 @@ const AdminDashboard = () => {
 
         const formatted: AdminRow[] = data.map((item: any) => ({
           id: item.user_id || item.id,
-          name: `${item.first_name || ""} ${item.surname || ""}`.trim(),
+          name:
+  `${item.first_name || ""} ${item.surname || ""}`.trim() ||
+  item.name ||
+  "N/A",
           phone: item.mobile || "",
 
           profile: item.profile_image,
@@ -100,7 +104,8 @@ const AdminDashboard = () => {
             ? String(item.telegram_user_id)
             : "",
 
-          status: item.status || "Pending",
+          status: item.user_status,
+          raStatus: item.ra_status,
           rejectionReason: item.rejection_reason || "",
 
           // Keep exactly the same time/age UI logic as AdminApproval/AdminRecommendations
@@ -134,8 +139,8 @@ const AdminDashboard = () => {
 
   /* ================= FILTER (Approved only) ================= */
   const approvedRows = rows.filter(
-    (row) => row.status.toLowerCase() === "approved"
-  );
+  (row) => (row.raStatus || "").toLowerCase() === "approved"
+);
 
   const filteredRows = approvedRows.filter((row) => {
     const query = searchQuery.toLowerCase();
@@ -448,12 +453,11 @@ const AdminDashboard = () => {
 
                 <TableCell>
                   <Chip
-                    size="small"
-                    label={row.status}
-                    color={statusColor(row.status) as any}
-                  />
+  size="small"
+  label={row.raStatus || "N/A"}
+  color={statusColor(row.raStatus || "") as any}
+/>
                 </TableCell>
-
                 <TableCell>{row["age/time"]}</TableCell>
 
                 <TableCell align="right">

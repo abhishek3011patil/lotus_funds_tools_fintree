@@ -243,11 +243,11 @@ export const login = async (req: Request, res: Response) => {
 
     console.log("PASSWORD MATCH:", match);
 
-   if (!match) {
-  return res.status(400).json({
-    message: `Incorrect password for ${user.role} account ❌`
-  });
-}
+    if (!match) {
+      return res.status(400).json({
+        message: `Incorrect password for ${user.role} account ❌`
+      });
+    }
 
     /* ================= TOKEN ================= */
     const token = jwt.sign(
@@ -304,9 +304,9 @@ export const getMe = async (req: AuthRequest, res: Response) => {
     }
 
     return res.json({
-  ...user,
-  username: user.email || user.username, // ✅ FORCE EMAIL
-});
+      ...user,
+      username: user.email || user.username, // ✅ FORCE EMAIL
+    });
 
   } catch (error) {
     console.error("GetMe Error:", error);
