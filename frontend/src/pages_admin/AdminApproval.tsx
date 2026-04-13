@@ -54,7 +54,7 @@ type AdminRow = {
 const ITEMS_PER_PAGE = 10;
 
 const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || ""
+  import.meta.env.VITE_API_BASE_URL  || ""
 ).replace(/\/$/, "");
 
 const buildApiUrl = (path: string) => `${API_BASE_URL}${path}`;
