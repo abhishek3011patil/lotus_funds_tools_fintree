@@ -196,12 +196,12 @@ export const updateParticipant = async (req: Request, res: Response) => {
     let queryCount = 1;
 
     if (telegram_client_name !== undefined) {
-      fields.push(`telegram_client_name = $${queryCount++}`);
+      fields.push(`telegram\_client\_name = $${queryCount++}`);
       values.push(telegram_client_name);
     }
 
     if (phone_number !== undefined) {
-      fields.push(`phone_number = $${queryCount++}`);
+      fields.push(`phone\_number = $${queryCount++}`);
       values.push(phone_number);
     }
 
@@ -212,8 +212,8 @@ export const updateParticipant = async (req: Request, res: Response) => {
     // 2. Add the ID as the final parameter
     values.push(telegram_user_id);
     const queryText = `
-      UPDATE telegram_users 
-      SET ${fields.join(", ")} 
+      UPDATE telegram_users
+      SET ${fields.join(", ")}
       WHERE telegram_user_id = $${queryCount}
       RETURNING *;
     `;

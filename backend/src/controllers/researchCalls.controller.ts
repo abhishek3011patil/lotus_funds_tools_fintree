@@ -1,3 +1,5 @@
+
+import { client } from "../telegramClient";
 import { Response } from "express";
 import { pool } from "../db";
 import { AuthRequest } from "../middlewares/auth.middleware";
@@ -125,13 +127,51 @@ RETURNING id, created_at;
         ];
 
 
-        const { rows } = await pool.query(query, values);
+const { rows } = await pool.query(query, values);
 
-        return res.status(201).json({
-            message: "Research call created",
-            id: rows[0].id,
-            created_at: rows[0].created_at
-        });
+// 🧾 Build Telegram message
+const message =
+  "📢 NEW RESEARCH CALL\n\n" +
+  `Stock: ${display_name} (${symbol})\n` +
+  `Action: ${action}\n` +
+  `Entry: ${entry_price}\n` +
+  `Target: ${target_price}\n` +
+  `Stop Loss: ${stop_loss}\n\n` +
+  `📝 ${research_remarks || ""}`;
+
+try {
+  const usersResult = await pool.query(`
+    SELECT telegram_user_id, telegram_client_name
+    FROM telegram_users
+  `);
+
+  for (const user of usersResult.rows) {
+    try {
+      const receiver = user.telegram_user_id;
+
+      if (!receiver) continue;
+
+      await client.sendMessage(receiver, { message });
+
+      console.log("✅ Sent to:", user.telegram_client_name);
+
+      await new Promise((res) => setTimeout(res, 2000));
+
+    } catch (err: any) {
+      console.error("❌ Failed for:", user.telegram_client_name, err.message);
+    }
+  }
+
+} catch (err) {
+  console.error("❌ Telegram block error:", err);
+}
+
+// ✅ response after sending
+return res.status(201).json({
+    message: "Research call created & Telegram sent",
+    id: rows[0].id,
+    created_at: rows[0].created_at
+});
     } catch (err) {
         console.error("CREATE CALL ERROR:", err);
         return res.status(500).json({ message: "Server error" });
