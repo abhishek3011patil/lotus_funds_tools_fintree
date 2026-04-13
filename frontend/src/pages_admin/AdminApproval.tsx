@@ -697,7 +697,6 @@ const handleReject = async (id: string, type: "RA" | "BROKER") => {
   onChange={(e) => setRejectReason(e.target.value)}
   sx={{ mt: 2 }}
 />
-
    <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
   <Button
     variant="contained"
@@ -729,9 +728,7 @@ const handleReject = async (id: string, type: "RA" | "BROKER") => {
   color="warning"
   fullWidth
   onClick={() => handleEdit(selectedBroker.id, "BROKER")}
->
-  Edit
-</Button>
+> Edit </Button>
 
 </Box>
   </Paper> 
@@ -739,5 +736,4 @@ const handleReject = async (id: string, type: "RA" | "BROKER") => {
     </Box>
   );
 };
-
 export default AdminApproval;
