@@ -110,70 +110,58 @@ const RegistrationPage: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = async () => {
-    // Step validation
-    if (!validateStep()) return;
+const handleSave = async () => {
+  if (!validateStep()) return;
 
-    // Move to next step if not last
-    if (currentStep < 4) {
-      setCurrentStep(currentStep + 1);
-      window.scrollTo(0, 0);
-      return;
+  if (currentStep < 4) {
+    setCurrentStep(currentStep + 1);
+    window.scrollTo(0, 0);
+    return;
+  }
+
+  try {
+    const form = new FormData();
+
+    // ✅ append all text fields
+    Object.keys(formData).forEach((key) => {
+      const value = (formData as any)[key];
+      form.append(key, typeof value === "boolean" ? value.toString() : value);
+    });
+
+    // ✅ append files (VERY IMPORTANT)
+    if (files.profileImage) form.append("profileImage", files.profileImage);
+    if (files.sebiCert) form.append("sebiCert", files.sebiCert);
+    if (files.sebiReceipt) form.append("sebiReceipt", files.sebiReceipt);
+    if (files.nismCert) form.append("nismCert", files.nismCert);
+    if (files.cancelledCheque) form.append("cancelledCheque", files.cancelledCheque);
+    if (files.panCard) form.append("panCard", files.panCard);
+    if (files.addressProofDoc) form.append("addressProofDoc", files.addressProofDoc);
+
+    // ✅ API call
+    const response = await axios.post(
+      `${API_URL}/api/registration/register-ra`,
+      form,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    if (response.data.success) {
+      alert("✅ Registration submitted successfully!");
     }
 
-    try {
-      // Get JWT token from localStorage
-      const token = localStorage.getItem("token");
-      if (!token) {
-        alert("Login required! Redirecting to login page...");
-        window.location.href = "/login"; // redirect if not logged in
-        return;
-      }
-
-      // Prepare FormData
-      const form = new FormData();
-
-      // Append all text/checkbox fields
-      Object.entries(formData).forEach(([key, value]) => {
-        form.append(key, typeof value === "boolean" ? String(value) : value);
-      });
-
-      // Append files
-      Object.entries(files).forEach(([key, file]) => {
-        if (file) form.append(key, file as File);
-      });
-
-      // Make POST request
-      const response = await axios.post(
-        `${API_URL}/api/registration/register-ra`,
-        form,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`, // JWT token
-            // Do NOT set Content-Type; axios handles it
-          },
-        }
-      );
-
-      // Handle response
-      if (response.data.success) {
-        alert("✅ Registration submitted successfully!");
-        console.log("Registration success:", response.data);
-        // Optional: reset form or redirect
-      } else {
-        console.warn("Registration response:", response.data);
-        alert("Something went wrong! Please check the form or try again.");
-      }
-    } catch (error: any) {
-      if (error.response) {
-        console.error("Backend error:", error.response.data);
-        alert(`Error: ${error.response.data.message || "Something went wrong"}`);
-      } else {
-        console.error("Frontend/network error:", error);
-        alert("Network error or backend not running.");
-      }
+  } catch (error: any) {
+    if (error.response) {
+      console.error("Backend error:", error.response.data);
+      alert(error.response.data.message);
+    } else {
+      console.error("Network error:", error);
+      alert("Network error");
     }
-  };
+  }
+};
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

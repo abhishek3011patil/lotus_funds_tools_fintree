@@ -16,6 +16,12 @@ import {
 
 const router = express.Router();
 
+router.use((req, res, next) => {
+  console.log("📍 REG ROUTER HIT:", req.method, req.url);
+  next();
+});
+
+
 console.log("Registration route loaded");
 
 /* ================= MULTER CONFIG ================= */
@@ -76,6 +82,21 @@ router.put("/reject/:type/:id", rejectUser);
 router.get("/ra/:id", getRegistrationById);
 router.get("/broker/:id", getBrokerById);
 
+
+router.post(
+  "/register-ra",
+ upload.fields([
+    { name: "profile_image", maxCount: 1 },
+    { name: "pan_card", maxCount: 1 },
+    { name: "address_proof_document", maxCount: 1 },
+    { name: "sebi_certificate", maxCount: 1 },
+    { name: "sebi_receipt", maxCount: 1 },
+    { name: "nism_certificate", maxCount: 1 },
+    { name: "cancelled_cheque", maxCount: 1 },
+  ]),
+  registerRA
+);
+
 /* ================= TEST ROUTE ================= */
 
 router.get("/test", (req: Request, res: Response) => {
@@ -96,10 +117,5 @@ router.put(
   ]),
   updateRARegistration
 );
-
-router.use((req, res, next) => {
-  console.log("📍 REG ROUTER HIT:", req.method, req.url);
-  next();
-});
 
 export default router;
