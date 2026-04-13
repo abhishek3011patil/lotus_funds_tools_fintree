@@ -21,7 +21,7 @@ import ClientDashboard from "../pages_client/Dashboard";
 import ClientRecommendations from "../pages_client/Recomendation";
 import ClientPerformance from "../pages_client/Performance";
 import ClientNotFound from "../pages_client/Notfound";
-import EditRA from "../pages/EditRA";
+import EditPage from "../pages/EditPage";
 // import NotFound from "../pages/NotFound";
 import BrokerRegistration from "../pages_registration/BrokerRegistration";
 
@@ -43,8 +43,8 @@ const AppRoutes = () => {
   return (
     <Routes>
 
-           {/* New Password Route MUST be above wildcard */}
-<Route path="/set-password" element={<NewPassword />} /> 
+      {/* New Password Route MUST be above wildcard */}
+      <Route path="/set-password" element={<NewPassword />} />
 
       {/* --- Auth & Public Routes --- */}
       <Route path="/login" element={<LoginForm />} />
@@ -60,16 +60,24 @@ const AppRoutes = () => {
 
       {/* --- 1. Main Dashboard Layout (EMPLOYEE + ADMIN) --- */}
       <Route
-        element={
-          <ProtectedRoute allowedRoles={["RESEARCH_ANALYST"]}>
-            <AppLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/recommendations" element={<Recommendations />} />
-        <Route path="/performance" element={<Performance />} />
-      </Route>
+  element={
+    <ProtectedRoute allowedRoles={["RESEARCH_ANALYST", "BROKER"]}>
+      <AppLayout />
+    </ProtectedRoute>
+  }
+>
+  <Route path="/" element={<Dashboard />} />
+  <Route path="/performance" element={<Performance />} />
+
+  <Route
+    path="/recommendations"
+    element={
+      <ProtectedRoute allowedRoles={["RESEARCH_ANALYST"]}>
+        <Recommendations />
+      </ProtectedRoute>
+    }
+  />
+</Route>
 
       {/* --- 2. Morning Report Workflow (EMPLOYEE + ADMIN) --- */}
       <Route
@@ -138,7 +146,7 @@ const AppRoutes = () => {
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="recommendations" element={<AdminRecommendations />} />
         <Route path="approval" element={<AdminApproval />} />
-        <Route path="edit-ra/:id" element={<EditRA />} />
+        <Route path="edit/:type/:id" element={<EditPage />} />
       </Route>
 
       {/* --- 5. Client Layout (CLIENT ONLY) --- */}
@@ -157,9 +165,9 @@ const AppRoutes = () => {
         <Route path="*" element={<ClientNotFound />} />
       </Route>
 
-{/* Catch-all should ALWAYS be LAST */}
-<Route path="*" element={<Navigate to="/" replace />} />
-      
+      {/* Catch-all should ALWAYS be LAST */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+
     </Routes>
   );
 }
