@@ -79,7 +79,7 @@ const AdminDashboard = () => {
     const load = async () => {
       try {
         const response = await fetch(
-          "http://localhost:3000/api/registration/all-registrations-active-users"
+          `${import.meta.env.VITE_API_URL}/api/registration/all-registrations-active-users`
         );
         const data = await response.json();
 
@@ -164,7 +164,7 @@ const AdminDashboard = () => {
       return;
     }
 
-    const url = `http://localhost:3000/uploads/${encodeURIComponent(file)}`;
+    const url = `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(file)}`;
     window.open(url, "_blank");
   };
 
@@ -201,7 +201,7 @@ const AdminDashboard = () => {
     try {
       setParticipantLoading(true); // ✅ START loading
 
-      let url = "http://localhost:3000/api/telegram/participants";
+      let url = `${import.meta.env.VITE_API_URL}/api/telegram/participants`;
 
       if (telegram_user_id) {
         url += `?telegram_user_id=${telegram_user_id}`;
@@ -239,7 +239,7 @@ const AdminDashboard = () => {
     const token = localStorage.getItem("token");
     try {
       const res = await fetch(
-        `http://localhost:3000/api/telegram/participant/${encodeURIComponent(
+        `${import.meta.env.VITE_API_URL}/api/telegram/participant/${encodeURIComponent(
           participant.telegram_user_id
         )}`,
         {
@@ -291,7 +291,7 @@ const AdminDashboard = () => {
     }
 
     const res = await fetch(
-      `http://localhost:3000/api/telegram/participant/${encodeURIComponent(
+      `${import.meta.env.VITE_API_URL}/api/telegram/participant/${encodeURIComponent(
         participant.telegram_user_id
       )}`,
       {
@@ -327,7 +327,7 @@ const AdminDashboard = () => {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(
-        `http://localhost:3000/api/telegram/participant/${encodeURIComponent(p.telegram_user_id)}`,
+        `${import.meta.env.VITE_API_URL}/api/telegram/participant/${encodeURIComponent(p.telegram_user_id)}`,
         {
           method: "PUT",
           headers: {

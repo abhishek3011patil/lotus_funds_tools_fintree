@@ -390,7 +390,7 @@ const [s4Err, setS4Err] = useState<Record<string, boolean>>({});
   formData.append("agree_code_of_conduct", String(declarations.agreeConduct));
   
   try {
-    await axios.post("http://localhost:3000/api/broker/register-broker", formData);
+    await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/broker/register-broker`,formData);
 
     alert("Broker Registered Successfully");
   } catch (err) {

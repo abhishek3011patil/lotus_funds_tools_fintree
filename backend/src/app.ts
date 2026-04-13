@@ -6,7 +6,7 @@ import authRoutes from "./routes/auth.routes";
 import brokerRoutes from "./routes/broker.routes";
 import registrationRoutes from "./routes/registration.routes";
 
-// import adminRoutes from "./routes/admin.routes";
+import adminRoutes from "./routes/admin.routes";
 import path from "path";
 import telegramRoutes from "./routes/telegram.routes";
 //import { initTelegram } from "./telegramClient";
