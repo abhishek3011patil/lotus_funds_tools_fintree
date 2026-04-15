@@ -4,10 +4,11 @@ import { useState } from "react";
 import axios from "axios";
 
 type TelegramSearchProps = {
+  raId?: string;   // 👈 ADD THIS
   onSaved?: (telegramUserId?: string) => void;
 };
 
-export const TelegramSearch = ({ onSaved }: TelegramSearchProps) => {
+export const TelegramSearch = ({ raId, onSaved }: TelegramSearchProps) => {
   const [username, setUsername] = useState("");
   const [telegramId, setTelegramId] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -15,12 +16,13 @@ export const TelegramSearch = ({ onSaved }: TelegramSearchProps) => {
   const handleSave = async () => {
     try {
       await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/telegram/save-user`,
-        {
-          telegram_user_id: telegramId,
-          telegram_client_name: username,
-          phone_number: phoneNumber, // Now sending the phone number too
-        },
+  `${import.meta.env.VITE_API_URL}/api/telegram/save-user`,
+  {
+    telegram_user_id: telegramId,
+    telegram_client_name: username,
+    phone_number: phoneNumber,
+    user_id: raId   // 👈 ADD THIS (VERY IMPORTANT)
+  },
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -29,7 +31,7 @@ export const TelegramSearch = ({ onSaved }: TelegramSearchProps) => {
       );
 
       alert("✅ Saved successfully");
-      onSaved?.(telegramId);
+      onSaved?.(raId);
       
       // Clear inputs after success
       setUsername("");

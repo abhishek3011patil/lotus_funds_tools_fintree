@@ -139,7 +139,9 @@ const AdminDashboard = () => {
 
   /* ================= FILTER (Approved only) ================= */
   const approvedRows = rows.filter(
-  (row) => (row.raStatus || "").toLowerCase() === "approved"
+  (row) =>
+    (row.raStatus || "").toLowerCase() === "approved" ||
+    (row.status || "").toLowerCase() === "active"
 );
 
   const filteredRows = approvedRows.filter((row) => {
@@ -197,41 +199,36 @@ const AdminDashboard = () => {
     setParticipantUsername("");
   };
 
-  const fetchParticipants = async (telegram_user_id?: string) => {
-    try {
-      setParticipantLoading(true); // ✅ START loading
+const fetchParticipants = async (raId?: string) => {
+  try {
+    if (!raId) return;
 
-      let url = `${import.meta.env.VITE_API_URL}/api/telegram/participants`;
+    setParticipantLoading(true);
 
-      if (telegram_user_id) {
-        url += `?telegram_user_id=${telegram_user_id}`;
-      }
+    const url = `${import.meta.env.VITE_API_URL}/api/telegram/ra/${raId}`;
 
-      const response = await fetch(url);
+    const response = await fetch(url);
 
-      if (!response.ok) {
-        throw new Error(`Server responded with ${response.status}`);
-      }
-
-      const data = await response.json();
-      setParticipantsList(data);
-
-    } catch (error) {
-      console.error("Fetch error:", error);
-    } finally {
-      setParticipantLoading(false); // ✅ STOP loading (VERY IMPORTANT)
+    if (!response.ok) {
+      throw new Error(`Server responded with ${response.status}`);
     }
-  };
 
-  const handleViewParticipant = (row: AdminRow) => {
-    setPanelMode("participant");
-    setSelectedRA(row);
-    if (row.telegram_id) {
-      fetchParticipants(row.telegram_id);
-    } else {
-      fetchParticipants();
-    }
-  };
+    const data = await response.json();
+    setParticipantsList(data);
+
+  } catch (error) {
+    console.error("Fetch error:", error);
+  } finally {
+    setParticipantLoading(false);
+  }
+};
+
+const handleViewParticipant = (row: AdminRow) => {
+  setPanelMode("participant");
+  setSelectedRA(row);
+
+  fetchParticipants(row.id); // always RA id
+};
 
   const handleUpdateParticipant = async () => {
     if (!participant) return;
@@ -694,14 +691,14 @@ const AdminDashboard = () => {
                   <Typography fontWeight={600} sx={{ mb: 1 }}>
                     Add New Participant
                   </Typography>
-
                   <TelegramSearch
-                    onSaved={(telegramUserId) => {
-                      if (telegramUserId) {
-                        fetchParticipants(String(telegramUserId));
-                      }
-                    }}
-                  />
+  raId={selectedRA?.id}   // 👈 ADD THIS
+  onSaved={(raId) => {
+  if (raId) {
+    fetchParticipants(raId);
+  }
+}}
+/>
                 </Box>
 
                 {/* Update / Delete Buttons */}
