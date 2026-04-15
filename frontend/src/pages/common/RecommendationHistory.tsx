@@ -22,6 +22,7 @@ import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import LoadingPage from "../../common/LoadingPage";
 
 interface HistoryRecord {
   dateTime: string;
@@ -346,6 +347,16 @@ export default function RecommendationHistory({
     "&:disabled": { opacity: 0.5 },
   };
 
+  // Show full-page loader until recommendation history is fetched and prepared.
+  if (loading) {
+    return (
+      <LoadingPage
+        title="Loading history"
+        subtitle="Please wait while we fetch recommendation history."
+      />
+    );
+  }
+
   return (
     <Box sx={{ mt: 4 }}>
       <Paper
@@ -484,13 +495,7 @@ export default function RecommendationHistory({
             </TableHead>
 
             <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={13} align="center" sx={{ py: 4 }}>
-                    Loading...
-                  </TableCell>
-                </TableRow>
-              ) : paginatedData.length === 0 ? (
+              {paginatedData.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={13} align="center" sx={{ py: 4 }}>
                     No records found

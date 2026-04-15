@@ -13,6 +13,7 @@ import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
+import LoadingPage from "./LoadingPage";
 
 const NewPassword: React.FC = () => {
   const navigate = useNavigate();
@@ -98,6 +99,16 @@ const NewPassword: React.FC = () => {
       backgroundColor: "#F8FBFF",
     },
   };
+
+  // Show shared full-page loader during OTP request and password reset verification.
+  if (loading) {
+    return (
+      <LoadingPage
+        title="Processing request"
+        subtitle="Please wait while we complete your password setup."
+      />
+    );
+  }
 
   return (
     <Box

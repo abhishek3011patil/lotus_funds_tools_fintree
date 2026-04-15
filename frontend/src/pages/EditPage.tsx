@@ -12,6 +12,7 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
+import LoadingPage from "../common/LoadingPage";
 
 type Registration = {
   [key: string]: any;
@@ -147,7 +148,15 @@ const openFile = (file?: string) => {
   });
 };
 
-if (!data) return <div>Loading...</div>;
+// Keep the edit form hidden until registration data is loaded.
+if (!data) {
+  return (
+    <LoadingPage
+      title="Loading registration"
+      subtitle="Please wait while we fetch the details."
+    />
+  );
+}
 
 const basicFieldsRA = [
   "salutation",
