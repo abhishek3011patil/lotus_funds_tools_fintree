@@ -22,6 +22,7 @@ import {
   TableRow,
   CircularProgress,
 } from "@mui/material";
+import LoadingPage from "../common/LoadingPage";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import { useRef, useState, useEffect, useMemo } from "react";
 import { STOCK_DATA } from "../assets/stocks";
@@ -277,6 +278,16 @@ const NewRecommendation = () => {
       setWasValidated(false);
     }
   };
+
+  // Show shared full-page loader while recommendations are being fetched.
+  if (loading) {
+    return (
+      <LoadingPage
+        title="Loading recommendations"
+        subtitle="Please wait while we prepare the dashboard."
+      />
+    );
+  }
 
   return (
     <Box
@@ -812,11 +823,7 @@ const NewRecommendation = () => {
             </Box>
           </Box>
 
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}>
-              <CircularProgress size={24} />
-            </Box>
-          ) : (
+          {(
             <TableContainer sx={{ maxHeight: 400 }}>
               <Table size="small" stickyHeader>
                 <TableHead>

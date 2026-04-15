@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { JSX, useEffect, useState } from "react";
 import axios from "axios";
+import LoadingPage from "../common/LoadingPage";
 
 interface Props {
   children: JSX.Element;
@@ -44,7 +45,15 @@ const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
       });
   }, []);
 
-  if (status === "loading") return <div>Loading...</div>;
+  // Keep route-guard flow blocked until auth validation is complete.
+  if (status === "loading") {
+    return (
+      <LoadingPage
+        title="Checking access"
+        subtitle="Please wait while we verify your session."
+      />
+    );
+  }
 
   if (status === "unauth") {
     return <Navigate to="/login" replace />;

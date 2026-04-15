@@ -14,6 +14,7 @@ import VisibilityOff from "@mui/icons-material/VisibilityOff";
 
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import LoadingPage from "./LoadingPage";
 
 const LoginFormAdmin: React.FC = () => {
   const navigate = useNavigate();
@@ -85,6 +86,16 @@ const LoginFormAdmin: React.FC = () => {
       backgroundColor: "#F8FBFF",
     },
   };
+
+  // Show shared full-page loader while admin login request is in progress.
+  if (loading) {
+    return (
+      <LoadingPage
+        title="Signing you in"
+        subtitle="Please wait while we verify your credentials."
+      />
+    );
+  }
 
   return (
     <Box

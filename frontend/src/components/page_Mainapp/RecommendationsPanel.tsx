@@ -12,6 +12,7 @@ import {
     Button,
     CircularProgress,
 } from "@mui/material";
+import LoadingPage from "../../common/LoadingPage";
 
 type Props = {
     recommendations: any[];
@@ -74,10 +75,12 @@ const RecommendationsPanel = React.memo(
                         </Box>
                     </Box>
 
+                    {/* Use shared page loader while recommendations are being fetched. */}
                     {loading ? (
-                        <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
-                            <CircularProgress size={24} />
-                        </Box>
+                        <LoadingPage
+                            title="Loading recommendations"
+                            subtitle="Please wait while we prepare your calls."
+                        />
                     ) : (
                         <TableContainer sx={{ maxHeight: 400 }}>
                             <Table size="small" stickyHeader>
