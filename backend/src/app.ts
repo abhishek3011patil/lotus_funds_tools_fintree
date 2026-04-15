@@ -44,16 +44,27 @@ app.use("/api/auth", authRoutes);
 app.use("/api", researchRoutes);
 // app.use("/api", debugRoutes);
 app.use("/api/auth", authRoutes);
+<<<<<<< HEAD
+=======
+//app.use("/api", debugRoutes);
+
+>>>>>>> 240f24d728416a2f301570cb75a27ff9250fcac9
 app.use("/api/broker", brokerRoutes);
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 app.use("/api/registration", registrationRoutes);
 // app.use("/api", telegramRoutes);
 // app.use("/api/telegram", telegramRoutes);
+<<<<<<< HEAD
 // app.use("/api", telegramRoutes);
 app.use("/admin", adminRoutes);
+=======
+app.use("/api", telegramRoutes);
+>>>>>>> 240f24d728416a2f301570cb75a27ff9250fcac9
 app.use("/api/telegram", telegramRoutes);
 
 // app.use("/admin", adminRoutes);
+//app.use("/api", telegramRoutes);
+app.use("/admin", adminRoutes);
 app.use("/api/telegram", telegramRoutes);
 
 // app.get("/api/health", (_req, res) => {

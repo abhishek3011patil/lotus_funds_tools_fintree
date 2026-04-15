@@ -45,13 +45,13 @@ type AdminRow = {
 
 const ITEMS_PER_PAGE = 10;
 
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || ""
-).replace(/\/$/, "");
+// const API_BASE_URL = (
+//   import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || ""
+// ).replace(/\/$/, "");
 
-const buildApiUrl = (path: string) => `${API_BASE_URL}${path}`;
-const buildUploadUrl = (file: string) =>
-  `${API_BASE_URL}/uploads/${encodeURIComponent(file)}`;
+// const buildApiUrl = (path: string) => `${API_BASE_URL}${path}`;
+// const buildUploadUrl = (file: string) =>
+//   `${API_BASE_URL}/uploads/${encodeURIComponent(file)}`;
 
 const AdminDashboard = () => {
   const [rows, setRows] = useState<AdminRow[]>([]);
@@ -87,7 +87,7 @@ const AdminDashboard = () => {
     const load = async () => {
       try {
         const response = await fetch(
-          buildApiUrl("/api/registration/all-registrations-active-users")
+          `${import.meta.env.VITE_API_URL}/api/registration/all-registrations-active-users`
         );
         const data = await response.json();
 
@@ -172,7 +172,7 @@ const AdminDashboard = () => {
       return;
     }
 
-    const url = buildUploadUrl(file);
+    const url = `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(file)}`;
     window.open(url, "_blank");
   };
 
@@ -209,7 +209,7 @@ const AdminDashboard = () => {
     try {
       setParticipantLoading(true); // ✅ START loading
 
-      let url = buildApiUrl("/api/telegram/participants");
+      let url = `${import.meta.env.VITE_API_URL}/api/telegram/participants`;
 
       if (telegram_user_id) {
         url += `?telegram_user_id=${telegram_user_id}`;
@@ -247,7 +247,7 @@ const AdminDashboard = () => {
     const token = localStorage.getItem("token");
     try {
       const res = await fetch(
-        `${buildApiUrl("/api/telegram/participant")}/${encodeURIComponent(
+        `${import.meta.env.VITE_API_URL}/api/telegram/participant/${encodeURIComponent(
           participant.telegram_user_id
         )}`,
         {
@@ -299,7 +299,7 @@ const AdminDashboard = () => {
     }
 
     const res = await fetch(
-      `${buildApiUrl("/api/telegram/participant")}/${encodeURIComponent(
+      `${import.meta.env.VITE_API_URL}/api/telegram/participant/${encodeURIComponent(
         participant.telegram_user_id
       )}`,
       {
@@ -335,7 +335,7 @@ const AdminDashboard = () => {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(
-        `${buildApiUrl("/api/telegram/participant")}/${encodeURIComponent(p.telegram_user_id)}`,
+        `${import.meta.env.VITE_API_URL}/api/telegram/participant/${encodeURIComponent(p.telegram_user_id)}`,
         {
           method: "PUT",
           headers: {

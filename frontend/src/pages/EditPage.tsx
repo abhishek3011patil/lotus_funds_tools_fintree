@@ -33,10 +33,10 @@ const EditPage = () => {
 
       let url = "";
       if (type?.toUpperCase() === "RA") {
-        url = `http://localhost:3000/api/registration/ra/${id}`;
-      } else {
-        url = `http://localhost:3000/api/registration/broker/${id}`;;
-      }
+  url = `${import.meta.env.VITE_API_URL}/api/registration/ra/${id}`;
+} else {
+  url = `${import.meta.env.VITE_API_URL}/api/registration/broker/${id}`;
+}
 
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
@@ -92,8 +92,8 @@ setFields(payload);
 
     const url =
   type?.toUpperCase() === "RA"
-    ? `http://localhost:3000/api/registration/edit/ra/${id}`
-    : `http://localhost:3000/api/registration/edit/broker/${id}`;
+    ? `${import.meta.env.VITE_API_URL}/api/registration/edit/ra/${id}`
+    : `${import.meta.env.VITE_API_URL}/api/registration/edit/broker/${id}`;
 
     const res = await fetch(url, {
       method: "PUT", // ✅ IMPORTANT
@@ -141,7 +141,7 @@ const openFile = (file?: string) => {
   files.forEach((f) => {
     const cleanFile = f.trim();
     if (cleanFile) {
-      const url = `http://localhost:3000/uploads/${encodeURIComponent(cleanFile)}`;
+      const url = `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(cleanFile)}`;
       window.open(url, "_blank");
     }
   });

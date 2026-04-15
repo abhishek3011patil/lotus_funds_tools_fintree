@@ -88,7 +88,7 @@ const AdminApproval = () => {
     const load = async () => {
       try {
         const response = await fetch(
-          buildApiUrl("/api/registration/all-registrations")
+          `${import.meta.env.VITE_API_URL}/api/registration/all-registrations`
         );
 
         const data = await response.json();
@@ -128,7 +128,7 @@ useEffect(() => {
   const loadBrokers = async () => {
     try {
       // Make sure this matches the route you just created: /all-brokers
-      const response = await fetch(buildApiUrl("/api/broker/all-brokers"));
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/broker/all-brokers`);
 
       if (!response.ok) {
          throw new Error("Route not found");
@@ -213,7 +213,7 @@ useEffect(() => {
   files.forEach((f) => {
     const cleanFile = f.trim();
     if (cleanFile) {
-      const url = buildUploadUrl(cleanFile);
+      const url = `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(cleanFile)}`;
       window.open(url, "_blank");
     }
   });
@@ -222,23 +222,24 @@ useEffect(() => {
 
 const handleApprove = async (id: string, type: "RA" | "BROKER") => {
   try {
-    const res = await fetch(buildApiUrl("/admin/approve-user"), {
+    const token = localStorage.getItem("token"); // ✅ get token
+
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/approve-user`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`, // ✅ ADD THIS
       },
       body: JSON.stringify({ userId: id, type }),
     });
 
     const data = await res.json();
 
-    // If backend says success is false (duplicate email etc)
     if (!res.ok || data.success === false) {
       alert(data.message || "Approval failed ❌");
-      return; // stop further execution
+      return;
     }
 
-    // ✅ Success: user approved
     alert("Approved & Email Sent ✅");
 
     if (type === "RA") {
@@ -272,12 +273,15 @@ const handleReject = async (id: string, type: "RA" | "BROKER") => {
   }
 
   try {
+    const token = localStorage.getItem("token");
+
     const res = await fetch(
-      `${buildApiUrl("/api/registration/reject")}/${type.toLowerCase()}/${id}`,
+      `${import.meta.env.VITE_API_URL}/api/registration/reject/${type.toLowerCase()}/${id}`,
       {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ reason: rejectReason }),
       }
