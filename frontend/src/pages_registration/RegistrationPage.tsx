@@ -158,7 +158,7 @@ const RegistrationPage: React.FC = () => {
       // Handle response
       if (response.data.success) {
         alert("✅ Registration submitted successfully!");
-        console.log("Registration success:", response.data);
+        // console.log("Registration success:", response.data);
         // Optional: reset form or redirect
       } else {
         console.warn("Registration response:", response.data);

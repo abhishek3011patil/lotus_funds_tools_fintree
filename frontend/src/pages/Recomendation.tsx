@@ -69,7 +69,7 @@ const FLAT_STUDY_OPTIONS = UNDERLYING_STUDIES.flatMap((g) =>
 
 const NewRecommendation = () => {
 
-  console.log("RENDER");
+  // console.log("RENDER");
   const [underlyingStudyInput, setUnderlyingStudyInput] = useState("");
   const [recentStudyOptions, setRecentStudyOptions] = useState<StudyOption[]>([]);
 
@@ -89,7 +89,7 @@ const NewRecommendation = () => {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      console.log("Selected file:", file.name);
+      // console.log("Selected file:", file.name);
     }
   };
 
@@ -313,7 +313,7 @@ const NewRecommendation = () => {
     },
   }
 );
-          console.log("✅ Telegram notification sent");
+          // console.log("✅ Telegram notification sent");
         } catch (telegramErr: any) {
           console.error("⚠️ Telegram send failed:", telegramErr?.response?.data || telegramErr?.message);
         }
@@ -584,11 +584,11 @@ const NewRecommendation = () => {
                    getPriceError("target", form) || 
                    getPriceError("stopLoss", form);
   if (!priceErr) {
-    console.log("✅ Price logic passed, submitting...");
+    // console.log("✅ Price logic passed, submitting...");
     handleSubmit(); 
     setWasValidated(false);
   } else {
-    console.log("❌ Price logic failed");
+    // console.log("❌ Price logic failed");
     const priceRow = document.getElementById("prices-row");
     if (priceRow) {
       priceRow.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -632,7 +632,7 @@ const NewRecommendation = () => {
         }
       });
       setDirectValue("A.F. Enterprises Ltd");
-      console.log("Form Populated ✅");
+      // console.log("Form Populated ✅");
     };
   }, []);
 
@@ -684,7 +684,7 @@ const NewRecommendation = () => {
     }
   );
 
-  console.log("✅ Telegram Response:", telegramRes.data);
+  // console.log("✅ Telegram Response:", telegramRes.data);
 
 } catch (err: any) {
   console.error("❌ Telegram FULL ERROR:", err);
@@ -749,7 +749,7 @@ const NewRecommendation = () => {
         research_remarks: form.remark || null,
       };
 
-      console.log("TRACK PAYLOAD:", payload);
+      // console.log("TRACK PAYLOAD:", payload);
 
       await axios.post(
         `${import.meta.env.VITE_API_URL}/api/research/calls`,

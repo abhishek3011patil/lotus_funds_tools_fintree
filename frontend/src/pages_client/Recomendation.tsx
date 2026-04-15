@@ -81,7 +81,7 @@ const NewRecommendation = () => {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      console.log("Selected file:", file.name);
+      // console.log("Selected file:", file.name);
     }
   };
 
@@ -204,7 +204,7 @@ const NewRecommendation = () => {
         // Handle both single object and array responses
         setRecommendations(Array.isArray(data) ? data : [data]);
       } catch (error) {
-        console.error("Failed to fetch recommendations:", error);
+        // console.error("Failed to fetch recommendations:", error);
       } finally {
         setLoading(false);
       }
