@@ -55,7 +55,7 @@ const LoginFormAdmin: React.FC = () => {
       const { token, role, username } = res.data;
 
 
-      console.log("LOGIN RESPONSE:", res.data);
+      // console.log("LOGIN RESPONSE:", res.data);
 
       localStorage.setItem("token", token);
       localStorage.setItem("username", username);
@@ -72,7 +72,7 @@ const LoginFormAdmin: React.FC = () => {
         "Server error. Please try again."
 
       );
-      console.log(err.response?.data);
+      // console.log(err.response?.data);
     } finally {
       setLoading(false);
     }

@@ -71,7 +71,7 @@ const LoginForm: React.FC = () => {
       localStorage.setItem("username", res.data.username);
 
       localStorage.setItem("role", role);
-      console.log("LOGIN:", res.data);
+      // console.log("LOGIN:", res.data);
 
 
 if (role === "RESEARCH_ANALYST") {

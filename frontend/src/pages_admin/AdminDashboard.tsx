@@ -119,11 +119,16 @@ const AdminDashboard = () => {
           // Keep exactly the same time/age UI logic as AdminApproval/AdminRecommendations
           "age/time": "Just now",
         }));
-        console.log(formatted);
+        // console.log(formatted);
 
         setRows(formatted);
-      } catch (error) {
-        console.error("Failed to load admin data:", error);
+      }
+       catch (error) {
+        // console.error("Failed to load admin data:", error);
+  const message =
+    error instanceof Error ? error.message : "An unexpected error occurred";
+
+  alert(message);
       }
     };
 
@@ -225,7 +230,8 @@ const AdminDashboard = () => {
       setParticipantsList(data);
 
     } catch (error) {
-      console.error("Fetch error:", error);
+      // console.error("Fetch error:", error);
+      alert(error.message);
     } finally {
       setParticipantLoading(false); // ✅ STOP loading (VERY IMPORTANT)
     }
@@ -279,8 +285,9 @@ const AdminDashboard = () => {
         )
       );
     } catch (error) {
-      console.error("Update error:", error);
-      alert("An error occurred.");
+      // console.error("Update error:", error);
+      alert(error + " An error occurred.");
+      // alert("An error occurred.");
     }
   };
 
@@ -365,7 +372,7 @@ const AdminDashboard = () => {
 
       setEditingCell(null);
     } catch (error) {
-      console.error(error);
+      // console.error(error);
       alert("Update failed");
     }
   };
