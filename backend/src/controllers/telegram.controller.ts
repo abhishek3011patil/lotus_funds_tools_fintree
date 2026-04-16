@@ -33,102 +33,6 @@ async function safeSendMessage(userId: any, message: string) {
   }
 }
 
-/**
- * Send message to a single user
- * Body: { userId, message }
- */
-export const sendTelegramMessage = async (req: Request, res: Response) => {
-  try {
-    const { userId, message } = req.body;
-
-    if (!userId || !message) {
-      return res.status(400).json({
-        success: false,
-        message: "userId and message are required",
-      });
-    }
-
-    const result = await safeSendMessage(userId, message);
-
-    if (!result.success) {
-      return res.status(500).json({
-        success: false,
-        message: "Failed to send message",
-        error: result.error,
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Message sent successfully",
-      retried: result.retried || false,
-    });
-  } catch (error: any) {
-    console.error("Controller Error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
-  }
-};
-
-/**
- * Send bulk messages (with delay)
- * Body: { users: [userId1, userId2], message }
- */
-export const sendBulkTelegramMessages = async (
-  req: Request,
-  res: Response
-) => {
-  try {
-    const { users, message } = req.body;
-
-    if (!users || !Array.isArray(users) || users.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "users array is required",
-      });
-    }
-
-    if (!message) {
-      return res.status(400).json({
-        success: false,
-        message: "message is required",
-      });
-    }
-
-    const results: any[] = [];
-
-    for (const userId of users) {
-      const result = await safeSendMessage(userId, message);
-
-      results.push({
-        userId,
-        ...result,
-      });
-
-      // 🔥 IMPORTANT: delay to avoid ban
-      await sleep(2000);
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Bulk messages processed",
-      results,
-    });
-  } catch (error: any) {
-    console.error("Bulk Error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
-  }
-};
-
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     // We use a string query because TelegramUser is just a TYPE for the result
@@ -268,41 +172,44 @@ export const deleteParticipant = async (req: Request, res: Response) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 export const getClientsByRA = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    const result = await pool.query(
-      "SELECT * FROM telegram_users WHERE user_id = $1",
-      [id]
-    );
+  console.log("👉 RA ID RECEIVED:", id);
 
-    res.json(result.rows);
+  const result = await pool.query(
+    "SELECT * FROM telegram_users WHERE user_id = $1",
+    [id]
+  );
 
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ message: error.message });
-  }
+  console.log("👉 DB RESULT:", result.rows);
+
+  res.json(result.rows);
 };
 
 export const sendMessageToRAClients = async (req: Request, res: Response) => {
   try {
-    const { raId, message } = req.body;
+    const raId = (req as any).user?.id; // ✅ from JWT
+    const { message } = req.body;
 
-    if (!raId || !message) {
+    if (!raId || typeof message !== "string" || message.trim() === "") {
       return res.status(400).json({
         success: false,
-        message: "raId and message are required",
+        message: "Valid message required",
       });
     }
 
-    // ✅ Fetch only RA clients
+    console.log("📡 Sending to RA:", raId);
+
     const result = await pool.query(
       "SELECT telegram_user_id FROM telegram_users WHERE user_id = $1",
       [raId]
     );
 
     const users = result.rows;
+
+    console.log("👥 Clients count:", users.length);
 
     if (users.length === 0) {
       return res.status(404).json({
@@ -321,7 +228,7 @@ export const sendMessageToRAClients = async (req: Request, res: Response) => {
         ...sendResult,
       });
 
-      await sleep(2000); // avoid telegram ban
+      await sleep(2000);
     }
 
     return res.status(200).json({

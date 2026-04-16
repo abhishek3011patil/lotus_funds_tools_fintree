@@ -11,171 +11,134 @@ import { Router } from "express";
    CREATE RESEARCH CALL  (POST /api/research/calls)
    ========================================================= */
 export const createResearchCall = async (req: AuthRequest, res: Response) => {
-    try {
-        const {
-            status = "PUBLISHED",  // default if not provided
-            exchange_type,
-            market_type,
-            symbol,
-            display_name,
-            action,
-            call_type,
-            trade_type,
-            expiry_date,
-            entry_price,
-            entry_price_low,
-            entry_price_upper,
-            target_price,
-            target_price_2,
-            target_price_3,
-            stop_loss,
-            stop_loss_2,
-            stop_loss_3,
-            holding_period,
-            rationale,
-            underlying_study,
-            is_algo,
-            has_vested_interest,
-            research_remarks
-        } = req.body;
+  try {
+    const {
+      status = "PUBLISHED",
+      exchange_type,
+      market_type,
+      symbol,
+      display_name,
+      action,
+      call_type,
+      trade_type,
+      expiry_date,
+      entry_price,
+      entry_price_low,
+      entry_price_upper,
+      target_price,
+      target_price_2,
+      target_price_3,
+      stop_loss,
+      stop_loss_2,
+      stop_loss_3,
+      holding_period,
+      rationale,
+      underlying_study,
+      is_algo,
+      has_vested_interest,
+      research_remarks
+    } = req.body;
 
-        const query = `
-     INSERT INTO research_calls (
-  ra_user_id,
-  status,
+    const query = `
+      INSERT INTO research_calls (
+        ra_user_id,
+        status,
 
-  exchange_type,
-  market_type,
+        exchange_type,
+        market_type,
 
-  symbol,
-  display_name,
+        symbol,
+        display_name,
 
-  action,
-  call_type,
-  trade_type,
-  expiry_date,
+        action,
+        call_type,
+        trade_type,
+        expiry_date,
 
-  entry_price,
-  entry_price_low,
-  entry_price_upper,
+        entry_price,
+        entry_price_low,
+        entry_price_upper,
 
-  target_price,
-  target_price_2,
-  target_price_3,
+        target_price,
+        target_price_2,
+        target_price_3,
 
-  stop_loss,
-  stop_loss_2,
-  stop_loss_3,
+        stop_loss,
+        stop_loss_2,
+        stop_loss_3,
 
-  holding_period,
-  rationale,
-  underlying_study,
+        holding_period,
+        rationale,
+        underlying_study,
 
-  is_algo,
-  has_vested_interest,
-  research_remarks
-)
-VALUES (
-  $1, $2,
-  $3, $4,
-  $5, $6,
-  $7, $8, $9, $10,
-  $11, $12, $13,
-  $14, $15, $16,
-  $17, $18, $19,
-  $20, $21, $22,
-  $23, $24, $25
-)
-RETURNING id, created_at;
+        is_algo,
+        has_vested_interest,
+        research_remarks
+      )
+      VALUES (
+        $1, $2,
+        $3, $4,
+        $5, $6,
+        $7, $8, $9, $10,
+        $11, $12, $13,
+        $14, $15, $16,
+        $17, $18, $19,
+        $20, $21, $22,
+        $23, $24, $25
+      )
+      RETURNING id, created_at;
     `;
 
-        const values = [
+    const values = [
+      req.user!.id,          // RA ID
+      status,
 
-            req.user!.id,          // $1
-            status,                // $2
+      exchange_type,
+      market_type,
 
-            exchange_type,         // $3
-            market_type,           // $4
+      symbol,
+      display_name,
 
-            symbol,                // $5
-            display_name,          // $6
+      action,
+      call_type,
+      trade_type,
+      expiry_date,
 
-            action,                // $7
-            call_type,             // $8
-            trade_type,            // $9
-            expiry_date,           // $10
+      entry_price,
+      entry_price_low,
+      entry_price_upper,
 
-            entry_price,           // $11
-            entry_price_low,       // $12
-            entry_price_upper,     // $13
+      target_price,
+      target_price_2,
+      target_price_3,
 
-            target_price,          // $14
-            target_price_2,        // $15
-            target_price_3,        // $16
+      stop_loss,
+      stop_loss_2,
+      stop_loss_3,
 
-            stop_loss,             // $17
-            stop_loss_2,           // $18
-            stop_loss_3,           // $19
+      holding_period,
+      rationale,
+      underlying_study,
 
-            holding_period,        // $20
-            rationale,             // $21
-            underlying_study,      // $22
+      is_algo,
+      has_vested_interest,
+      research_remarks
+    ];
 
-            is_algo,               // $23
-            has_vested_interest,   // $24
-            research_remarks       // $25
-        ];
+    const { rows } = await pool.query(query, values);
 
+    // ✅ NO TELEGRAM HERE (REMOVED COMPLETELY)
 
-const { rows } = await pool.query(query, values);
+    return res.status(201).json({
+      message: "Research call created successfully",
+      id: rows[0].id,
+      created_at: rows[0].created_at
+    });
 
-// 🧾 Build Telegram message
-const message =
-  "📢 NEW RESEARCH CALL\n\n" +
-  `Stock: ${display_name} (${symbol})\n` +
-  `Action: ${action}\n` +
-  `Entry: ${entry_price}\n` +
-  `Target: ${target_price}\n` +
-  `Stop Loss: ${stop_loss}\n\n` +
-  `📝 ${research_remarks || ""}`;
-
-try {
-  const usersResult = await pool.query(`
-    SELECT telegram_user_id, telegram_client_name
-    FROM telegram_users
-  `);
-
-  for (const user of usersResult.rows) {
-    try {
-      const receiver = user.telegram_user_id;
-
-      if (!receiver) continue;
-
-      await client.sendMessage(receiver, { message });
-
-      console.log("✅ Sent to:", user.telegram_client_name);
-
-      await new Promise((res) => setTimeout(res, 2000));
-
-    } catch (err: any) {
-      console.error("❌ Failed for:", user.telegram_client_name, err.message);
-    }
+  } catch (err) {
+    console.error("CREATE CALL ERROR:", err);
+    return res.status(500).json({ message: "Server error" });
   }
-
-} catch (err) {
-  console.error("❌ Telegram block error:", err);
-}
-
-// ✅ response after sending
-return res.status(201).json({
-    message: "Research call created & Telegram sent",
-    id: rows[0].id,
-    created_at: rows[0].created_at
-});
-    } catch (err) {
-        console.error("CREATE CALL ERROR:", err);
-        return res.status(500).json({ message: "Server error" });
-    }
 };
 
 

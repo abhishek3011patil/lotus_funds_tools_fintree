@@ -328,80 +328,97 @@ export const rejectUser = async (req: Request, res: Response) => {
 
     /* ================= VALIDATION ================= */
     if (!id || !type) {
-      return res.status(400).json({ success: false, message: "ID and type are required" });
+      return res.status(400).json({
+        success: false,
+        message: "ID and type are required",
+      });
     }
 
     if (!reason || reason.trim() === "") {
-      return res.status(400).json({ success: false, message: "Rejection reason required" });
+      return res.status(400).json({
+        success: false,
+        message: "Rejection reason required",
+      });
     }
 
-    const normalizedType = String(type).toLowerCase();
-    let table: "ra_details" | "broker_details";
+    /* ================= SAFE TYPE HANDLING ================= */
+    const safeType = Array.isArray(type) ? type[0] : type;
+    const lowerType = safeType.toLowerCase();
 
-    if (normalizedType === "ra") table = "ra_details";
-    else if (normalizedType === "broker") table = "broker_details";
-    else return res.status(400).json({ success: false, message: "Invalid type" });
+    const table =
+      lowerType === "ra"
+        ? "ra_details"
+        : lowerType === "broker"
+        ? "broker_details"
+        : null;
+
+    if (!table) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid type",
+      });
+    }
 
     await client.query("BEGIN");
 
-    /* ================= FETCH SPECIFIC RECORD ================= */
+    /* ================= GET DETAILS RECORD ================= */
     const recordRes = await client.query(
-      `SELECT id, user_id FROM ${table} WHERE id = $1`,
+      `SELECT id, email FROM ${table} WHERE id = $1`,
       [id]
     );
 
     if (recordRes.rowCount === 0) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ success: false, message: `${normalizedType.toUpperCase()} not found` });
+      return res.status(404).json({
+        success: false,
+        message: `${lowerType.toUpperCase()} not found`,
+      });
     }
 
-    const record = recordRes.rows[0];
-    const userId = record.user_id;
+    const { email } = recordRes.rows[0];
 
-    /* ================= REJECT THE RECORD ================= */
+    /* ================= UPDATE DETAILS TABLE ================= */
     await client.query(
-      `UPDATE ${table}
-       SET status = 'rejected',
-           rejection_reason = $1
-       WHERE id = $2`,
-      [reason, id]
+      `
+      UPDATE ${table}
+      SET status = $1,
+          rejection_reason = $2
+      WHERE id = $3
+      `,
+      ["rejected", reason, id]
     );
 
-    /* ================= UPDATE THE USER (SAFE) ================= */
-    if (userId) {
-      const role = normalizedType === "ra" ? "RESEARCH_ANALYST" : "BROKER";
-
-      const userCheck = await client.query(
-        `SELECT id FROM users WHERE id = $1 AND role = $2`,
-        [userId, role]
+    /* ================= UPDATE USERS TABLE (FIXED) ================= */
+    if (email) {
+      await client.query(
+        `
+        UPDATE users
+        SET status = $1
+        WHERE LOWER(email) = LOWER($2)
+        `,
+        ["rejected", email]
       );
-
-      if (userCheck && userCheck.rowCount && userCheck.rowCount === 1) {
-        await client.query(
-          `UPDATE users
-           SET status = 'REJECTED'
-           WHERE id = $1`,
-          [userId]
-        );
-      }
     }
 
     await client.query("COMMIT");
 
     return res.status(200).json({
       success: true,
-      message: `${normalizedType.toUpperCase()} rejected successfully`
+      message: `${lowerType.toUpperCase()} rejected successfully`,
     });
 
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Reject Error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   } finally {
     client.release();
   }
 };
-
 /* ================= GET SINGLE REGISTRATION ================= */
 
 export const getRegistrationById = async (req: Request, res: Response) => {

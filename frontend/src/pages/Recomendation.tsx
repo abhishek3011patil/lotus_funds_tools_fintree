@@ -184,74 +184,130 @@ const NewRecommendation = () => {
     setDirectValue("");
   };
 
+  const getRAIdFromToken = () => {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) return null;
+
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.id; // ✅ THIS is your RA ID
+  } catch {
+    return null;
+  }
+};
 
   const handleSubmit = async () => {
-    try {
-      const token = localStorage.getItem("token");
+  try {
+    const token = localStorage.getItem("token");
 
-      if (!token) {
-        alert("Please login again");
-        return;
-      }
+    if (!token) {
+      alert("Please login again");
+      return;
+    }
 
-      const finalDisplayName =
-        suggestion &&
-          suggestion.toLowerCase().startsWith(inputValue.toLowerCase())
-          ? suggestion
-          : inputValue;
+    const finalDisplayName =
+      suggestion &&
+      suggestion.toLowerCase().startsWith(inputValue.toLowerCase())
+        ? suggestion
+        : inputValue;
 
-      const payload = {
-        exchange_type: form.exchangeType,
-        market_type: form.exchange,
-        symbol: "SYM",
-        display_name: finalDisplayName,
-        action: form.action,
-        call_type: form.callType,
-        trade_type: form.tradeType,
-        expiry_date: form.expiry || null,
-        entry_price: form.entry || null,
-        entry_price_low: form.entryLow || null,
-        entry_price_upper: form.entryUpper || null,
-        target_price: form.target || null,
-        target_price_2: form.target2 || null,
-        target_price_3: form.target3 || null,
-        stop_loss: form.stopLoss || null,
-        stop_loss_2: form.stopLoss2 || null,
-        stop_loss_3: form.stopLoss3 || null,
-        holding: form.holdingPeriod || "0",
-        rationale: form.rationale,
-        underlying_study: form.underlyingStudy?.label || null,
-        is_algo: false,
-        has_vested_interest: false,
-        research_remarks: form.remark || undefined
+    const payload = {
+      exchange_type: form.exchangeType,
+      market_type: form.exchange,
+      symbol: "SYM",
+      display_name: finalDisplayName,
+      action: form.action,
+      call_type: form.callType,
+      trade_type: form.tradeType,
+      expiry_date: form.expiry || null,
+      entry_price: form.entry || null,
+      entry_price_low: form.entryLow || null,
+      entry_price_upper: form.entryUpper || null,
+      target_price: form.target || null,
+      target_price_2: form.target2 || null,
+      target_price_3: form.target3 || null,
+      stop_loss: form.stopLoss || null,
+      stop_loss_2: form.stopLoss2 || null,
+      stop_loss_3: form.stopLoss3 || null,
+      holding: form.holdingPeriod || "0",
+      rationale: form.rationale,
+      underlying_study: form.underlyingStudy?.label || null,
+      is_algo: false,
+      has_vested_interest: false,
+      research_remarks: form.remark || undefined
+    };
+
+    let res;
+
+    if (isErrataMode && errataSourceId) {
+      // ERRATA (unchanged)
+      const updates = {
+        entry_price: form.entry || undefined,
+        target_price: form.target || undefined,
+        stop_loss: form.stopLoss || undefined,
+        target_price_2: form.target2 || undefined,
+        target_price_3: form.target3 || undefined,
+        stop_loss_2: form.stopLoss2 || undefined,
+        stop_loss_3: form.stopLoss3 || undefined,
+        entry_price_low: form.entryLow || undefined,
+        entry_price_upper: form.entryUpper || undefined,
+        holding_period: form.holdingPeriod || undefined,
+        rationale: form.rationale || undefined,
+        underlying_study: form.underlyingStudy?.label || undefined,
+        research_remarks: form.remark || undefined,
       };
 
-      let res;
+      res = await axios.post(
+        import.meta.env.VITE_API_URL + "/api/research/calls/errata",
+        {
+          call_id: errataSourceId,
+          updates,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-      if (isErrataMode && errataSourceId) {
+      alert("Errata Created ✅");
 
-        // Build only fields that are allowed to be updated
-        const updates = {
-          entry_price: form.entry || undefined,
-          target_price: form.target || undefined,
-          stop_loss: form.stopLoss || undefined,
-          target_price_2: form.target2 || undefined,
-          target_price_3: form.target3 || undefined,
-          stop_loss_2: form.stopLoss2 || undefined,
-          stop_loss_3: form.stopLoss3 || undefined,
-          entry_price_low: form.entryLow || undefined,
-          entry_price_upper: form.entryUpper || undefined,
-          holding_period: form.holdingPeriod || undefined,
-          rationale: form.rationale || undefined,
-          underlying_study: form.underlyingStudy?.label || undefined,
-          research_remarks: form.remark || undefined,
-        };
+    } else {
+      // NORMAL CREATE
+      res = await axios.post(
+        import.meta.env.VITE_API_URL + "/api/research/calls",
+        payload,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
-        res = await axios.post(
-          import.meta.env.VITE_API_URL + "/api/research/calls/errata",
+      alert("Research Call Created ✅");
+
+      // ✅ FIXED TELEGRAM CALL
+      try {
+        const raId = getRAIdFromToken();
+
+console.log("🔥 RA ID FROM TOKEN:", raId); // ✅ ADD THIS
+
+if (!raId) {
+  console.error("RA ID missing");
+  return;
+}
+
+        await axios.post(
+          import.meta.env.VITE_API_URL + "/api/telegram/send-ra-message",
           {
-            call_id: errataSourceId,
-            updates,
+
+            message: `
+📊 ${form.action} ${finalDisplayName}
+Call Type: ${form.callType}
+Trade Type: ${form.tradeType}
+
+Entry: ${form.entry}
+Target: ${form.target}
+StopLoss: ${form.stopLoss}
+
+${form.rationale || ""}
+            `,
           },
           {
             headers: {
@@ -260,82 +316,20 @@ const NewRecommendation = () => {
           }
         );
 
-
-        alert("Errata Created ✅");
-
-      } else {
-        // ✅ NORMAL CREATE
-        res = await axios.post(
-          import.meta.env.VITE_API_URL + "/api/research/calls",
-          payload,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        alert("Research Call Created ✅");
-
-        // 📤 Send Telegram notification after successful creation
-        try {
-         await axios.post(
-  import.meta.env.VITE_API_URL + "/api/telegram/send",
-  {
-    userId: res.data?.telegram_user_id, // or correct mapped field
-
-    message: `📢 ${form.action} ${finalDisplayName}
-
-Type: ${form.callType} | ${form.tradeType}
-
-📊 Entry: ${form.entry}
-🎯 Target: ${form.target}
-🛑 StopLoss: ${form.stopLoss}
-
-${form.rangeEnabled ? `📉 Entry Range: ${form.entryLow} - ${form.entryUpper}` : ""}
-
-${form.secondaryTargetEnabled ? `🎯 Target 2: ${form.target2}\n🎯 Target 3: ${form.target3}` : ""}
-
-${form.stopLoss2Enabled ? `🛑 SL 2: ${form.stopLoss2}\n🛑 SL 3: ${form.stopLoss3}` : ""}
-
-📌 Rationale: ${form.rationale}
-⏳ Holding: ${form.holdingPeriod}`
-  },
-  {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  }
-);
-          console.log("✅ Telegram notification sent");
-        } catch (telegramErr: any) {
-          console.error("⚠️ Telegram send failed:", telegramErr?.response?.data || telegramErr?.message);
-        }
+        console.log("✅ Telegram sent ONLY to this RA clients");
+      } catch (telegramErr: any) {
+        console.error("⚠️ Telegram failed:", telegramErr?.response?.data || telegramErr?.message);
       }
-
-      const createdCall = res.data.data || res.data;
-
-      // Update list with new version
-      setRecommendations((prev) => [
-        {
-          ...createdCall,
-          name: createdCall.display_name,
-        },
-        ...prev.filter((c) => c.id !== errataSourceId),
-      ]);
-
-      // Reset errata mode
-      setIsErrataMode(false);
-      setErrataSourceId(null);
-
-    } catch (err: any) {
-      console.error(err);
-      alert(err?.response?.data?.message || "Error submitting call");
     }
+
     await fetchRecommendations();
     resetForm();
-  };
 
+  } catch (err: any) {
+    console.error(err);
+    alert(err?.response?.data?.message || "Error submitting call");
+  }
+};
 
   const handleToggle = useCallback(
     (field: keyof RecommendationForm) => {
@@ -658,7 +652,7 @@ ${form.stopLoss2Enabled ? `🛑 SL 2: ${form.stopLoss2}\n🛑 SL 3: ${form.stopL
       // 📤 Send Telegram notification after publishing draft
  try {
   const telegramRes = await axios.post(
-    `${import.meta.env.VITE_API_URL}/api/telegram/send`,
+    `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
     {
       ra_user_id: res.data?.id || res.data?.data?.ra_user_id,
       action: form.action,
@@ -687,7 +681,6 @@ ${form.stopLoss2Enabled ? `🛑 SL 2: ${form.stopLoss2}\n🛑 SL 3: ${form.stopL
       console.error("Publish failed:", error);
     }
   }, []);
-
 
 
   const handleTrack = async () => {
@@ -1516,7 +1509,6 @@ const getPriceError = (field: string, currentForm: any): string | null => {
         onExit={handleExit}
         onInitiate={handleInitiate}
       />
-
       {/* RIGHT PANEL */}
 
     </Box>

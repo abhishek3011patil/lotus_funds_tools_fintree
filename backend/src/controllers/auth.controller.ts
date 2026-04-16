@@ -10,88 +10,113 @@ import { AuthRequest } from "../middlewares/auth.middleware";
 export const approveUser = async (req: Request, res: Response) => {
   try {
     const { userId, type } = req.body;
-    if (!userId || !type)
+
+    if (!userId || !type) {
       return res.status(400).json({ message: "userId and type required" });
+    }
 
     let userData: { id: string; name: string; email: string; role: string };
-    let username = "";
 
-    // 🔹 GET DETAILS
+    // ================= GET DETAILS =================
     if (type === "RA") {
       const result = await pool.query(
-        `SELECT first_name, surname, email, user_id FROM ra_details WHERE id=$1`,
+        `SELECT first_name, surname, email FROM ra_details WHERE id=$1`,
         [userId]
       );
+
       if (result.rows.length === 0)
         return res.status(404).json({ message: "RA not found" });
 
       const ra = result.rows[0];
+
       userData = {
-        id: ra.user_id,
+        id: crypto.randomUUID(),
         name: `${ra.first_name} ${ra.surname}`,
         email: ra.email.trim().toLowerCase(),
         role: "RESEARCH_ANALYST",
       };
-      username = ra.email.trim().toLowerCase();
     } else if (type === "BROKER") {
       const result = await pool.query(
-        `SELECT legal_name, email, id FROM broker_details WHERE id=$1`,
+        `SELECT legal_name, email FROM broker_details WHERE id=$1`,
         [userId]
       );
+
       if (result.rows.length === 0)
         return res.status(404).json({ message: "Broker not found" });
 
       const broker = result.rows[0];
+
       userData = {
-        id: broker.id,
+        id: crypto.randomUUID(),
         name: broker.legal_name,
         email: broker.email.trim().toLowerCase(),
         role: "BROKER",
       };
-      username = broker.email.trim().toLowerCase();
     } else {
       return res.status(400).json({ message: "Invalid type" });
     }
 
-    // 🔹 CHECK IF EMAIL ALREADY EXISTS IN users TABLE
-    const existingUser = await pool.query(
-      `SELECT id FROM users WHERE LOWER(TRIM(email)) = $1`,
+    // ================= CHECK EXISTING USER =================
+    const existing = await pool.query(
+      `SELECT id, status FROM users WHERE email = $1`,
       [userData.email]
     );
 
-    if (existingUser.rows.length > 0) {
-      // Email already exists, block approval
-      console.log(`❌ DUPLICATE EMAIL BLOCKED: ${userData.email}`);
-      return res.status(400).json({
-        success: false,
-        message: `Email ${userData.email} already registered. Cannot approve again ❌`,
-      });
+    if (existing.rows.length > 0) {
+      const user = existing.rows[0];
+
+      if (user.status === "active") {
+        return res.status(400).json({
+          message: "User already active ❌",
+        });
+      }
+
+      // 🔥 IMPORTANT: restore deleted/inactive user instead of inserting new
+      await pool.query(
+        `
+        UPDATE users 
+        SET name=$1,
+            role=$2,
+            status='inactive'
+        WHERE email=$3
+        `,
+        [userData.name, userData.role, userData.email]
+      );
+    } else {
+      // ================= INSERT NEW USER =================
+      const tempPassword = await bcrypt.hash("temp123", 10);
+
+      await pool.query(
+        `
+        INSERT INTO users 
+        (id, name, email, username, password_hash, role, status, created_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
+        `,
+        [
+          userData.id,
+          userData.name,
+          userData.email,
+          userData.email.split("@")[0],
+          tempPassword,
+          userData.role,
+          "inactive",
+        ]
+      );
     }
 
-    // 🔹 TEMP PASSWORD (random 6 chars)
-    const tempPassword = crypto.randomBytes(3).toString("hex");
-    const hashedTempPassword = await bcrypt.hash(tempPassword, 10);
-
-    // 🔹 INSERT USER
-    const upsertResult = await pool.query(
-      `INSERT INTO users 
-        (id, name, email, username, password_hash, role, status, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
-       RETURNING id`,
-      [userData.id, userData.name, userData.email, username, hashedTempPassword, userData.role, "inactive"]
-    );
-
-    const userRow = upsertResult.rows[0];
-
-    // 🔹 CREATE RESET TOKEN
+    // ================= CREATE RESET TOKEN =================
     const token = crypto.randomBytes(32).toString("hex");
-    const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
     await pool.query(
-      `UPDATE users SET reset_token=$1, token_expiry=$2 WHERE id=$3`,
-      [token, expiry, userRow.id]
+      `
+      UPDATE users 
+      SET reset_token=$1, token_expiry=$2
+      WHERE email=$3
+      `,
+      [token, new Date(Date.now() + 60 * 60 * 1000), userData.email]
     );
 
-    // 🔹 UPDATE DETAILS STATUS
+    // ================= UPDATE DETAILS TABLE =================
     if (type === "RA") {
       await pool.query(
         `UPDATE ra_details SET status='approved' WHERE email=$1`,
@@ -104,14 +129,13 @@ export const approveUser = async (req: Request, res: Response) => {
       );
     }
 
-    // 🔹 SEND APPROVAL EMAIL
+    // ================= SEND EMAIL =================
     const link = `${process.env.FRONTEND_URL}/set-password?token=${token}`;
     await sendApprovalMail(userData.email, userData.name, link);
 
     return res.json({
       success: true,
-      message: `${type} approved and set-password email sent ✅`,
-      username,
+      message: `${type} approved successfully ✅`,
     });
 
   } catch (error) {

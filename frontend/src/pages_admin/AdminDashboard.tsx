@@ -85,7 +85,7 @@ const AdminDashboard = () => {
 
 
         const formatted: AdminRow[] = data.map((item: any) => ({
-          id: item.user_id || item.id,
+       id: item.id,
           name:
   `${item.first_name || ""} ${item.surname || ""}`.trim() ||
   item.name ||
@@ -205,15 +205,24 @@ const fetchParticipants = async (raId?: string) => {
 
     setParticipantLoading(true);
 
+    const token = localStorage.getItem("token"); // ✅ GET TOKEN
+
     const url = `${import.meta.env.VITE_API_URL}/api/telegram/ra/${raId}`;
 
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`, // ✅ ADD THIS
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`Server responded with ${response.status}`);
     }
 
     const data = await response.json();
+
+    console.log("✅ PARTICIPANTS:", data); // DEBUG
+
     setParticipantsList(data);
 
   } catch (error) {

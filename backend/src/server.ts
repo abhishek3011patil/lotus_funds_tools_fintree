@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3000;
 
 const startServer = async () => {
   try {
-    await initTelegram(); // 🔥 MUST WAIT
+    //await initTelegram(); // 🔥 MUST WAIT
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
