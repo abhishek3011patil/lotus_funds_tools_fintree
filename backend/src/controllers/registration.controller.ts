@@ -4,6 +4,7 @@ import { pool } from "../db";
 
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import { v4 as uuidv4 } from "uuid";
 
 /* ================= GET ALL REGISTRATIONS ================= */
 
@@ -93,146 +94,148 @@ ORDER BY u.created_at DESC;
 };
 /* ================= REGISTER RA ================= */
 
+/* ================= REGISTER RA (FIXED) ================= */
+
 export const registerRA = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user?.id;
+    const data = req.body || {};
+    const files = req.files as any;
 
-    if (!userId) {
-      return res.status(401).json({
-        message: "Unauthorized user",
+    const userId = req.user?.id || crypto.randomUUID(); // fallback ID
+
+    if (!data.firstName || !data.surname) {
+      return res.status(400).json({
+        success: false,
+        message: "First name and surname are required",
       });
     }
 
-    const data = req.body;
-    const files = req.files as any;
+    if (!data.email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
 
-    data.noGuaranteedReturns = data.noGuaranteedReturns === "true";
-    data.conflictOfInterest = data.conflictOfInterest === "true";
-    data.personalTrading = data.personalTrading === "true";
-    data.sebiCompliance = data.sebiCompliance === "true";
-    data.platformPolicy = data.platformPolicy === "true";
-    data.declare1 = data.declare1 === "true";
-    data.declare2 = data.declare2 === "true";
+    data.email = data.email.trim().toLowerCase();
 
-    const query = `
-    INSERT INTO ra_details (
-      user_id,
-      salutation,
-      first_name,
-      middle_name,
-      surname,
-      org_name,
-      designation,
-      short_bio,
-      email,
-      mobile,
-      telephone,
-      country,
-      state,
-      city,
-      pincode,
-      address_line1,
-      address_line2,
-      profile_image,
-      sebi_reg_no,
-      sebi_start_date,
-      sebi_expiry_date,
-      sebi_certificate,
-      sebi_receipt,
-      nism_reg_no,
-      nism_valid_till,
-      nism_certificate,
-      academic_qualification,
-      professional_qualification,
-      market_experience,
-      expertise,
-      markets,
-      bank_name,
-      account_holder,
-      account_number,
-      ifsc_code,
-      cancelled_cheque,
-      pan_number,
-      pan_card,
-      address_proof_type,
-      address_proof_document,
-      declare_info_true,
-      consent_verification,
-      no_guaranteed_returns,
-      conflict_of_interest,
-      personal_trading,
-      sebi_compliance,
-      platform_policy
-    )
-    VALUES (
-      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
-      $12,$13,$14,$15,$16,$17,$18,
-      $19,$20,$21,$22,$23,
-      $24,$25,$26,
-      $27,$28,$29,$30,$31,
-      $32,$33,$34,$35,$36,
-      $37,$38,$39,$40,
-      $41,$42,
-      $43,$44,$45,$46,$47
-    )
-    RETURNING id
-    `;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(data.email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email format",
+      });
+    }
 
-    const values = [
-      userId,
-      data.salutation,
-      data.firstName,
-      data.middleName,
-      data.surname,
-      data.orgName,
-      data.designation,
-      data.shortBio,
-      data.email,
-      data.mobile,
-      data.telephone,
-      data.country,
-      data.state,
-      data.city,
-      data.pincode,
-      data.address1,
-      data.address2,
-      files?.profileImage?.[0]?.filename || null,
-      data.sebiRegNo,
-      data.sebiStartDate,
-      data.sebiExpiryDate,
-      files?.sebiCert?.[0]?.filename || null,
-      files?.sebiReceipt?.[0]?.filename || null,
-      data.nismRegNo,
-      data.nismValidTill,
-      files?.nismCert?.[0]?.filename || null,
-      data.academicQual,
-      data.profQual,
-      data.marketExp,
-      data.expertise,
-      data.markets,
-      data.bankName,
-      data.accountHolder,
-      data.accountNumber,
-      data.ifscCode,
-      files?.cancelledCheque?.[0]?.filename || null,
-      data.panNumber,
-      files?.panCard?.[0]?.filename || null,
-      data.addressProofType,
-      files?.addressProofDoc?.[0]?.filename || null,
-      data.declare1,
-      data.declare2,
-      data.noGuaranteedReturns,
-      data.conflictOfInterest,
-      data.personalTrading,
-      data.sebiCompliance,
-      data.platformPolicy
-    ];
+    const existing = await pool.query(
+      `SELECT id FROM ra_details WHERE email = $1`,
+      [data.email]
+    );
 
-    const result = await pool.query(query, values);
+    if ((existing.rowCount ?? 0) > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "RA already registered with this email",
+      });
+    }
+
+    const toBool = (val: any) => val === "true";
+
+    const result = await pool.query(
+      `INSERT INTO ra_details (
+        user_id,
+        salutation, first_name, middle_name, surname,
+        org_name, designation, short_bio, email, mobile, telephone,
+        country, state, city, pincode, address_line1, address_line2,
+        profile_image,
+        sebi_reg_no, sebi_start_date, sebi_expiry_date,
+        sebi_certificate, sebi_receipt,
+        nism_reg_no, nism_valid_till, nism_certificate,
+        academic_qualification, professional_qualification,
+        market_experience, expertise, markets,
+        bank_name, account_holder, account_number, ifsc_code,
+        cancelled_cheque,
+        pan_number, pan_card,
+        address_proof_type, address_proof_document,
+        declare_info_true, consent_verification,
+        no_guaranteed_returns, conflict_of_interest,
+        personal_trading, sebi_compliance, platform_policy
+      )
+      VALUES (
+        $1,
+        $2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
+        $12,$13,$14,$15,$16,$17,$18,
+        $19,$20,$21,$22,$23,
+        $24,$25,$26,
+        $27,$28,$29,$30,$31,
+        $32,$33,$34,$35,$36,
+        $37,$38,$39,$40,
+        $41,$42,
+        $43,$44,$45,$46,$47
+      )
+      RETURNING id`,
+      [
+        userId, // ✅ FIXED
+
+        data.salutation || null,
+        data.firstName,
+        data.middleName || null,
+        data.surname,
+        data.orgName || null,
+        data.designation || null,
+        data.shortBio || null,
+        data.email,
+        data.mobile || null,
+        data.telephone || null,
+        data.country || null,
+        data.state || null,
+        data.city || null,
+        data.pincode || null,
+        data.address1 || null,
+        data.address2 || null,
+
+        files?.profileImage?.[0]?.filename || null,
+        data.sebiRegNo || null,
+        data.sebiStartDate || null,
+        data.sebiExpiryDate || null,
+
+        files?.sebiCert?.[0]?.filename || null,
+        files?.sebiReceipt?.[0]?.filename || null,
+
+        data.nismRegNo || null,
+        data.nismValidTill || null,
+        files?.nismCert?.[0]?.filename || null,
+
+        data.academicQual || null,
+        data.profQual || null,
+        data.marketExp || null,
+        data.expertise || null,
+        data.markets || null,
+
+        data.bankName || null,
+        data.accountHolder || null,
+        data.accountNumber || null,
+        data.ifscCode || null,
+
+        files?.cancelledCheque?.[0]?.filename || null,
+        data.panNumber || null,
+        files?.panCard?.[0]?.filename || null,
+        data.addressProofType || null,
+        files?.addressProofDoc?.[0]?.filename || null,
+
+        toBool(data.declare1),
+        toBool(data.declare2),
+        toBool(data.noGuaranteedReturns),
+        toBool(data.conflictOfInterest),
+        toBool(data.personalTrading),
+        toBool(data.sebiCompliance),
+        toBool(data.platformPolicy),
+      ]
+    );
 
     return res.status(201).json({
       success: true,
-      message: "Registration submitted successfully",
+      message: "RA Registration Submitted Successfully",
       ra_id: result.rows[0].id,
     });
 
@@ -246,10 +249,7 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
   }
 };
 
-
 /* ================= APPROVE REGISTRATION ================= */
-
-
 
 export const approveRegistration = async (req: Request, res: Response) => {
   const client = await pool.connect();
@@ -328,80 +328,97 @@ export const rejectUser = async (req: Request, res: Response) => {
 
     /* ================= VALIDATION ================= */
     if (!id || !type) {
-      return res.status(400).json({ success: false, message: "ID and type are required" });
+      return res.status(400).json({
+        success: false,
+        message: "ID and type are required",
+      });
     }
 
     if (!reason || reason.trim() === "") {
-      return res.status(400).json({ success: false, message: "Rejection reason required" });
+      return res.status(400).json({
+        success: false,
+        message: "Rejection reason required",
+      });
     }
 
-    const normalizedType = String(type).toLowerCase();
-    let table: "ra_details" | "broker_details";
+    /* ================= SAFE TYPE HANDLING ================= */
+    const safeType = Array.isArray(type) ? type[0] : type;
+    const lowerType = safeType.toLowerCase();
 
-    if (normalizedType === "ra") table = "ra_details";
-    else if (normalizedType === "broker") table = "broker_details";
-    else return res.status(400).json({ success: false, message: "Invalid type" });
+    const table =
+      lowerType === "ra"
+        ? "ra_details"
+        : lowerType === "broker"
+        ? "broker_details"
+        : null;
+
+    if (!table) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid type",
+      });
+    }
 
     await client.query("BEGIN");
 
-    /* ================= FETCH SPECIFIC RECORD ================= */
+    /* ================= GET DETAILS RECORD ================= */
     const recordRes = await client.query(
-      `SELECT id, user_id FROM ${table} WHERE id = $1`,
+      `SELECT id, email FROM ${table} WHERE id = $1`,
       [id]
     );
 
     if (recordRes.rowCount === 0) {
       await client.query("ROLLBACK");
-      return res.status(404).json({ success: false, message: `${normalizedType.toUpperCase()} not found` });
+      return res.status(404).json({
+        success: false,
+        message: `${lowerType.toUpperCase()} not found`,
+      });
     }
 
-    const record = recordRes.rows[0];
-    const userId = record.user_id;
+    const { email } = recordRes.rows[0];
 
-    /* ================= REJECT THE RECORD ================= */
+    /* ================= UPDATE DETAILS TABLE ================= */
     await client.query(
-      `UPDATE ${table}
-       SET status = 'rejected',
-           rejection_reason = $1
-       WHERE id = $2`,
-      [reason, id]
+      `
+      UPDATE ${table}
+      SET status = $1,
+          rejection_reason = $2
+      WHERE id = $3
+      `,
+      ["rejected", reason, id]
     );
 
-    /* ================= UPDATE THE USER (SAFE) ================= */
-    if (userId) {
-      const role = normalizedType === "ra" ? "RESEARCH_ANALYST" : "BROKER";
-
-      const userCheck = await client.query(
-        `SELECT id FROM users WHERE id = $1 AND role = $2`,
-        [userId, role]
+    /* ================= UPDATE USERS TABLE (FIXED) ================= */
+    if (email) {
+      await client.query(
+        `
+        UPDATE users
+        SET status = $1
+        WHERE LOWER(email) = LOWER($2)
+        `,
+        ["rejected", email]
       );
-
-      if (userCheck && userCheck.rowCount && userCheck.rowCount === 1) {
-        await client.query(
-          `UPDATE users
-           SET status = 'REJECTED'
-           WHERE id = $1`,
-          [userId]
-        );
-      }
     }
 
     await client.query("COMMIT");
 
     return res.status(200).json({
       success: true,
-      message: `${normalizedType.toUpperCase()} rejected successfully`
+      message: `${lowerType.toUpperCase()} rejected successfully`,
     });
 
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Reject Error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   } finally {
     client.release();
   }
 };
-
 /* ================= GET SINGLE REGISTRATION ================= */
 
 export const getRegistrationById = async (req: Request, res: Response) => {
@@ -458,17 +475,17 @@ export const getBrokerById = async (req: Request, res: Response) => {
 export const updateRARegistration = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const data = req.body;
+    const data = req.body || {};
     const files = req.files as any;
 
     // Convert boolean strings to actual booleans
-    data.noGuaranteedReturns = data.noGuaranteedReturns === "true";
-    data.conflictOfInterest = data.conflictOfInterest === "true";
-    data.personalTrading = data.personalTrading === "true";
-    data.sebiCompliance = data.sebiCompliance === "true";
-    data.platformPolicy = data.platformPolicy === "true";
-    data.declare1 = data.declare1 === "true";
-    data.declare2 = data.declare2 === "true";
+   data.noGuaranteedReturns = data?.noGuaranteedReturns === "true";
+data.conflictOfInterest = data?.conflictOfInterest === "true";
+data.personalTrading = data?.personalTrading === "true";
+data.sebiCompliance = data?.sebiCompliance === "true";
+data.platformPolicy = data?.platformPolicy === "true";
+data.declare1 = data?.declare1 === "true";
+data.declare2 = data?.declare2 === "true";
 
     const query = `
       UPDATE ra_details

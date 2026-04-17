@@ -172,21 +172,20 @@ export const deleteParticipant = async (req: Request, res: Response) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 export const getClientsByRA = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    const result = await pool.query(
-      "SELECT * FROM telegram_users WHERE user_id = $1",
-      [id]
-    );
+  console.log("👉 RA ID RECEIVED:", id);
 
-    res.json(result.rows);
+  const result = await pool.query(
+    "SELECT * FROM telegram_users WHERE user_id = $1",
+    [id]
+  );
 
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ message: error.message });
-  }
+  console.log("👉 DB RESULT:", result.rows);
+
+  res.json(result.rows);
 };
 
 export const sendMessageToRAClients = async (req: Request, res: Response) => {

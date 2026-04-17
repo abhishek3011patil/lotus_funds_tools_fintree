@@ -85,7 +85,7 @@ const AdminDashboard = () => {
 
 
         const formatted: AdminRow[] = data.map((item: any) => ({
-          id: item.user_id || item.id,
+       id: item.id,
           name:
             `${item.first_name || ""} ${item.surname || ""}`.trim() ||
             item.name ||
@@ -203,18 +203,18 @@ const AdminDashboard = () => {
     try {
       if (!raId) return;
 
-      setParticipantLoading(true);
+    setParticipantLoading(true);
 
       const url = `${import.meta.env.VITE_API_URL}/api/telegram/ra/${raId}`;
 
-      const response = await fetch(url);
+    const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error(`Server responded with ${response.status}`);
       }
 
-      const data = await response.json();
-      setParticipantsList(data);
+    const data = await response.json();
+    setParticipantsList(data);
 
     } catch (error) {
       console.error("Fetch error:", error);

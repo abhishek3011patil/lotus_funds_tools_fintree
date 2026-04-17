@@ -50,8 +50,9 @@ export const authenticate = (
 
 
         next();
-    } catch (error) {
-        console.warn("Invalid JWT attempt");
-        return res.status(401).json({ message: "Invalid token" });
-    }
+    } catch (error: any) {
+    console.warn("JWT ERROR:", error.message); // 🔥 show exact issue
+    
+    return res.status(401).json({ message: "Invalid token" });
+}
 };

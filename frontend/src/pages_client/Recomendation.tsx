@@ -32,6 +32,7 @@ import {
   getRecentStudies,
 } from "../assets/UnderlyingStudy";
 import type { StudyOption } from "../assets/UnderlyingStudy";
+import { FormHelperText } from "@mui/material";
 
 const BUY_COLOR = "#22c55e";
 const SELL_COLOR = "#ef4444";
@@ -48,6 +49,9 @@ const getActionStyles = (current: "BUY" | "SELL", button: "BUY" | "SELL") => {
     },
   };
 };
+
+
+
 
 const NewRecommendation = () => {
   const [exchangeType, setExchangeType] = useState("NSE");
@@ -107,15 +111,13 @@ const NewRecommendation = () => {
     exchangeType as any
   );
 
-  const {
-    inputValue,
-    suggestion,
-    options,
-    open,
-    handleInputChange,
-    handleKeyDown,
-  } = useStockAutocomplete(exchangeType as "NSE" | "BSE");
-
+const {
+  inputValue,
+  suggestion,
+  matches,
+  handleInputChange,
+  handleKeyDown,
+} = useStockAutocomplete(exchangeType as "NSE" | "BSE");
   // =============================
   // Underlying Study helpers
   // =============================
@@ -213,13 +215,21 @@ const NewRecommendation = () => {
   }, []);
 
   // 1. EXIT FUNCTION (Removes the item from the list)
-  const handleExit = (id: string) => {
-    if (window.confirm("Are you sure you want to exit this recommendation?")) {
-      // For now, we update the UI state. 
-      // Later, your Sir will add: await fetch(`${DATA_SOURCE}/${id}`, { method: 'DELETE' });
-      setRecommendations((prev) => prev.filter((item) => item.id !== id));
-    }
-  };
+const handleExit = async (id: string) => {
+  if (!window.confirm("Are you sure you want to exit this recommendation?")) return;
+
+  try {
+    await fetch(`/api/recommendations/${id}`, {
+      method: "DELETE",
+    });
+
+    setRecommendations((prev) => prev.filter((item) => item.id !== id));
+
+  } catch (error) {
+    console.error("Exit failed:", error);
+    alert("Failed to exit recommendation");
+  }
+};
 
   // 2. MODIFY FUNCTION (Loads data back into the form)
   const handleModify = (item: any) => {
@@ -238,6 +248,8 @@ const NewRecommendation = () => {
     // If you are using the Autocomplete hook:
     // You might need to manually trigger the input change
     // setInputValue(item.symbol); 
+
+    handleInputChange(null, item.symbol); 
 
     setRationale(item.rationale);
 
@@ -261,22 +273,81 @@ const NewRecommendation = () => {
 
   // Temporary
   const [wasValidated, setWasValidated] = useState(false);
-  const validateAndPublish = (event) => {
-    event.preventDefault();
-    setWasValidated(true);
+ const validateAndPublish = async (
+  event: React.FormEvent<HTMLFormElement>
+) => {
+  event.preventDefault();
+  setWasValidated(true);
 
-    // Check standard inputs via form
-    const form = event.currentTarget.closest('form');
-    const isFormValid = form.checkValidity();
+  const form = event.currentTarget;
 
-    // Check our Radio manually
-    const isRadioValid = radioValue !== "";
+  const isFormValid = form.checkValidity();
+  const isRadioValid = tradeType === "Intraday" || radioValue !== "";
 
-    if (isFormValid && isRadioValid) {
-      handlePublish();
-      setWasValidated(false);
+  // 🔥 EXTRA VALIDATION
+  if (+target <= +entry) {
+    alert("Target must be greater than Entry");
+    return;
+  }
+
+  if (+stopLoss >= +entry) {
+    alert("Stop Loss must be less than Entry");
+    return;
+  }
+
+  if (isFormValid && isRadioValid) {
+    await handlePublish();
+    setWasValidated(false);
+  }
+
+  if (!fileInputRef.current?.files?.length) {
+  alert("Please upload a file");
+  return;
+}
+};
+
+  const handlePublish = async () => {
+  try {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      alert("Session expired. Please login again.");
+      return;
     }
-  };
+
+    const message = `
+${action} ${exchange} ${callType}
+Symbol: ${inputValue}
+Entry: ${entry}
+Target: ${target}
+Stop Loss: ${stopLoss}
+Rationale: ${rationale}
+    `;
+
+    const response = await fetch("/api/telegram/sendCallToRAClients", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`, // ✅ only token
+      },
+      body: JSON.stringify({
+        message,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Something went wrong");
+    }
+
+    alert("Call sent to your clients ✅");
+
+  } catch (error: any) {
+    console.error("❌ Publish error:", error);
+    alert(error.message || "Failed to publish");
+  }
+};
 
   return (
     <Box
@@ -293,6 +364,7 @@ const NewRecommendation = () => {
       <Paper
         component="form"
         noValidate
+         onSubmit={validateAndPublish} 
         sx={{
           p: { xs: 1.5, sm: 2 },
           backgroundColor: panelBg,
@@ -467,12 +539,11 @@ const NewRecommendation = () => {
             )}
 
             <Autocomplete
-              freeSolo
-              open={open}
-              options={options}
-              inputValue={inputValue}
-              onInputChange={handleInputChange}
-              onKeyDown={handleKeyDown}
+  freeSolo
+  options={matches}   // ✅ FIXED
+  inputValue={inputValue}
+  onInputChange={handleInputChange}
+  onKeyDown={handleKeyDown}
               sx={{
                 flexGrow: 1,
                 zIndex: 1,
@@ -776,9 +847,14 @@ const NewRecommendation = () => {
           </Box>
         </Box>
 
-        <Button type="submit" variant="contained" fullWidth sx={{ py: 1.5, fontWeight: 700, borderRadius: 2 }} onClick={validateAndPublish}>
-          Generate & Publish
-        </Button>
+        <Button
+  type="submit"   // ✅ IMPORTANT
+  variant="contained"
+  fullWidth
+  sx={{ py: 1.5, fontWeight: 700, borderRadius: 2 }}
+>
+  Generate & Publish
+</Button>
       </Paper>
 
       {/* RIGHT PANEL */}
