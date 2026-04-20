@@ -78,20 +78,37 @@ const AdminDashboard = () => {
   useEffect(() => {
     const load = async () => {
       try {
+        const token = localStorage.getItem("token");
+
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/registration/all-registrations-active-users`
+          `${import.meta.env.VITE_API_URL}/api/registration/all-registrations-active-users`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
+
+        if (!response.ok) {
+          const errBody = await response.json();
+          console.error("Error response:", errBody);
+          return;
+        }
+
         const data = await response.json();
 
+        if (!Array.isArray(data)) {
+          console.error("Expected array but got:", data);
+          return;
+        }
 
         const formatted: AdminRow[] = data.map((item: any) => ({
-       id: item.id,
+          id: item.id,
           name:
             `${item.first_name || ""} ${item.surname || ""}`.trim() ||
             item.name ||
             "N/A",
           phone: item.mobile || "",
-
           profile: item.profile_image,
           pan: item.pan_card,
           address: item.address_proof_document,
@@ -99,20 +116,16 @@ const AdminDashboard = () => {
           sebi_receipt: item.sebi_receipt,
           nism: item.nism_certificate,
           cheque: item.cancelled_cheque,
-
           telegram_id: item.telegram_user_id
             ? String(item.telegram_user_id)
             : "",
-
           status: item.user_status,
           raStatus: item.ra_status,
           rejectionReason: item.rejection_reason || "",
-
-          // Keep exactly the same time/age UI logic as AdminApproval/AdminRecommendations
           "age/time": "Just now",
         }));
-        console.log(formatted);
 
+        console.log(formatted);
         setRows(formatted);
       } catch (error) {
         console.error("Failed to load admin data:", error);
@@ -203,18 +216,18 @@ const AdminDashboard = () => {
     try {
       if (!raId) return;
 
-    setParticipantLoading(true);
+      setParticipantLoading(true);
 
       const url = `${import.meta.env.VITE_API_URL}/api/telegram/ra/${raId}`;
 
-    const response = await fetch(url);
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error(`Server responded with ${response.status}`);
       }
 
-    const data = await response.json();
-    setParticipantsList(data);
+      const data = await response.json();
+      setParticipantsList(data);
 
     } catch (error) {
       console.error("Fetch error:", error);

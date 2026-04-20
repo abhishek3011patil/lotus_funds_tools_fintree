@@ -74,23 +74,39 @@ const AdminApproval = () => {
 
   const navigate = useNavigate();
 
-  /* ================= LOAD DATA ================= */
-
+  /* ================= LOAD RA DATA ================= */
   useEffect(() => {
     const load = async () => {
       try {
+        const token = localStorage.getItem("token");
+
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/registration/all-registrations`
+          `${import.meta.env.VITE_API_URL}/api/registration/all-registrations`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
+
+        if (!response.ok) {
+          const errBody = await response.json();
+          console.error("Error response:", errBody);
+          return;
+        }
 
         const data = await response.json();
 
+        if (!Array.isArray(data)) {
+          console.error("Expected array but got:", data);
+          return;
+        }
+
         const formatted = data.map((item: any) => ({
-           id: item.id,
-           type: "RA",
+          id: item.id,
+          type: "RA",
           name: `${item.first_name || ""} ${item.surname || ""}`,
           phone: item.mobile || "",
-
           profile: item.profile_image,
           pan: item.pan_card,
           address: item.address_proof_document,
@@ -98,17 +114,14 @@ const AdminApproval = () => {
           sebi_receipt: item.sebi_receipt,
           nism: item.nism_certificate,
           cheque: item.cancelled_cheque,
-
           status: item.status || "Pending",
           rejectionReason: item.rejection_reason || "",
-
           "age/time": "Just now",
         }));
 
         setRows(formatted);
-
       } catch (error) {
-        console.error("Failed to load admin data:", error);
+        console.error("Failed to load RA data:", error);
       }
     };
 
@@ -116,43 +129,58 @@ const AdminApproval = () => {
   }, []);
 
   /* ================= LOAD BROKER DATA ================= */
-useEffect(() => {
-  const loadBrokers = async () => {
-    try {
-      // Make sure this matches the route you just created: /all-brokers
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/broker/all-brokers`);
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const token = localStorage.getItem("token");
 
-      if (!response.ok) {
-         throw new Error("Route not found");
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/registration/all-registrations`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          const errBody = await response.json();
+          console.error("Error response:", errBody);
+          return;
+        }
+
+        const data = await response.json();
+
+        if (!Array.isArray(data)) {
+          console.error("Expected array but got:", data);
+          return;
+        }
+
+        const formatted = data.map((item: any) => ({
+          id: item.id,
+          type: "BROKER",
+          name: `${item.first_name || ""} ${item.surname || ""}`,
+          phone: item.mobile || "",
+          profile: item.profile_image,
+          pan: item.pan_card,
+          address: item.address_proof_document,
+          sebi: item.sebi_certificate,
+          sebi_receipt: item.sebi_receipt,
+          nism: item.nism_certificate,
+          cheque: item.cancelled_cheque,
+          status: item.status || "Pending",
+          rejectionReason: item.rejection_reason || "",
+          "age/time": "Just now",
+        }));
+
+        setRows(formatted);
+      } catch (error) {
+        console.error("Failed to load broker data:", error);
       }
+    };
 
-      const data = await response.json();
-
-      const formatted = data.map((item: any) => ({
-        id: item.id,
-        name: item.legal_name || "N/A", // Using names from your SQL query
-        phone: item.mobile || "",
-        status: item.status || "Pending",
-        logo: item.sebi_certificate, // Mapping files from your DB
-        pan: item.pan,
-        license: item.sebi_registration_no,
-        sebi_certificate: item.sebi_certificate,
-    appointment_letter: item.appointment_letter,
-    networth_certificate: item.networth_certificate,
-    financial_statements: item.financial_statements,
-    ca_certificate: item.ca_certificate,
-    exchange_certificates: item.exchange_certificates || [],
-        "age/time": "New",
-      }));
-
-      setBrokerRows(formatted);
-    } catch (error) {
-      console.error("Broker fetch failed:", error);
-    }
-  };
-
-  loadBrokers();
-}, []);
+    load();
+  }, []);
 
   useEffect(() => {
     setPage(1);
@@ -194,126 +222,120 @@ useEffect(() => {
     page * ITEMS_PER_PAGE
   );
 
-  /* ================= FILE VIEW ================= */
 
- const openFile = (file?: string) => {
-  if (!file) return alert("File not uploaded");
 
-  // Handle multiple files (comma separated)
-  const files = file.split(",");
+  const openFile = (file?: string) => {
+    if (!file) return alert("File not uploaded");
 
-  files.forEach((f) => {
-    const cleanFile = f.trim();
-    if (cleanFile) {
-      const url = `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(cleanFile)}`;
-      window.open(url, "_blank");
-    }
-  });
-};
-  /* ================= APPROVE ================= */
-
-const handleApprove = async (id: string, type: "RA" | "BROKER") => {
-  try {
-    const token = localStorage.getItem("token"); // ✅ get token
-
-    const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/approve-user`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`, // ✅ ADD THIS
-      },
-      body: JSON.stringify({ userId: id, type }),
+    const files = file.split(",");
+    files.forEach((f) => {
+      const cleanFile = f.trim();
+      if (cleanFile) {
+        const url = `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(cleanFile)}`;
+        window.open(url, "_blank");
+      }
     });
+  };
 
-    const data = await res.json();
+  /* ================= APPROVE ================= */
+  const handleApprove = async (id: string, type: "RA" | "BROKER") => {
+    try {
+      const token = localStorage.getItem("token");
 
-    if (!res.ok || data.success === false) {
-      alert(data.message || "Approval failed ❌");
-      return;
-    }
-
-    alert("Approved & Email Sent ✅");
-
-    if (type === "RA") {
-      setRows(prev =>
-        prev.map(r => (r.id === id ? { ...r, status: "Approved" } : r))
-      );
-      setSelectedRA(null);
-    } else {
-      setBrokerRows(prev =>
-        prev.map(b => (b.id === id ? { ...b, status: "Approved" } : b))
-      );
-      setSelectedBroker(null);
-    }
-
-  } catch (error) {
-    console.error(error);
-    alert("Server error while approving ❌");
-  }
-};
-
-/* ================= Edit ================= */
-const handleEdit = (id: string, type: "RA" | "BROKER") => {
-  navigate(`/admin/edit/${type}/${id}`);
-};
-
-/* ================= REJECT ================= */
-const handleReject = async (id: string, type: "RA" | "BROKER") => {
-  if (!rejectReason || rejectReason.trim() === "") {
-    alert("Please enter a rejection reason ❌");
-    return;
-  }
-
-  try {
-    const token = localStorage.getItem("token");
-
-    const res = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/registration/reject/${type.toLowerCase()}/${id}`,
-      {
-        method: "PUT",
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/admin/approve-user`, {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ reason: rejectReason }),
+        body: JSON.stringify({ userId: id, type }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.success === false) {
+        alert(data.message || "Approval failed ❌");
+        return;
       }
-    );
 
-    let data;
-    try {
-      data = await res.json();
-    } catch {
-      throw new Error("Invalid JSON response");
+      alert("Approved & Email Sent ✅");
+
+      if (type === "RA") {
+        setRows(prev => prev.map(r => (r.id === id ? { ...r, status: "Approved" } : r)));
+        setSelectedRA(null);
+      } else {
+        setBrokerRows(prev => prev.map(b => (b.id === id ? { ...b, status: "Approved" } : b)));
+        setSelectedBroker(null);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Server error while approving ❌");
     }
+  };
 
-    console.log("Reject response:", data);
-
-    if (!res.ok || data.success === false) {
-      alert(data.message);
+  /* ================= REJECT ================= */
+  const handleReject = async (id: string, type: "RA" | "BROKER") => {
+    if (!rejectReason || rejectReason.trim() === "") {
+      alert("Please enter a rejection reason ❌");
       return;
     }
 
-    alert(data.message || "Rejected successfully ❌");
+    try {
+      const token = localStorage.getItem("token");
 
-    if (type === "RA") {
-      setRows(prev =>
-        prev.map(r => (r.id === id ? { ...r, status: "Rejected" } : r))
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/registration/reject/${type.toLowerCase()}/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ reason: rejectReason }),
+        }
       );
-      setSelectedRA(null);
-    } else {
-      setBrokerRows(prev =>
-        prev.map(b => (b.id === id ? { ...b, status: "Rejected" } : b))
-      );
-      setSelectedBroker(null);
+
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error("Invalid JSON response");
+      }
+
+      console.log("Reject response:", data);
+
+      if (!res.ok || data.success === false) {
+        alert(data.message);
+        return;
+      }
+
+      alert(data.message || "Rejected successfully ❌");
+
+      if (type === "RA") {
+        setRows(prev => prev.map(r => (r.id === id ? { ...r, status: "Rejected" } : r)));
+        setSelectedRA(null);
+      } else {
+        setBrokerRows(prev => prev.map(b => (b.id === id ? { ...b, status: "Rejected" } : b)));
+        setSelectedBroker(null);
+      }
+
+      setRejectReason("");
+    } catch (error) {
+      console.error("Reject Error:", error);
+      alert("Server error while rejecting ❌");
     }
+  };
 
-    setRejectReason("");
 
-  } catch (error) {
-    console.error("Reject Error:", error);
-    alert("Server error while rejecting ❌");
-  }
-};
+
+
+
+  /* ================= Edit ================= */
+  const handleEdit = (id: string, type: "RA" | "BROKER") => {
+    navigate(`/admin/edit/${type}/${id}`);
+  };
+
+
   /* ================= UI ================= */
 
   return (
@@ -382,15 +404,15 @@ const handleReject = async (id: string, type: "RA" | "BROKER") => {
 
                 <TableCell align="right">
                   <Button
-  size="small"
-  variant="outlined"
-  onClick={() => {
-    setSelectedRA(row);
-    setSelectedBroker(null); // ✅ VERY IMPORTANT FIX
-  }}
->
-  View Details
-</Button>
+                    size="small"
+                    variant="outlined"
+                    onClick={() => {
+                      setSelectedRA(row);
+                      setSelectedBroker(null); // ✅ VERY IMPORTANT FIX
+                    }}
+                  >
+                    View Details
+                  </Button>
                 </TableCell>
 
               </TableRow>
@@ -488,13 +510,13 @@ const handleReject = async (id: string, type: "RA" | "BROKER") => {
               Reject
             </Button>
             <Button
-  variant="contained"
-  color="warning"
-  fullWidth
-  onClick={() => handleEdit(selectedRA.id, "RA")}
->
-  Edit
-</Button>
+              variant="contained"
+              color="warning"
+              fullWidth
+              onClick={() => handleEdit(selectedRA.id, "RA")}
+            >
+              Edit
+            </Button>
 
           </Box>
 
@@ -516,27 +538,27 @@ const handleReject = async (id: string, type: "RA" | "BROKER") => {
           </Button>
 
           <Button
-  variant="contained"
-  color={confirmType === "approve" ? "success" : "error"}
-  onClick={() => {
+            variant="contained"
+            color={confirmType === "approve" ? "success" : "error"}
+            onClick={() => {
 
-    if (!selectedId) return;
+              if (!selectedId) return;
 
-    if (confirmType === "approve") {
-  if (selectedRA) {
-    handleApprove(selectedId, "RA");
-  } else if (selectedBroker) {
-    handleApprove(selectedId, "BROKER");
-  }
-} else {
-      handleReject(selectedId, selectedRA ? "RA" : "BROKER");
-    }
+              if (confirmType === "approve") {
+                if (selectedRA) {
+                  handleApprove(selectedId, "RA");
+                } else if (selectedBroker) {
+                  handleApprove(selectedId, "BROKER");
+                }
+              } else {
+                handleReject(selectedId, selectedRA ? "RA" : "BROKER");
+              }
 
-    setConfirmOpen(false);
-  }}
->
-  Yes
-</Button>
+              setConfirmOpen(false);
+            }}
+          >
+            Yes
+          </Button>
 
         </DialogActions>
 
@@ -562,181 +584,181 @@ const handleReject = async (id: string, type: "RA" | "BROKER") => {
       )}
 
       {/* ================= BROKER TABLE ================= */}
-<Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 6 }}>
-  <Typography variant="h5" fontWeight={600}>
-    Broker Approval
-  </Typography>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 6 }}>
+        <Typography variant="h5" fontWeight={600}>
+          Broker Approval
+        </Typography>
 
-  <TextField
-    placeholder="Search brokers by name or mobile"
-    fullWidth
-    size="small"
-    value={brokerSearch}
-    onChange={(e) => setBrokerSearch(e.target.value)}
-    InputProps={{
-      startAdornment: (
-        <InputAdornment position="start">
-          <SearchIcon fontSize="small" />
-        </InputAdornment>
-      ),
-    }}
-  />
+        <TextField
+          placeholder="Search brokers by name or mobile"
+          fullWidth
+          size="small"
+          value={brokerSearch}
+          onChange={(e) => setBrokerSearch(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
+        />
 
-  <Box sx={{ overflowX: "auto" }}>
-  <AdminFilter value={brokerFilter} onChange={setBrokerFilter} />
-</Box>
+        <Box sx={{ overflowX: "auto" }}>
+          <AdminFilter value={brokerFilter} onChange={setBrokerFilter} />
+        </Box>
 
-  <TableContainer component={Paper} variant="outlined">
-    <Table size="small">
-      <TableHead sx={{ backgroundColor: "#f0f7ff" }}>
-        <TableRow>
-          <TableCell>Broker Name</TableCell>
-          <TableCell>Phone</TableCell>
-          <TableCell>Status</TableCell>
-          <TableCell align="right">Action</TableCell>
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {brokerRows
-          .filter(b => 
-            b.name.toLowerCase().includes(brokerSearch.toLowerCase()) || 
-            b.phone.includes(brokerSearch)
-          )
-          .map((broker) => (
-            <TableRow key={broker.id}>
-              <TableCell>{broker.name}</TableCell>
-              <TableCell>{broker.phone}</TableCell>
-              <TableCell>
-                <Chip
-                  size="small"
-                  label={broker.status}
-                  color={statusColor(broker.status) as any}
-                />
-              </TableCell>
-              <TableCell align="right">
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => {
-  setSelectedBroker(broker);
-  setSelectedRA(null); // ✅ avoid confusion
-}}
-                >
-                  View Details
+        <TableContainer component={Paper} variant="outlined">
+          <Table size="small">
+            <TableHead sx={{ backgroundColor: "#f0f7ff" }}>
+              <TableRow>
+                <TableCell>Broker Name</TableCell>
+                <TableCell>Phone</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell align="right">Action</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {brokerRows
+                .filter(b =>
+                  b.name.toLowerCase().includes(brokerSearch.toLowerCase()) ||
+                  b.phone.includes(brokerSearch)
+                )
+                .map((broker) => (
+                  <TableRow key={broker.id}>
+                    <TableCell>{broker.name}</TableCell>
+                    <TableCell>{broker.phone}</TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={broker.status}
+                        color={statusColor(broker.status) as any}
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => {
+                          setSelectedBroker(broker);
+                          setSelectedRA(null); // ✅ avoid confusion
+                        }}
+                      >
+                        View Details
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+
+      {/* BROKER SIDE PANEL */}
+      {selectedBroker && (
+        <Paper
+          elevation={4}
+          sx={{
+            position: "fixed",
+            right: 20,
+            top: 120,
+            width: 330,
+            p: 2,
+            borderRadius: 2,
+            zIndex: 1000
+          }}
+        >
+          <Button
+            size="small"
+            onClick={() => setSelectedBroker(null)}
+            sx={{ position: "absolute", right: 10, top: 10 }}
+          >
+            X
+          </Button>
+
+          <Typography fontWeight={600}>Broker Verification</Typography>
+          <Typography sx={{ mt: 1 }}>{selectedBroker.name}</Typography>
+
+          <Box sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 1 }}>
+            {/* Standard Single Files */}
+            {selectedBroker.sebi_certificate && (
+              <Button onClick={() => openFile(selectedBroker.sebi_certificate)}>View SEBI Certificate</Button>
+            )}
+
+            {selectedBroker.appointment_letter && (
+              <Button onClick={() => openFile(selectedBroker.appointment_letter)}>View Appointment Letter</Button>
+            )}
+
+            {selectedBroker.networth_certificate && (
+              <Button onClick={() => openFile(selectedBroker.networth_certificate)}>View Networth Certificate</Button>
+            )}
+
+            {selectedBroker.financial_statements && (
+              <Button onClick={() => openFile(selectedBroker.financial_statements)}>View Financial Statements</Button>
+            )}
+
+            {selectedBroker.ca_certificate && (
+              <Button onClick={() => openFile(selectedBroker.ca_certificate)}>View CA Certificate</Button>
+            )}
+
+            {selectedBroker.pan && (
+              <Button onClick={() => openFile(selectedBroker.pan)}>View Company PAN</Button>
+            )}
+
+            {/* Multiple Files: Exchange Certificates */}
+            {selectedBroker.exchange_certificates &&
+              selectedBroker.exchange_certificates.map((file: string, index: number) => (
+                <Button key={index} onClick={() => openFile(file)}>
+                  View Exchange Cert {index + 1}
                 </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-      </TableBody>
-    </Table>
-  </TableContainer>
-</Box>
+              ))}
+          </Box>
 
-{/* BROKER SIDE PANEL */}
-{selectedBroker && (
-  <Paper
-    elevation={4}
-    sx={{
-      position: "fixed",
-      right: 20,
-      top: 120,
-      width: 330,
-      p: 2,
-      borderRadius: 2,
-      zIndex: 1000
-    }}
-  >
-    <Button
-      size="small"
-      onClick={() => setSelectedBroker(null)}
-      sx={{ position: "absolute", right: 10, top: 10 }}
-    >
-      X
-    </Button>
+          <TextField
+            fullWidth
+            multiline
+            rows={2}
+            placeholder="Rejection Reason"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            sx={{ mt: 2 }}
+          />
+          <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
+            <Button
+              variant="contained"
+              color="success"
+              fullWidth
+              onClick={() => {
+                setSelectedId(selectedBroker.id);
+                setConfirmType("approve");
+                setConfirmOpen(true);
+              }}
+            >
+              Approve
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              fullWidth
+              onClick={() => {
+                setSelectedId(selectedBroker.id);
+                setConfirmType("reject");
+                setConfirmOpen(true);
+              }}
+            >
+              Reject
+            </Button>
 
-    <Typography fontWeight={600}>Broker Verification</Typography>
-    <Typography sx={{ mt: 1 }}>{selectedBroker.name}</Typography>
-    
-    <Box sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 1 }}>
-  {/* Standard Single Files */}
-  {selectedBroker.sebi_certificate && (
-    <Button onClick={() => openFile(selectedBroker.sebi_certificate)}>View SEBI Certificate</Button>
-  )}
-  
-  {selectedBroker.appointment_letter && (
-    <Button onClick={() => openFile(selectedBroker.appointment_letter)}>View Appointment Letter</Button>
-  )}
-  
-  {selectedBroker.networth_certificate && (
-    <Button onClick={() => openFile(selectedBroker.networth_certificate)}>View Networth Certificate</Button>
-  )}
-  
-  {selectedBroker.financial_statements && (
-    <Button onClick={() => openFile(selectedBroker.financial_statements)}>View Financial Statements</Button>
-  )}
-  
-  {selectedBroker.ca_certificate && (
-    <Button onClick={() => openFile(selectedBroker.ca_certificate)}>View CA Certificate</Button>
-  )}
+            <Button
+              variant="contained"
+              color="warning"
+              fullWidth
+              onClick={() => handleEdit(selectedBroker.id, "BROKER")}
+            > Edit </Button>
 
-  {selectedBroker.pan && (
-    <Button onClick={() => openFile(selectedBroker.pan)}>View Company PAN</Button>
-  )}
-
-  {/* Multiple Files: Exchange Certificates */}
-  {selectedBroker.exchange_certificates && 
-   selectedBroker.exchange_certificates.map((file: string, index: number) => (
-    <Button key={index} onClick={() => openFile(file)}>
-      View Exchange Cert {index + 1}
-    </Button>
-  ))}
-</Box>
-
-<TextField
-  fullWidth
-  multiline
-  rows={2}
-  placeholder="Rejection Reason"
-  value={rejectReason}
-  onChange={(e) => setRejectReason(e.target.value)}
-  sx={{ mt: 2 }}
-/>
-   <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
-  <Button
-    variant="contained"
-    color="success"
-    fullWidth
-    onClick={() => {
-      setSelectedId(selectedBroker.id);
-      setConfirmType("approve");
-      setConfirmOpen(true);
-    }}
-  >
-    Approve
-  </Button>
-      <Button
-    variant="contained"
-    color="error"
-    fullWidth
-    onClick={() => {
-      setSelectedId(selectedBroker.id);
-      setConfirmType("reject");
-      setConfirmOpen(true);
-    }}
-  >
-    Reject
-  </Button>
-
-   <Button
-  variant="contained"
-  color="warning"
-  fullWidth
-  onClick={() => handleEdit(selectedBroker.id, "BROKER")}
-> Edit </Button>
-
-</Box>
-  </Paper> 
-)}
+          </Box>
+        </Paper>
+      )}
     </Box>
   );
 };

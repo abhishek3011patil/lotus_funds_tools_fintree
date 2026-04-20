@@ -1,11 +1,15 @@
 import express from "express";
 import { createBroker, getAllBrokers } from "../controllers/broker.controller";
 import { upload } from "../middlewares/upload";
+import { authenticate } from "../middlewares/auth.middleware";
+import { requireAdmin } from "../middlewares/admin.middleware";
 
 const router = express.Router();
 
 router.post(
   "/register-broker",
+  authenticate,
+  requireAdmin,
   upload.fields([
     { name: "sebi_certificate", maxCount: 1 },
     { name: "exchange_certificates", maxCount: 10 },
@@ -16,6 +20,7 @@ router.post(
   ]),
   createBroker
 );
-router.get("/all-brokers", getAllBrokers);
+
+router.get("/all-brokers", authenticate, requireAdmin, getAllBrokers);
 
 export default router;
