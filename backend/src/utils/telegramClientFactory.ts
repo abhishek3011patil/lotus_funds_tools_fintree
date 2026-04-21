@@ -17,3 +17,4 @@ export const createClient = async (sessionString?: string) => {
 
   return client;
 };
+// 🔥 NOTE: This function only creates and connects the client. It does NOT handle authentication (e.g., sending OTP, signing in, etc.). That logic should be implemented separately, using the created client instance.
