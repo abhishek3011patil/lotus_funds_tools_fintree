@@ -71,22 +71,6 @@ router.put(
   updateRARegistration
 );
 
-router.put(
-  "/edit/:id",
-  authenticate,
-  requireAdmin,
-  upload.fields([
-    { name: "profile_image", maxCount: 1 },
-    { name: "pan_card", maxCount: 1 },
-    { name: "address_proof_document", maxCount: 1 },
-    { name: "sebi_certificate", maxCount: 1 },
-    { name: "sebi_receipt", maxCount: 1 },
-    { name: "nism_certificate", maxCount: 1 },
-    { name: "cancelled_cheque", maxCount: 1 },
-  ]),
-  updateRARegistration
-);
-
 /* ================= BROKER UPDATE (Admin Only) ================= */
 
 router.put(

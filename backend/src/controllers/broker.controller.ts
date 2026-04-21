@@ -27,6 +27,17 @@ export const createBroker = async (req: Request, res: Response) => {
 
       const safeDate = (d: string) => (d && d !== "" ? d : null);
 
+      const existing = await pool.query(
+  "SELECT 1 FROM broker_details WHERE email = $1",
+  [data.email]
+);
+
+if (existing.rows.length > 0) {
+  return res.status(400).json({
+    message: "Email already exists",
+  });
+}
+
     const query = `
     INSERT INTO broker_details (
       user_id,
@@ -166,20 +177,27 @@ export const createBroker = async (req: Request, res: Response) => {
       data.agree_code_of_conduct,
     ];
 
-    const result = await pool.query(query, values);
+      const result = await pool.query(query, values);
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Broker registered successfully",
       broker: result.rows[0],
     });
-  } catch (error) {
-  console.error("BROKER REGISTRATION ERROR:", error);
 
-  res.status(500).json({
-    message: "Server error during broker registration",
-    error
-  });
-}
+  } catch (error: any) {
+    console.error("BROKER REGISTRATION ERROR:", error);
+
+    // ✅ STEP 2: HANDLE DB UNIQUE ERROR (SAFETY NET)
+    if (error.code === "23505") {
+      return res.status(400).json({
+        message: "Email already exists. Cannot register again.",
+      });
+    }
+
+    return res.status(500).json({
+      message: "Server error during broker registration",
+    });
+  }
 };
 
 export const getAllBrokers = async (req: Request, res: Response) => {
