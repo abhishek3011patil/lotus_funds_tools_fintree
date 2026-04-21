@@ -69,11 +69,11 @@ app.use("/admin", adminRoutes);
 
 async function startServer() {
   // await initTelegram();
-//await initTelegram();
+  //await initTelegram();
 
-//   app.listen(PORT, () => {
-//     console.log(`🚀 Server running on port ${PORT}`);
-//   });
+  //   app.listen(PORT, () => {
+  //     console.log(`🚀 Server running on port ${PORT}`);
+  //   });
 }
 
 // async function startServer() {

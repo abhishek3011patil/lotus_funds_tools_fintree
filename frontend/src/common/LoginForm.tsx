@@ -60,12 +60,12 @@ const LoginForm: React.FC = () => {
 
     try {
       const res = await axios.post(
-  `${API_URL}/api/auth/login`,
-  {
-    loginId: formData.username,   // ✅ FIX HERE
-    password: formData.password,
-  }
-);
+        `${API_URL}/api/auth/login`,
+        {
+          loginId: formData.username,   // ✅ FIX HERE
+          password: formData.password,
+        }
+      );
       const { token, role } = res.data;
 
       localStorage.setItem("token", token);
@@ -75,16 +75,22 @@ const LoginForm: React.FC = () => {
       console.log("LOGIN:", res.data);
 
 
-if (role === "RESEARCH_ANALYST") {
-  navigate("/ra-dashboard");
-} else if (role === "BROKER") {
-  navigate("/broker-dashboard");
-} else if (role === "ADMIN") {
-  navigate("/admin-dashboard");
-} else {
-  setMessage("Invalid role");
-  localStorage.clear();
-}
+      if (role === "ADMIN" || role === "EMPLOYEE") {
+        setMessage("Please use company login page");
+        localStorage.clear();
+        return;
+      }
+
+      if (role === "RESEARCH_ANALYST") {
+        navigate("/ra-dashboard");
+      } else if (role === "BROKER") {
+        navigate("/broker-dashboard");
+      } else if (role === "CLIENT") {
+        navigate("/client-dashboard");
+      } else {
+        setMessage("Invalid role");
+        localStorage.clear();
+      }
     } catch (err: any) {
       setMessage(
         err.response?.data?.message ||
@@ -225,7 +231,7 @@ if (role === "RESEARCH_ANALYST") {
               cursor: "pointer",
             }}
           >
-           Register Now
+            Register Now
           </Link>
         </Typography>
 
