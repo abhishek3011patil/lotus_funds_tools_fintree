@@ -8,6 +8,7 @@ import {
     CircularProgress,
     Alert,
 } from "@mui/material";
+import axios from "axios";
 
 const ChangePassword = () => {
     const [oldPassword, setOldPassword] = useState("");
@@ -16,27 +17,66 @@ const ChangePassword = () => {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
-    const handleConfirm = async () => {
-        setError(null);
-        setSuccess(null);
-        if (!oldPassword || !newPassword) {
-            setError("Both fields are required.");
+const handleConfirm = async () => {
+    setError(null);
+    setSuccess(null);
+
+    if (!oldPassword || !newPassword) {
+        setError("Both fields are required.");
+        return;
+    }
+
+    setLoading(true);
+
+    try {
+        const token = localStorage.getItem("token");
+        const role = localStorage.getItem("role");
+
+        console.log("TOKEN:", token);
+        console.log("ROLE:", role);
+
+        if (!token) {
+            setError("You are not logged in ❌");
             return;
         }
-        setLoading(true);
-        try {
-            console.log("Change password payload:", { oldPassword, newPassword });
-            setSuccess("Password changed successfully.");
-            setOldPassword("");
-            setNewPassword("");
-        } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : "Something went wrong.";
-            setError(message);
-        } finally {
-            setLoading(false);
-        }
-    };
 
+        let url = "";
+
+        if (role === "ADMIN") {
+            url = "http://localhost:3000/api/auth/admin/change-password";
+        } 
+        else if (role === "RESEARCH_ANALYST") {
+            url = "http://localhost:3000/api/registration/ra/change-password";
+        } 
+        else {
+            setError("Invalid role for password change");
+            return;
+        }
+
+        const res = await axios.post(
+            url,
+            { oldPassword, newPassword },
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                }
+            }
+        );
+
+        console.log("SUCCESS:", res.data);
+
+        setSuccess(res.data.message || "Password changed successfully ✅");
+        setOldPassword("");
+        setNewPassword("");
+
+    } catch (err: any) {
+        console.log("ERROR:", err.response?.data);
+        setError(err.response?.data?.message || "Something went wrong");
+    } finally {
+        setLoading(false);
+    }
+};
     return (
         <Box sx={{ mt: 4 }}>
             <Paper

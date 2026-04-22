@@ -847,3 +847,69 @@ export const updateBroker = async (req: Request, res: Response) => {
   }
 };
 
+export const changeRAUserPassword = async (req: AuthRequest, res: Response) => {
+  try {
+    console.log("🔥 CHANGE PASSWORD HIT");
+
+    const userId = req.user?.id;
+    const { oldPassword, newPassword } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized user" });
+    }
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ message: "All fields required" });
+    }
+
+    // 🔍 fetch user
+    const userResult = await pool.query(
+      `SELECT id, password_hash, role 
+       FROM users 
+       WHERE id = $1`,
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const user = userResult.rows[0];
+
+    // 🔒 FIXED ROLE CHECK
+    if (user.role !== "RESEARCH_ANALYST") {
+      return res.status(403).json({ message: "Only Research Analysts allowed" });
+    }
+
+    // 🔐 verify password
+    const isMatch = await bcrypt.compare(oldPassword, user.password_hash);
+
+    if (!isMatch) {
+      return res.status(400).json({ message: "Old password is incorrect" });
+    }
+
+    // 🔐 hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 🔄 update
+    const updateResult = await pool.query(
+      `UPDATE users 
+       SET password_hash = $1, updated_at = NOW()
+       WHERE id = $2`,
+      [hashedPassword, userId]
+    );
+
+    if (updateResult.rowCount === 0) {
+      return res.status(500).json({ message: "Password update failed" });
+    }
+
+    return res.json({
+      success: true,
+      message: "Password changed successfully ✅",
+    });
+
+  } catch (error) {
+    console.error("💥 CHANGE PASSWORD ERROR:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};

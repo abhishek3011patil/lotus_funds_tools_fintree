@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import multer from "multer";
 import { authenticate } from "../middlewares/auth.middleware";
 import { requireAdmin } from "../middlewares/admin.middleware";
+import { changeRAUserPassword } from "../controllers/registration.controller";
 
 import {
   registerRA,
@@ -103,4 +104,10 @@ router.get("/test", (req: Request, res: Response) => {
   res.send("Registration route working");
 });
 
+
+router.post(
+  "/ra/change-password",
+  authenticate,
+  changeRAUserPassword
+);
 export default router;
