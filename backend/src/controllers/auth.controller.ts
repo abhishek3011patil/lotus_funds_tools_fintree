@@ -337,3 +337,99 @@ export const getMe = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+// ================= CHANGE ADMIN PASSWORD =================
+
+export const changeAdminPassword = async (req: AuthRequest, res: Response) => {
+  try {
+    console.log("🔥 1. CHANGE PASSWORD API HIT");
+
+    const { oldPassword, newPassword } = req.body;
+
+    console.log("📩 REQUEST BODY:", { oldPassword, newPassword });
+
+    if (!oldPassword || !newPassword) {
+      console.log("❌ Missing fields");
+      return res.status(400).json({ message: "All fields required" });
+    }
+
+    // 🔥 DB CHECK
+    const dbInfo = await pool.query(`SELECT current_database(), current_user`);
+    console.log("🗄️ DB INFO:", dbInfo.rows[0]);
+
+    // 🔥 FETCH ADMIN
+    const adminResult = await pool.query(
+      `SELECT id, username, password_hash 
+       FROM company_users 
+       WHERE username = $1`,
+      ["admin"]
+    );
+
+    console.log("🔍 ADMIN QUERY RESULT:", adminResult.rows);
+
+    if (adminResult.rows.length === 0) {
+      console.log("❌ ADMIN NOT FOUND IN DB");
+      return res.status(404).json({ message: "Admin not found" });
+    }
+
+    const admin = adminResult.rows[0];
+
+    console.log("👤 ADMIN FOUND:", {
+      id: admin.id,
+      username: admin.username,
+      hash: admin.password_hash
+    });
+
+    // 🔥 PASSWORD CHECK
+    const isMatch = await bcrypt.compare(oldPassword, admin.password_hash);
+
+    console.log("🔐 OLD PASSWORD MATCH:", isMatch);
+
+    if (!isMatch) {
+      console.log("❌ PASSWORD MISMATCH");
+      return res.status(400).json({
+        message: "Old password is incorrect"
+      });
+    }
+
+    // 🔥 HASH NEW PASSWORD
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    console.log("🧂 NEW HASH GENERATED:", hashedPassword);
+
+    // 🔥 UPDATE QUERY
+    const updateResult = await pool.query(
+      `UPDATE company_users 
+       SET password_hash = $1, updated_at = NOW()
+       WHERE username = $2`,
+      [hashedPassword, "admin"]
+    );
+
+    console.log("📊 UPDATE RESULT ROWCOUNT:", updateResult.rowCount);
+
+    // 🔥 VERIFY AFTER UPDATE
+    const verify = await pool.query(
+      `SELECT username, password_hash 
+       FROM company_users 
+       WHERE username = 'admin'`
+    );
+
+    console.log("✅ DB AFTER UPDATE:", verify.rows[0]);
+
+    if (updateResult.rowCount === 0) {
+      console.log("❌ NO ROW UPDATED");
+      return res.status(500).json({
+        message: "Update failed - no row affected"
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Password updated successfully ✅"
+    });
+
+  } catch (error) {
+    console.error("💥 ADMIN PASSWORD ERROR:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};

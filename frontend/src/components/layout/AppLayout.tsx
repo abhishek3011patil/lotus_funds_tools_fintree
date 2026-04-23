@@ -1,6 +1,7 @@
 import { Box } from "@mui/material";
 import { Outlet } from "react-router-dom";
 import { useState } from "react";
+import SettingsIcon from '@mui/icons-material/Settings';
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import FolderIcon from "@mui/icons-material/Folder";
@@ -23,6 +24,11 @@ const appSidebarItems: SidebarItem[] = [
     label: "Performance",
     path: "/performance",
     icon: <FolderIcon sx={{ mr: 1.5 }} />,
+  },
+  {
+    label: "Settings",
+    path: "/settings",
+    icon: <SettingsIcon sx={{ mr: 1.5 }} />,
   },
 ];
 

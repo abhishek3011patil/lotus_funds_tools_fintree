@@ -7,7 +7,6 @@ import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
 
 /* ================= GET ALL REGISTRATIONS ================= */
-
 export const getAllRegistrations = async (req: Request, res: Response) => {
   try {
     const result = await pool.query(`
@@ -15,7 +14,7 @@ export const getAllRegistrations = async (req: Request, res: Response) => {
         rd.id,
         rd.user_id,
         first_name,
-        surname,
+        rd.surname AS last_name, 
         mobile,
         profile_image,
         pan_card,
@@ -103,7 +102,7 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
 
     const userId = req.user?.id || crypto.randomUUID(); // fallback ID
 
-    if (!data.firstName || !data.surname) {
+   if (!data.first_name || !data.surname) {
       return res.status(400).json({
         success: false,
         message: "First name and surname are required",
@@ -139,100 +138,145 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const toBool = (val: any) => val === "true";
+const toBool = (val: any) => val === "true" || val === true;
 
-    const result = await pool.query(
-      `INSERT INTO ra_details (
-        user_id,
-        salutation, first_name, middle_name, surname,
-        org_name, designation, short_bio, email, mobile, telephone,
-        country, state, city, pincode, address_line1, address_line2,
-        profile_image,
-        sebi_reg_no, sebi_start_date, sebi_expiry_date,
-        sebi_certificate, sebi_receipt,
-        nism_reg_no, nism_valid_till, nism_certificate,
-        academic_qualification, professional_qualification,
-        market_experience, expertise, markets,
-        bank_name, account_holder, account_number, ifsc_code,
-        cancelled_cheque,
-        pan_number, pan_card,
-        address_proof_type, address_proof_document,
-        declare_info_true, consent_verification,
-        no_guaranteed_returns, conflict_of_interest,
-        personal_trading, sebi_compliance, platform_policy
-      )
-      VALUES (
-        $1,
-        $2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
-        $12,$13,$14,$15,$16,$17,$18,
-        $19,$20,$21,$22,$23,
-        $24,$25,$26,
-        $27,$28,$29,$30,$31,
-        $32,$33,$34,$35,$36,
-        $37,$38,$39,$40,
-        $41,$42,
-        $43,$44,$45,$46,$47
-      )
-      RETURNING id`,
-      [
-        userId, // ✅ FIXED
+const ra = {
+  org_name: data.org_name || null,
+  short_bio: data.short_bio || null,
+  address_line1: data.address_line1 || null,
+  address_line2: data.address_line2 || null,
 
-        data.salutation || null,
-        data.firstName,
-        data.middleName || null,
-        data.surname,
-        data.orgName || null,
-        data.designation || null,
-        data.shortBio || null,
-        data.email,
-        data.mobile || null,
-        data.telephone || null,
-        data.country || null,
-        data.state || null,
-        data.city || null,
-        data.pincode || null,
-        data.address1 || null,
-        data.address2 || null,
+  sebi_reg_no: data.sebi_reg_no || null,
+  sebi_start_date: data.sebi_start_date || null,
+  sebi_expiry_date: data.sebi_expiry_date || null,
 
-        files?.profileImage?.[0]?.filename || null,
-        data.sebiRegNo || null,
-        data.sebiStartDate || null,
-        data.sebiExpiryDate || null,
+  nism_reg_no: data.nism_reg_no || null,
+  nism_valid_till: data.nism_valid_till || null,
 
-        files?.sebiCert?.[0]?.filename || null,
-        files?.sebiReceipt?.[0]?.filename || null,
+  academic_qualification: data.academic_qualification || null,
+  professional_qualification: data.professional_qualification || null,
 
-        data.nismRegNo || null,
-        data.nismValidTill || null,
-        files?.nismCert?.[0]?.filename || null,
+  market_experience: data.market_experience || null,
+  expertise: data.expertise || null,
+  markets: data.markets || null,
 
-        data.academicQual || null,
-        data.profQual || null,
-        data.marketExp || null,
-        data.expertise || null,
-        data.markets || null,
+  bank_name: data.bank_name || null,
+  account_holder: data.account_holder || null,
+  account_number: data.account_number || null,
+  ifsc_code: data.ifsc_code || null,
 
-        data.bankName || null,
-        data.accountHolder || null,
-        data.accountNumber || null,
-        data.ifscCode || null,
+  pan_number: data.pan_number || null,
+  address_proof_type: data.address_proof_type || null,
+};
 
-        files?.cancelledCheque?.[0]?.filename || null,
-        data.panNumber || null,
-        files?.panCard?.[0]?.filename || null,
-        data.addressProofType || null,
-        files?.addressProofDoc?.[0]?.filename || null,
 
-        toBool(data.declare1),
-        toBool(data.declare2),
-        toBool(data.noGuaranteedReturns),
-        toBool(data.conflictOfInterest),
-        toBool(data.personalTrading),
-        toBool(data.sebiCompliance),
-        toBool(data.platformPolicy),
-      ]
-    );
+const result = await pool.query(
+  `INSERT INTO ra_details (
+    user_id,
+    salutation, first_name, middle_name, surname,
+    org_name, designation, short_bio, email, mobile, telephone,
+    country, state, city, pincode,
+    address_line1, address_line2,
+    profile_image,
+    sebi_reg_no, sebi_start_date, sebi_expiry_date,
+    sebi_certificate, sebi_receipt,
+    nism_reg_no, nism_valid_till, nism_certificate,
+    academic_qualification, professional_qualification,
+    market_experience, expertise, markets,
+    bank_name, account_holder, account_number, ifsc_code,
+    cancelled_cheque,
+    pan_number, pan_card,
+    address_proof_type, address_proof_document,
+    declare_info_true, consent_verification,
+    no_guaranteed_returns, conflict_of_interest,
+    personal_trading, sebi_compliance, platform_policy, additional_comments  
+  )
+  VALUES (
+    $1,
+    $2,$3,$4,$5,
+    $6,$7,$8,$9,$10,$11,
+    $12,$13,$14,$15,
+    $16,$17,
+    $18,
+    $19,$20,$21,
+    $22,$23,
+    $24,$25,$26,
+    $27,$28,
+    $29,$30,$31,
+    $32,$33,$34,$35,
+    $36,
+    $37,$38,
+    $39,$40,
+    $41,$42,
+    $43,$44,$45,$46,$47,$48
+  )
+  RETURNING *`,
+  [
+    userId,
 
+    data.salutation ?? null,
+    data.first_name,
+    data.middle_name ?? null,
+    data.surname,
+
+    ra.org_name,
+    data.designation ?? null,
+    ra.short_bio,
+
+    data.email,
+    data.mobile ?? null,
+    data.telephone ?? null,
+
+    data.country ?? null,
+    data.state ?? null,
+    data.city ?? null,
+    data.pincode ?? null,
+
+    ra.address_line1,
+    ra.address_line2,
+
+   files?.profile_image?.[0]?.filename ?? null,
+
+    ra.sebi_reg_no,
+    ra.sebi_start_date,
+    ra.sebi_expiry_date,
+
+    files?.sebi_certificate?.[0]?.filename ?? null,
+    files?.sebi_receipt?.[0]?.filename ?? null,
+
+    ra.nism_reg_no,
+    ra.nism_valid_till,
+    files?.nism_certificate?.[0]?.filename ?? null,
+
+    ra.academic_qualification,
+    ra.professional_qualification,
+    ra.market_experience,
+    ra.expertise,
+    ra.markets,
+
+    ra.bank_name,
+    ra.account_holder,
+    ra.account_number,
+    ra.ifsc_code,
+
+    files?.cancelled_cheque?.[0]?.filename ?? null,
+
+    ra.pan_number,
+    files?.pan_card?.[0]?.filename ?? null,
+
+    ra.address_proof_type,
+    files?.address_proof_document?.[0]?.filename ?? null,
+
+    toBool(data.declare_info_true),
+    toBool(data.consent_verification),
+    toBool(data.no_guaranteed_returns),
+toBool(data.conflict_of_interest),
+toBool(data.personal_trading),
+toBool(data.sebi_compliance),
+toBool(data.platform_policy),
+data.additional_comments || data.additionalComments || null
+  ]
+);
     return res.status(201).json({
       success: true,
       message: "RA Registration Submitted Successfully",
@@ -478,133 +522,196 @@ export const updateRARegistration = async (req: AuthRequest, res: Response) => {
     const data = req.body || {};
     const files = req.files as any;
 
-    // Convert boolean strings to actual booleans
-   data.noGuaranteedReturns = data?.noGuaranteedReturns === "true";
-data.conflictOfInterest = data?.conflictOfInterest === "true";
-data.personalTrading = data?.personalTrading === "true";
-data.sebiCompliance = data?.sebiCompliance === "true";
-data.platformPolicy = data?.platformPolicy === "true";
-data.declare1 = data?.declare1 === "true";
-data.declare2 = data?.declare2 === "true";
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized - user not found",
+      });
+    }
+
+    /* ================= VALIDATION ================= */
+
+    const requiredFields = [
+      "salutation",
+      "first_name",
+      "surname",
+      "email",
+      "mobile",
+      "country",
+      "state",
+      "city",
+      "pincode",
+      "address1",
+      "panNumber",
+    ];
+
+    for (const field of requiredFields) {
+      if (!data[field] || data[field].toString().trim() === "") {
+        return res.status(400).json({
+          success: false,
+          message: `${field} is required`,
+        });
+      }
+    }
+
+    /* ================= BOOLEAN FIX ================= */
+
+    const toBool = (val: any) => val === true || val === "true";
+
+    /* ================= QUERY ================= */
 
     const query = `
       UPDATE ra_details
       SET
-        salutation = $1,
-        first_name = $2,
-        middle_name = $3,
-        surname = $4,
-        org_name = $5,
-        designation = $6,
-        short_bio = $7,
-        email = $8,
-        mobile = $9,
-        telephone = $10,
-        country = $11,
-        state = $12,
-        city = $13,
-        pincode = $14,
-        address_line1 = $15,
-        address_line2 = $16,
-        profile_image = COALESCE($17, profile_image),
-        sebi_reg_no = $18,
-        sebi_start_date = $19,
-        sebi_expiry_date = $20,
-        sebi_certificate = COALESCE($21, sebi_certificate),
-        sebi_receipt = COALESCE($22, sebi_receipt),
-        nism_reg_no = $23,
-        nism_valid_till = $24,
-        nism_certificate = COALESCE($25, nism_certificate),
-        academic_qualification = $26,
-        professional_qualification = $27,
-        market_experience = $28,
-        expertise = $29,
-        markets = $30,
-        bank_name = $31,
-        account_holder = $32,
-        account_number = $33,
-        ifsc_code = $34,
-        cancelled_cheque = COALESCE($35, cancelled_cheque),
-        pan_number = $36,
-        pan_card = COALESCE($37, pan_card),
-        address_proof_type = $38,
-        address_proof_document = COALESCE($39, address_proof_document),
-        declare_info_true = $40,
-        consent_verification = $41,
-        no_guaranteed_returns = $42,
-        conflict_of_interest = $43,
-        personal_trading = $44,
-        sebi_compliance = $45,
-        platform_policy = $46
-      WHERE id = $47
+        user_id = $1,
+        salutation = $2,
+        first_name = $3,
+        middle_name = $4,
+        surname = $5,
+        org_name = $6,
+        designation = $7,
+        short_bio = $8,
+        email = $9,
+        mobile = $10,
+        telephone = $11,
+        country = $12,
+        state = $13,
+        city = $14,
+        pincode = $15,
+        address_line1 = $16,
+        address_line2 = $17,
+        profile_image = COALESCE($18, profile_image),
+        sebi_reg_no = $19,
+        sebi_start_date = $20,
+        sebi_expiry_date = $21,
+        sebi_certificate = COALESCE($22, sebi_certificate),
+        sebi_receipt = COALESCE($23, sebi_receipt),
+        nism_reg_no = $24,
+        nism_valid_till = $25,
+        nism_certificate = COALESCE($26, nism_certificate),
+        academic_qualification = $27,
+        professional_qualification = $28,
+        market_experience = $29,
+        expertise = $30,
+        markets = $31,
+        bank_name = $32,
+        account_holder = $33,
+        account_number = $34,
+        ifsc_code = $35,
+        cancelled_cheque = COALESCE($36, cancelled_cheque),
+        pan_number = $37,
+        pan_card = COALESCE($38, pan_card),
+        address_proof_type = $39,
+        address_proof_document = COALESCE($40, address_proof_document),
+        declare_info_true = $41,
+        consent_verification = $42,
+        no_guaranteed_returns = $43,
+        conflict_of_interest = $44,
+        personal_trading = $45,
+        sebi_compliance = $46,
+        platform_policy = $47,
+        additional_comments = $48
+      WHERE id = $49
       RETURNING *
     `;
 
     const values = [
-      data.salutation,
-      data.first_name,
-      data.middle_name,
-      data.surname,
-      data.org_name,
-      data.designation,
-      data.short_bio,
-      data.email,
-      data.mobile,
-      data.telephone,
-      data.country,
-      data.state,
-      data.city,
-      data.pincode,
-      data.address_line1,
-      data.address_line2,
+      userId,
+
+      data.salutation.trim(),
+      data.first_name.trim(),
+      data.middle_name?.trim() || null,
+      data.surname.trim(),
+
+      // ✅ FIXED (snake_case)
+      data.org_name?.trim() || null,
+      data.designation?.trim() || null,
+      data.short_bio?.trim() || null,
+
+      data.email.trim().toLowerCase(),
+      data.mobile.trim(),
+      data.telephone?.trim() || null,
+
+      data.country.trim(),
+      data.state.trim(),
+      data.city.trim(),
+      data.pincode.trim(),
+
+      data.address1.trim(),
+      data.address2?.trim() || null,
+
       files?.profile_image?.[0]?.filename || null,
-      data.sebi_reg_no,
-      data.sebi_start_date,
-      data.sebi_expiry_date,
+
+      // ✅ FIXED names
+      data.sebi_reg_no?.trim() || null,
+      data.sebi_start_date || null,
+      data.sebi_expiry_date || null,
+
       files?.sebi_certificate?.[0]?.filename || null,
       files?.sebi_receipt?.[0]?.filename || null,
-      data.nism_reg_no,
-      data.nism_valid_till,
+
+      data.nism_reg_no?.trim() || null,
+      data.nism_valid_till || null,
       files?.nism_certificate?.[0]?.filename || null,
-      data.academic_qualification,
-      data.professional_qualification,
-      data.market_experience,
-      data.expertise,
-      data.markets,
-      data.bank_name,
-      data.account_holder,
-      data.account_number,
-      data.ifsc_code,
+
+      data.academic_qualification?.trim() || null,
+      data.professional_qualification?.trim() || null,
+
+      data.market_experience?.trim() || null,
+      data.expertise?.trim() || null,
+      data.markets?.trim() || null,
+
+      data.bank_name?.trim() || null,
+      data.account_holder?.trim() || null,
+      data.account_number?.trim() || null,
+      data.ifsc_code?.trim() || null,
+
       files?.cancelled_cheque?.[0]?.filename || null,
-      data.pan_number,
+
+      data.panNumber.trim(),
       files?.pan_card?.[0]?.filename || null,
-      data.address_proof_type,
+
+      data.address_proof_type?.trim() || null,
       files?.address_proof_document?.[0]?.filename || null,
-      data.declare1,
-      data.declare2,
-      data.noGuaranteedReturns,
-      data.conflictOfInterest,
-      data.personalTrading,
-      data.sebiCompliance,
-      data.platformPolicy,
-      id
+
+      toBool(data.declare_info_true),
+      toBool(data.consent_verification),
+      toBool(data.no_guaranteed_returns),
+      toBool(data.conflict_of_interest),
+      toBool(data.personal_trading),
+      toBool(data.sebi_compliance),
+      toBool(data.platform_policy),
+
+      // ✅ CRITICAL FIX (missing earlier)
+      data.additional_comments || null,
+
+      id,
     ];
 
     const result = await pool.query(query, values);
 
     if (result.rowCount === 0) {
-      return res.status(404).json({ message: "Registration not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Registration not found",
+      });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "RA updated successfully",
-      data: result.rows[0]
+      data: result.rows[0],
     });
 
   } catch (error) {
     console.error("Update RA Error:", error);
-    res.status(500).json({ message: "Server error" });
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
@@ -740,3 +847,69 @@ export const updateBroker = async (req: Request, res: Response) => {
   }
 };
 
+export const changeRAUserPassword = async (req: AuthRequest, res: Response) => {
+  try {
+    console.log("🔥 CHANGE PASSWORD HIT");
+
+    const userId = req.user?.id;
+    const { oldPassword, newPassword } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized user" });
+    }
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ message: "All fields required" });
+    }
+
+    // 🔍 fetch user
+    const userResult = await pool.query(
+      `SELECT id, password_hash, role 
+       FROM users 
+       WHERE id = $1`,
+      [userId]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const user = userResult.rows[0];
+
+    // 🔒 FIXED ROLE CHECK
+    if (user.role !== "RESEARCH_ANALYST") {
+      return res.status(403).json({ message: "Only Research Analysts allowed" });
+    }
+
+    // 🔐 verify password
+    const isMatch = await bcrypt.compare(oldPassword, user.password_hash);
+
+    if (!isMatch) {
+      return res.status(400).json({ message: "Old password is incorrect" });
+    }
+
+    // 🔐 hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 🔄 update
+    const updateResult = await pool.query(
+      `UPDATE users 
+       SET password_hash = $1, updated_at = NOW()
+       WHERE id = $2`,
+      [hashedPassword, userId]
+    );
+
+    if (updateResult.rowCount === 0) {
+      return res.status(500).json({ message: "Password update failed" });
+    }
+
+    return res.json({
+      success: true,
+      message: "Password changed successfully ✅",
+    });
+
+  } catch (error) {
+    console.error("💥 CHANGE PASSWORD ERROR:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};

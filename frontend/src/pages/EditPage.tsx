@@ -26,63 +26,88 @@ const EditPage = () => {
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
+  const normalizeBool = (val: any) =>
+    val === true || val === "true" || val === 1 || val === "1";
+
+  // ---------------- FETCH ----------------
   useEffect(() => {
-  const fetchData = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) throw new Error("No token found");
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) throw new Error("No token found");
 
-      let url = "";
-      if (type?.toUpperCase() === "RA") {
-  url = `${import.meta.env.VITE_API_URL}/api/registration/ra/${id}`;
-} else {
-  url = `${import.meta.env.VITE_API_URL}/api/registration/broker/${id}`;
-}
+        let url = "";
 
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        if (type?.toUpperCase() === "RA") {
+          url = `${import.meta.env.VITE_API_URL}/api/registration/ra/${id}`;
+        } else {
+          url = `${import.meta.env.VITE_API_URL}/api/registration/broker/${id}`;
+        }
 
-      if (!res.ok) throw new Error("Failed to fetch");
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-     const result = await res.json();
+        if (!res.ok) throw new Error("Failed to fetch");
 
-// ✅ FIXED VERSION
-let payload;
+        const result = await res.json();
 
-if (type?.toUpperCase() === "RA") {
-  payload = result.data || result;
-} else {
-  payload = result.broker || result.data || result;
-}
+        let payload =
+          type?.toUpperCase() === "RA"
+            ? result.data || result
+            : result.broker || result.data || result;
 
-setData(payload);
-setFields(payload);
+        setData(payload);
+        setFields(payload || {});
+      } catch (err) {
+        console.error(err);
+        setErrorMsg("Failed to load data");
+      }
+    };
 
-    } catch (err) {
-      console.error("Failed to fetch data:", err);
-      setErrorMsg("Failed to load data");
-    }
-  };
+    fetchData();
+  }, [id, type]);
 
-  fetchData();
-}, [id, type]);
-
-
- const handleSave = async () => {
+  const handleSave = async () => {
   const formData = new FormData();
 
-  // Append fields
+  // ✅ FIELD MAPPING
+  const fieldMapping: any = {
+    address_line1: "address1",
+    address_line2: "address2",
+    pan_number: "panNumber", // 🔥 VERY IMPORTANT
+  };
+
   Object.keys(fields).forEach((key) => {
     if (fields[key] !== undefined && fields[key] !== null) {
-      formData.append(key, fields[key]);
+      const newKey = fieldMapping[key] || key;
+      formData.append(newKey, fields[key]);
     }
   });
 
-  // Append files
-  Object.keys(files).forEach((key) => {
-    formData.append(key, files[key]);
+  // ✅ FILE MAPPING
+  const fileMapping: any = {
+    profile_image: files.profile_image,
+    sebi_certificate: files.sebi_certificate,
+    sebi_receipt: files.sebi_receipt,
+    nism_certificate: files.nism_certificate,
+    cancelled_cheque: files.cancelled_cheque,
+
+    // ⚠️ KEEP FILE NAME AS BACKEND EXPECTS
+    pan_card: files.pan_card,
+    address_proof_document: files.address_proof_document,
+  };
+
+  Object.entries(fileMapping).forEach(([key, file]) => {
+    if (file instanceof File) {
+      formData.append(key, file);
+    }
   });
+
+  // 🔍 DEBUG (run once)
+  for (let pair of formData.entries()) {
+    console.log(pair[0], pair[1]);
+  }
 
   try {
     const token = localStorage.getItem("token");
@@ -92,15 +117,13 @@ setFields(payload);
     }
 
     const url =
-  type?.toUpperCase() === "RA"
-    ? `${import.meta.env.VITE_API_URL}/api/registration/edit/ra/${id}`
-    : `${import.meta.env.VITE_API_URL}/api/registration/edit/broker/${id}`;
+      type?.toUpperCase() === "RA"
+        ? `${import.meta.env.VITE_API_URL}/api/registration/edit/ra/${id}`
+        : `${import.meta.env.VITE_API_URL}/api/registration/edit/broker/${id}`;
 
     const res = await fetch(url, {
-      method: "PUT", // ✅ IMPORTANT
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}` },
       body: formData,
     });
 
@@ -118,196 +141,181 @@ setFields(payload);
   }
 };
 
- const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-  const { name, value, type, checked } = e.target;
+  // ---------------- HANDLERS ----------------
+  const handleChange = (e: any) => {
+    const { name, type, value, checked } = e.target;
 
-  setFields({
-    ...fields,
-    [name]: type === "checkbox" ? checked : value,
-  });
-};
+    setFields({
+      ...fields,
+      [name]: type === "checkbox" ? checked : value,
+    });
+  };
 
-const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-  if (e.target.files && e.target.files[0]) {
-    setFiles({ ...files, [e.target.name]: e.target.files[0] });
-  }
-};
-
-const openFile = (file?: string) => {
-  if (!file) return alert("File not uploaded");
-
-  // Handle multiple files (comma separated)
-  const files = file.split(",");
-
-  files.forEach((f) => {
-    const cleanFile = f.trim();
-    if (cleanFile) {
-      const url = `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(cleanFile)}`;
-      window.open(url, "_blank");
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFiles({ ...files, [e.target.name]: e.target.files[0] });
     }
-  });
-};
+  };
 
-if (!data) {
-  return (
-    <LoadingPage
-      title="Loading"
-      subtitle="Fetching registration details..."
-      fullScreen
-    />
-  );
-}
+  const openFile = (file?: string) => {
+    if (!file) return alert("File not uploaded");
 
-const basicFieldsRA = [
-  "salutation",
-  "first_name",
-  "middle_name",
-  "surname",
-  "org_name",
-  "designation",
-  "short_bio",
-  "email",
-  "mobile",
-  "telephone",
-];
+    file.split(",").forEach((f) => {
+      const cleanFile = f.trim();
+      if (cleanFile) {
+        const url = `${
+          import.meta.env.VITE_API_URL
+        }/uploads/${encodeURIComponent(cleanFile)}`;
+        window.open(url, "_blank");
+      }
+    });
+  };
 
-// ✅ RA SEBI
-const raSeBIFields = [
-  "sebi_reg_no",
-  "sebi_start_date",
-  "sebi_expiry_date",
-];
+  if (!data) return <div>Loading...</div>;
 
-// ✅ RA NISM
-const raNismFields = [
-  "nism_reg_no",
-  "nism_valid_till",
-];
+  // ---------------- FIELD LISTS ----------------
+  const basicFieldsRA = [
+    "salutation",
+    "first_name",
+    "middle_name",
+    "surname",
+    "org_name",
+    "designation",
+    "short_bio",
+    "email",
+    "mobile",
+    "telephone",
+  ];
 
-// ✅ RA Qualification
-const raQualificationFields = [
-  "academic_qualification",
-  "professional_qualification",
-  "market_experience",
-  "expertise",
-  "markets",
-];
+  const raSeBIFields = ["sebi_reg_no", "sebi_start_date", "sebi_expiry_date"];
 
-// ✅ RA Bank
-const raBankFields = [
-  "bank_name",
-  "account_holder",
-  "account_number",
-  "ifsc_code",
-];
+  const raNismFields = ["nism_reg_no", "nism_valid_till"];
 
-// ✅ RA Documents (non-file text fields)
-const raOtherFields = [
-  "pan_number",
-  "address_proof_type",
-];
+  const raQualificationFields = [
+    "academic_qualification",
+    "professional_qualification",
+    "market_experience",
+    "expertise",
+    "markets",
+  ];
 
-// ✅ RA Declarations (booleans)
-const raDeclarationFields = [
-  "declare1",
-  "declare2",
-  "noGuaranteedReturns",
-  "conflictOfInterest",
-  "personalTrading",
-  "sebiCompliance",
-  "platformPolicy",
-];
+  const raOtherFields = ["pan_number", "address_proof_type"];
 
-// broker details 
-const basicFieldsBroker = [
-  "legal_name",
-  "trade_name",
-  "entity_type",
-  "incorporation_date",
-  "pan",
-  "cin",
-  "gstin",
-  "registered_address",
-  "correspondence_address",
-  "email",
-  "mobile",
-  "website",
-];
+  const raDeclarations = [
+    {
+      name: "declare_info_true",
+      label:
+        "I hereby declare that all information and documents provided by me are true, complete, and accurate to the best of my knowledge.",
+    },
+    {
+      name: "consent_verification",
+      label:
+        "I consent to the verification of the above details and documents by the platform or its authorized representatives.",
+    },
+    {
+      name: "no_guaranteed_returns",
+      label:
+        "I confirm that I do not offer, promise, or guarantee any assured or fixed returns on investments, directly or indirectly.",
+    },
+    {
+      name: "conflict_of_interest",
+      label:
+        "I declare that I have disclosed all actual and potential conflicts of interest.",
+    },
+    {
+      name: "personal_trading",
+      label: "I confirm that I have disclosed my personal trading positions.",
+    },
+    {
+      name: "sebi_compliance",
+      label: "I agree to comply with all SEBI (Research Analysts) Regulations.",
+    },
+    {
+      name: "platform_policy",
+      label: "I have read and agree to Platform Content Policy and Terms of Use.",
+    },
+  ];
 
-const sebiFields = [
-  "sebi_registration_no",
-  "registration_category",
-  "registration_date",
-  "registration_validity",
-  "membership_code",
-];
+  const basicFieldsBroker = [
+    "legal_name",
+    "trade_name",
+    "entity_type",
+    "incorporation_date",
+    "pan",
+    "cin",
+    "gstin",
+    "registered_address",
+    "correspondence_address",
+    "email",
+    "mobile",
+    "website",
+  ];
 
-const exchangeFields = [
-  "exchange_nse",
-  "exchange_bse",
-  "exchange_smi",
-  "exchange_ncdex",
-];
+  const sebiFields = [
+    "sebi_registration_no",
+    "registration_category",
+    "registration_date",
+    "registration_validity",
+    "membership_code",
+  ];
 
-const segmentFields = [
-  "segment_cash",
-  "segment_fo",
-  "segment_currency",
-];
+  const exchangeFields = [
+    "exchange_nse",
+    "exchange_bse",
+    "exchange_smi",
+    "exchange_ncdex",
+  ];
 
-const complianceFields = [
-  "compliance_officer_name",
-  "compliance_designation",
-  "compliance_pan",
-  "compliance_mobile",
-  "net_worth",
-  "auditor_name",
-  "auditor_membership",
-];
+  const segmentFields = ["segment_cash", "segment_fo", "segment_currency"];
 
-const authorizedFields = [
-  "authorized_person_name",
-  "authorized_person_pan",
-  "authorized_person_designation",
-  "authorized_person_email",
-  "authorized_person_aadhaar",
-  "authorized_person_mobile",
-];
+  const complianceFields = [
+    "compliance_officer_name",
+    "compliance_designation",
+    "compliance_pan",
+    "compliance_mobile",
+    "net_worth",
+    "auditor_name",
+    "auditor_membership",
+  ];
 
-const declarationFields = [
-  "no_disciplinary_action",
-  "no_suspension",
-  "no_criminal_case",
-  "agree_sebi_circulars",
-  "agree_code_of_conduct",
-]; 
+  const authorizedFields = [
+    "authorized_person_name",
+    "authorized_person_pan",
+    "authorized_person_designation",
+    "authorized_person_email",
+    "authorized_person_aadhaar",
+    "authorized_person_mobile",
+  ];
 
-// end of broker details 
+  const declarationFields = [
+    "no_disciplinary_action",
+    "no_suspension",
+    "no_criminal_case",
+    "agree_sebi_circulars",
+    "agree_code_of_conduct",
+  ];
 
-const fileFieldsRA = [
-  { key: "profile_image", label: "Profile Image" },
-  { key: "pan_card", label: "PAN Card" },
-  { key: "address_proof_document", label: "Address Proof" },
-  { key: "sebi_certificate", label: "SEBI Certificate" },
-  { key: "sebi_receipt", label: "SEBI Receipt" },
-  { key: "nism_certificate", label: "NISM Certificate" },
-  { key: "cancelled_cheque", label: "Cancelled Cheque" },
-];
+  const fileFieldsRA = [
+    { key: "profile_image", label: "Profile Image" },
+    { key: "pan_card", label: "PAN Card" },
+    { key: "address_proof_document", label: "Address Proof" },
+    { key: "sebi_certificate", label: "SEBI Certificate" },
+    { key: "sebi_receipt", label: "SEBI Receipt" },
+    { key: "nism_certificate", label: "NISM Certificate" },
+    { key: "cancelled_cheque", label: "Cancelled Cheque" },
+  ];
 
-const fileFieldsBroker = [
-  { key: "sebi_certificate", label: "SEBI Certificate" },
-  { key: "exchange_certificates", label: "Exchange Certificates" },
-  { key: "appointment_letter", label: "Appointment Letter" },
-  { key: "networth_certificate", label: "Networth Certificate" },
-  { key: "financial_statements", label: "Financial Statements" },
-  { key: "ca_certificate", label: "CA Certificate" },
-];
+  const fileFieldsBroker = [
+    { key: "sebi_certificate", label: "SEBI Certificate" },
+    { key: "exchange_certificates", label: "Exchange Certificates" },
+    { key: "appointment_letter", label: "Appointment Letter" },
+    { key: "networth_certificate", label: "Networth Certificate" },
+    { key: "financial_statements", label: "Financial Statements" },
+    { key: "ca_certificate", label: "CA Certificate" },
+  ];
 
-const formatLabel = (text: string) =>
-  text
-    .replace(/([A-Z])/g, " $1")   // add space before capital
-    .replace(/_/g, " ")           // handle snake_case
-    .toUpperCase();
+  const formatLabel = (text: string) =>
+    text.replace(/([A-Z])/g, " $1").replace(/_/g, " ").toUpperCase();
 
 
   return (
@@ -393,29 +401,6 @@ const formatLabel = (text: string) =>
   </Paper>
 </Grid>
 
-        {/* Bank */}
-       {type?.toUpperCase() === "RA" && (
-  <Grid item xs={12}>
-    <Paper sx={{ p: 3 }}>
-      <Typography variant="h6">Bank Details</Typography>
-      <Divider sx={{ mb: 2 }} />
-
-      <Grid container spacing={2}>
-        {raBankFields.map((field) => (
-          <Grid item xs={12} sm={6} key={field}>
-            <TextField
-              fullWidth
-              label={field.replace(/_/g, " ").toUpperCase()}
-              name={field}
-              value={fields[field] || ""}
-              onChange={handleChange}
-            />
-          </Grid>
-        ))}
-      </Grid>
-    </Paper>
-  </Grid>
-)}
 
 {/* new */}
 
@@ -650,20 +635,20 @@ const formatLabel = (text: string) =>
       <Divider sx={{ mb: 2 }} />
 
       <Grid container spacing={2}>
-        {raDeclarationFields.map((field) => (
-          <Grid item xs={12} sm={6} key={field}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  name={field}
-                  checked={!!fields[field]}
-                  onChange={handleChange}
-                />
-              }
-              label={formatLabel(field)}
-            />
-          </Grid>
-        ))}
+       {raDeclarations.map((item) => (
+  <Grid item xs={12} sm={6} key={item.name}>
+    <FormControlLabel
+      control={
+        <Checkbox
+          name={item.name}
+          checked={normalizeBool(fields[item.name])}
+          onChange={handleChange}
+        />
+      }
+      label={item.label}
+    />
+  </Grid>
+))}
       </Grid>
     </Paper>
   </Grid>

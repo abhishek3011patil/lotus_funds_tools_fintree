@@ -6,26 +6,29 @@ export const createBroker = async (req: Request, res: Response) => {
     const data = req.body;
 
     const files = req.files as any;
+    const getFile = (key: string) =>
+  files?.[key]?.[0]?.filename ?? null;
 
-    const sebi_certificate =
-      files?.sebi_certificate?.[0]?.filename || null;
-
-    const exchange_certificates =
-      files?.exchange_certificates?.map((f: any) => f.filename) || [];
-
-    const appointment_letter =
-      files?.appointment_letter?.[0]?.filename || null;
-
-    const networth_certificate =
-      files?.networth_certificate?.[0]?.filename || null;
-
-    const financial_statements =
-      files?.financial_statements?.[0]?.filename || null;
-
-    const ca_certificate =
-      files?.ca_certificate?.[0]?.filename || null;
+    const sebi_certificate = getFile("sebi_certificate");
+const appointment_letter = getFile("appointment_letter");
+const networth_certificate = getFile("networth_certificate");
+const financial_statements = getFile("financial_statements");
+const ca_certificate = getFile("ca_certificate");
+const exchange_certificates =
+  files?.exchange_certificates?.map((f: any) => f.filename) || [];
 
       const safeDate = (d: string) => (d && d !== "" ? d : null);
+
+      const existing = await pool.query(
+  "SELECT 1 FROM broker_details WHERE email = $1",
+  [data.email]
+);
+
+if (existing.rows.length > 0) {
+  return res.status(400).json({
+    message: "Email already exists",
+  });
+}
 
     const query = `
     INSERT INTO broker_details (
@@ -166,26 +169,42 @@ export const createBroker = async (req: Request, res: Response) => {
       data.agree_code_of_conduct,
     ];
 
-    const result = await pool.query(query, values);
+      const result = await pool.query(query, values);
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Broker registered successfully",
       broker: result.rows[0],
     });
-  } catch (error) {
-  console.error("BROKER REGISTRATION ERROR:", error);
 
-  res.status(500).json({
-    message: "Server error during broker registration",
-    error
-  });
-}
+  } catch (error: any) {
+    console.error("BROKER REGISTRATION ERROR:", error);
+
+    // ✅ STEP 2: HANDLE DB UNIQUE ERROR (SAFETY NET)
+    if (error.code === "23505") {
+      return res.status(400).json({
+        message: "Email already exists. Cannot register again.",
+      });
+    }
+
+    return res.status(500).json({
+      message: "Server error during broker registration",
+    });
+  }
 };
 
 export const getAllBrokers = async (req: Request, res: Response) => {
   try {
     const result = await pool.query("SELECT * FROM broker_details ORDER BY created_at DESC");
-    res.status(200).json(result.rows);
+    const brokers = result.rows.map((b) => ({
+  ...b,
+  exchange_certificates: Array.isArray(b.exchange_certificates)
+    ? b.exchange_certificates
+    : typeof b.exchange_certificates === "string"
+    ? b.exchange_certificates.replace(/[{}]/g, "").split(",")
+    : [],
+}));
+
+res.status(200).json(brokers);
   } catch (error) {
     console.error("GET ALL BROKERS ERROR:", error);
     res.status(500).json({ message: "Failed to fetch brokers" });

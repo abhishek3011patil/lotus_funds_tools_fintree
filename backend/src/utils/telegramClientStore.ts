@@ -13,3 +13,4 @@ export const getClient = (userId: number) => {
 export const deleteClient = (userId: number) => {
   clientStore.delete(userId);
 };
+// 🔥 NOTE: This store is a simple in-memory solution for managing TelegramClient instances per RA user. In a production environment, consider using a more robust storage solution (e.g., Redis) to handle scalability and persistence across server restarts.

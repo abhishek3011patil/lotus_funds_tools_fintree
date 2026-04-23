@@ -318,12 +318,28 @@ const [s4Err, setS4Err] = useState<Record<string, boolean>>({});
   };
 
   const handleNext = async () => {
-    const validators = [validateStep1, validateStep2, validateStep3, validateStep4, validateStep5];
-    if (validators[activeStep]()) {
-      if (activeStep < 4) { setActiveStep((s) => s + 1); window.scrollTo(0, 0); }
-      else {
+  const validators = [
+    validateStep1,
+    validateStep2,
+    validateStep3,
+    validateStep4,
+    validateStep5,
+  ];
+
+  // Step validation
+  if (!validators[activeStep]()) return;
+
+  // Move to next step
+  if (activeStep < 4) {
+    setActiveStep((s) => s + 1);
+    window.scrollTo(0, 0);
+    return;
+  }
+
+  // FINAL SUBMIT
   const formData = new FormData();
 
+  // Step 1
   formData.append("legal_name", s1.legalName);
   formData.append("trade_name", s1.tradeName);
   formData.append("entity_type", s1.entityType);
@@ -337,6 +353,7 @@ const [s4Err, setS4Err] = useState<Record<string, boolean>>({});
   formData.append("mobile", s1.mobile);
   formData.append("website", s1.website);
 
+  // Step 2
   formData.append("sebi_registration_no", s2.sebiRegNo);
   formData.append("registration_category", s2.regCategory);
   formData.append("registration_date", s2.regDate);
@@ -360,6 +377,7 @@ const [s4Err, setS4Err] = useState<Record<string, boolean>>({});
     formData.append("exchange_certificates", file);
   });
 
+  // Step 3
   if (appointmentFile) formData.append("appointment_letter", appointmentFile);
   if (networthFile) formData.append("networth_certificate", networthFile);
   if (financialFile) formData.append("financial_statements", financialFile);
@@ -374,6 +392,7 @@ const [s4Err, setS4Err] = useState<Record<string, boolean>>({});
   formData.append("auditor_name", s3.auditorName);
   formData.append("auditor_membership", s3.auditorMembership);
 
+  // Step 4
   formData.append("authorized_person_name", s4.fullName);
   formData.append("authorized_person_pan", s4.pan);
   formData.append("authorized_person_designation", s4.designation);
@@ -383,25 +402,48 @@ const [s4Err, setS4Err] = useState<Record<string, boolean>>({});
 
   formData.append("role", s4.role);
 
+  // Step 5
   formData.append("no_disciplinary_action", String(declarations.noDisciplinary));
   formData.append("no_suspension", String(declarations.noSuspension));
   formData.append("no_criminal_case", String(declarations.noCriminal));
   formData.append("agree_sebi_circulars", String(declarations.agreeCirculars));
   formData.append("agree_code_of_conduct", String(declarations.agreeConduct));
-  
+
+  // API CALL
   try {
-    await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/broker/register-broker`,formData);
+    console.log("Submitting form...");
+
+    await axios.post(
+  `${import.meta.env.VITE_API_URL}/api/broker/register-broker`,
+  formData,
+  {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`
+    }
+  }
+);
 
     alert("Broker Registered Successfully");
-  } catch (err) {
+  } catch (err: any) {
     console.error(err);
-    alert("Error submitting form");
-  }
-}
-    }
-  };
 
-  const handleBack = () => { if (activeStep > 0) { setActiveStep((s) => s - 1); window.scrollTo(0, 0); } };
+    if (err.response?.data?.message) {
+      alert(err.response.data.message);
+    } else {
+      alert("Something went wrong");
+    }
+  }
+};
+
+
+// BACK BUTTON
+const handleBack = () => {
+  if (activeStep > 0) {
+    setActiveStep((s) => s - 1);
+    window.scrollTo(0, 0);
+  }
+};
+
 
   // Checkbox toggle for s1 same-address
   const handleSameAddress = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -437,7 +479,6 @@ const [s4Err, setS4Err] = useState<Record<string, boolean>>({});
             <MenuItem value="B">B</MenuItem>
             <MenuItem value="C">C</MenuItem>
             <MenuItem value="D">D</MenuItem>
-            <MenuItem value="C">C</MenuItem>
           </Select>
           {s1Err.entityType && errMsg()}
         </Grid>
@@ -601,7 +642,7 @@ const [s4Err, setS4Err] = useState<Record<string, boolean>>({});
         <FileUploadBox 
   fieldLabel="SEBI Certificate (PDF)" 
   files={sebiCertFile} // Changed from 'file' to 'files'
-  onChange={(files) => setSebiCertFile(files[0])} // Just take the first one
+ onChange={(files) => setSebiCertFile(files?.[0] || null)}// Just take the first one
   error={s2Err.sebiCertFile} 
 />
         <Box sx={{ height: 20 }}>{s2Err.sebiCertFile && errMsg("Certificate required")}</Box>
@@ -910,7 +951,7 @@ const renderStep4 = () => {
                 value={s4.aadhaar} 
                 onChange={(e) => setS4({ ...s4, aadhaar: e.target.value })} 
               />
-              <Box sx={{ height: 20 }}>{s4Err.aadhar && errMsg()}</Box>
+              <Box sx={{ height: 20 }}>{s4Err.aadhaar && errMsg()}</Box>
             </Grid>
 
             <Grid item xs={12} sm={6}>

@@ -102,22 +102,26 @@ const AdminApproval = () => {
           return;
         }
 
-        const formatted = data.map((item: any) => ({
-          id: item.id,
-          type: "RA",
-          name: `${item.first_name || ""} ${item.surname || ""}`,
-          phone: item.mobile || "",
-          profile: item.profile_image,
-          pan: item.pan_card,
-          address: item.address_proof_document,
-          sebi: item.sebi_certificate,
-          sebi_receipt: item.sebi_receipt,
-          nism: item.nism_certificate,
-          cheque: item.cancelled_cheque,
-          status: item.status || "Pending",
-          rejectionReason: item.rejection_reason || "",
-          "age/time": "Just now",
-        }));
+        const formatted: AdminRow[] = data.map((item: any) => ({
+  id: String(item.id),
+  type: "RA",
+
+  name: `${item.first_name || ""} ${item.surname || ""}`.trim(),
+  phone: item.mobile || "",
+
+  profile: item.profile_image || null,
+  pan: item.pan_card || null,
+  address: item.address_proof_document || null,
+  sebi: item.sebi_certificate || null,
+  sebi_receipt: item.sebi_receipt || null,
+  nism: item.nism_certificate || null,
+  cheque: item.cancelled_cheque || null,
+
+  status: item.status || "Pending",
+  rejectionReason: item.rejection_reason || "",
+
+  "age/time": "Just now",
+}));
 
         setRows(formatted);
       } catch (error) {
@@ -156,22 +160,27 @@ const AdminApproval = () => {
           return;
         }
 
-        const formatted = data.map((item: any) => ({
-          id: item.id,
-          type: "BROKER", // ✅ correct type
-          name: item.legal_name || "N/A",
-          phone: item.mobile || "",
-          sebi: item.sebi_certificate,
-          exchange_certificates: item.exchange_certificates,
-          appointment_letter: item.appointment_letter,
-          networth_certificate: item.networth_certificate,
-          financial_statements: item.financial_statements,
-          ca_certificate: item.ca_certificate,
-          status: item.status || "Pending",
-          rejectionReason: item.rejection_reason || "",
-          "age/time": "Just now",
-        }));
+        const formatted: AdminRow[] = data.map((item: any) => ({
+  id: String(item.id),
+  type: "Broker", // ✅ MUST match type exactly
 
+  name: item.legal_name || "N/A",
+  phone: item.mobile || "",
+
+  sebi_certificate: item.sebi_certificate || null,
+  exchange_certificates: item.exchange_certificates || [],
+  appointment_letter: item.appointment_letter || null,
+  networth_certificate: item.networth_certificate || null,
+  financial_statements: item.financial_statements || null,
+  ca_certificate: item.ca_certificate || null,
+
+  pan: item.pan || null,
+
+  status: item.status || "Pending",
+  rejectionReason: item.rejection_reason || "",
+
+  "age/time": "Just now",
+}));
         setBrokerRows(formatted); // ✅ correct state setter
       } catch (error) {
         console.error("Failed to load broker data:", error);
@@ -223,18 +232,21 @@ const AdminApproval = () => {
 
 
 
-  const openFile = (file?: string) => {
-    if (!file) return alert("File not uploaded");
+const openFile = (file?: string | string[]) => {
+  if (!file) return alert("File not uploaded");
 
-    const files = file.split(",");
-    files.forEach((f) => {
-      const cleanFile = f.trim();
-      if (cleanFile) {
-        const url = `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(cleanFile)}`;
-        window.open(url, "_blank");
-      }
-    });
-  };
+  const fileArray = Array.isArray(file)
+    ? file
+    : file.split(",");
+
+  fileArray.forEach((f) => {
+    const cleanFile = f.trim();
+    if (cleanFile) {
+      const url = `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(cleanFile)}`;
+      window.open(url, "_blank");
+    }
+  });
+};
 
   /* ================= APPROVE ================= */
   const handleApprove = async (id: string, type: "RA" | "BROKER") => {
@@ -700,7 +712,7 @@ const AdminApproval = () => {
             {selectedBroker.pan && (
               <Button onClick={() => openFile(selectedBroker.pan)}>View Company PAN</Button>
             )}
-
+      
             {/* Multiple Files: Exchange Certificates */}
             {selectedBroker.exchange_certificates &&
               selectedBroker.exchange_certificates.map((file: string, index: number) => (

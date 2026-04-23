@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import AppLayout from "../components/layout/AppLayout";
 import Dashboard from "../pages/Dashboard";
+import Settings from "../pages/Settings";
 import Signup from "../pages/common/Signup";
 import RegistrationPage from "../pages_registration/RegistrationPage";
 import Recommendations from "../pages/Recomendation";
@@ -12,6 +13,7 @@ import Evening from "../pages_automation/Evening";
 import Morning from "../pages_automation/Morning";
 import Special from "../pages_automation/Special";
 import Weekly from "../pages_automation/Weekly";
+import AdminSettings from "../pages_admin/AdminSettings";
 import AdminApproval from "../pages_admin/AdminApproval";
 import AdminRecommendations from "../pages_admin/AdminRecommendations";
 import AdminDashboard from "../pages_admin/AdminDashboard";
@@ -68,6 +70,7 @@ const AppRoutes = () => {
       >
         <Route path="/" element={<Dashboard />} />
         <Route path="/performance" element={<Performance />} />
+        <Route path="/settings" element={<Settings />} />
 
         <Route
           path="/recommendations"
@@ -146,6 +149,7 @@ const AppRoutes = () => {
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="recommendations" element={<AdminRecommendations />} />
         <Route path="approval" element={<AdminApproval />} />
+        <Route path="settings" element={<AdminSettings />} />
         <Route path="edit/:type/:id" element={<EditPage />} />
       </Route>
 

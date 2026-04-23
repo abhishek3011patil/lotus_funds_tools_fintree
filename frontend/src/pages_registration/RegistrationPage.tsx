@@ -31,23 +31,60 @@ const RegistrationPage: React.FC = () => {
   const API_URL = import.meta.env.VITE_API_URL;
 
   const [formData, setFormData] = useState({
-    salutation: "", firstName: "", middleName: "", surname: "",
-    orgName: "", designation: "", shortBio: "", email: "",
-    mobile: "", telephone: "", country: "", state: "",
-    city: "", pincode: "", address1: "", address2: "",
-    sebiRegNo: "", sebiStartDate: "", sebiExpiryDate: "",
-    nismRegNo: "", nismValidTill: "",
-    academicQual: "", profQual: "", expertise: "", markets: "",
-    marketExp: "", // Added for Step 2
-    bankName: "", accountHolder: "", accountNumber: "", ifscCode: "",
-    panNumber: "", addressProofType: "",
-    declare1: false, declare2: false,
-    noGuaranteedReturns: false,
-    conflictOfInterest: false,
-    personalTrading: false,
-    sebiCompliance: false,
-    platformPolicy: false
-  });
+  salutation: "",
+  first_name: "",
+  middle_name: "",
+  surname: "",
+
+  org_name: "",
+  designation: "",
+  short_bio: "",
+
+  email: "",
+  mobile: "",
+  telephone: "",
+
+  country: "",
+  state: "",
+  city: "",
+  pincode: "",
+
+  address_line1: "",
+  address_line2: "",
+
+  sebi_reg_no: "",
+  sebi_start_date: "",
+  sebi_expiry_date: "",
+
+  nism_reg_no: "",
+  nism_valid_till: "",
+
+  academic_qualification: "",
+  professional_qualification: "",
+
+  market_experience: "",
+  expertise: "",
+  markets: "",
+
+  bank_name: "",
+  account_holder: "",
+  account_number: "",
+  ifsc_code: "",
+
+  pan_number: "",
+  address_proof_type: "",
+
+  declare_info_true: false,
+  consent_verification: false,
+
+  no_guaranteed_returns: false,
+  conflict_of_interest: false,
+  personal_trading: false,
+  sebi_compliance: false,
+  platform_policy: false,
+
+  additional_comments: ""
+});
 
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [profileFileName, setProfileFileName] = useState("No file chosen");
@@ -92,9 +129,9 @@ const RegistrationPage: React.FC = () => {
 
   const validateStep = () => {
     const newErrors: { [key: string]: boolean } = {};
-    const step1Fields = ['salutation', 'firstName', 'middleName', 'surname', 'orgName', 'designation', 'shortBio', 'email', 'mobile', 'telephone', 'country', 'state', 'city', 'pincode', 'address1', 'address2'];
-    const step2Fields = ['sebiRegNo', 'sebiStartDate', 'sebiExpiryDate', 'nismRegNo', 'nismValidTill', 'academicQual', 'profQual', 'expertise', 'markets', 'marketExp'];
-    const step3Fields = ['bankName', 'accountHolder', 'accountNumber', 'ifscCode', 'panNumber', 'addressProofType'];
+    const step1Fields = ['salutation', 'first_name', 'middle_name', 'surname', 'org_name', 'designation', 'short_bio', 'email', 'mobile', 'telephone', 'country', 'state', 'city', 'pincode', 'address_line1', 'address_line2'];
+    const step2Fields = ['sebi_reg_no', 'sebi_start_date', 'sebi_expiry_date', 'nism_reg_no', 'nism_valid_till', 'academic_qualification', 'professional_qualification', 'expertise', 'markets', 'market_experience'];
+    const step3Fields = ['bank_name', 'account_holder', 'account_number', 'ifsc_code', 'pan_number', 'address_proof_type'];
 
     let fieldsToValidate = currentStep === 1 ? step1Fields : currentStep === 2 ? step2Fields : step3Fields;
     fieldsToValidate.forEach(field => {
@@ -103,8 +140,8 @@ const RegistrationPage: React.FC = () => {
     });
 
     if (currentStep === 3) {
-      if (!formData.declare1) newErrors.declare1 = true;
-      if (!formData.declare2) newErrors.declare2 = true;
+      if (!formData.declare_info_true) newErrors.declare1 = true;
+      if (!formData.consent_verification) newErrors.consent_verification = true;
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -122,20 +159,36 @@ const handleSave = async () => {
   try {
     const form = new FormData();
 
-    // ✅ append all text fields
-    Object.keys(formData).forEach((key) => {
-      const value = (formData as any)[key];
-      form.append(key, typeof value === "boolean" ? value.toString() : value);
-    });
+Object.keys(formData).forEach((key) => {
+  const value = (formData as any)[key];
 
-    // ✅ append files (VERY IMPORTANT)
-    if (files.profileImage) form.append("profileImage", files.profileImage);
-    if (files.sebiCert) form.append("sebiCert", files.sebiCert);
-    if (files.sebiReceipt) form.append("sebiReceipt", files.sebiReceipt);
-    if (files.nismCert) form.append("nismCert", files.nismCert);
-    if (files.cancelledCheque) form.append("cancelledCheque", files.cancelledCheque);
-    if (files.panCard) form.append("panCard", files.panCard);
-    if (files.addressProofDoc) form.append("addressProofDoc", files.addressProofDoc);
+  if (value !== undefined && value !== null && value !== "") {
+    form.append(
+      key,
+      typeof value === "boolean" ? value.toString() : value
+    );
+  }
+});
+
+// ✅ append files (SAFE + CLEAN + MATCH BACKEND)
+const fileMapping: any = {
+  // same naming (no change needed)
+  profile_image: files.profile_image,
+  sebi_certificate: files.sebi_certificate,
+  sebi_receipt: files.sebi_receipt,
+  nism_certificate: files.nism_certificate,
+  cancelled_cheque: files.cancelled_cheque,
+
+  // 🔥 mismatched ones (fix here)
+  panNumber: files.pan_card,                  // was pan_card → backend wants panNumber
+  addressProofDocument: files.address_proof_document, // adjust if backend expects this
+};
+
+Object.entries(fileMapping).forEach(([key, file]) => {
+  if (file instanceof File) {
+    form.append(key, file);
+  }
+});
 
     // ✅ API call
   const token = localStorage.getItem("token");
@@ -145,7 +198,6 @@ const handleSave = async () => {
       form,
       {
         headers: {
-          "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${token}`, // ⭐ ADD THIS
         },
       }
@@ -245,87 +297,523 @@ const handleSave = async () => {
           </Box>
         </Box>
 
-        {currentStep === 1 && (
-          <Box>
-            <Typography sx={styles.title}>Step 1: Basic Profile & Contact Information</Typography>
-            <Grid container spacing={5}>
-              <Grid size={{ xs: 12, md: 8 }}>
-                <Typography sx={styles.subTitle}>Personal Detail</Typography>
-                <Grid container spacing={3}>
-                  <Grid size={{ xs: 3 }}><FormControl fullWidth sx={styles.input} error={errors.salutation}><InputLabel>Salutation</InputLabel><Select name="salutation" value={formData.salutation} label="Salutation" onChange={handleSelect}><MenuItem value="Mr">Mr.</MenuItem><MenuItem value="Ms">Ms.</MenuItem></Select>{errors.salutation && <FormHelperText>Required</FormHelperText>}</FormControl></Grid>
-                  <Grid size={{ xs: 3 }}><TextField fullWidth error={errors.firstName} name="firstName" label="First Name" sx={styles.input} onChange={handleChange} helperText={errors.firstName ? "Required" : ""} /></Grid>
-                  <Grid size={{ xs: 3 }}><TextField fullWidth error={errors.middleName} name="middleName" label="Middle Name" sx={styles.input} onChange={handleChange} helperText={errors.middleName ? "Required" : ""} /></Grid>
-                  <Grid size={{ xs: 3 }}><TextField fullWidth error={errors.surname} name="surname" label="Surname" sx={styles.input} onChange={handleChange} helperText={errors.surname ? "Required" : ""} /></Grid>
-                  <Grid size={{ xs: 6 }}><TextField fullWidth error={errors.orgName} name="orgName" label="Organization Name" sx={styles.input} onChange={handleChange} helperText={errors.orgName ? "Required" : ""} /></Grid>
-                  <Grid size={{ xs: 6 }}><TextField fullWidth error={errors.designation} name="designation" label="Designation" sx={styles.input} onChange={handleChange} helperText={errors.designation ? "Required" : ""} /></Grid>
-                  <Grid size={{ xs: 12 }}><TextField fullWidth error={errors.shortBio} multiline rows={4} name="shortBio" label="Short Bio" sx={styles.input} onChange={handleChange} helperText={errors.shortBio ? "Required" : ""} /></Grid>
-                </Grid>
-                <Typography sx={[styles.subTitle, { mt: 5 }]}>Contact Information</Typography>
-                <Grid container spacing={3}>
-                  <Grid size={{ xs: 4 }}><TextField fullWidth error={errors.email} name="email" label="Email" sx={styles.input} onChange={handleChange} helperText={errors.email ? "Required" : ""} /></Grid>
-                  <Grid size={{ xs: 4 }}><TextField fullWidth error={errors.mobile} name="mobile" label="Mobile" sx={styles.input} onChange={handleChange} helperText={errors.mobile ? "Required" : ""} /></Grid>
-                  <Grid size={{ xs: 4 }}><TextField fullWidth error={errors.telephone} name="telephone" label="Telephone" sx={styles.input} onChange={handleChange} helperText={errors.telephone ? "Required" : ""} /></Grid>
-                </Grid>
-                <Typography sx={[styles.subTitle, { mt: 5 }]}>Address</Typography>
-                <Grid container spacing={3}>
-                  <Grid size={{ xs: 3 }}><FormControl fullWidth sx={styles.input} error={errors.country}><InputLabel>Country</InputLabel><Select name="country" value={formData.country} label="Country" onChange={handleSelect}><MenuItem value="India">India</MenuItem></Select>{errors.country && <FormHelperText>Required</FormHelperText>}</FormControl></Grid>
-                  <Grid size={{ xs: 3 }}><FormControl fullWidth sx={styles.input} error={errors.state}><InputLabel>State</InputLabel><Select name="state" value={formData.state} label="State" onChange={handleSelect}><MenuItem value="Maharashtra">Maharashtra</MenuItem></Select>{errors.state && <FormHelperText>Required</FormHelperText>}</FormControl></Grid>
-                  <Grid size={{ xs: 3 }}><FormControl fullWidth sx={styles.input} error={errors.city}><InputLabel>City</InputLabel><Select name="city" value={formData.city} label="City" onChange={handleSelect}><MenuItem value="Mumbai">Mumbai</MenuItem></Select>{errors.city && <FormHelperText>Required</FormHelperText>}</FormControl></Grid>
-                  <Grid size={{ xs: 3 }}><TextField fullWidth error={errors.pincode} name="pincode" label="Pincode" sx={styles.input} onChange={handleChange} helperText={errors.pincode ? "Required" : ""} /></Grid>
-                  <Grid size={{ xs: 6 }}><TextField fullWidth error={errors.address1} name="address1" label="Address Line 1" sx={styles.input} onChange={handleChange} helperText={errors.address1 ? "Required" : ""} /></Grid>
-                  <Grid size={{ xs: 6 }}><TextField fullWidth error={errors.address2} name="address2" label="Address Line 2" sx={styles.input} onChange={handleChange} helperText={errors.address2 ? "Required" : ""} /></Grid>
-                </Grid>
-              </Grid>
-              <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 12 }}>
-                <Avatar src={profileImage || ""} sx={{ width: 240, height: 240, bgcolor: "#F0F2F5", border: '2px solid #E0E7FF', mb: 4 }} />
-                <Box sx={{ display: 'flex', alignItems: 'center', border: '1px solid #E0E7FF', borderRadius: 3, overflow: 'hidden' }}>
-                  <Button component="label" sx={{ bgcolor: '#E5E7EB', color: '#333', py: 1.5, px: 3, borderRadius: 0, textTransform: 'none', fontWeight: 600 }}>Choose File<input type="file" hidden accept="image/*" onChange={handleProfileChange} /></Button>
-                  <Typography variant="body1" sx={{ px: 3, color: '#666' }}>{profileFileName}</Typography>
-                </Box>
-              </Grid>
-            </Grid>
-          </Box>
-        )}
+         {/* STEP 1 */}
+      {currentStep === 1 && (
+  <Box>
+    <Typography sx={styles.title}>
+      Step 1: Basic Profile & Contact Information
+    </Typography>
 
+    <Grid container spacing={5}>
+      <Grid size={{ xs: 12, md: 8 }}>
+        <Typography sx={styles.subTitle}>Personal Detail</Typography>
+
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 3 }}>
+            <FormControl fullWidth sx={styles.input} error={errors.salutation}>
+              <InputLabel>Salutation</InputLabel>
+              <Select
+                name="salutation"
+                value={formData.salutation || ""}
+                label="Salutation"
+                onChange={handleSelect}
+              >
+                <MenuItem value="Mr">Mr.</MenuItem>
+                <MenuItem value="Ms">Ms.</MenuItem>
+              </Select>
+              {errors.salutation && <FormHelperText>Required</FormHelperText>}
+            </FormControl>
+          </Grid>
+
+          <Grid size={{ xs: 3 }}>
+            <TextField
+              fullWidth
+              name="first_name"
+              label="First Name"
+              sx={styles.input}
+              value={formData.first_name || ""}
+              onChange={handleChange}
+              error={errors.first_name}
+              helperText={errors.first_name ? "Required" : ""}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 3 }}>
+            <TextField
+              fullWidth
+              name="middle_name"
+              label="Middle Name"
+              sx={styles.input}
+              value={formData.middle_name || ""}
+              onChange={handleChange}
+              error={errors.middle_name}
+              helperText={errors.middle_name ? "Required" : ""}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 3 }}>
+            <TextField
+              fullWidth
+              name="surname"
+              label="Surname"
+              sx={styles.input}
+              value={formData.surname || ""}
+              onChange={handleChange}
+              error={errors.surname}
+              helperText={errors.surname ? "Required" : ""}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 6 }}>
+            <TextField
+              fullWidth
+              name="org_name"
+              label="Organization Name"
+              sx={styles.input}
+              value={formData.org_name || ""}
+              onChange={handleChange}
+              error={errors.org_name}
+              helperText={errors.org_name ? "Required" : ""}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 6 }}>
+            <TextField
+              fullWidth
+              name="designation"
+              label="Designation"
+              sx={styles.input}
+              value={formData.designation || ""}
+              onChange={handleChange}
+              error={errors.designation}
+              helperText={errors.designation ? "Required" : ""}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              fullWidth
+              multiline
+              rows={4}
+              name="short_bio"
+              label="Short Bio"
+              sx={styles.input}
+              value={formData.short_bio || ""}
+              onChange={handleChange}
+              error={errors.short_bio}
+              helperText={errors.short_bio ? "Required" : ""}
+            />
+          </Grid>
+        </Grid>
+
+        <Typography sx={[styles.subTitle, { mt: 5 }]}>
+          Contact Information
+        </Typography>
+
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 4 }}>
+            <TextField
+              fullWidth
+              name="email"
+              label="Email"
+              sx={styles.input}
+              value={formData.email || ""}
+              onChange={handleChange}
+              error={errors.email}
+              helperText={errors.email ? "Required" : ""}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 4 }}>
+            <TextField
+              fullWidth
+              name="mobile"
+              label="Mobile"
+              sx={styles.input}
+              value={formData.mobile || ""}
+              onChange={handleChange}
+              error={errors.mobile}
+              helperText={errors.mobile ? "Required" : ""}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 4 }}>
+            <TextField
+              fullWidth
+              name="telephone"
+              label="Telephone"
+              sx={styles.input}
+              value={formData.telephone || ""}
+              onChange={handleChange}
+              error={errors.telephone}
+              helperText={errors.telephone ? "Required" : ""}
+            />
+          </Grid>
+        </Grid>
+
+        <Typography sx={[styles.subTitle, { mt: 5 }]}>Address</Typography>
+
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 3 }}>
+            <FormControl fullWidth sx={styles.input} error={errors.country}>
+              <InputLabel>Country</InputLabel>
+              <Select
+                name="country"
+                value={formData.country || ""}
+                label="Country"
+                onChange={handleSelect}
+              >
+                <MenuItem value="India">India</MenuItem>
+              </Select>
+              {errors.country && <FormHelperText>Required</FormHelperText>}
+            </FormControl>
+          </Grid>
+
+          <Grid size={{ xs: 3 }}>
+            <FormControl fullWidth sx={styles.input} error={errors.state}>
+              <InputLabel>State</InputLabel>
+              <Select
+                name="state"
+                value={formData.state || ""}
+                label="State"
+                onChange={handleSelect}
+              >
+                <MenuItem value="Maharashtra">Maharashtra</MenuItem>
+              </Select>
+              {errors.state && <FormHelperText>Required</FormHelperText>}
+            </FormControl>
+          </Grid>
+
+          <Grid size={{ xs: 3 }}>
+            <FormControl fullWidth sx={styles.input} error={errors.city}>
+              <InputLabel>City</InputLabel>
+              <Select
+                name="city"
+                value={formData.city || ""}
+                label="City"
+                onChange={handleSelect}
+              >
+                <MenuItem value="Mumbai">Mumbai</MenuItem>
+              </Select>
+              {errors.city && <FormHelperText>Required</FormHelperText>}
+            </FormControl>
+          </Grid>
+
+          <Grid size={{ xs: 3 }}>
+            <TextField
+              fullWidth
+              name="pincode"
+              label="Pincode"
+              sx={styles.input}
+              value={formData.pincode || ""}
+              onChange={handleChange}
+              error={errors.pincode}
+              helperText={errors.pincode ? "Required" : ""}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 6 }}>
+            <TextField
+              fullWidth
+              name="address_line1"
+              label="Address Line 1"
+              sx={styles.input}
+              value={formData.address_line1 || ""}
+              onChange={handleChange}
+              error={errors.address_line1}
+              helperText={errors.address_line1 ? "Required" : ""}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 6 }}>
+            <TextField
+              fullWidth
+              name="address_line2"
+              label="Address Line 2"
+              sx={styles.input}
+              value={formData.address_line2 || ""}
+              onChange={handleChange}
+              error={errors.address_line2}
+              helperText={errors.address_line2 ? "Required" : ""}
+            />
+          </Grid>
+        </Grid>
+      </Grid>
+
+      {/* RIGHT SIDE (UNCHANGED) */}
+      <Grid
+        size={{ xs: 12, md: 4 }}
+        sx={{ display: "flex", flexDirection: "column", alignItems: "center", pt: 12 }}
+      >
+        <Avatar
+          src={profileImage || ""}
+          sx={{
+            width: 240,
+            height: 240,
+            bgcolor: "#F0F2F5",
+            border: "2px solid #E0E7FF",
+            mb: 4,
+          }}
+        />
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            border: "1px solid #E0E7FF",
+            borderRadius: 3,
+            overflow: "hidden",
+          }}
+        >
+          <Button
+            component="label"
+            sx={{
+              bgcolor: "#E5E7EB",
+              color: "#333",
+              py: 1.5,
+              px: 3,
+              borderRadius: 0,
+              textTransform: "none",
+              fontWeight: 600,
+            }}
+          >
+            Choose File
+            <input
+              type="file"
+              hidden
+              accept="image/*"
+              onChange={handleProfileChange}
+            />
+          </Button>
+          <Typography variant="body1" sx={{ px: 3, color: "#666" }}>
+            {profileFileName}
+          </Typography>
+        </Box>
+      </Grid>
+    </Grid>
+  </Box>
+)} 
         {currentStep === 2 && (
           <Box>
-            <Typography sx={styles.title}>Step 2: Professional & SEBI Information</Typography>
-            <Typography sx={styles.subTitle}>SEBI Registration</Typography>
-            <Grid container spacing={3} alignItems="center">
-              <Grid size={{ xs: 2.5 }}><TextField fullWidth error={errors.sebiRegNo} name="sebiRegNo" label="SEBI Reg. No" sx={styles.input} onChange={handleChange} helperText={errors.sebiRegNo ? "Required" : ""} /></Grid>
-              <Grid size={{ xs: 1.6 }}><TextField fullWidth error={errors.sebiStartDate} type="date" name="sebiStartDate" label="Start Date" InputLabelProps={{ shrink: true }} sx={styles.input} onChange={handleChange} helperText={errors.sebiStartDate ? "Required" : ""} /></Grid>
-              <Grid size={{ xs: 0.3 }} sx={{ textAlign: 'center', fontWeight: 700 }}>to</Grid>
-              <Grid size={{ xs: 1.6 }}><TextField fullWidth error={errors.sebiExpiryDate} type="date" name="sebiExpiryDate" label="Expiry Date" InputLabelProps={{ shrink: true }} sx={styles.input} onChange={handleChange} helperText={errors.sebiExpiryDate ? "Required" : ""} /></Grid>
-              <Grid size={{ xs: 3 }} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}><Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>SEBI Certificate</Typography><Button component="label" variant="contained" startIcon={fileLabels.sebiCert !== "No file chosen" ? <CheckCircleIcon /> : <CloudUploadIcon />} sx={getDynamicUploadStyle(fileLabels.sebiCert)}>{fileLabels.sebiCert !== "No file chosen" ? "Uploaded" : "Upload Media"}<input type="file" hidden onChange={(e) => handleDocUpload(e, 'sebiCert')} /></Button></Grid>
-              <Grid size={{ xs: 3 }} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}><Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>SEBI Receipt</Typography><Button component="label" variant="contained" startIcon={fileLabels.sebiReceipt !== "No file chosen" ? <CheckCircleIcon /> : <CloudUploadIcon />} sx={getDynamicUploadStyle(fileLabels.sebiReceipt)}>{fileLabels.sebiReceipt !== "No file chosen" ? "Uploaded" : "Upload Media"}<input type="file" hidden onChange={(e) => handleDocUpload(e, 'sebiReceipt')} /></Button></Grid>
-            </Grid>
+           <Typography sx={styles.title}>
+  Step 2: Professional & SEBI Information
+</Typography>
 
-            <Typography sx={[styles.subTitle, { mt: 6 }]}>NISM – Series XV: Research Analyst</Typography>
-            <Grid container spacing={3} alignItems="center">
-              <Grid size={{ xs: 3 }}><TextField fullWidth error={errors.nismRegNo} name="nismRegNo" label="NISM Reg. No" sx={styles.input} onChange={handleChange} helperText={errors.nismRegNo ? "Required" : ""} /></Grid>
-              <Grid size={{ xs: 2 }}><TextField fullWidth error={errors.nismValidTill} type="date" name="nismValidTill" label="Valid Till" InputLabelProps={{ shrink: true }} sx={styles.input} onChange={handleChange} helperText={errors.nismValidTill ? "Required" : ""} /></Grid>
-              <Grid size={{ xs: 5 }} sx={{ display: 'flex', alignItems: 'center', gap: 3 }}><Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>NISM Certificate</Typography><Button component="label" variant="contained" startIcon={fileLabels.nismCert !== "No file chosen" ? <CheckCircleIcon /> : <CloudUploadIcon />} sx={getDynamicUploadStyle(fileLabels.nismCert)}>{fileLabels.nismCert !== "No file chosen" ? "Uploaded" : "Upload Media"}<input type="file" hidden onChange={(e) => handleDocUpload(e, 'nismCert')} /></Button><Typography variant="caption">{fileLabels.nismCert}</Typography></Grid>
-            </Grid>
+<Typography sx={styles.subTitle}>SEBI Registration</Typography>
 
-            <Typography sx={[styles.subTitle, { mt: 6 }]}>Professional Qualification</Typography>
-            <Grid container spacing={3}>
+<Grid container spacing={3} alignItems="center">
+
+  <Grid size={{ xs: 2.5 }}>
+    <TextField
+      fullWidth
+      name="sebi_reg_no"
+      label="SEBI Reg. No"
+      sx={styles.input}
+      value={formData.sebi_reg_no|| ""}
+      onChange={handleChange}
+      error={errors.sebi_reg_no}
+      helperText={errors.sebi_reg_no ? "Required" : ""}
+    />
+  </Grid>
+
+  <Grid size={{ xs: 1.6 }}>
+    <TextField
+      fullWidth
+      type="date"
+      name="sebi_start_date"
+      label="Start Date"
+      InputLabelProps={{ shrink: true }}
+      sx={styles.input}
+      value={formData.sebi_start_date || ""}
+      onChange={handleChange}
+      error={errors.sebi_start_date}
+      helperText={errors.sebi_start_date ? "Required" : ""}
+    />
+  </Grid>
+
+  <Grid size={{ xs: 0.3 }} sx={{ textAlign: 'center', fontWeight: 700 }}>
+    to
+  </Grid>
+
+  <Grid size={{ xs: 1.6 }}>
+    <TextField
+      fullWidth
+      type="date"
+      name="sebi_expiry_date"
+      label="Expiry Date"
+      InputLabelProps={{ shrink: true }}
+      sx={styles.input}
+      value={formData.sebi_expiry_date|| ""}
+      onChange={handleChange}
+      error={errors.sebi_expiry_date}
+      helperText={errors.sebi_expiry_date ? "Required" : ""}
+    />
+  </Grid>
+
+  {/* SEBI CERT */}
+  <Grid size={{ xs: 3 }} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+    <Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>
+      SEBI Certificate
+    </Typography>
+
+    <Button
+      component="label"
+      variant="contained"
+      startIcon={
+        fileLabels.sebiCert !== "No file chosen"
+          ? <CheckCircleIcon />
+          : <CloudUploadIcon />
+      }
+      sx={getDynamicUploadStyle(fileLabels.sebiCert)}
+    >
+      {fileLabels.sebiCert !== "No file chosen" ? "Uploaded" : "Upload Media"}
+
+      <input
+        type="file"
+        hidden
+        onChange={(e) => handleDocUpload(e, "sebiCert")}
+      />
+    </Button>
+
+    <Typography variant="caption">
+      {fileLabels.sebiCert}
+    </Typography>
+  </Grid>
+
+  {/* SEBI RECEIPT */}
+  <Grid size={{ xs: 3 }} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+    <Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>
+      SEBI Receipt
+    </Typography>
+
+    <Button
+      component="label"
+      variant="contained"
+      startIcon={
+        fileLabels.sebiReceipt !== "No file chosen"
+          ? <CheckCircleIcon />
+          : <CloudUploadIcon />
+      }
+      sx={getDynamicUploadStyle(fileLabels.sebiReceipt)}
+    >
+      {fileLabels.sebiReceipt !== "No file chosen" ? "Uploaded" : "Upload Media"}
+
+      <input
+        type="file"
+        hidden
+        onChange={(e) => handleDocUpload(e, "sebiReceipt")}
+      />
+    </Button>
+
+    <Typography variant="caption">
+      {fileLabels.sebiReceipt}
+    </Typography>
+  </Grid>
+
+</Grid>
+
+{/* NISM */}
+
+<Typography sx={[styles.subTitle, { mt: 6 }]}>
+  NISM – Series XV: Research Analyst
+</Typography>
+
+<Grid container spacing={3} alignItems="center">
+
+  <Grid size={{ xs: 3 }}>
+    <TextField
+      fullWidth
+      name="nism_reg_no"
+      label="NISM Reg. No"
+      sx={styles.input}
+      value={formData.nism_reg_no || ""}
+      onChange={handleChange}
+      error={errors.nism_reg_no}
+      helperText={errors.nism_reg_no ? "Required" : ""}
+    />
+  </Grid>
+
+  <Grid size={{ xs: 2 }}>
+    <TextField
+      fullWidth
+      type="date"
+      name="nism_valid_till"
+      label="Valid Till"
+      InputLabelProps={{ shrink: true }}
+      sx={styles.input}
+      value={formData.nism_valid_till || ""}
+      onChange={handleChange}
+      error={errors.nism_valid_till}
+      helperText={errors.nism_valid_till ? "Required" : ""}
+    />
+  </Grid>
+
+  <Grid size={{ xs: 5 }} sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+    <Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>
+      NISM Certificate
+    </Typography>
+
+    <Button
+      component="label"
+      variant="contained"
+      startIcon={
+        fileLabels.nismCert !== "No file chosen"
+          ? <CheckCircleIcon />
+          : <CloudUploadIcon />
+      }
+      sx={getDynamicUploadStyle(fileLabels.nismCert)}
+    >
+      {fileLabels.nismCert !== "No file chosen" ? "Uploaded" : "Upload Media"}
+
+      <input
+        type="file"
+        hidden
+        onChange={(e) => handleDocUpload(e, "nismCert")}
+      />
+    </Button>
+
+    <Typography variant="caption">
+      {fileLabels.nismCert}
+    </Typography>
+  </Grid>
+
+</Grid>
+
+{/* PROFESSIONAL QUALIFICATION */}
+
+<Typography sx={[styles.subTitle, { mt: 6 }]}>
+  Professional Qualification
+</Typography>
+
+<Grid container spacing={3}>
+  <Grid size={{ xs: 4 }}>
+    <FormControl fullWidth sx={styles.input} error={errors.academic_qualification}>
+      <InputLabel>Academic Qualification</InputLabel>
+
+      <Select
+        name="academic_qualification"
+        value={formData.academic_qualification || ""}
+        label="Academic Qualification"
+        onChange={handleSelect}
+      >
+        {academicOptions.map((opt) => (
+          <MenuItem key={opt} value={opt}>
+            {opt}
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  </Grid>
+
               <Grid size={{ xs: 4 }}>
-                <FormControl fullWidth sx={styles.input} error={errors.academicQual}><InputLabel>Academic Qualification</InputLabel>
-                  <Select name="academicQual" value={formData.academicQual} label="Academic Qualification" onChange={handleSelect}>
-                    {academicOptions.map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid size={{ xs: 4 }}>
-                <FormControl fullWidth sx={styles.input} error={errors.profQual}><InputLabel>Professional Qualification</InputLabel>
-                  <Select name="profQual" value={formData.profQual} label="Professional Qualification" onChange={handleSelect}>
+                <FormControl fullWidth sx={styles.input} error={errors.professional_qualification}><InputLabel>Professional Qualification</InputLabel>
+                  <Select name="professional_qualification" value={formData.professional_qualification} label="Professional Qualification" onChange={handleSelect}>
                     {professionalOptions.map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}
                   </Select>
                 </FormControl>
               </Grid>
               <Grid size={{ xs: 4 }}>
-                <FormControl fullWidth sx={styles.input} error={errors.marketExp}><InputLabel>Market Experience</InputLabel>
-                  <Select name="marketExp" value={formData.marketExp} label="Market Experience" onChange={handleSelect}>
+                <FormControl fullWidth sx={styles.input} error={errors.market_experience}><InputLabel>Market Experience</InputLabel>
+                  <Select name="market_experience" value={formData.market_experience} label="Market Experience" onChange={handleSelect}>
                     {["0–1 Year", "1–3 Years", "3–5 Years", "5–10 Years", "10–15 Years", "15+ Years"].map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}
                   </Select>
                 </FormControl>
@@ -350,128 +838,351 @@ const handleSave = async () => {
         )}
 
         {currentStep === 3 && (
-          <Box>
-            <Typography sx={styles.title}>Step 3: Platform KYC</Typography>
-            <Typography sx={styles.subTitle}>Bank Account Details</Typography>
-            <Grid container spacing={1} alignItems="center">
-              <Grid size={{ xs: 3 }}>
-                <Autocomplete
-                  freeSolo
-                  options={bankOptions}
-                  value={formData.bankName}
-                  onInputChange={(_, newValue) => setFormData({ ...formData, bankName: newValue })}
-                  renderInput={(params) => <TextField {...params} label="Bank Name" error={errors.bankName} sx={styles.input} />}
-                />
-              </Grid>
-              <Grid size={{ xs: 3 }}><TextField fullWidth error={errors.accountHolder} name="accountHolder" label="Account Holder Name" sx={styles.input} onChange={handleChange} helperText={errors.accountHolder ? "Required" : ""} /></Grid>
-              <Grid size={{ xs: 3 }}><TextField fullWidth error={errors.accountNumber} name="accountNumber" label="Account Number" sx={styles.input} onChange={handleChange} helperText={errors.accountNumber ? "Required" : ""} /></Grid>
-              <Grid size={{ xs: 3 }}><TextField fullWidth error={errors.ifscCode} name="ifscCode" label="IFSC Code" sx={styles.input} onChange={handleChange} helperText={errors.ifscCode ? "Required" : ""} /></Grid>
-              <Grid size={{ xs: 12 }} sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}><Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>Cancelled Cheque</Typography><Button component="label" variant="contained" startIcon={fileLabels.cancelledCheque !== "No file chosen" ? <CheckCircleIcon /> : <CloudUploadIcon />} sx={getDynamicUploadStyle(fileLabels.cancelledCheque)}>{fileLabels.cancelledCheque !== "No file chosen" ? "Uploaded" : "Upload Media"}<input type="file" hidden onChange={(e) => handleDocUpload(e, 'cancelledCheque')} /></Button><Typography variant="caption">{fileLabels.cancelledCheque}</Typography></Grid>
-            </Grid>
-            <Typography sx={[styles.subTitle, { mt: 6 }]}>Identity & Address Proof</Typography>
-            <Grid container spacing={3} alignItems="center">
-              <Grid size={{ xs: 3 }}><TextField fullWidth error={errors.panNumber} name="panNumber" label="PAN Number" sx={styles.input} onChange={handleChange} helperText={errors.panNumber ? "Required" : ""} /></Grid>
-              <Grid size={{ xs: 5 }} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}><Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>PAN Card Upload</Typography><Button component="label" variant="contained" startIcon={fileLabels.panCard !== "No file chosen" ? <CheckCircleIcon /> : <CloudUploadIcon />} sx={getDynamicUploadStyle(fileLabels.panCard)}>{fileLabels.panCard !== "No file chosen" ? "Uploaded" : "Upload Media"}<input type="file" hidden onChange={(e) => handleDocUpload(e, 'panCard')} /></Button><Typography variant="caption">{fileLabels.panCard}</Typography></Grid>
-            </Grid>
-            <Grid container spacing={3} alignItems="center" sx={{ mt: 4 }}>
-              <Grid size={{ xs: 3 }}>
-                <FormControl fullWidth sx={styles.input} error={errors.addressProofType}><InputLabel>Address Proof</InputLabel>
-                  <Select name="addressProofType" value={formData.addressProofType} label="Address Proof" onChange={handleSelect}>
-                    <MenuItem value="Passport">Passport</MenuItem>
-                    <MenuItem value="Voter ID Card">Voter ID Card</MenuItem>
-                    <MenuItem value="Driving License">Driving License</MenuItem>
-                  </Select>
-                  {errors.addressProofType && <FormHelperText>Required</FormHelperText>}
-                </FormControl>
-              </Grid>
-              <Grid size={{ xs: 5 }} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}><Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>Address Proof Upload</Typography><Button component="label" variant="contained" startIcon={fileLabels.addressProofDoc !== "No file chosen" ? <CheckCircleIcon /> : <CloudUploadIcon />} sx={getDynamicUploadStyle(fileLabels.addressProofDoc)}>{fileLabels.addressProofDoc !== "No file chosen" ? "Uploaded" : "Upload Media"}<input type="file" hidden onChange={(e) => handleDocUpload(e, 'addressProofDoc')} /></Button><Typography variant="caption">{fileLabels.addressProofDoc}</Typography></Grid>
-            </Grid>
-            <Typography sx={[styles.subTitle, { mt: 6 }]}>Declaration</Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <FormControlLabel control={<Checkbox checked={formData.declare1} onChange={handleChange} name="declare1" color="primary" />} label="I hereby declare that all information and documents provided by me are true, complete, and accurate to the best of my knowledge." sx={{ color: errors.declare1 ? 'error.main' : 'inherit' }} />
-              <FormControlLabel control={<Checkbox checked={formData.declare2} onChange={handleChange} name="declare2" color="primary" />} label="I consent to the verification of the above details and documents by the platform or its authorized representatives." sx={{ color: errors.declare2 ? 'error.main' : 'inherit' }} />
-            </Box>
-          </Box>
-        )}
+  <Box>
+    <Typography sx={styles.title}>Step 3: Platform KYC</Typography>
 
-        {currentStep === 4 && (
-          <Box>
-            <Typography sx={styles.title}>Step 4: Declarations, Disclosures & Consent</Typography>
+    <Typography sx={styles.subTitle}>Bank Account Details</Typography>
+    <Grid container spacing={1} alignItems="center">
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {/* 1. No Guaranteed Returns */}
-              <Box>
-                <Typography sx={styles.subTitle}>No Guaranteed Returns Declaration</Typography>
-                <Divider sx={{ mb: 2 }} />
-                <FormControlLabel
-                  control={<Checkbox checked={formData.noGuaranteedReturns} onChange={handleChange} name="noGuaranteedReturns" color="primary" />}
-                  label={<Typography sx={{ color: '#666' }}>I confirm that I do not offer, promise, or guarantee any assured or fixed returns on investments, directly or indirectly.</Typography>}
-                />
-              </Box>
+      {/* BANK NAME */}
+ <Grid size={{ xs: 3 }}>
+  <Autocomplete
+    freeSolo
+    options={bankOptions}
+    
+    value={formData.bank_name || ""} // always string
+    
+    onChange={(_, newValue) => {
+      setFormData(prev => ({
+        ...prev,
+        bank_name: newValue || ""
+      }));
+      setErrors(prev => ({ ...prev, bank_name: false }));
+    }}
 
-              {/* 2. Conflict of Interest */}
-              <Box>
-                <Typography sx={styles.subTitle}>Conflict of Interest Disclosure</Typography>
-                <Divider sx={{ mb: 2 }} />
-                <FormControlLabel
-                  control={<Checkbox checked={formData.conflictOfInterest} onChange={handleChange} name="conflictOfInterest" color="primary" />}
-                  label={<Typography sx={{ color: '#666' }}>I declare that I have disclosed all actual and potential conflicts of interest, including financial, personal, or professional interests that may influence my research or recommendations.</Typography>}
-                />
-              </Box>
+    onInputChange={(_, newInputValue, reason) => {
+      if (reason === "input") {
+        setFormData(prev => ({
+          ...prev,
+          bank_name: newInputValue
+        }));
+      }
+    }}
 
-              {/* 3. Personal Trading */}
-              <Box>
-                <Typography sx={styles.subTitle}>Personal Trading Disclosure</Typography>
-                <Divider sx={{ mb: 2 }} />
-                <FormControlLabel
-                  control={<Checkbox checked={formData.personalTrading} onChange={handleChange} name="personalTrading" color="primary" />}
-                  label={<Typography sx={{ color: '#666' }}>I confirm that I have disclosed my personal trading positions in accordance with SEBI Research Analyst Regulations and that my personal trades do not conflict with client interests.</Typography>}
-                />
-              </Box>
+    renderInput={(params) => (
+      <TextField
+        {...params}
+        name="bank_name"
+        label="Bank Name"
+        sx={styles.input}
+        error={errors.bank_name}
+        helperText={errors.bank_name ? "Required" : ""}
+      />
+    )}
+  />
+</Grid>
 
-              {/* 4. SEBI Compliance */}
-              <Box>
-                <Typography sx={styles.subTitle}>SEBI Compliance Acceptance</Typography>
-                <Divider sx={{ mb: 2 }} />
-                <FormControlLabel
-                  control={<Checkbox checked={formData.sebiCompliance} onChange={handleChange} name="sebiCompliance" color="primary" />}
-                  label={<Typography sx={{ color: '#666' }}>I agree to comply with all applicable provisions of the SEBI (Research Analysts) Regulations, circulars, guidelines, and amendments issued from time to time.</Typography>}
-                />
-              </Box>
+      {/* ACCOUNT HOLDER */}
+      <Grid size={{ xs: 3 }}>
+        <TextField
+          fullWidth
+          name="account_holder"
+          label="Account Holder Name"
+          value={formData.account_holder || ""}
+          onChange={handleChange}
+          error={errors.account_holder}
+          helperText={errors.account_holder ? "Required" : ""}
+          sx={styles.input}
+        />
+      </Grid>
 
-              {/* 5. Platform Policy */}
-              <Box>
-                <Typography sx={styles.subTitle}>Platform Content Policy Acceptance</Typography>
-                <Divider sx={{ mb: 2 }} />
-                <FormControlLabel
-                  control={<Checkbox checked={formData.platformPolicy} onChange={handleChange} name="platformPolicy" color="primary" />}
-                  label={<Typography sx={{ color: '#666' }}>I have read and agree to abide by the Platform Content Policy, Research Publishing Guidelines, and Terms of Use.</Typography>}
-                />
-              </Box>
-            </Box>
+      {/* ACCOUNT NUMBER */}
+      <Grid size={{ xs: 3 }}>
+        <TextField
+          fullWidth
+          name="account_number"
+          label="Account Number"
+          value={formData.account_number || ""}
+          onChange={handleChange}
+          error={errors.account_number}
+          helperText={errors.account_number ? "Required" : ""}
+          sx={styles.input}
+        />
+      </Grid>
 
-            <Typography variant="body2" sx={{ textAlign: 'center', mt: 4, fontWeight: 600, color: '#333' }}>
-              Research Analyst's Disclaimer is not included
-            </Typography>
+      {/* IFSC */}
+      <Grid size={{ xs: 3 }}>
+        <TextField
+          fullWidth
+          name="ifsc_code"
+          label="IFSC Code"
+          value={formData.ifsc_code || ""}
+          onChange={handleChange}
+          error={errors.ifsc_code}
+          helperText={errors.ifsc_code ? "Required" : ""}
+          sx={styles.input}
+        />
+      </Grid>
 
-            {/* Additional Comments */}
-            <Box sx={{ mt: 4 }}>
-              <Typography sx={styles.subTitle}>Add your custom Disclosure</Typography>
-              <Divider sx={{ mb: 2 }} />
+      {/* CANCELLED CHEQUE */}
+      <Grid size={{ xs: 12 }} sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+        <Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>
+          Cancelled Cheque
+        </Typography>
 
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                name="additionalComments"
-                label="Disclaimer Text"
-                placeholder="Type your official disclaimer here.."
-                sx={styles.input}
+        <Button
+          component="label"
+          variant="contained"
+          startIcon={
+            fileLabels.cancelledCheque !== "No file chosen"
+              ? <CheckCircleIcon />
+              : <CloudUploadIcon />
+          }
+          sx={getDynamicUploadStyle(fileLabels.cancelledCheque)}
+        >
+          {fileLabels.cancelledCheque !== "No file chosen"
+            ? "Uploaded"
+            : "Upload Media"}
+
+          <input
+            type="file"
+            hidden
+            onChange={(e) => handleDocUpload(e, "cancelledCheque")}
+          />
+        </Button>
+
+        <Typography variant="caption">
+          {fileLabels.cancelledCheque}
+        </Typography>
+      </Grid>
+    </Grid>
+
+    {/* ================= PAN ================= */}
+    <Typography sx={[styles.subTitle, { mt: 6 }]}>
+      Identity & Address Proof
+    </Typography>
+
+    <Grid container spacing={3} alignItems="center">
+
+      <Grid size={{ xs: 3 }}>
+        <TextField
+          fullWidth
+          name="pan_number"
+          label="PAN Number"
+          value={formData.pan_number || ""}
+          onChange={handleChange}
+          error={errors.pan_number}
+          helperText={errors.pan_number ? "Required" : ""}
+          sx={styles.input}
+        />
+      </Grid>
+
+      {/* PAN CARD */}
+      <Grid size={{ xs: 5 }} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>
+          PAN Card Upload
+        </Typography>
+
+        <Button
+          component="label"
+          variant="contained"
+          startIcon={
+            fileLabels.panCard !== "No file chosen"
+              ? <CheckCircleIcon />
+              : <CloudUploadIcon />
+          }
+          sx={getDynamicUploadStyle(fileLabels.panCard)}
+        >
+          {fileLabels.panCard !== "No file chosen"
+            ? "Uploaded"
+            : "Upload Media"}
+
+          <input
+            type="file"
+            hidden
+            onChange={(e) => handleDocUpload(e, "panCard")}
+          />
+        </Button>
+
+        <Typography variant="caption">{fileLabels.panCard}</Typography>
+      </Grid>
+    </Grid>
+
+    {/* ================= ADDRESS ================= */}
+    <Grid container spacing={3} alignItems="center" sx={{ mt: 4 }}>
+
+      <Grid size={{ xs: 3 }}>
+        <FormControl fullWidth sx={styles.input} error={errors.address_proof_type}>
+          <InputLabel>Address Proof</InputLabel>
+
+          <Select
+            name="address_proof_type"
+            value={formData.address_proof_type || ""}
+            label="Address Proof"
+            onChange={handleSelect}
+          >
+            <MenuItem value="Passport">Passport</MenuItem>
+            <MenuItem value="Voter ID Card">Voter ID Card</MenuItem>
+            <MenuItem value="Driving License">Driving License</MenuItem>
+          </Select>
+
+          {errors.address_proof_type  && <FormHelperText>Required</FormHelperText>}
+        </FormControl>
+      </Grid>
+
+      {/* ADDRESS PROOF FILE */}
+      <Grid size={{ xs: 5 }} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>
+          Address Proof Upload
+        </Typography>
+
+        <Button
+          component="label"
+          variant="contained"
+          startIcon={
+            fileLabels.addressProofDoc !== "No file chosen"
+              ? <CheckCircleIcon />
+              : <CloudUploadIcon />
+          }
+          sx={getDynamicUploadStyle(fileLabels.addressProofDoc)}
+        >
+          {fileLabels.addressProofDoc !== "No file chosen"
+            ? "Uploaded"
+            : "Upload Media"}
+
+          <input
+            type="file"
+            hidden
+            onChange={(e) => handleDocUpload(e, "addressProofDoc")}
+          />
+        </Button>
+
+        <Typography variant="caption">
+          {fileLabels.addressProofDoc}
+        </Typography>
+      </Grid>
+    </Grid>
+
+    {/* ================= DECLARATION ================= */}
+    <Typography sx={[styles.subTitle, { mt: 6 }]}>Declaration</Typography>
+
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={formData.declare_info_true || false}
+            onChange={handleChange}
+            name="declare_info_true"
+          />
+        }
+        label="I hereby declare that all information and documents provided by me are true, complete, and accurate."
+      />
+
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={formData.consent_verification|| false}
+            onChange={handleChange}
+           name="consent_verification"
+          />
+        }
+        label="I consent to verification by the platform."
+      />
+    </Box>
+  </Box>
+)}
+       {currentStep === 4 && (
+  <Box>
+    <Typography sx={styles.title}>
+      Step 4: Declarations, Disclosures & Consent
+    </Typography>
+
+    {/* ================= DECLARATIONS ================= */}
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+
+      {[
+        {
+          name: "no_guaranteed_returns",
+          title: "No Guaranteed Returns Declaration",
+          label:
+            "I confirm that I do not offer, promise, or guarantee any assured or fixed returns on investments, directly or indirectly."
+        },
+        {
+          name: "conflict_of_interest",
+          title: "Conflict of Interest Disclosure",
+          label:
+            "I declare that I have disclosed all actual and potential conflicts of interest, including financial, personal, or professional interests that may influence my research or recommendations."
+        },
+        {
+          name: "personal_trading",
+          title: "Personal Trading Disclosure",
+          label:
+            "I confirm that I have disclosed my personal trading positions in accordance with SEBI Research Analyst Regulations and that my personal trades do not conflict with client interests."
+        },
+        {
+          name: "sebi_compliance",
+          title: "SEBI Compliance Acceptance",
+          label:
+            "I agree to comply with all applicable provisions of the SEBI (Research Analysts) Regulations, circulars, guidelines, and amendments issued from time to time."
+        },
+        {
+          name: "platform_policy",
+          title: "Platform Content Policy Acceptance",
+          label:
+            "I have read and agree to abide by the Platform Content Policy, Research Publishing Guidelines, and Terms of Use."
+        }
+      ].map((item) => (
+        <Box key={item.name}>
+          <Typography sx={styles.subTitle}>{item.title}</Typography>
+          <Divider sx={{ mb: 2 }} />
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                name={item.name}
+                checked={
+                  formData[item.name as keyof typeof formData] === true ||
+                  formData[item.name as keyof typeof formData] === "true"
+                }
                 onChange={handleChange}
+                color="primary"
               />
-            </Box>
-          </Box>
-        )}
+            }
+            label={<Typography sx={{ color: "#666" }}>{item.label}</Typography>}
+          />
+        </Box>
+      ))}
+    </Box>
+
+    {/* ================= DISCLAIMER ================= */}
+    <Typography
+      variant="body2"
+      sx={{ textAlign: "center", mt: 4, fontWeight: 600, color: "#333" }}
+    >
+      Research Analyst's Disclaimer is not included
+    </Typography>
+
+    {/* ================= CUSTOM DISCLOSURE ================= */}
+    <Box sx={{ mt: 4 }}>
+      <Typography sx={styles.subTitle}>
+        Add your custom Disclosure
+      </Typography>
+      <Divider sx={{ mb: 2 }} />
+
+      <TextField
+        fullWidth
+        multiline
+        rows={4}
+        name="additional_comments"
+        label="Disclaimer Text"
+        placeholder="Type your official disclaimer here.."
+        sx={styles.input}
+        value={formData.additional_comments || ""}
+        onChange={handleChange}
+      />
+    </Box>
+  </Box>
+)}
 
 
         <Box sx={{ display: 'flex', justifyContent: currentStep > 1 ? 'space-between' : 'flex-end', alignItems: 'flex-start', mt: 8 }}>

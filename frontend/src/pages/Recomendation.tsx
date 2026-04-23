@@ -299,15 +299,49 @@ if (!raId) {
 
             message: `
 📊 ${form.action} ${finalDisplayName}
-Call Type: ${form.callType}
-Trade Type: ${form.tradeType}
 
-Entry: ${form.entry}
-Target: ${form.target}
-StopLoss: ${form.stopLoss}
+Exchange: ${form.exchangeType}  
+Instrument: ${form.exchange}  
 
-${form.rationale || ""}
-            `,
+Call Type: ${form.callType}  
+Trade Type: ${form.tradeType}  
+
+⏱ Holding Period: ${form.holdingPeriod || "N/A"}  
+Expiry: ${form.expiry || "No Expiry"}  
+
+💰 Entry: ${
+  form.rangeEnabled
+    ? `${form.entryLow} - ${form.entryUpper}`
+    : form.entry
+}
+
+🎯 Target: ${form.target}
+
+${
+  form.secondaryTargetEnabled
+    ? `🎯 Target 2: ${form.target2}
+🎯 Target 3: ${form.target3}`
+    : ""
+}
+
+🛑 Stop Loss: ${form.stopLoss}
+
+${
+  form.stopLoss2Enabled
+    ? `🛑 Stop Loss 2: ${form.stopLoss2}
+🛑 Stop Loss 3: ${form.stopLoss3}`
+    : ""
+}
+
+📌 Rationale: ${form.rationale || "N/A"}
+
+📊 Underlying Study: ${
+  form.underlyingStudy?.label || "N/A"
+}
+
+📝 Remarks:
+${form.remark || "N/A"}
+`,
           },
           {
             headers: {
