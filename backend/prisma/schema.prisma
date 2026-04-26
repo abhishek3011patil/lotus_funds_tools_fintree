@@ -1,0 +1,251 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model broker_details {
+  id                            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                       String?   @db.Uuid
+  legal_name                    String    @db.VarChar(255)
+  trade_name                    String?   @db.VarChar(255)
+  entity_type                   String?   @db.VarChar(100)
+  incorporation_date            DateTime? @db.Date
+  pan                           String?   @db.VarChar(10)
+  cin                           String?   @db.VarChar(30)
+  gstin                         String?   @db.VarChar(20)
+  registered_address            String?
+  correspondence_address        String?
+  email                         String?   @unique(map: "unique_broker_email") @db.VarChar(150)
+  mobile                        String?   @db.VarChar(20)
+  website                       String?   @db.VarChar(255)
+  sebi_registration_no          String?   @db.VarChar(50)
+  registration_category         String?   @db.VarChar(100)
+  registration_date             DateTime? @db.Date
+  registration_validity         String?   @db.VarChar(100)
+  membership_code               String?   @db.VarChar(50)
+  exchange_nse                  Boolean?  @default(false)
+  exchange_bse                  Boolean?  @default(false)
+  exchange_smi                  Boolean?  @default(false)
+  exchange_ncdex                Boolean?  @default(false)
+  segment_cash                  Boolean?  @default(false)
+  segment_fo                    Boolean?  @default(false)
+  segment_currency              Boolean?  @default(false)
+  sebi_certificate              String?
+  exchange_certificates         String[]
+  compliance_officer_name       String?   @db.VarChar(255)
+  compliance_designation        String?   @db.VarChar(100)
+  compliance_pan                String?   @db.VarChar(10)
+  compliance_mobile             String?   @db.VarChar(20)
+  net_worth                     Decimal?  @db.Decimal
+  auditor_name                  String?   @db.VarChar(255)
+  auditor_membership            String?   @db.VarChar(100)
+  appointment_letter            String?
+  networth_certificate          String?
+  financial_statements          String?
+  ca_certificate                String?
+  authorized_person_name        String?   @db.VarChar(255)
+  authorized_person_pan         String?   @db.VarChar(10)
+  authorized_person_designation String?   @db.VarChar(100)
+  authorized_person_email       String?   @db.VarChar(150)
+  authorized_person_aadhaar     String?   @db.VarChar(20)
+  authorized_person_mobile      String?   @db.VarChar(20)
+  no_disciplinary_action        Boolean?  @default(false)
+  no_suspension                 Boolean?  @default(false)
+  no_criminal_case              Boolean?  @default(false)
+  agree_sebi_circulars          Boolean?  @default(false)
+  agree_code_of_conduct         Boolean?  @default(false)
+  status                        String?   @default("pending") @db.VarChar(20)
+  created_at                    DateTime? @default(now()) @db.Timestamp(6)
+  updated_at                    DateTime? @default(now()) @db.Timestamp(6)
+  rejection_reason              String?
+  users                         users?    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model company_users {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username      String    @unique @db.VarChar(100)
+  email         String    @unique @db.VarChar(255)
+  password_hash String
+  role          String    @db.VarChar(50)
+  status        String?   @default("ACTIVE") @db.VarChar(20)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  updated_at    DateTime? @default(now()) @db.Timestamp(6)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model ra_details {
+  id                         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                    String    @db.Uuid
+  salutation                 String?   @db.VarChar(10)
+  first_name                 String?   @db.VarChar(50)
+  middle_name                String?   @db.VarChar(50)
+  surname                    String?   @db.VarChar(50)
+  org_name                   String?   @db.VarChar(100)
+  designation                String?   @db.VarChar(100)
+  short_bio                  String?
+  email                      String?   @db.VarChar(100)
+  mobile                     String?   @db.VarChar(20)
+  telephone                  String?   @db.VarChar(20)
+  country                    String?   @db.VarChar(50)
+  state                      String?   @db.VarChar(50)
+  city                       String?   @db.VarChar(50)
+  pincode                    String?   @db.VarChar(10)
+  address_line1              String?
+  address_line2              String?
+  profile_image              String?
+  sebi_reg_no                String?   @db.VarChar(50)
+  sebi_start_date            DateTime? @db.Date
+  sebi_expiry_date           DateTime? @db.Date
+  sebi_certificate           String?
+  sebi_receipt               String?
+  nism_reg_no                String?   @db.VarChar(50)
+  nism_valid_till            DateTime? @db.Date
+  nism_certificate           String?
+  academic_qualification     String?   @db.VarChar(100)
+  professional_qualification String?   @db.VarChar(100)
+  market_experience          String?   @db.VarChar(50)
+  expertise                  String?   @db.VarChar(50)
+  markets                    String?   @db.VarChar(50)
+  bank_name                  String?   @db.VarChar(100)
+  account_holder             String?   @db.VarChar(100)
+  account_number             String?   @db.VarChar(50)
+  ifsc_code                  String?   @db.VarChar(20)
+  cancelled_cheque           String?
+  pan_number                 String?   @db.VarChar(20)
+  pan_card                   String?
+  address_proof_type         String?   @db.VarChar(50)
+  address_proof_document     String?
+  declare_info_true          Boolean?  @default(false)
+  consent_verification       Boolean?  @default(false)
+  no_guaranteed_returns      Boolean?  @default(false)
+  conflict_of_interest       Boolean?  @default(false)
+  personal_trading           Boolean?  @default(false)
+  sebi_compliance            Boolean?  @default(false)
+  platform_policy            Boolean?  @default(false)
+  status                     String?   @default("pending") @db.VarChar(20)
+  created_at                 DateTime? @default(now()) @db.Timestamp(6)
+  additional_comments        String?
+  rejection_reason           String?
+}
+
+model research_call_exits {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  research_call_id String         @db.Uuid
+  exit_time        DateTime       @db.Timestamp(6)
+  exit_message     String?        @db.VarChar(500)
+  created_at       DateTime?      @default(now()) @db.Timestamp(6)
+  exit_price       Decimal?       @db.Decimal(12, 2)
+  research_calls   research_calls @relation(fields: [research_call_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model research_call_modifications {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  research_call_id String         @db.Uuid
+  modify_time      DateTime       @db.Timestamp(6)
+  modify_message   String?        @db.VarChar(500)
+  created_at       DateTime?      @default(now()) @db.Timestamp(6)
+  research_calls   research_calls @relation(fields: [research_call_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model research_calls {
+  id                          String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ra_user_id                  String                        @db.Uuid
+  status                      String                        @default("PUBLISHED") @db.VarChar(20)
+  created_at                  DateTime                      @default(now()) @db.Timestamp(6)
+  exchange_type               String?                       @db.VarChar(10)
+  market_type                 String?                       @db.VarChar(10)
+  symbol                      String                        @db.VarChar(30)
+  display_name                String?                       @db.VarChar(100)
+  action                      String                        @db.VarChar(10)
+  call_type                   String                        @db.VarChar(20)
+  trade_type                  String                        @db.VarChar(20)
+  expiry_date                 DateTime?                     @db.Date
+  entry_price                 Decimal                       @db.Decimal
+  entry_price_upper           Decimal?                      @db.Decimal
+  target_price                Decimal                       @db.Decimal
+  target_price_2              Decimal?                      @db.Decimal
+  target_price_3              Decimal?                      @db.Decimal
+  stop_loss                   Decimal                       @db.Decimal
+  stop_loss_2                 Decimal?                      @db.Decimal
+  stop_loss_3                 Decimal?                      @db.Decimal
+  holding_period              String?                       @db.VarChar(30)
+  rationale                   String?                       @db.VarChar(255)
+  underlying_study            String?                       @db.VarChar(255)
+  is_algo                     Boolean                       @default(false)
+  has_vested_interest         Boolean                       @default(false)
+  research_remarks            String?
+  entry_price_low             Decimal?                      @db.Decimal
+  parent_call_id              String?                       @db.Uuid
+  version_type                String?                       @default("ORIGINAL") @db.VarChar(20)
+  exit_price                  Decimal?                      @default(0) @db.Decimal
+  closed_at                   DateTime?                     @db.Timestamp(6)
+  is_latest                   Boolean?                      @default(true)
+  research_call_exits         research_call_exits[]
+  research_call_modifications research_call_modifications[]
+  users                       users                         @relation(fields: [ra_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([parent_call_id], map: "idx_parent_call")
+}
+
+model telegram_messages {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ra_user_id     String    @db.Uuid
+  message_text   String
+  action         String?   @db.VarChar(50)
+  symbol         String?   @db.VarChar(50)
+  call_type      String?   @db.VarChar(50)
+  trade_type     String?   @db.VarChar(50)
+  entry_price    String?   @db.VarChar(50)
+  target_price   String?   @db.VarChar(50)
+  stop_loss      String?   @db.VarChar(50)
+  rationale      String?
+  holding_period String?   @db.VarChar(50)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  entry_low      Decimal?  @db.Decimal
+  entry_upper    Decimal?  @db.Decimal
+  target_price_2 Decimal?  @db.Decimal
+  target_price_3 Decimal?  @db.Decimal
+  stop_loss_2    Decimal?  @db.Decimal
+  stop_loss_3    Decimal?  @db.Decimal
+  users          users     @relation(fields: [ra_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ra")
+}
+
+model telegram_users {
+  id                   String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  telegram_user_id     BigInt
+  telegram_client_name String? @db.VarChar(255)
+  phone_number         String? @db.VarChar(20)
+  user_id              String  @db.Uuid
+  users                users   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_telegram_user_ra")
+
+  @@unique([telegram_user_id, user_id], map: "unique_telegram_user_per_ra")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model users {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String              @db.VarChar(100)
+  email             String              @unique(map: "unique_email") @db.VarChar(150)
+  password_hash     String
+  role              String              @db.VarChar(30)
+  status            String              @default("ACTIVE") @db.VarChar(20)
+  created_at        DateTime?           @default(now()) @db.Timestamp(6)
+  updated_at        DateTime?           @default(now()) @db.Timestamp(6)
+  username          String              @default("guest")
+  reset_token       String?
+  token_expiry      DateTime?           @db.Timestamp(6)
+  is_active         Boolean?            @default(false)
+  otp               String?
+  otp_expiry        DateTime?           @db.Timestamp(6)
+  telegram_session  String?
+  broker_details    broker_details[]
+  research_calls    research_calls[]
+  telegram_messages telegram_messages[]
+  telegram_users    telegram_users[]
+}
