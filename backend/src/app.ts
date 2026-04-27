@@ -49,7 +49,7 @@ app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/api/auth", authRoutes);
 
 //app.use("/api", authRoutes);
-//app.use("/api", researchRoutes);
+app.use("/api", researchRoutes);
 //app.use("/api/research", researchRoutes); 
 // app.use("/api", debugRoutes);
 //app.use("/api", debugRoutes);
