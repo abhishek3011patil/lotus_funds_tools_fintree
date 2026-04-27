@@ -16,7 +16,7 @@ const app = express();
 console.log("🔥 APP FILE LOADED");
 
 const allowedOrigins = [
-  "https://ng52ddcn-5173.inc1.devtunnels.ms",
+  "https://8x946q4k-3000.inc1.devtunnels.ms/",
   "http://localhost:5173"
 ];
 app.use((req, res, next) => {

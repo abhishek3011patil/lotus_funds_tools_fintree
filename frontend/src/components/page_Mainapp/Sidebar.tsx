@@ -175,8 +175,8 @@ const Sidebar = ({ open = false, onClose, items }: SidebarProps) => {
             >
               {username.charAt(0).toUpperCase()}
             </Avatar>
-            <Box>
-              <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
+            <Box sx={{ minWidth: 0, overflow: 'hidden' }}>
+              <Typography noWrap sx={{ fontSize: 14, fontWeight: 600 }}>
                 {username}
               </Typography>
               <Typography
@@ -190,7 +190,6 @@ const Sidebar = ({ open = false, onClose, items }: SidebarProps) => {
               >
                 Log out
               </Typography>
-
             </Box>
           </Stack>
         </Box>
@@ -210,13 +209,13 @@ const Sidebar = ({ open = false, onClose, items }: SidebarProps) => {
           display: { xs: "block", sm: "none" },
           zIndex: (theme) => theme.zIndex.drawer + 2, // Ensure drawer is above header
           [`& .MuiDrawer-paper`]: {
-            width: drawerWidth,
+            width: 280, // Wider on mobile for better touch targets
             backgroundColor: "#4F6CF8",
             color: "white",
             borderRight: "none",
             // Drawer slides from top of screen, covering the header
             top: 0,
-            height: "100vh",
+            height: "100%", // Use 100% instead of 100vh to avoid mobile address bar issues
           },
         }}
       >
@@ -235,7 +234,7 @@ const Sidebar = ({ open = false, onClose, items }: SidebarProps) => {
             color: "white",
             borderRight: "none",
             top: 0,
-            height: "100vh",
+            height: "100%",
           },
         }}
         open
