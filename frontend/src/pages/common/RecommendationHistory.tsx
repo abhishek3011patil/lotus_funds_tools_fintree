@@ -359,30 +359,45 @@ export default function RecommendationHistory({
         }}
       >
         {/* Header */}
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-          sx={{ p: 2, borderBottom: "1px solid #F0F0F0" }}
-        >
+       <Box
+  sx={{
+    display: "flex",
+    flexDirection: { xs: "column", md: "row" }, // 🔥 key change
+    alignItems: { xs: "flex-start", md: "center" },
+    justifyContent: "space-between",
+    gap: { xs: 2, md: 0 }, // spacing for mobile
+    p: 2,
+    borderBottom: "1px solid #F0F0F0",
+  }}
+>
           <Typography fontSize="1.25rem" fontWeight={700}>
             {statusFilter === "active" ? "Active Recommendations" : "Recommendation History"}
           </Typography>
 
           {/* Condition: Only show Filters on Performance page */}
           {statusFilter === "All" && (
-            <Box sx={{ p: 2, backgroundColor: "#fff" }}>
-  <Box
-    sx={{
-      display: "flex",
-      flexDirection: { xs: "column", md: "row" }, // Stack on mobile, single line on desktop
-      border: "1px solid #E9E9EE",
-      borderRadius: "0.5rem",
-      overflow: "hidden",
-      width: "fit-content",
-      maxWidth: "100%"
-    }}
-  >
+           <Box
+  sx={{
+    p: { xs: 0, md: 2 }, // remove extra padding on mobile
+    backgroundColor: "#fff",
+    width: "100%",
+  }}
+>
+<Box
+  sx={{
+    display: "flex",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    border: "1px solid #E9E9EE",
+    borderRadius: "0.5rem",
+    overflow: "hidden",
+
+    width: { xs: "100%", md: "fit-content" }, // mobile full, desktop compact
+    maxWidth: "100%",
+    ml: { md: "auto" },
+  }}
+>
     {/* Filter Icon & Label */}
     <Box sx={{ 
       display: "flex", 
@@ -390,8 +405,10 @@ export default function RecommendationHistory({
       px: 2, 
       py: 1, 
       backgroundColor: "#F8F9FA",
-      borderRight: "1px solid #E9E9EE",
-      borderBottom: { xs: "1px solid #E9E9EE", md: "none" }
+      borderRight: { xs: "none", md: "1px solid #E9E9EE" },
+borderBottom: { xs: "1px solid #E9E9EE", md: "none" },
+width: { xs: "100%", md: "auto" },
+justifyContent: { xs: "center", md: "flex-start" },
     }}>
       <FilterAltOutlinedIcon sx={{ fontSize: "1.1rem", color: "#666", mr: 1 }} />
       <Typography fontSize="0.75rem" color="#666" fontWeight={600} sx={{ whiteSpace: 'nowrap' }}>
@@ -400,11 +417,13 @@ export default function RecommendationHistory({
     </Box>
 
     {/* Dropdowns Container */}
-    <Box sx={{ 
-      display: "flex", 
-      flexWrap: { xs: "wrap", md: "nowrap" }, // Wrap on mobile, NO wrap on desktop
-      flexGrow: 1 
-    }}>
+   <Box
+  sx={{
+    display: "flex",
+    flexWrap: "wrap",
+    flexGrow: 1,
+  }}
+>
       {[
         { value: dateFilter, setter: setDateFilter, label: "Date", options: ["Today", "Last 7 Days"] },
         { value: typesOfCall, setter: settypesOfCall, label: "Type of Calls", options: ["cash", "futures", "options call", "options put"] },

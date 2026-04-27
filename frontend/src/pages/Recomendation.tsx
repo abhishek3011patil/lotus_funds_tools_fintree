@@ -282,77 +282,68 @@ const NewRecommendation = () => {
 
       alert("Research Call Created ✅");
 
-      // ✅ FIXED TELEGRAM CALL
+      // ✅ UPDATED TELEGRAM CALL (ONLY THIS PART CHANGED)
       try {
-        const raId = getRAIdFromToken();
+        const now = new Date();
 
-console.log("🔥 RA ID FROM TOKEN:", raId); // ✅ ADD THIS
+        const formattedDateTime =
+          now.toLocaleDateString("en-GB") +
+          " " +
+          now.toLocaleTimeString("en-IN");
 
-if (!raId) {
-  console.error("RA ID missing");
-  return;
-}
+          const message = `
+Date & Time : ${new Date().toLocaleString()}
 
-        await axios.post(
-          import.meta.env.VITE_API_URL + "/api/telegram/send-ra-message",
-          {
+*${form.action}* *${finalDisplayName}*
+Call Type : ${form.exchange} ${form.callType} ${form.tradeType}
 
-            message: `
-📊 ${form.action} ${finalDisplayName}
-
-Exchange: ${form.exchangeType}  
-Instrument: ${form.exchange}  
-
-Call Type: ${form.callType}  
-Trade Type: ${form.tradeType}  
-
-⏱ Holding Period: ${form.holdingPeriod || "N/A"}  
-Expiry: ${form.expiry || "No Expiry"}  
-
-💰 Entry: ${
+${
   form.rangeEnabled
-    ? `${form.entryLow} - ${form.entryUpper}`
-    : form.entry
+    ? `Entry: ${form.entryLow} - ${form.entryUpper}`
+    : `Entry: ${form.entry}`
 }
 
-🎯 Target: ${form.target}
+Target: ${form.target}
 
 ${
   form.secondaryTargetEnabled
-    ? `🎯 Target 2: ${form.target2}
-🎯 Target 3: ${form.target3}`
+    ? `Target 2: ${form.target2}
+Target 3: ${form.target3}`
     : ""
 }
 
-🛑 Stop Loss: ${form.stopLoss}
+SL: ${form.stopLoss}
 
 ${
   form.stopLoss2Enabled
-    ? `🛑 Stop Loss 2: ${form.stopLoss2}
-🛑 Stop Loss 3: ${form.stopLoss3}`
+    ? `SL 2: ${form.stopLoss2}
+SL 3: ${form.stopLoss3}`
     : ""
 }
 
-📌 Rationale: ${form.rationale || "N/A"}
+Expiry: ${form.expiry || "N/A"}
+Holding Period: ${form.holdingPeriod || "N/A"}
 
-📊 Underlying Study: ${
-  form.underlyingStudy?.label || "N/A"
-}
+Rationale: ${form.rationale}
+Underlying Study: ${form.underlyingStudy?.label || "N/A"}
+`;
 
-📝 Remarks:
-${form.remark || "N/A"}
-`,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        await axios.post(
+  `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
+  { message },
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
 
         console.log("✅ Telegram sent ONLY to this RA clients");
       } catch (telegramErr: any) {
-        console.error("⚠️ Telegram failed:", telegramErr?.response?.data || telegramErr?.message);
+        console.error(
+          "⚠️ Telegram failed:",
+          telegramErr?.response?.data || telegramErr?.message
+        );
       }
     }
 

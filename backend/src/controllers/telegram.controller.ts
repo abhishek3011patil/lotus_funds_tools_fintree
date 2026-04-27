@@ -345,16 +345,16 @@ export const sendMessageToRAClients = async (
 ) => {
   try {
     const raId = req.user!.id;
-    const { message } = req.body;
+    const { message: frontendMessage } = req.body;
 
-    if (!message) {
+    if (!frontendMessage) {
       return res.status(400).json({
         success: false,
         message: "Message is required",
       });
     }
 
-    // ✅ get session
+    // ✅ 1. GET TELEGRAM SESSION
     const sessionResult = await pool.query(
       `SELECT telegram_session FROM users WHERE id = $1`,
       [raId]
@@ -371,7 +371,59 @@ export const sendMessageToRAClients = async (
 
     const client = await createClient(sessionString);
 
-    // ✅ fetch ONLY this RA's clients
+    // ✅ 2. GET RA DETAILS (FIXED TABLE)
+    const raResult = await pool.query(
+      `
+      SELECT 
+        salutation,
+        first_name,
+        middle_name,
+        surname,
+        org_name,
+        sebi_reg_no,
+        mobile,
+        email
+      FROM ra_details
+      WHERE user_id = $1
+      `,
+      [raId]
+    );
+
+    const ra = raResult.rows[0];
+
+    if (!ra) {
+      return res.status(400).json({
+        success: false,
+        message: "RA details not found",
+      });
+    }
+
+    const fullName = [
+      ra.salutation,
+      ra.first_name,
+      ra.middle_name,
+      ra.surname,
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    // ✅ 3. FINAL MESSAGE (TEMPLATE)
+    const finalMessage = `
+${frontendMessage}
+
+*DISCLAIMER CUM DISCLOSURE:*
+Investment in securities market are subject to market risks. Read all the related documents carefully before investing.
+
+Research Analyst: ${fullName} (${ra.org_name || "N/A"})
+SEBI Registration No: ${ra.sebi_reg_no || "N/A"}
+Contact No: ${ra.mobile || "N/A"}
+Email ID : ${ra.email || "N/A"}
+
+Read Full Disclaimer / Disclosure at :
+https://lotusfunds.com/disclaimer&disclosure
+`;
+
+    // ✅ 4. FETCH CLIENTS
     const users = await pool.query(
       `SELECT telegram_user_id FROM telegram_users WHERE user_id = $1`,
       [raId]
@@ -384,15 +436,13 @@ export const sendMessageToRAClients = async (
       try {
         const entity = await client.getEntity(u.telegram_user_id);
 
-        await client.sendMessage(entity, { message });
+        await client.sendMessage(entity, { message: finalMessage });
 
         successCount++;
 
-        // small delay to avoid rate limit
         await sleep(2000);
 
       } catch (err: any) {
-        // ✅ Handle flood wait
         if (err.errorMessage?.includes("FLOOD_WAIT")) {
           const seconds = parseInt(err.errorMessage.split("_").pop());
 
@@ -402,7 +452,7 @@ export const sendMessageToRAClients = async (
 
           try {
             const entity = await client.getEntity(u.telegram_user_id);
-            await client.sendMessage(entity, { message });
+            await client.sendMessage(entity, { message: finalMessage });
             successCount++;
           } catch {
             failCount++;

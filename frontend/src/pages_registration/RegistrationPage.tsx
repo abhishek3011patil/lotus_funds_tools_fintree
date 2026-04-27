@@ -126,6 +126,7 @@ const RegistrationPage: React.FC = () => {
     setFormData({ ...formData, [name]: e.target.value });
     setErrors(prev => ({ ...prev, [name]: false }));
   };
+  
 
   const validateStep = () => {
     const newErrors: { [key: string]: boolean } = {};
@@ -172,16 +173,13 @@ Object.keys(formData).forEach((key) => {
 
 // ✅ append files (SAFE + CLEAN + MATCH BACKEND)
 const fileMapping: any = {
-  // same naming (no change needed)
-  profile_image: files.profile_image,
-  sebi_certificate: files.sebi_certificate,
-  sebi_receipt: files.sebi_receipt,
-  nism_certificate: files.nism_certificate,
-  cancelled_cheque: files.cancelled_cheque,
-
-  // 🔥 mismatched ones (fix here)
-  panNumber: files.pan_card,                  // was pan_card → backend wants panNumber
-  addressProofDocument: files.address_proof_document, // adjust if backend expects this
+  profile_image: files.profileImage,
+  sebi_certificate: files.sebiCert,
+  sebi_receipt: files.sebiReceipt,
+  nism_certificate: files.nismCert,
+  cancelled_cheque: files.cancelledCheque,
+  pan_card: files.panCard,
+  address_proof_document: files.addressProofDoc,
 };
 
 Object.entries(fileMapping).forEach(([key, file]) => {
@@ -262,33 +260,120 @@ Object.entries(fileMapping).forEach(([key, file]) => {
     };
   };
 
-  const styles = {
-    container: { bgcolor: "#F4F7FE", minHeight: "100vh", p: 4, display: "flex", justifyContent: "center", fontFamily: "'Inter', sans-serif" },
-    paper: { width: "100%", maxWidth: 1300, p: 8, borderRadius: 6, boxShadow: "0px 20px 50px rgba(0,0,0,0.05)", bgcolor: "#ffffff" },
-    stepperBox: { display: "flex", justifyContent: "space-between", alignItems: "center", mb: 6, gap: 2 },
-    stepActive: { display: "flex", alignItems: "center", gap: 2, p: "18px 36px", background: "linear-gradient(90deg, #4F6CF8 0%, #637BFF 100%)", color: "#fff", borderRadius: "0 60px 60px 0", flex: 1 },
-    stepDone: { display: "flex", alignItems: "center", gap: 2, color: "#4F6CF8", flex: 1, p: "18px 36px" },
-    stepFuture: { display: "flex", alignItems: "center", gap: 2, color: "#B0BBD5", flex: 1, p: "18px 36px" },
-    title: { color: "#4F6CF8", fontWeight: 800, fontSize: "2.4rem", mb: 4 },
-    subTitle: { color: "#333", fontWeight: 700, fontSize: "1.3rem", mb: 3, mt: 3 },
-    input: { "& .MuiOutlinedInput-root": { borderRadius: 3, fontSize: '1.1rem', "& fieldset": { borderColor: "#E0E7FF" } }, "& .MuiInputLabel-root": { fontSize: '1.1rem' } },
-    saveBtn: { bgcolor: "#4F6CF8", color: "#fff", px: 8, py: 2.2, borderRadius: 3, fontWeight: 700, fontSize: '1.2rem', textTransform: "none", "&:hover": { bgcolor: "#3D56CA" } },
-  };
+const styles = {
+  container: {
+    bgcolor: "#F4F7FE",
+    minHeight: "100vh",
+    p: { xs: 2, md: 4 }, // 🔥 responsive padding
+    display: "flex",
+    justifyContent: "center",
+    fontFamily: "'Inter', sans-serif"
+  },
+
+  paper: {
+    width: "100%",
+    maxWidth: 1300,
+    p: { xs: 2, sm: 4, md: 8 }, // 🔥 responsive padding
+    borderRadius: { xs: 3, md: 6 },
+    boxShadow: "0px 20px 50px rgba(0,0,0,0.05)",
+    bgcolor: "#ffffff"
+  },
+
+  stepperBox: {
+    display: "flex",
+    flexDirection: { xs: "column", md: "row" }, // 🔥 main fix
+    justifyContent: "space-between",
+    alignItems: { xs: "stretch", md: "center" },
+    mb: { xs: 3, md: 6 },
+    gap: 2
+  },
+
+  stepActive: {
+    display: "flex",
+    alignItems: "center",
+    gap: 2,
+    p: { xs: "10px 12px", md: "18px 36px" }, // 🔥 smaller on mobile
+    background: "linear-gradient(90deg, #4F6CF8 0%, #637BFF 100%)",
+    color: "#fff",
+    borderRadius: { xs: 2, md: "0 60px 60px 0" },
+    flex: 1,
+    width: "100%"
+  },
+
+  stepDone: {
+    display: "flex",
+    alignItems: "center",
+    gap: 2,
+    color: "#4F6CF8",
+    flex: 1,
+    p: { xs: "10px 12px", md: "18px 36px" },
+    width: "100%"
+  },
+
+  stepFuture: {
+    display: "flex",
+    alignItems: "center",
+    gap: 2,
+    color: "#B0BBD5",
+    flex: 1,
+    p: { xs: "10px 12px", md: "18px 36px" },
+    width: "100%"
+  },
+
+  title: {
+    color: "#4F6CF8",
+    fontWeight: 800,
+    fontSize: { xs: "1.5rem", md: "2.4rem" }, // 🔥 responsive text
+    mb: { xs: 2, md: 4 }
+  },
+
+  subTitle: {
+    color: "#333",
+    fontWeight: 700,
+    fontSize: { xs: "1rem", md: "1.3rem" },
+    mb: 3,
+    mt: 3
+  },
+
+  input: {
+    "& .MuiOutlinedInput-root": {
+      borderRadius: 3,
+      fontSize: { xs: "0.9rem", md: "1.1rem" },
+      "& fieldset": { borderColor: "#E0E7FF" }
+    },
+    "& .MuiInputLabel-root": {
+      fontSize: { xs: "0.9rem", md: "1.1rem" }
+    }
+  },
+
+  saveBtn: {
+    bgcolor: "#4F6CF8",
+    color: "#fff",
+    px: { xs: 3, md: 8 },
+    py: { xs: 1.5, md: 2.2 },
+    borderRadius: 3,
+    fontWeight: 700,
+    fontSize: { xs: "1rem", md: "1.2rem" },
+    textTransform: "none",
+    width: { xs: "100%", sm: "auto" }, // 🔥 full width mobile
+    "&:hover": { bgcolor: "#3D56CA" }
+  },
+};
 
   return (
     <Box sx={styles.container}>
       <Paper sx={styles.paper} elevation={0}>
         <Box sx={styles.stepperBox}>
           <Box sx={currentStep > 1 ? styles.stepDone : styles.stepActive}>
-            {currentStep > 1 ? <CheckCircleIcon sx={{ fontSize: 40 }} /> : <Box sx={{ border: '2px solid rgba(255,255,255,0.4)', borderRadius: '50%', width: 35, height: 35, display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 800 }}>01</Box>}
+            {currentStep > 1 ? <CheckCircleIcon sx={{ fontSize: { xs: 22, md: 40 } }} />: <Box sx={{ border: '2px solid rgba(255,255,255,0.4)', borderRadius: '50%', width: 35, height: 35, display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 800 }}>01</Box>}
             <Box><Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1 }}>Personal info</Typography><Typography variant="caption" sx={{ fontSize: '0.9rem' }}>General Details</Typography></Box>
           </Box>
           <Box sx={currentStep === 2 ? styles.stepActive : (currentStep > 2 ? styles.stepDone : styles.stepFuture)}>
-            {currentStep > 2 ? <CheckCircleIcon sx={{ fontSize: 40 }} /> : <Box sx={{ border: '2px solid', borderRadius: '50%', width: 35, height: 35, display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 800 }}>02</Box>}
+            {currentStep > 2 ? <CheckCircleIcon sx={{ fontSize: { xs: 22, md: 40 } }} />: <Box sx={{ border: '2px solid', borderRadius: '50%', width: 35, height: 35, display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 800 }}>02</Box>}
             <Box><Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1 }}>Professional & SEBI</Typography><Typography variant="caption" sx={{ fontSize: '0.9rem' }}>Credentials</Typography></Box>
           </Box>
           <Box sx={currentStep === 3 ? styles.stepActive : (currentStep > 3 ? styles.stepDone : styles.stepFuture)}>
-            {currentStep > 3 ? <CheckCircleIcon sx={{ fontSize: 40 }} /> : <Box sx={{ border: '1px solid', borderRadius: '50%', width: 35, height: 35, display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 800 }}>03</Box>}
+            {currentStep > 3 ? <CheckCircleIcon sx={{ fontSize: { xs: 22, md: 40 } }} />: <Box sx={{ border: '1px solid', borderRadius: '50%', width: 35, height: 35, display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 800 }}>03</Box>}
             <Box><Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1 }}>Platform KYC</Typography><Typography variant="caption" sx={{ fontSize: '0.9rem' }}>Verification</Typography></Box>
           </Box>
           <Box sx={currentStep === 4 ? styles.stepActive : styles.stepFuture}>
@@ -309,7 +394,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
         <Typography sx={styles.subTitle}>Personal Detail</Typography>
 
         <Grid container spacing={3}>
-          <Grid size={{ xs: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <FormControl fullWidth sx={styles.input} error={errors.salutation}>
               <InputLabel>Salutation</InputLabel>
               <Select
@@ -325,7 +410,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
             </FormControl>
           </Grid>
 
-          <Grid size={{ xs: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <TextField
               fullWidth
               name="first_name"
@@ -338,7 +423,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
             />
           </Grid>
 
-          <Grid size={{ xs: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <TextField
               fullWidth
               name="middle_name"
@@ -351,7 +436,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
             />
           </Grid>
 
-          <Grid size={{ xs: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <TextField
               fullWidth
               name="surname"
@@ -411,7 +496,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
         </Typography>
 
         <Grid container spacing={3}>
-          <Grid size={{ xs: 4 }}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <TextField
               fullWidth
               name="email"
@@ -424,7 +509,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
             />
           </Grid>
 
-          <Grid size={{ xs: 4 }}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <TextField
               fullWidth
               name="mobile"
@@ -437,7 +522,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
             />
           </Grid>
 
-          <Grid size={{ xs: 4 }}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <TextField
               fullWidth
               name="telephone"
@@ -454,7 +539,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
         <Typography sx={[styles.subTitle, { mt: 5 }]}>Address</Typography>
 
         <Grid container spacing={3}>
-          <Grid size={{ xs: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <FormControl fullWidth sx={styles.input} error={errors.country}>
               <InputLabel>Country</InputLabel>
               <Select
@@ -469,7 +554,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
             </FormControl>
           </Grid>
 
-          <Grid size={{ xs: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <FormControl fullWidth sx={styles.input} error={errors.state}>
               <InputLabel>State</InputLabel>
               <Select
@@ -484,7 +569,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
             </FormControl>
           </Grid>
 
-          <Grid size={{ xs: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <FormControl fullWidth sx={styles.input} error={errors.city}>
               <InputLabel>City</InputLabel>
               <Select
@@ -499,7 +584,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
             </FormControl>
           </Grid>
 
-          <Grid size={{ xs: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <TextField
               fullWidth
               name="pincode"
@@ -602,7 +687,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
 
 <Grid container spacing={3} alignItems="center">
 
-  <Grid size={{ xs: 2.5 }}>
+  <Grid size={{ xs: 12, md: 3 }}>
     <TextField
       fullWidth
       name="sebi_reg_no"
@@ -615,7 +700,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
     />
   </Grid>
 
-  <Grid size={{ xs: 1.6 }}>
+  <Grid size={{ xs: 12, md: 2 }}>
     <TextField
       fullWidth
       type="date"
@@ -630,11 +715,11 @@ Object.entries(fileMapping).forEach(([key, file]) => {
     />
   </Grid>
 
-  <Grid size={{ xs: 0.3 }} sx={{ textAlign: 'center', fontWeight: 700 }}>
+  <Grid size={{ xs: 12, md: 1 }} sx={{ textAlign: 'center' }}>
     to
   </Grid>
 
-  <Grid size={{ xs: 1.6 }}>
+ <Grid size={{ xs: 12, md: 2 }}>
     <TextField
       fullWidth
       type="date"
@@ -650,7 +735,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
   </Grid>
 
   {/* SEBI CERT */}
-  <Grid size={{ xs: 3 }} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+  <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
     <Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>
       SEBI Certificate
     </Typography>
@@ -680,7 +765,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
   </Grid>
 
   {/* SEBI RECEIPT */}
-  <Grid size={{ xs: 3 }} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+  <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
     <Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>
       SEBI Receipt
     </Typography>
@@ -719,7 +804,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
 
 <Grid container spacing={3} alignItems="center">
 
-  <Grid size={{ xs: 3 }}>
+ <Grid size={{ xs: 12, md: 3 }}>
     <TextField
       fullWidth
       name="nism_reg_no"
@@ -731,8 +816,8 @@ Object.entries(fileMapping).forEach(([key, file]) => {
       helperText={errors.nism_reg_no ? "Required" : ""}
     />
   </Grid>
-
-  <Grid size={{ xs: 2 }}>
+  
+<Grid size={{ xs: 12, md: 3 }}>
     <TextField
       fullWidth
       type="date"
@@ -747,7 +832,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
     />
   </Grid>
 
-  <Grid size={{ xs: 5 }} sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+  <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
     <Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>
       NISM Certificate
     </Typography>
@@ -785,7 +870,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
 </Typography>
 
 <Grid container spacing={3}>
-  <Grid size={{ xs: 4 }}>
+  <Grid size={{ xs: 12, md: 4 }}>
     <FormControl fullWidth sx={styles.input} error={errors.academic_qualification}>
       <InputLabel>Academic Qualification</InputLabel>
 
@@ -804,28 +889,28 @@ Object.entries(fileMapping).forEach(([key, file]) => {
     </FormControl>
   </Grid>
 
-              <Grid size={{ xs: 4 }}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <FormControl fullWidth sx={styles.input} error={errors.professional_qualification}><InputLabel>Professional Qualification</InputLabel>
                   <Select name="professional_qualification" value={formData.professional_qualification} label="Professional Qualification" onChange={handleSelect}>
                     {professionalOptions.map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid size={{ xs: 4 }}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <FormControl fullWidth sx={styles.input} error={errors.market_experience}><InputLabel>Market Experience</InputLabel>
                   <Select name="market_experience" value={formData.market_experience} label="Market Experience" onChange={handleSelect}>
                     {["0–1 Year", "1–3 Years", "3–5 Years", "5–10 Years", "10–15 Years", "15+ Years"].map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid size={{ xs: 4 }}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <FormControl fullWidth sx={styles.input} error={errors.expertise}><InputLabel>Area of Expertise</InputLabel>
                   <Select name="expertise" value={formData.expertise} label="Area of Expertise" onChange={handleSelect}>
                     {["Stock/Equity", "Futures", "Options", "Long Term Trades", "Short Term Trades", "Intraday Trades"].map(opt => <MenuItem key={opt} value={opt}>{opt}</MenuItem>)}
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid size={{ xs: 4 }}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <FormControl fullWidth sx={styles.input} error={errors.markets}><InputLabel>Markets Covered</InputLabel>
                   <Select name="markets" value={formData.markets} label="Markets Covered" onChange={handleSelect}>
                     <MenuItem value="NSE">NSE</MenuItem>
@@ -842,10 +927,10 @@ Object.entries(fileMapping).forEach(([key, file]) => {
     <Typography sx={styles.title}>Step 3: Platform KYC</Typography>
 
     <Typography sx={styles.subTitle}>Bank Account Details</Typography>
-    <Grid container spacing={1} alignItems="center">
+    <Grid container spacing={3}>
 
       {/* BANK NAME */}
- <Grid size={{ xs: 3 }}>
+<Grid size={{ xs: 12, sm: 6, md: 4 }}>
   <Autocomplete
     freeSolo
     options={bankOptions}
@@ -883,7 +968,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
 </Grid>
 
       {/* ACCOUNT HOLDER */}
-      <Grid size={{ xs: 3 }}>
+<Grid size={{ xs: 12, sm: 6, md: 4 }}>
         <TextField
           fullWidth
           name="account_holder"
@@ -897,7 +982,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
       </Grid>
 
       {/* ACCOUNT NUMBER */}
-      <Grid size={{ xs: 3 }}>
+<Grid size={{ xs: 12, sm: 6, md: 4 }}>
         <TextField
           fullWidth
           name="account_number"
@@ -911,7 +996,8 @@ Object.entries(fileMapping).forEach(([key, file]) => {
       </Grid>
 
       {/* IFSC */}
-      <Grid size={{ xs: 3 }}>
+     
+<Grid size={{ xs: 12, sm: 6, md: 4 }}>
         <TextField
           fullWidth
           name="ifsc_code"
@@ -925,7 +1011,15 @@ Object.entries(fileMapping).forEach(([key, file]) => {
       </Grid>
 
       {/* CANCELLED CHEQUE */}
-      <Grid size={{ xs: 12 }} sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+      <Grid 
+  size={{ xs: 12, md: 6 }} 
+  sx={{ 
+    display: 'flex', 
+    flexDirection: { xs: 'column', sm: 'row' }, 
+    alignItems: { xs: 'flex-start', sm: 'center' }, 
+    gap: 2 
+  }}
+>
         <Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>
           Cancelled Cheque
         </Typography>
@@ -964,7 +1058,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
 
     <Grid container spacing={3} alignItems="center">
 
-      <Grid size={{ xs: 3 }}>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
         <TextField
           fullWidth
           name="pan_number"
@@ -978,7 +1072,15 @@ Object.entries(fileMapping).forEach(([key, file]) => {
       </Grid>
 
       {/* PAN CARD */}
-      <Grid size={{ xs: 5 }} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Grid 
+  size={{ xs: 12, md: 6 }} 
+  sx={{ 
+    display: 'flex', 
+    flexDirection: { xs: 'column', sm: 'row' }, 
+    alignItems: { xs: 'flex-start', sm: 'center' }, 
+    gap: 2 
+  }}
+>
         <Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>
           PAN Card Upload
         </Typography>
@@ -1011,7 +1113,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
     {/* ================= ADDRESS ================= */}
     <Grid container spacing={3} alignItems="center" sx={{ mt: 4 }}>
 
-      <Grid size={{ xs: 3 }}>
+      <Grid size={{ xs: 12, sm: 6, md: 3 }}>
         <FormControl fullWidth sx={styles.input} error={errors.address_proof_type}>
           <InputLabel>Address Proof</InputLabel>
 
@@ -1031,7 +1133,15 @@ Object.entries(fileMapping).forEach(([key, file]) => {
       </Grid>
 
       {/* ADDRESS PROOF FILE */}
-      <Grid size={{ xs: 5 }} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Grid 
+  size={{ xs: 12, md: 6 }} 
+  sx={{ 
+    display: 'flex', 
+    flexDirection: { xs: 'column', sm: 'row' }, 
+    alignItems: { xs: 'flex-start', sm: 'center' }, 
+    gap: 2 
+  }}
+>
         <Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>
           Address Proof Upload
         </Typography>
@@ -1098,61 +1208,68 @@ Object.entries(fileMapping).forEach(([key, file]) => {
     </Typography>
 
     {/* ================= DECLARATIONS ================= */}
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+   <Box sx={{ mt: 6 }}>
+  {[
+    {
+      name: "no_guaranteed_returns",
+      title: "No Guaranteed Returns Declaration",
+      label:
+        "I confirm that I do not offer, promise, or guarantee any assured or fixed returns on investments, directly or indirectly."
+    },
+    {
+      name: "conflict_of_interest",
+      title: "Conflict of Interest Disclosure",
+      label:
+        "I declare that I have disclosed all actual and potential conflicts of interest, including financial, personal, or professional interests that may influence my research or recommendations."
+    },
+    {
+      name: "personal_trading",
+      title: "Personal Trading Disclosure",
+      label:
+        "I confirm that I have disclosed my personal trading positions in accordance with SEBI Research Analyst Regulations and that my personal trades do not conflict with client interests."
+    },
+    {
+      name: "sebi_compliance",
+      title: "SEBI Compliance Acceptance",
+      label:
+        "I agree to comply with all applicable provisions of the SEBI (Research Analysts) Regulations, circulars, guidelines, and amendments issued from time to time."
+    },
+    {
+      name: "platform_policy",
+      title: "Platform Content Policy Acceptance",
+      label:
+        "I have read and agree to abide by the Platform Content Policy, Research Publishing Guidelines, and Terms of Use."
+    }
+  ].map((item, index) => (
+    <Box key={item.name} sx={{ mb: 3 }}>
+      
+      <Typography sx={{ fontWeight: 700, fontSize: { xs: "1rem", md: "1.2rem" } }}>
+        {item.title}
+      </Typography>
 
-      {[
-        {
-          name: "no_guaranteed_returns",
-          title: "No Guaranteed Returns Declaration",
-          label:
-            "I confirm that I do not offer, promise, or guarantee any assured or fixed returns on investments, directly or indirectly."
-        },
-        {
-          name: "conflict_of_interest",
-          title: "Conflict of Interest Disclosure",
-          label:
-            "I declare that I have disclosed all actual and potential conflicts of interest, including financial, personal, or professional interests that may influence my research or recommendations."
-        },
-        {
-          name: "personal_trading",
-          title: "Personal Trading Disclosure",
-          label:
-            "I confirm that I have disclosed my personal trading positions in accordance with SEBI Research Analyst Regulations and that my personal trades do not conflict with client interests."
-        },
-        {
-          name: "sebi_compliance",
-          title: "SEBI Compliance Acceptance",
-          label:
-            "I agree to comply with all applicable provisions of the SEBI (Research Analysts) Regulations, circulars, guidelines, and amendments issued from time to time."
-        },
-        {
-          name: "platform_policy",
-          title: "Platform Content Policy Acceptance",
-          label:
-            "I have read and agree to abide by the Platform Content Policy, Research Publishing Guidelines, and Terms of Use."
-        }
-      ].map((item) => (
-        <Box key={item.name}>
-          <Typography sx={styles.subTitle}>{item.title}</Typography>
-          <Divider sx={{ mb: 2 }} />
-
-          <FormControlLabel
-            control={
-              <Checkbox
-                name={item.name}
-                checked={
-                  formData[item.name as keyof typeof formData] === true ||
-                  formData[item.name as keyof typeof formData] === "true"
-                }
-                onChange={handleChange}
-                color="primary"
-              />
+      <FormControlLabel
+        sx={{ mt: 1, alignItems: "flex-start" }}
+        control={
+          <Checkbox
+            name={item.name}
+            checked={
+              formData[item.name as keyof typeof formData] === true ||
+              formData[item.name as keyof typeof formData] === "true"
             }
-            label={<Typography sx={{ color: "#666" }}>{item.label}</Typography>}
+            onChange={handleChange}
           />
-        </Box>
-      ))}
+        }
+        label={
+          <Typography sx={{ color: "#666", fontSize: "0.9rem" }}>
+            {item.label}
+          </Typography>
+        }
+      />
+
+      {index !== 4 && <Divider sx={{ mt: 2 }} />}
     </Box>
+  ))}
+</Box>
 
     {/* ================= DISCLAIMER ================= */}
     <Typography

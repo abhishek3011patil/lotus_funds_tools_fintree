@@ -82,78 +82,84 @@ const handleConfirm = async () => {
     }
 };
     return (
-        <Box sx={{ mt: 4 }}>
-            <Paper
-                sx={{
-                    p: 3,
-                    border: "1px solid #E9E9EE",
-                    borderRadius: 2,
-                    boxShadow: "none",
-                }}
-            >
-                <Typography variant="h6" fontWeight={600} mb={2}>
-                    Change Password
-                </Typography>
+  <Box sx={{ mt: 4, ml: 2 }}> {/* 👈 slight left spacing */}
+    <Paper
+      sx={{
+        p: 3,
+        border: "1px solid #E9E9EE",
+        borderRadius: 2,
+        boxShadow: "none",
+        maxWidth: 500,
+      }}
+    >
+      <Typography variant="h6" fontWeight={600} mb={2}>
+        Change Password
+      </Typography>
 
-                {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-                {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  <TextField
-    label="Old Password"
-    type={showOldPassword ? "text" : "password"}
-    size="small"
-    sx={{ width: "50%" }}
-    value={oldPassword}
-    onChange={(e) => setOldPassword(e.target.value)}
-    InputProps={{
-        endAdornment: (
-            <InputAdornment position="end">
-                <IconButton
-                    onClick={() => setShowOldPassword(!showOldPassword)}
-                    edge="end"
-                >
-                    {showOldPassword ? <VisibilityOff /> : <Visibility />}
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+          alignItems: "flex-start", // 👈 keep left alignment
+        }}
+      >
+        <TextField
+          label="Old Password"
+          type={showOldPassword ? "text" : "password"}
+          size="small"
+          sx={{ width: { xs: "100%", sm: "50%" } }}
+          value={oldPassword}
+          onChange={(e) => setOldPassword(e.target.value)}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton onClick={() => setShowOldPassword(!showOldPassword)}>
+                  {showOldPassword ? <VisibilityOff /> : <Visibility />}
                 </IconButton>
-            </InputAdornment>
-        ),
-    }}
-/>
-                    <TextField
-    label="New Password"
-    type={showNewPassword ? "text" : "password"}
-    size="small"
-    sx={{ width: "50%" }}
-    value={newPassword}
-    onChange={(e) => setNewPassword(e.target.value)}
-    InputProps={{
-        endAdornment: (
-            <InputAdornment position="end">
-                <IconButton
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                    edge="end"
-                >
-                    {showNewPassword ? <VisibilityOff /> : <Visibility />}
+              </InputAdornment>
+            ),
+          }}
+        />
+
+        <TextField
+          label="New Password"
+          type={showNewPassword ? "text" : "password"}
+          size="small"
+          sx={{ width: { xs: "100%", sm: "50%" } }}
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton onClick={() => setShowNewPassword(!showNewPassword)}>
+                  {showNewPassword ? <VisibilityOff /> : <Visibility />}
                 </IconButton>
-            </InputAdornment>
-        ),
-    }}
-/>
-                    <Box sx={{ textAlign: "left", mt: 1 }}>
-                        <Button
-                            variant="contained"
-                            size="large"
-                            disabled={loading}
-                            onClick={handleConfirm}
-                            sx={{ minWidth: 160, textTransform: "none", fontSize: "1.1rem" }}
-                        >
-                            {loading ? <CircularProgress size={24} /> : "Confirm"}
-                        </Button>
-                    </Box>
-                </Box>
-            </Paper>
-        </Box>
-    );
+              </InputAdornment>
+            ),
+          }}
+        />
+
+        <Button
+          variant="contained"
+          size="large"
+          disabled={loading}
+          onClick={handleConfirm}
+          sx={{
+            width: { xs: "100%", sm: "auto" },
+            minWidth: 160,
+            textTransform: "none",
+          }}
+        >
+          {loading ? <CircularProgress size={24} /> : "Confirm"}
+        </Button>
+      </Box>
+    </Paper>
+  </Box>
+);
 };
 
 export default ChangePassword;

@@ -94,7 +94,7 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
     const data = req.body || {};
     const files = req.files as any;
 
-    const userId = req.user?.id || crypto.randomUUID(); // fallback ID
+   const userId = crypto.randomUUID();  
 
    if (!data.first_name || !data.surname) {
       return res.status(400).json({
