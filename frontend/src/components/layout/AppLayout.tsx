@@ -45,7 +45,7 @@ const AppLayout = () => {
 
   return (
     <Box sx={{ display: "flex" }}>
-      <Header onMenuClick={handleMenuClick} />
+      <Header onMenuClick={handleMenuClick} items={appSidebarItems} />
       <Sidebar
         open={sidebarOpen}
         onClose={handleSidebarClose}
