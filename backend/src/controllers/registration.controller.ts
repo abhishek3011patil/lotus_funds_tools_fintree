@@ -94,31 +94,15 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
     const data = req.body || {};
     const files = req.files as any;
 
-   const userId = crypto.randomUUID();  
-
-   if (!data.first_name || !data.surname) {
-      return res.status(400).json({
-        success: false,
-        message: "First name and surname are required",
-      });
+    if (!data.first_name || !data.surname) {
+      return res.status(400).json({ success: false, message: "First name and surname are required" });
     }
 
     if (!data.email) {
-      return res.status(400).json({
-        success: false,
-        message: "Email is required",
-      });
+      return res.status(400).json({ success: false, message: "Email is required" });
     }
 
     data.email = data.email.trim().toLowerCase();
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.email)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid email format",
-      });
-    }
 
     const existing = await pool.query(
       `SELECT id FROM ra_details WHERE email = $1`,
@@ -132,158 +116,75 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
       });
     }
 
-const toBool = (val: any) => val === "true" || val === true;
+    const toBool = (val: any) => val === "true" || val === true;
 
-const ra = {
-  org_name: data.org_name || null,
-  short_bio: data.short_bio || null,
-  address_line1: data.address_line1 || null,
-  address_line2: data.address_line2 || null,
+    const result = await pool.query(
+      `INSERT INTO ra_details (
+        salutation, first_name, middle_name, surname,
+        email, mobile, country, state, city, pincode,
+        address_line1, address_line2,
+        profile_image,
+        pan_number, pan_card,
+        address_proof_type, address_proof_document,
+        declare_info_true, consent_verification,
+        no_guaranteed_returns, conflict_of_interest,
+        personal_trading, sebi_compliance, platform_policy
+      )
+      VALUES (
+        $1,$2,$3,$4,
+        $5,$6,$7,$8,$9,$10,
+        $11,$12,
+        $13,
+        $14,$15,
+        $16,$17,
+        $18,$19,
+        $20,$21,
+        $22,$23,$24
+      )
+      RETURNING id`,
+      [
+        data.salutation ?? null,
+        data.first_name,
+        data.middle_name ?? null,
+        data.surname,
 
-  sebi_reg_no: data.sebi_reg_no || null,
-  sebi_start_date: data.sebi_start_date || null,
-  sebi_expiry_date: data.sebi_expiry_date || null,
+        data.email,
+        data.mobile ?? null,
+        data.country ?? null,
+        data.state ?? null,
+        data.city ?? null,
+        data.pincode ?? null,
 
-  nism_reg_no: data.nism_reg_no || null,
-  nism_valid_till: data.nism_valid_till || null,
+        data.address_line1 ?? null,
+        data.address_line2 ?? null,
 
-  academic_qualification: data.academic_qualification || null,
-  professional_qualification: data.professional_qualification || null,
+        files?.profile_image?.[0]?.filename ?? null,
 
-  market_experience: data.market_experience || null,
-  expertise: data.expertise || null,
-  markets: data.markets || null,
+        data.pan_number ?? null,
+        files?.pan_card?.[0]?.filename ?? null,
 
-  bank_name: data.bank_name || null,
-  account_holder: data.account_holder || null,
-  account_number: data.account_number || null,
-  ifsc_code: data.ifsc_code || null,
+        data.address_proof_type ?? null,
+        files?.address_proof_document?.[0]?.filename ?? null,
 
-  pan_number: data.pan_number || null,
-  address_proof_type: data.address_proof_type || null,
-};
+        toBool(data.declare_info_true),
+        toBool(data.consent_verification),
+        toBool(data.no_guaranteed_returns),
+        toBool(data.conflict_of_interest),
+        toBool(data.personal_trading),
+        toBool(data.sebi_compliance),
+        toBool(data.platform_policy),
+      ]
+    );
 
-
-const result = await pool.query(
-  `INSERT INTO ra_details (
-    user_id,
-    salutation, first_name, middle_name, surname,
-    org_name, designation, short_bio, email, mobile, telephone,
-    country, state, city, pincode,
-    address_line1, address_line2,
-    profile_image,
-    sebi_reg_no, sebi_start_date, sebi_expiry_date,
-    sebi_certificate, sebi_receipt,
-    nism_reg_no, nism_valid_till, nism_certificate,
-    academic_qualification, professional_qualification,
-    market_experience, expertise, markets,
-    bank_name, account_holder, account_number, ifsc_code,
-    cancelled_cheque,
-    pan_number, pan_card,
-    address_proof_type, address_proof_document,
-    declare_info_true, consent_verification,
-    no_guaranteed_returns, conflict_of_interest,
-    personal_trading, sebi_compliance, platform_policy, additional_comments  
-  )
-  VALUES (
-    $1,
-    $2,$3,$4,$5,
-    $6,$7,$8,$9,$10,$11,
-    $12,$13,$14,$15,
-    $16,$17,
-    $18,
-    $19,$20,$21,
-    $22,$23,
-    $24,$25,$26,
-    $27,$28,
-    $29,$30,$31,
-    $32,$33,$34,$35,
-    $36,
-    $37,$38,
-    $39,$40,
-    $41,$42,
-    $43,$44,$45,$46,$47,$48
-  )
-  RETURNING *`,
-  [
-    userId,
-
-    data.salutation ?? null,
-    data.first_name,
-    data.middle_name ?? null,
-    data.surname,
-
-    ra.org_name,
-    data.designation ?? null,
-    ra.short_bio,
-
-    data.email,
-    data.mobile ?? null,
-    data.telephone ?? null,
-
-    data.country ?? null,
-    data.state ?? null,
-    data.city ?? null,
-    data.pincode ?? null,
-
-    ra.address_line1,
-    ra.address_line2,
-
-   files?.profile_image?.[0]?.filename ?? null,
-
-    ra.sebi_reg_no,
-    ra.sebi_start_date,
-    ra.sebi_expiry_date,
-
-    files?.sebi_certificate?.[0]?.filename ?? null,
-    files?.sebi_receipt?.[0]?.filename ?? null,
-
-    ra.nism_reg_no,
-    ra.nism_valid_till,
-    files?.nism_certificate?.[0]?.filename ?? null,
-
-    ra.academic_qualification,
-    ra.professional_qualification,
-    ra.market_experience,
-    ra.expertise,
-    ra.markets,
-
-    ra.bank_name,
-    ra.account_holder,
-    ra.account_number,
-    ra.ifsc_code,
-
-    files?.cancelled_cheque?.[0]?.filename ?? null,
-
-    ra.pan_number,
-    files?.pan_card?.[0]?.filename ?? null,
-
-    ra.address_proof_type,
-    files?.address_proof_document?.[0]?.filename ?? null,
-
-    toBool(data.declare_info_true),
-    toBool(data.consent_verification),
-    toBool(data.no_guaranteed_returns),
-toBool(data.conflict_of_interest),
-toBool(data.personal_trading),
-toBool(data.sebi_compliance),
-toBool(data.platform_policy),
-data.additional_comments || data.additionalComments || null
-  ]
-);
     return res.status(201).json({
       success: true,
-      message: "RA Registration Submitted Successfully",
+      message: "RA Registration Submitted",
       ra_id: result.rows[0].id,
     });
 
   } catch (error) {
-    console.error("RA Registration Error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error(error);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -297,59 +198,43 @@ export const approveRegistration = async (req: Request, res: Response) => {
 
     await client.query("BEGIN");
 
-    // 1. Get RA details
-    const raRes = await client.query(
-      `SELECT email FROM ra_details WHERE id = $1`,
-      [id]
-    );
-
-    if (raRes.rowCount === 0) {
-      await client.query("ROLLBACK");
-      return res.status(404).json({ message: "RA not found" });
-    }
-
-    const email = raRes.rows[0].email;
-
-    // 2. Generate username & password
-    const username = `ra_${Math.random().toString(36).substring(2, 8)}`;
+    const username = `ra_${Math.random().toString(36).slice(2, 8)}`;
     const rawPassword = crypto.randomBytes(4).toString("hex");
-
-    // 3. Hash password
     const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
-    // 4. Create user
-    const userRes = await client.query(
-      `INSERT INTO users (username, password_hash, role, status)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id`,
-      [username, hashedPassword, "RESEARCH_ANALYST", "ACTIVE"]
+    const result = await client.query(
+      `
+      WITH new_user AS (
+        INSERT INTO users (username, password_hash, role, status)
+        VALUES ($1, $2, 'RESEARCH_ANALYST', 'ACTIVE')
+        RETURNING id
+      )
+      UPDATE ra_details
+      SET user_id = (SELECT id FROM new_user),
+          status = 'approved'
+      WHERE id = $3
+      RETURNING id, user_id;
+      `,
+      [username, hashedPassword, id]
     );
 
-    const userId = userRes.rows[0].id;
-
-    // 5. Update RA
-    await client.query(
-      `UPDATE ra_details
-       SET status = 'approved',
-           user_id = $1,
-           rejection_reason = NULL
-       WHERE id = $2`,
-      [userId, id]
-    );
+    if (result.rowCount === 0) {
+      throw new Error("RA not found");
+    }
 
     await client.query("COMMIT");
 
-    // 6. Return credentials (TEMP - later send email)
-    res.status(200).json({
-      message: "RA approved & account created",
+    return res.status(200).json({
+      message: "Approved",
       username,
-      password: rawPassword
+      password: rawPassword,
+      user_id: result.rows[0].user_id,
     });
 
   } catch (error) {
     await client.query("ROLLBACK");
     console.error(error);
-    res.status(500).json({ message: "Server error" });
+    return res.status(500).json({ message: "Server error" });
   } finally {
     client.release();
   }
@@ -516,196 +401,36 @@ export const updateRARegistration = async (req: AuthRequest, res: Response) => {
     const data = req.body || {};
     const files = req.files as any;
 
-    const userId = req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized - user not found",
-      });
-    }
-
-    /* ================= VALIDATION ================= */
-
-    const requiredFields = [
-      "salutation",
-      "first_name",
-      "surname",
-      "email",
-      "mobile",
-      "country",
-      "state",
-      "city",
-      "pincode",
-      "address1",
-      "panNumber",
-    ];
-
-    for (const field of requiredFields) {
-      if (!data[field] || data[field].toString().trim() === "") {
-        return res.status(400).json({
-          success: false,
-          message: `${field} is required`,
-        });
-      }
-    }
-
-    /* ================= BOOLEAN FIX ================= */
-
-    const toBool = (val: any) => val === true || val === "true";
-
-    /* ================= QUERY ================= */
-
-    const query = `
+    const result = await pool.query(
+      `
       UPDATE ra_details
       SET
-        user_id = $1,
-        salutation = $2,
-        first_name = $3,
-        middle_name = $4,
-        surname = $5,
-        org_name = $6,
-        designation = $7,
-        short_bio = $8,
-        email = $9,
-        mobile = $10,
-        telephone = $11,
-        country = $12,
-        state = $13,
-        city = $14,
-        pincode = $15,
-        address_line1 = $16,
-        address_line2 = $17,
-        profile_image = COALESCE($18, profile_image),
-        sebi_reg_no = $19,
-        sebi_start_date = $20,
-        sebi_expiry_date = $21,
-        sebi_certificate = COALESCE($22, sebi_certificate),
-        sebi_receipt = COALESCE($23, sebi_receipt),
-        nism_reg_no = $24,
-        nism_valid_till = $25,
-        nism_certificate = COALESCE($26, nism_certificate),
-        academic_qualification = $27,
-        professional_qualification = $28,
-        market_experience = $29,
-        expertise = $30,
-        markets = $31,
-        bank_name = $32,
-        account_holder = $33,
-        account_number = $34,
-        ifsc_code = $35,
-        cancelled_cheque = COALESCE($36, cancelled_cheque),
-        pan_number = $37,
-        pan_card = COALESCE($38, pan_card),
-        address_proof_type = $39,
-        address_proof_document = COALESCE($40, address_proof_document),
-        declare_info_true = $41,
-        consent_verification = $42,
-        no_guaranteed_returns = $43,
-        conflict_of_interest = $44,
-        personal_trading = $45,
-        sebi_compliance = $46,
-        platform_policy = $47,
-        additional_comments = $48
-      WHERE id = $49
+        first_name = $1,
+        surname = $2,
+        email = $3,
+        mobile = $4,
+        profile_image = COALESCE($5, profile_image)
+      WHERE id = $6
       RETURNING *
-    `;
-
-    const values = [
-      userId,
-
-      data.salutation.trim(),
-      data.first_name.trim(),
-      data.middle_name?.trim() || null,
-      data.surname.trim(),
-
-      // ✅ FIXED (snake_case)
-      data.org_name?.trim() || null,
-      data.designation?.trim() || null,
-      data.short_bio?.trim() || null,
-
-      data.email.trim().toLowerCase(),
-      data.mobile.trim(),
-      data.telephone?.trim() || null,
-
-      data.country.trim(),
-      data.state.trim(),
-      data.city.trim(),
-      data.pincode.trim(),
-
-      data.address1.trim(),
-      data.address2?.trim() || null,
-
-      files?.profile_image?.[0]?.filename || null,
-
-      // ✅ FIXED names
-      data.sebi_reg_no?.trim() || null,
-      data.sebi_start_date || null,
-      data.sebi_expiry_date || null,
-
-      files?.sebi_certificate?.[0]?.filename || null,
-      files?.sebi_receipt?.[0]?.filename || null,
-
-      data.nism_reg_no?.trim() || null,
-      data.nism_valid_till || null,
-      files?.nism_certificate?.[0]?.filename || null,
-
-      data.academic_qualification?.trim() || null,
-      data.professional_qualification?.trim() || null,
-
-      data.market_experience?.trim() || null,
-      data.expertise?.trim() || null,
-      data.markets?.trim() || null,
-
-      data.bank_name?.trim() || null,
-      data.account_holder?.trim() || null,
-      data.account_number?.trim() || null,
-      data.ifsc_code?.trim() || null,
-
-      files?.cancelled_cheque?.[0]?.filename || null,
-
-      data.panNumber.trim(),
-      files?.pan_card?.[0]?.filename || null,
-
-      data.address_proof_type?.trim() || null,
-      files?.address_proof_document?.[0]?.filename || null,
-
-      toBool(data.declare_info_true),
-      toBool(data.consent_verification),
-      toBool(data.no_guaranteed_returns),
-      toBool(data.conflict_of_interest),
-      toBool(data.personal_trading),
-      toBool(data.sebi_compliance),
-      toBool(data.platform_policy),
-
-      // ✅ CRITICAL FIX (missing earlier)
-      data.additional_comments || null,
-
-      id,
-    ];
-
-    const result = await pool.query(query, values);
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Registration not found",
-      });
-    }
+      `,
+      [
+        data.first_name,
+        data.surname,
+        data.email,
+        data.mobile,
+        files?.profile_image?.[0]?.filename || null,
+        id,
+      ]
+    );
 
     return res.status(200).json({
       success: true,
-      message: "RA updated successfully",
       data: result.rows[0],
     });
 
   } catch (error) {
-    console.error("Update RA Error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error(error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
