@@ -42,10 +42,6 @@ app.use("/api/auth", authRoutes);
 //app.use("/api", authRoutes);
 app.use("/api", researchRoutes);
 app.use("/api/research", researchRoutes); 
-<<<<<<< HEAD
-// app.use("/api", debugRoutes);
-=======
->>>>>>> 1285576a4393b6bed69469e7698b210d89eddf57
 //app.use("/api", debugRoutes);
 app.use("/api/broker", brokerRoutes);
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));

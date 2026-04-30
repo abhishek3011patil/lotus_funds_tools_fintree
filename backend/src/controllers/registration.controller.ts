@@ -94,86 +94,196 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
     const data = req.body || {};
     const files = req.files as any;
 
+    // ✅ FIX: define userId
+    const userId = req.user?.id ?? null;
+
+    // ================= VALIDATION =================
     if (!data.first_name || !data.surname) {
-      return res.status(400).json({ success: false, message: "First name and surname are required" });
+      return res.status(400).json({
+        success: false,
+        message: "First name and surname are required",
+      });
     }
 
     if (!data.email) {
-      return res.status(400).json({ success: false, message: "Email is required" });
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized user (missing user_id)",
+      });
     }
 
     data.email = data.email.trim().toLowerCase();
 
+    // ================= CHECK EXISTING =================
     const existing = await pool.query(
       `SELECT id FROM ra_details WHERE email = $1`,
       [data.email]
     );
 
-    if ((existing.rowCount ?? 0) > 0) {
+    if (existing.rowCount && existing.rowCount > 0) {
       return res.status(400).json({
         success: false,
         message: "RA already registered with this email",
       });
     }
 
+    // ================= BOOL CONVERTER =================
     const toBool = (val: any) => val === "true" || val === true;
 
+    // ================= FILE SAFETY =================
+    const profileImage = files?.profile_image?.[0]?.filename ?? null;
+    const panCard = files?.pan_card?.[0]?.filename ?? null;
+    const addressProof = files?.address_proof_document?.[0]?.filename ?? null;
+
+    // ================= INSERT =================
     const result = await pool.query(
-      `INSERT INTO ra_details (
-        salutation, first_name, middle_name, surname,
-        email, mobile, country, state, city, pincode,
-        address_line1, address_line2,
-        profile_image,
-        pan_number, pan_card,
-        address_proof_type, address_proof_document,
-        declare_info_true, consent_verification,
-        no_guaranteed_returns, conflict_of_interest,
-        personal_trading, sebi_compliance, platform_policy
-      )
-      VALUES (
-        $1,$2,$3,$4,
-        $5,$6,$7,$8,$9,$10,
-        $11,$12,
-        $13,
-        $14,$15,
-        $16,$17,
-        $18,$19,
-        $20,$21,
-        $22,$23,$24
-      )
-      RETURNING id`,
-      [
-        data.salutation ?? null,
-        data.first_name,
-        data.middle_name ?? null,
-        data.surname,
+      `
+INSERT INTO ra_details (
+  user_id,
 
-        data.email,
-        data.mobile ?? null,
-        data.country ?? null,
-        data.state ?? null,
-        data.city ?? null,
-        data.pincode ?? null,
+  -- Step 1: Personal Info
+  salutation, first_name, middle_name, surname,
+  org_name, designation, short_bio,
+  email, mobile, telephone,
+  country, state, city, pincode,
+  address_line1, address_line2,
+  profile_image,
 
-        data.address_line1 ?? null,
-        data.address_line2 ?? null,
+  -- Step 2: Professional & SEBI
+  sebi_reg_no, sebi_start_date, sebi_expiry_date,
+  sebi_certificate, sebi_receipt,
+  nism_reg_no, nism_valid_till, nism_certificate,
+  academic_qualification, professional_qualification,
+  market_experience, expertise, markets,
 
-        files?.profile_image?.[0]?.filename ?? null,
+  -- Step 3: KYC & Bank
+  bank_name, account_holder, account_number, ifsc_code,
+  cancelled_cheque,
+  pan_number, pan_card,
+  address_proof_type, address_proof_document,
+  declare_info_true, consent_verification,
 
-        data.pan_number ?? null,
-        files?.pan_card?.[0]?.filename ?? null,
+  -- Step 4: Declarations
+  no_guaranteed_returns, conflict_of_interest,
+  personal_trading, sebi_compliance, platform_policy,
 
-        data.address_proof_type ?? null,
-        files?.address_proof_document?.[0]?.filename ?? null,
+  -- Extra
+  additional_comments
+)
+VALUES (
+  $1,
 
-        toBool(data.declare_info_true),
-        toBool(data.consent_verification),
-        toBool(data.no_guaranteed_returns),
-        toBool(data.conflict_of_interest),
-        toBool(data.personal_trading),
-        toBool(data.sebi_compliance),
-        toBool(data.platform_policy),
-      ]
+  -- Step 1
+  $2,$3,$4,$5,
+  $6,$7,$8,
+  $9,$10,$11,
+  $12,$13,$14,$15,
+  $16,$17,
+  $18,
+
+  -- Step 2
+  $19,$20,$21,
+  $22,$23,
+  $24,$25,$26,
+  $27,$28,
+  $29,$30,$31,
+
+  -- Step 3
+  $32,$33,$34,$35,
+  $36,
+  $37,$38,
+  $39,$40,
+  $41,$42,
+
+  -- Step 4
+  $43,$44,
+  $45,$46,$47,
+
+  -- Extra
+  $48
+)
+RETURNING id;
+      `,
+        [
+  userId,
+
+  // Step 1
+  data.salutation ?? null,
+  data.first_name,
+  data.middle_name ?? null,
+  data.surname,
+
+  data.org_name ?? null,
+  data.designation ?? null,
+  data.short_bio ?? null,
+
+  data.email,
+  data.mobile ?? null,
+  data.telephone ?? null,
+
+  data.country ?? null,
+  data.state ?? null,
+  data.city ?? null,
+  data.pincode ?? null,
+
+  data.address_line1 ?? null,
+  data.address_line2 ?? null,
+
+  files?.profile_image?.[0]?.filename ?? null,
+
+  // Step 2
+  data.sebi_reg_no ?? null,
+  data.sebi_start_date ?? null,
+  data.sebi_expiry_date ?? null,
+
+  files?.sebi_certificate?.[0]?.filename ?? null,
+  files?.sebi_receipt?.[0]?.filename ?? null,
+
+  data.nism_reg_no ?? null,
+  data.nism_valid_till ?? null,
+  files?.nism_certificate?.[0]?.filename ?? null,
+
+  data.academic_qualification ?? null,
+  data.professional_qualification ?? null,
+
+  data.market_experience ?? null,
+  data.expertise ?? null,
+  data.markets ?? null,
+
+  // Step 3
+  data.bank_name ?? null,
+  data.account_holder ?? null,
+  data.account_number ?? null,
+  data.ifsc_code ?? null,
+
+  files?.cancelled_cheque?.[0]?.filename ?? null,
+
+  data.pan_number ?? null,
+  files?.pan_card?.[0]?.filename ?? null,
+
+  data.address_proof_type ?? null,
+  files?.address_proof_document?.[0]?.filename ?? null,
+
+  toBool(data.declare_info_true),
+  toBool(data.consent_verification),
+
+  // Step 4
+  toBool(data.no_guaranteed_returns),
+  toBool(data.conflict_of_interest),
+  toBool(data.personal_trading),
+  toBool(data.sebi_compliance),
+  toBool(data.platform_policy),
+
+  // Extra
+  data.additional_comments ?? null
+]
     );
 
     return res.status(201).json({
@@ -182,12 +292,19 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
       ra_id: result.rows[0].id,
     });
 
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ success: false, message: "Server error" });
+  } catch (error: unknown) {
+    console.error("REGISTER RA ERROR:", error);
+
+    const message =
+      error instanceof Error ? error.message : String(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: message,
+    });
   }
 };
-
 /* ================= APPROVE REGISTRATION ================= */
 
 export const approveRegistration = async (req: Request, res: Response) => {

@@ -8,8 +8,6 @@ const router = express.Router();
 
 router.post(
   "/register-broker",
-  authenticate,
-  requireAdmin,
   upload.fields([
     { name: "sebi_certificate", maxCount: 1 },
     { name: "exchange_certificates", maxCount: 10 },
@@ -21,6 +19,6 @@ router.post(
   createBroker
 );
 
-router.get("/all-brokers", authenticate, requireAdmin, getAllBrokers);
+router.get("/all-brokers", getAllBrokers);
 
 export default router;
