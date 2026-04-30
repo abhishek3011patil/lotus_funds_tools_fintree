@@ -14,13 +14,13 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Typography,
-  InputAdornment, 
+  InputAdornment,
   Tooltip
 } from "@mui/material";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import RecommendationsPanel from "../components/page_Mainapp/RecommendationsPanel";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
-import { useRef, useState, useEffect, useMemo, useCallback, useReducer } from "react";
+import { memo, type ChangeEvent, useRef, useState, useEffect, useMemo, useCallback, useReducer } from "react";
 import { FormHelperText } from "@mui/material";
 import { startTransition } from "react";
 import { useExpiryDates } from "../hooks/useExpiryDates";
@@ -31,12 +31,11 @@ import {
 } from "../assets/UnderlyingStudy";
 import type { StudyOption } from "../assets/UnderlyingStudy";
 import axios from "axios";
-import React from "react";
 const BUY_COLOR = "#22c55e";
 const SELL_COLOR = "#ef4444";
 
 
-const MemoRecommendationsPanel = React.memo(RecommendationsPanel);
+const MemoRecommendationsPanel = memo(RecommendationsPanel);
 
 
 const getActionStyles = (current: "BUY" | "SELL", button: "BUY" | "SELL") => {
@@ -51,14 +50,6 @@ const getActionStyles = (current: "BUY" | "SELL", button: "BUY" | "SELL") => {
     },
   };
 };
-const rootGridSx = {
-  display: "grid",
-  gridTemplateColumns: "3fr 1.5fr",
-  gap: 2,
-  height: "auto",
-  boxSizing: "border-box",
-};
-
 const FLAT_STUDY_OPTIONS = UNDERLYING_STUDIES.flatMap((g) =>
   g.options.map((opt) => ({
     ...opt,
@@ -86,7 +77,7 @@ const NewRecommendation = () => {
     "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#6fa66f" },
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       console.log("Selected file:", file.name);
@@ -184,142 +175,118 @@ const NewRecommendation = () => {
     setDirectValue("");
   };
 
-  const getRAIdFromToken = () => {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) return null;
-
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.id; // ✅ THIS is your RA ID
-  } catch {
-    return null;
-  }
-};
-
   const handleSubmit = async () => {
-  try {
-    const token = localStorage.getItem("token");
+    try {
+      const token = localStorage.getItem("token");
 
-    if (!token) {
-      alert("Please login again");
-      return;
-    }
+      if (!token) {
+        alert("Please login again");
+        return;
+      }
 
-    const finalDisplayName =
-      suggestion &&
-      suggestion.toLowerCase().startsWith(inputValue.toLowerCase())
-        ? suggestion
-        : inputValue;
+      const finalDisplayName =
+        suggestion &&
+          suggestion.toLowerCase().startsWith(inputValue.toLowerCase())
+          ? suggestion
+          : inputValue;
 
-    const payload = {
-      exchange_type: form.exchangeType,
-      market_type: form.exchange,
-      symbol: "SYM",
-      display_name: finalDisplayName,
-      action: form.action,
-      call_type: form.callType,
-      trade_type: form.tradeType,
-      expiry_date: form.expiry || null,
-      entry_price: form.entry || null,
-      entry_price_low: form.entryLow || null,
-      entry_price_upper: form.entryUpper || null,
-      target_price: form.target || null,
-      target_price_2: form.target2 || null,
-      target_price_3: form.target3 || null,
-      stop_loss: form.stopLoss || null,
-      stop_loss_2: form.stopLoss2 || null,
-      stop_loss_3: form.stopLoss3 || null,
-      holding: form.holdingPeriod || "0",
-      rationale: form.rationale,
-      underlying_study: form.underlyingStudy?.label || null,
-      is_algo: false,
-      has_vested_interest: false,
-      research_remarks: form.remark || undefined
-    };
-
-    let res;
-
-    if (isErrataMode && errataSourceId) {
-      // ERRATA (unchanged)
-      const updates = {
-        entry_price: form.entry || undefined,
-        target_price: form.target || undefined,
-        stop_loss: form.stopLoss || undefined,
-        target_price_2: form.target2 || undefined,
-        target_price_3: form.target3 || undefined,
-        stop_loss_2: form.stopLoss2 || undefined,
-        stop_loss_3: form.stopLoss3 || undefined,
-        entry_price_low: form.entryLow || undefined,
-        entry_price_upper: form.entryUpper || undefined,
-        holding_period: form.holdingPeriod || undefined,
-        rationale: form.rationale || undefined,
-        underlying_study: form.underlyingStudy?.label || undefined,
-        research_remarks: form.remark || undefined,
+      const payload = {
+        exchange_type: form.exchangeType,
+        market_type: form.exchange,
+        symbol: "SYM",
+        display_name: finalDisplayName,
+        action: form.action,
+        call_type: form.callType,
+        trade_type: form.tradeType,
+        expiry_date: form.expiry || null,
+        entry_price: form.entry || null,
+        entry_price_low: form.entryLow || null,
+        entry_price_upper: form.entryUpper || null,
+        target_price: form.target || null,
+        target_price_2: form.target2 || null,
+        target_price_3: form.target3 || null,
+        stop_loss: form.stopLoss || null,
+        stop_loss_2: form.stopLoss2 || null,
+        stop_loss_3: form.stopLoss3 || null,
+        holding: form.holdingPeriod || "0",
+        rationale: form.rationale,
+        underlying_study: form.underlyingStudy?.label || null,
+        is_algo: false,
+        has_vested_interest: false,
+        research_remarks: form.remark || undefined
       };
 
-      res = await axios.post(
-        import.meta.env.VITE_API_URL + "/api/research/calls/errata",
-        {
-          call_id: errataSourceId,
-          updates,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      if (isErrataMode && errataSourceId) {
+        // ERRATA (unchanged)
+        const updates = {
+          entry_price: form.entry || undefined,
+          target_price: form.target || undefined,
+          stop_loss: form.stopLoss || undefined,
+          target_price_2: form.target2 || undefined,
+          target_price_3: form.target3 || undefined,
+          stop_loss_2: form.stopLoss2 || undefined,
+          stop_loss_3: form.stopLoss3 || undefined,
+          entry_price_low: form.entryLow || undefined,
+          entry_price_upper: form.entryUpper || undefined,
+          holding_period: form.holdingPeriod || undefined,
+          rationale: form.rationale || undefined,
+          underlying_study: form.underlyingStudy?.label || undefined,
+          research_remarks: form.remark || undefined,
+        };
 
-      alert("Errata Created ✅");
+        await axios.post(
+          import.meta.env.VITE_API_URL + "/api/research/calls/errata",
+          {
+            call_id: errataSourceId,
+            updates,
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
-    } else {
-      // NORMAL CREATE
-      res = await axios.post(
-        import.meta.env.VITE_API_URL + "/api/research/calls",
-        payload,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+        alert("Errata Created ✅");
 
-      alert("Research Call Created ✅");
+      } else {
+        // NORMAL CREATE
+        await axios.post(
+          import.meta.env.VITE_API_URL + "/api/research/calls",
+          payload,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
-      // ✅ UPDATED TELEGRAM CALL (ONLY THIS PART CHANGED)
-      try {
-        const now = new Date();
+        alert("Research Call Created ✅");
 
-        const formattedDateTime =
-          now.toLocaleDateString("en-GB") +
-          " " +
-          now.toLocaleTimeString("en-IN");
-
+        // ✅ UPDATED TELEGRAM CALL (ONLY THIS PART CHANGED)
+        try {
           const message = `
 Date & Time : ${new Date().toLocaleString()}
 
 *${form.action}* *${finalDisplayName}*
 Call Type : ${form.exchange} ${form.callType} ${form.tradeType}
 
-${
-  form.rangeEnabled
-    ? `Entry: ${form.entryLow} - ${form.entryUpper}`
-    : `Entry: ${form.entry}`
-}
+${form.rangeEnabled
+              ? `Entry: ${form.entryLow} - ${form.entryUpper}`
+              : `Entry: ${form.entry}`
+            }
 
 Target: ${form.target}
 
-${
-  form.secondaryTargetEnabled
-    ? `Target 2: ${form.target2}
+${form.secondaryTargetEnabled
+              ? `Target 2: ${form.target2}
 Target 3: ${form.target3}`
-    : ""
-}
+              : ""
+            }
 
 SL: ${form.stopLoss}
 
-${
-  form.stopLoss2Enabled
-    ? `SL 2: ${form.stopLoss2}
+${form.stopLoss2Enabled
+              ? `SL 2: ${form.stopLoss2}
 SL 3: ${form.stopLoss3}`
-    : ""
-}
+              : ""
+            }
 
 Expiry: ${form.expiry || "N/A"}
 Holding Period: ${form.holdingPeriod || "N/A"}
@@ -328,33 +295,33 @@ Rationale: ${form.rationale}
 Underlying Study: ${form.underlyingStudy?.label || "N/A"}
 `;
 
-        await axios.post(
-  `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
-  { message },
-  {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  }
-);
+          await axios.post(
+            `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
+            { message },
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
 
-        console.log("✅ Telegram sent ONLY to this RA clients");
-      } catch (telegramErr: any) {
-        console.error(
-          "⚠️ Telegram failed:",
-          telegramErr?.response?.data || telegramErr?.message
-        );
+          console.log("✅ Telegram sent ONLY to this RA clients");
+        } catch (telegramErr: any) {
+          console.error(
+            "⚠️ Telegram failed:",
+            telegramErr?.response?.data || telegramErr?.message
+          );
+        }
       }
+
+      await fetchRecommendations();
+      resetForm();
+
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.response?.data?.message || "Error submitting call");
     }
-
-    await fetchRecommendations();
-    resetForm();
-
-  } catch (err: any) {
-    console.error(err);
-    alert(err?.response?.data?.message || "Error submitting call");
-  }
-};
+  };
 
   const handleToggle = useCallback(
     (field: keyof RecommendationForm) => {
@@ -509,10 +476,10 @@ Underlying Study: ${form.underlyingStudy?.label || "N/A"}
 
 
   useEffect(() => {
-  if (form.tradeType === "Intraday") {
-    dispatch({ type: "SET_FIELD", field: "holdingPeriod", value: "0" });
-  }
-}, [form.tradeType]);
+    if (form.tradeType === "Intraday") {
+      dispatch({ type: "SET_FIELD", field: "holdingPeriod", value: "0" });
+    }
+  }, [form.tradeType]);
 
   useEffect(() => {
     fetchRecommendations();
@@ -549,7 +516,7 @@ Underlying Study: ${form.underlyingStudy?.label || "N/A"}
   }, []);
 
   // 2. MODIFY FUNCTION (Loads data back into the form)
-  const handleModify = useCallback((item) => {
+  const handleModify = useCallback((item: any) => {
     startTransition(() => {
       const formUpdate: Partial<RecommendationForm> = {
         rangeEnabled: Boolean(item.entry?.low || item.entry?.high),
@@ -590,24 +557,24 @@ Underlying Study: ${form.underlyingStudy?.label || "N/A"}
   // Temporary
   const [wasValidated, setWasValidated] = useState(false);
   const validateAndPublish = (event: React.MouseEvent<HTMLButtonElement>) => {
-  event.preventDefault();
-  setWasValidated(true);
+    event.preventDefault();
+    setWasValidated(true);
 
-  const priceErr = getPriceError("entry", form) || 
-                   getPriceError("target", form) || 
-                   getPriceError("stopLoss", form);
-  if (!priceErr) {
-    console.log("✅ Price logic passed, submitting...");
-    handleSubmit(); 
-    setWasValidated(false);
-  } else {
-    console.log("❌ Price logic failed");
-    const priceRow = document.getElementById("prices-row");
-    if (priceRow) {
-      priceRow.scrollIntoView({ behavior: "smooth", block: "center" });
+    const priceErr = getPriceError("entry", form) ||
+      getPriceError("target", form) ||
+      getPriceError("stopLoss", form);
+    if (!priceErr) {
+      console.log("✅ Price logic passed, submitting...");
+      handleSubmit();
+      setWasValidated(false);
+    } else {
+      console.log("❌ Price logic failed");
+      const priceRow = document.getElementById("prices-row");
+      if (priceRow) {
+        priceRow.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     }
-  }
-};
+  };
 
 
   /// populate 
@@ -651,7 +618,6 @@ Underlying Study: ${form.underlyingStudy?.label || "N/A"}
 
 
   //instiate
-  const token = localStorage.getItem("token");
   const handleInitiate = useCallback(async (item: any) => {
     try {
       const token = localStorage.getItem("token");
@@ -673,35 +639,6 @@ Underlying Study: ${form.underlyingStudy?.label || "N/A"}
             : rec
         )
       );
-
-      // 📤 Send Telegram notification after publishing draft
- try {
-  const telegramRes = await axios.post(
-    `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
-    {
-      ra_user_id: res.data?.id || res.data?.data?.ra_user_id,
-      action: form.action,
-      symbol: finalDisplayName,
-      callType: form.callType,
-      tradeType: form.tradeType,
-      entry: form.entry,
-      target: form.target,
-      stopLoss: form.stopLoss,
-      rationale: form.rationale,
-      holding: form.holdingPeriod,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-
-  console.log("✅ Telegram Response:", telegramRes.data);
-
-} catch (err: any) {
-  console.error("❌ Telegram FULL ERROR:", err);
-}
     } catch (error) {
       console.error("Publish failed:", error);
     }
@@ -711,8 +648,8 @@ Underlying Study: ${form.underlyingStudy?.label || "N/A"}
   const handleTrack = async () => {
     try {
       const finalDisplayName =
-        typeof suggestion === "object" && suggestion !== null
-          ? suggestion.display_name
+        typeof suggestion === "string" && suggestion.trim()
+          ? suggestion
           : inputValue.trim();
 
       const payload = {
@@ -785,72 +722,72 @@ Underlying Study: ${form.underlyingStudy?.label || "N/A"}
   };
 
   // Add this helper function outside or inside your component
-const getPriceError = (field: string, currentForm: any): string | null => {
-  const action = currentForm.action;
+  const getPriceError = (field: string, currentForm: any): string | null => {
+    const action = currentForm.action;
 
-  // Group 1: Top Switched Row
-  const eLow = parseFloat(currentForm.entryLow) || 0;
-  const t2 = parseFloat(currentForm.target2) || 0;
-  const sl2 = parseFloat(currentForm.stopLoss2) || 0;
+    // Group 1: Top Switched Row
+    const eLow = parseFloat(currentForm.entryLow) || 0;
+    const t2 = parseFloat(currentForm.target2) || 0;
+    const sl2 = parseFloat(currentForm.stopLoss2) || 0;
 
-  // Group 2: Bottom Switched Row
-  const eUpper = parseFloat(currentForm.entryUpper) || 0;
-  const t3 = parseFloat(currentForm.target3) || 0;
-  const sl3 = parseFloat(currentForm.stopLoss3) || 0;
+    // Group 2: Bottom Switched Row
+    const eUpper = parseFloat(currentForm.entryUpper) || 0;
+    const t3 = parseFloat(currentForm.target3) || 0;
+    const sl3 = parseFloat(currentForm.stopLoss3) || 0;
 
-  // --- BUY LOGIC ---
-  if (action === "BUY") {
-    // Top Row: SL2 < Lower Entry < T2
-    if (field === "entryLow") {
-      if (t2 && eLow >= t2) return "Must be < T2";
-      if (sl2 && eLow <= sl2) return "Must be > SL2";
+    // --- BUY LOGIC ---
+    if (action === "BUY") {
+      // Top Row: SL2 < Lower Entry < T2
+      if (field === "entryLow") {
+        if (t2 && eLow >= t2) return "Must be < T2";
+        if (sl2 && eLow <= sl2) return "Must be > SL2";
+      }
+      if (field === "target2" && t2 <= eLow && eLow !== 0) return "T2 must be > Lower Entry";
+      if (field === "stopLoss2" && sl2 >= eLow && eLow !== 0) return "SL2 must be < Lower Entry";
+
+      // Bottom Row: SL3 < Upper Entry < T3
+      if (field === "entryUpper") {
+        if (t3 && eUpper >= t3) return "Must be < T3";
+        if (sl3 && eUpper <= sl3) return "Must be > SL3";
+      }
+      if (field === "target3" && t3 <= eUpper && eUpper !== 0) return "T3 must be > Upper Entry";
+      if (field === "stopLoss3" && sl3 >= eUpper && eUpper !== 0) return "SL3 must be < Upper Entry";
     }
-    if (field === "target2" && t2 <= eLow && eLow !== 0) return "T2 must be > Lower Entry";
-    if (field === "stopLoss2" && sl2 >= eLow && eLow !== 0) return "SL2 must be < Lower Entry";
 
-    // Bottom Row: SL3 < Upper Entry < T3
-    if (field === "entryUpper") {
-      if (t3 && eUpper >= t3) return "Must be < T3";
-      if (sl3 && eUpper <= sl3) return "Must be > SL3";
+    // --- SELL LOGIC ---
+    else {
+      // Top Row: T2 < Lower Entry < SL2
+      if (field === "entryLow") {
+        if (t2 && eLow <= t2) return "Must be > T2";
+        if (sl2 && eLow >= sl2) return "Must be < SL2";
+      }
+      if (field === "target2" && t2 >= eLow && eLow !== 0) return "T2 must be < Lower Entry";
+      if (field === "stopLoss2" && sl2 <= eLow && eLow !== 0) return "SL2 must be > Lower Entry";
+
+      // Bottom Row: T3 < Upper Entry < SL3
+      if (field === "entryUpper") {
+        if (t3 && eUpper <= t3) return "Must be > T3";
+        if (sl3 && eUpper >= sl3) return "Must be < SL3";
+      }
+      if (field === "target3" && t3 >= eUpper && eUpper !== 0) return "T3 must be < Upper Entry";
+      if (field === "stopLoss3" && sl3 <= eUpper && eUpper !== 0) return "SL3 must be > Upper Entry";
     }
-    if (field === "target3" && t3 <= eUpper && eUpper !== 0) return "T3 must be > Upper Entry";
-    if (field === "stopLoss3" && sl3 >= eUpper && eUpper !== 0) return "SL3 must be < Upper Entry";
-  } 
-  
-  // --- SELL LOGIC ---
-  else {
-    // Top Row: T2 < Lower Entry < SL2
-    if (field === "entryLow") {
-      if (t2 && eLow <= t2) return "Must be > T2";
-      if (sl2 && eLow >= sl2) return "Must be < SL2";
+
+    // --- MAIN ROW (Entry, Target, StopLoss) ---
+    const entry = parseFloat(currentForm.entry) || 0;
+    const t1 = parseFloat(currentForm.target) || 0;
+    const sl1 = parseFloat(currentForm.stopLoss) || 0;
+
+    if (action === "BUY") {
+      if (field === "target" && t1 <= entry && entry !== 0) return "T1 must be > Entry";
+      if (field === "stopLoss" && sl1 >= entry && entry !== 0) return "SL1 must be < Entry";
+    } else {
+      if (field === "target" && t1 >= entry && entry !== 0) return "T1 must be < Entry";
+      if (field === "stopLoss" && sl1 <= entry && entry !== 0) return "SL1 must be > Entry";
     }
-    if (field === "target2" && t2 >= eLow && eLow !== 0) return "T2 must be < Lower Entry";
-    if (field === "stopLoss2" && sl2 <= eLow && eLow !== 0) return "SL2 must be > Lower Entry";
 
-    // Bottom Row: T3 < Upper Entry < SL3
-    if (field === "entryUpper") {
-      if (t3 && eUpper <= t3) return "Must be > T3";
-      if (sl3 && eUpper >= sl3) return "Must be < SL3";
-    }
-    if (field === "target3" && t3 >= eUpper && eUpper !== 0) return "T3 must be < Upper Entry";
-    if (field === "stopLoss3" && sl3 <= eUpper && eUpper !== 0) return "SL3 must be > Upper Entry";
-  }
-
-  // --- MAIN ROW (Entry, Target, StopLoss) ---
-  const entry = parseFloat(currentForm.entry) || 0;
-  const t1 = parseFloat(currentForm.target) || 0;
-  const sl1 = parseFloat(currentForm.stopLoss) || 0;
-
-  if (action === "BUY") {
-    if (field === "target" && t1 <= entry && entry !== 0) return "T1 must be > Entry";
-    if (field === "stopLoss" && sl1 >= entry && entry !== 0) return "SL1 must be < Entry";
-  } else {
-    if (field === "target" && t1 >= entry && entry !== 0) return "T1 must be < Entry";
-    if (field === "stopLoss" && sl1 <= entry && entry !== 0) return "SL1 must be > Entry";
-  }
-
-  return null;
-};
+    return null;
+  };
 
   return (
     <Box
@@ -859,8 +796,14 @@ const getPriceError = (field: string, currentForm: any): string | null => {
         gridTemplateColumns: { xs: "1fr", lg: "3fr 1.5fr" },
         gap: { xs: 2, md: 1.5 },
         height: "auto",
-        p: { xs: 1, sm: 1.5 },
+        p: { xs: 0.5, sm: 1 },
         boxSizing: "border-box",
+        width: "100%",
+        minWidth: 0,
+        overflowX: { xs: "hidden", sm: "unset" },
+        "& .MuiToggleButton-root": {
+          minWidth: 0,
+        },
       }}
     >
       {/* LEFT PANEL */}
@@ -868,7 +811,7 @@ const getPriceError = (field: string, currentForm: any): string | null => {
         component="form"
         noValidate
         sx={{
-          p: { xs: 1.5, sm: 2 },
+          p: { xs: 1.25, sm: 2 },
           backgroundColor: panelBg,
           border: `1px solid ${panelBorder}`,
           borderRadius: 1,
@@ -877,6 +820,10 @@ const getPriceError = (field: string, currentForm: any): string | null => {
           height: "auto",
           minHeight: "100%",
           gap: 1.5,
+          maxWidth: "100%",
+          minWidth: 0,
+          boxSizing: "border-box",
+          overflowX: { xs: "hidden", sm: "unset" },
           "& .MuiTextField-root": {
             "& .MuiOutlinedInput-root": {
               ...(wasValidated && {
@@ -908,7 +855,7 @@ const getPriceError = (field: string, currentForm: any): string | null => {
             You are creating an ERRATA for Call ID: {errataSourceId}
           </Box>
         )}
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 0.5, mb: 1 }}>
 
           <Typography variant="subtitle1" fontWeight={700} sx={{ fontSize: { xs: "0.9rem", sm: "1.1rem" } }}>
             New Recommendation
@@ -920,6 +867,8 @@ const getPriceError = (field: string, currentForm: any): string | null => {
             onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "exchangeType", value: val })}
             sx={{
               backgroundColor: "#eef2f7",
+              flexShrink: 0,
+              maxWidth: "100%",
               "& .MuiToggleButtonGroup-grouped": {
                 border: "none", px: 1.5, py: 0.5, fontSize: "0.7rem", fontWeight: 700,
                 "&.Mui-selected": { backgroundColor: "#4f6bed", color: "#fff" },
@@ -933,22 +882,22 @@ const getPriceError = (field: string, currentForm: any): string | null => {
 
         {/* Action & Call Type Row */}
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 1 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
+          <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { xs: "stretch", sm: "center" }, flexWrap: "wrap", gap: 1 }}>
             <ToggleButtonGroup size="small" exclusive value={form.action} onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "action", value: val })}>
               <ToggleButton value="BUY" sx={{ fontWeight: 700, px: 2, fontSize: "0.7rem", ...getActionStyles(form.action, "BUY") }}>BUY</ToggleButton>
               <ToggleButton value="SELL" sx={{ fontWeight: 700, px: 2, fontSize: "0.7rem", ...getActionStyles(form.action, "SELL") }}>SELL</ToggleButton>
             </ToggleButtonGroup>
 
-            <Box sx={{ overflowX: "auto", maxWidth: "100%" }}>
+            <Box sx={{ overflowX: "auto", maxWidth: "100%", WebkitOverflowScrolling: "touch", pb: 0.25 }}>
               <ToggleButtonGroup
                 size="small" exclusive value={form.callType} onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "callType", value: val })}
                 sx={{
                   backgroundColor: "#eef2f7",
                   display: "flex",
                   flexWrap: "wrap",
-                  whiteSpace: "nowrap",
+                  maxWidth: "100%",
                   "& .MuiToggleButtonGroup-grouped": {
-                    border: "none", m: 0.2, px: 1, fontSize: "0.65rem", fontWeight: 700,
+                    border: "none", m: 0.2, px: { xs: 1.2, sm: 1 }, py: { xs: 0.6, sm: 0.4 }, fontSize: { xs: "0.7rem", sm: "0.65rem" }, fontWeight: 700,
                     "&.Mui-selected": { backgroundColor: "#4f6bed", color: "#fff" },
                   },
                 }}
@@ -963,7 +912,7 @@ const getPriceError = (field: string, currentForm: any): string | null => {
         </Box>
 
         {/* Stock & Trade Type Row */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1, gap: 1 }}>
+        <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, justifyContent: "space-between", alignItems: { xs: "stretch", sm: "center" }, mb: 1, gap: 1 }}>
           {/* STOCK / INDEX GROUP */}
           <ToggleButtonGroup
             size="small"
@@ -972,6 +921,7 @@ const getPriceError = (field: string, currentForm: any): string | null => {
             onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "exchange", value: val })}
             sx={{
               backgroundColor: "#eef2f7",
+              maxWidth: "100%",
               "& .MuiToggleButtonGroup-grouped": {
                 border: "none",
                 px: 1.5,
@@ -993,7 +943,7 @@ const getPriceError = (field: string, currentForm: any): string | null => {
           </ToggleButtonGroup>
 
           {/* TRADE TYPE GROUP */}
-          <Box sx={{ overflowX: "auto" }}>
+          <Box sx={{ overflowX: "auto", WebkitOverflowScrolling: "touch", maxWidth: "100%", pb: 0.25 }}>
             <ToggleButtonGroup
               size="small"
               exclusive
@@ -1001,11 +951,14 @@ const getPriceError = (field: string, currentForm: any): string | null => {
               onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "tradeType", value: val })}
               sx={{
                 backgroundColor: "#eef2f7",
-                whiteSpace: "nowrap",
+                display: "flex",
+                flexWrap: "wrap",
+                maxWidth: "100%",
                 "& .MuiToggleButtonGroup-grouped": {
                   border: "none",
-                  px: 1,
-                  fontSize: "0.65rem",
+                  px: { xs: 1.2, sm: 1 },
+                  py: { xs: 0.6, sm: 0.4 },
+                  fontSize: { xs: "0.7rem", sm: "0.65rem" },
                   fontWeight: 700,
                   color: "#6b7280",
                   "&.Mui-selected": {
@@ -1037,8 +990,8 @@ const getPriceError = (field: string, currentForm: any): string | null => {
         </Box>
 
         {/* Script Row */}
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 1 }}>
-          <Box sx={{ position: 'relative', display: 'flex', flexGrow: 1 }}>
+        <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, flexWrap: "wrap", gap: 1, mb: 1 }}>
+          <Box sx={{ position: 'relative', display: 'flex', flexGrow: 1, minWidth: 0, width: { xs: "100%", sm: "auto" } }}>
             {suggestion && suggestion.toLowerCase().startsWith(inputValue.toLowerCase()) && (
               <Box
                 sx={{
@@ -1072,6 +1025,7 @@ const getPriceError = (field: string, currentForm: any): string | null => {
               isOptionEqualToValue={(option, value) => option === value}
               sx={{
                 flexGrow: 1,
+                minWidth: 0,
                 zIndex: 1,
                 "& .MuiOutlinedInput-root": { backgroundColor: "transparent" },
               }}
@@ -1087,7 +1041,7 @@ const getPriceError = (field: string, currentForm: any): string | null => {
             />
 
           </Box>
-          <Box sx={{ display: "flex", gap: 1, flexGrow: { xs: 1, sm: 0 } }}>
+          <Box sx={{ display: "flex", gap: 1, width: { xs: "100%", sm: "auto" } }}>
             <Select
               size="small"
               value={form.expiry}
@@ -1096,7 +1050,8 @@ const getPriceError = (field: string, currentForm: any): string | null => {
               displayEmpty
               sx={{
                 flexGrow: 1,
-                minWidth: 160,
+                minWidth: { xs: 0, sm: 160 },
+                width: "100%",
                 height: 32,
                 fontSize: "0.8rem",
               }}
@@ -1118,183 +1073,186 @@ const getPriceError = (field: string, currentForm: any): string | null => {
         </Box>
 
         {/* Prices Row */}
-<Box 
-  id="prices-row" 
-  sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1, mb: 1 }}
->
-  {(["entry", "target", "stopLoss"] as const).map((field) => {
-    const errorMsg = getPriceError(field, form);
-    const label = field === "entry" ? "Entry" : field === "target" ? "Target" : "Stop Loss";
+        <Box
+          id="prices-row"
+          sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1, mb: 1 }}
+        >
+          {(["entry", "target", "stopLoss"] as const).map((field) => {
+            const errorMsg = getPriceError(field, form);
+            const label = field === "entry" ? "Entry" : field === "target" ? "Target" : "Stop Loss";
 
-    return (
-      <TextField
-        key={field}
-        required
-        label={label}
-        size="small"
-        type="number"
-        value={form[field]}
-        onChange={handlePriceChange(field)}
-        // Only shows red if validation was attempted and failed
-        error={!!errorMsg && wasValidated} 
-        sx={{ ...transparentInputSx, flex: 1 }}
-        InputProps={{
-          endAdornment: errorMsg && wasValidated ? (
-            <InputAdornment position="end">
-              <Tooltip title={errorMsg} arrow placement="top">
-                <ErrorOutlineIcon color="error" sx={{ cursor: "pointer", fontSize: '1.1rem' }} />
-              </Tooltip>
-            </InputAdornment>
-          ) : null,
-        }}
-      />
-    );
-  })}
-</Box>
+            return (
+              <TextField
+                key={field}
+                required
+                label={label}
+                size="small"
+                type="number"
+                value={form[field]}
+                onChange={handlePriceChange(field)}
+                // Only shows red if validation was attempted and failed
+                error={!!errorMsg && wasValidated}
+                sx={{ ...transparentInputSx, flex: 1 }}
+                InputProps={{
+                  endAdornment: errorMsg && wasValidated ? (
+                    <InputAdornment position="end">
+                      <Tooltip title={errorMsg} arrow placement="top">
+                        <ErrorOutlineIcon color="error" sx={{ cursor: "pointer", fontSize: '1.1rem' }} />
+                      </Tooltip>
+                    </InputAdornment>
+                  ) : null,
+                }}
+              />
+            );
+          })}
+        </Box>
 
         {/* Switched Options Row */}
         <Box
-  sx={{
-    display: "flex",
-    flexDirection: { xs: "column", md: "row" },
-    justifyContent: "space-between",
-    mb: 1,
-    gap: { xs: 2, md: 1.5 },
-  }}
->
-  {[
-    { label: "Range", field: "rangeEnabled" as const, p1: "Lower Entry", p2: "Upper Entry", v1: "entryLow" as const, v2: "entryUpper" as const },
-    { label: "Secondary Target", field: "secondaryTargetEnabled" as const, p1: "T2", p2: "T3", v1: "target2" as const, v2: "target3" as const },
-    { label: "Stop Loss 2", field: "stopLoss2Enabled" as const, p1: "SL2", p2: "SL3", v1: "stopLoss2" as const, v2: "stopLoss3" as const },
-  ].map((cfg) => {
-    const isActive = form[cfg.field];
-
-    return (
-      <Box
-        key={cfg.label}
-        sx={{
-          textAlign: "center",
-          flex: 1,
-          border: "1px solid rgba(0,0,0,0.08)",
-          borderRadius: 2,
-          p: 1.5,
-          backgroundColor: isActive ? "rgba(25, 118, 210, 0.02)" : "transparent",
-          transition: "all 0.2s ease",
-        }}
-      >
-        {/* Header with Switch */}
-        <Box
           sx={{
             display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 1,
-            mb: 1.5,
+            flexDirection: { xs: "column", md: "row" },
+            justifyContent: "space-between",
+            mb: 1,
+            gap: { xs: 2, md: 1.5 },
           }}
         >
-          <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: isActive ? "primary.main" : "text.secondary" }}>
-            {cfg.label}
-          </Typography>
-          <Switch
-            size="small"
-            checked={isActive}
-            onChange={() => handleToggle(cfg.field)}
-          />
-        </Box>
+          {[
+            { label: "Range", field: "rangeEnabled" as const, p1: "Lower Entry", p2: "Upper Entry", v1: "entryLow" as const, v2: "entryUpper" as const },
+            { label: "Secondary Target", field: "secondaryTargetEnabled" as const, p1: "T2", p2: "T3", v1: "target2" as const, v2: "target3" as const },
+            { label: "Stop Loss 2", field: "stopLoss2Enabled" as const, p1: "SL2", p2: "SL3", v1: "stopLoss2" as const, v2: "stopLoss3" as const },
+          ].map((cfg) => {
+            const isActive = form[cfg.field];
 
-        {/* Inputs Column */}
-        <Box 
-          sx={{ 
-            display: "flex", 
-            flexDirection: "column", 
-            gap: 1.5, 
-            justifyContent: "center",
-            alignItems: "center" 
-          }}
-        >
-          {isActive ? (
-            <>
-              {[
-                { id: cfg.v1, placeholder: cfg.p1 },
-                { id: cfg.v2, placeholder: cfg.p2 }
-              ].map((input) => {
-                const errorMsg = getPriceError(input.id, form);
-                return (
-                  <TextField
-                    key={input.id}
-                    value={form[input.id]}
-                    onChange={handlePriceChange(input.id)}
-                    placeholder={input.placeholder}
+            return (
+              <Box
+                key={cfg.label}
+                sx={{
+                  textAlign: "center",
+                  flex: 1,
+                  minWidth: 0,
+                  width: { xs: "100%", md: "auto" },
+                  border: "1px solid rgba(0,0,0,0.08)",
+                  borderRadius: 2,
+                  p: { xs: 1.25, sm: 1.5 },
+                  backgroundColor: isActive ? "rgba(25, 118, 210, 0.02)" : "transparent",
+                  transition: "all 0.2s ease",
+                  boxSizing: "border-box",
+                }}
+              >
+                {/* Header with Switch */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 1,
+                    mb: 1.5,
+                  }}
+                >
+                  <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: isActive ? "primary.main" : "text.secondary" }}>
+                    {cfg.label}
+                  </Typography>
+                  <Switch
                     size="small"
-                    variant="outlined"
-                    error={!!errorMsg && wasValidated}
-                    sx={{
-                      width: "100%",
-                      "& .MuiInputBase-input": {
-                        py: 1,
-                        fontSize: "0.7rem",
-                        textAlign: "center",
-                      },
-                    }}
-                    InputProps={{
-                      endAdornment: errorMsg && wasValidated ? (
-                        <InputAdornment position="end">
-                          <Tooltip title={errorMsg} arrow placement="top">
-                            <ErrorOutlineIcon color="error" sx={{ fontSize: '1rem' }} />
-                          </Tooltip>
-                        </InputAdornment>
-                      ) : null,
-                    }}
+                    checked={isActive}
+                    onChange={() => handleToggle(cfg.field)}
                   />
-                );
-              })}
-            </>
-          ) : (
-            <>
-              {/* Stacked Disabled Placeholders */}
-              <Button
-                disabled
-                fullWidth
-                size="small"
-                variant="outlined"
-                sx={{
-                  py: 0.5,
-                  fontSize: "0.65rem",
-                  height: 32,
-                  backgroundColor: "#f9fafb",
-                  borderColor: "#f3f4f6",
-                  color: "#9ca3af !important",
-                  textTransform: "none",
-                  borderStyle: "dashed"
-                }}
-              >
-                Disabled
-              </Button>
-              <Button
-                disabled
-                fullWidth
-                size="small"
-                variant="outlined"
-                sx={{
-                  py: 0.5,
-                  fontSize: "0.65rem",
-                  height: 32,
-                  backgroundColor: "#f9fafb",
-                  borderColor: "#f3f4f6",
-                  color: "#9ca3af !important",
-                  textTransform: "none",
-                  borderStyle: "dashed"
-                }}
-              >
-                Disabled
-              </Button>
-            </>
-          )}
+                </Box>
+
+                {/* Inputs Column */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 1.5,
+                    justifyContent: "center",
+                    alignItems: "center"
+                  }}
+                >
+                  {isActive ? (
+                    <>
+                      {[
+                        { id: cfg.v1, placeholder: cfg.p1 },
+                        { id: cfg.v2, placeholder: cfg.p2 }
+                      ].map((input) => {
+                        const errorMsg = getPriceError(input.id, form);
+                        return (
+                          <TextField
+                            key={input.id}
+                            value={form[input.id]}
+                            onChange={handlePriceChange(input.id)}
+                            placeholder={input.placeholder}
+                            size="small"
+                            variant="outlined"
+                            error={!!errorMsg && wasValidated}
+                            sx={{
+                              width: "100%",
+                              "& .MuiInputBase-input": {
+                                py: 1,
+                                fontSize: "0.7rem",
+                                textAlign: "center",
+                              },
+                            }}
+                            InputProps={{
+                              endAdornment: errorMsg && wasValidated ? (
+                                <InputAdornment position="end">
+                                  <Tooltip title={errorMsg} arrow placement="top">
+                                    <ErrorOutlineIcon color="error" sx={{ fontSize: '1rem' }} />
+                                  </Tooltip>
+                                </InputAdornment>
+                              ) : null,
+                            }}
+                          />
+                        );
+                      })}
+                    </>
+                  ) : (
+                    <>
+                      {/* Stacked Disabled Placeholders */}
+                      <Button
+                        disabled
+                        fullWidth
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                          py: 0.5,
+                          fontSize: "0.65rem",
+                          height: 32,
+                          backgroundColor: "#f9fafb",
+                          borderColor: "#f3f4f6",
+                          color: "#9ca3af !important",
+                          textTransform: "none",
+                          borderStyle: "dashed"
+                        }}
+                      >
+                        Disabled
+                      </Button>
+                      <Button
+                        disabled
+                        fullWidth
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                          py: 0.5,
+                          fontSize: "0.65rem",
+                          height: 32,
+                          backgroundColor: "#f9fafb",
+                          borderColor: "#f3f4f6",
+                          color: "#9ca3af !important",
+                          textTransform: "none",
+                          borderStyle: "dashed"
+                        }}
+                      >
+                        Disabled
+                      </Button>
+                    </>
+                  )}
+                </Box>
+              </Box>
+            );
+          })}
         </Box>
-      </Box>
-    );
-  })}
-</Box>
 
         {/* Holding period & Rationale Container */}
         <Box
@@ -1317,12 +1275,12 @@ const getPriceError = (field: string, currentForm: any): string | null => {
               {/* Intraday Logic */}
               {form.tradeType === "Intraday" && (
                 <RadioGroup
-  row
-  value="0"
-  onChange={(e) =>
-    dispatch({ type: "SET_FIELD", field: "holdingPeriod", value: "0" })
-  }
->
+                  row
+                  value="0"
+                  onChange={() =>
+                    dispatch({ type: "SET_FIELD", field: "holdingPeriod", value: "0" })
+                  }
+                >
                   <FormControlLabel value={form.holdingPeriod} control={<Radio size="small" color="primary" />} label={<Typography sx={{ fontSize: '0.65rem' }}>0</Typography>} checked={form.holdingPeriod === "0"} />
                 </RadioGroup>
               )}
@@ -1337,19 +1295,19 @@ const getPriceError = (field: string, currentForm: any): string | null => {
 
               {/* Short Term Logic */}
               {form.tradeType === "Short Term" && (
-                <RadioGroup row value={form.holdingPeriod} onChange={(e) => dispatch({ type: "SET_FIELD", field: "holdingPeriod", value: e.target.value })}>
-                  <FormControlLabel value="7 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 7 Days</Typography>} />
-                  <FormControlLabel value="30 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 30 Days</Typography>} />
-                  <FormControlLabel value="90 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 90 Days</Typography>} />
+                <RadioGroup row value={form.holdingPeriod} onChange={(e) => dispatch({ type: "SET_FIELD", field: "holdingPeriod", value: e.target.value })} sx={{ flexWrap: "wrap", gap: { xs: 0, sm: 0 } }}>
+                  <FormControlLabel value="7 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 7 Days</Typography>} sx={{ mr: { xs: 1, sm: 2 } }} />
+                  <FormControlLabel value="30 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 30 Days</Typography>} sx={{ mr: { xs: 1, sm: 2 } }} />
+                  <FormControlLabel value="90 Days" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 90 Days</Typography>} sx={{ mr: 0 }} />
                 </RadioGroup>
               )}
 
               {/* Long Term Logic */}
               {form.tradeType === "Long Term" && (
-                <RadioGroup row value={form.holdingPeriod} onChange={(e) => dispatch({ type: "SET_FIELD", field: "holdingPeriod", value: e.target.value })}>
-                  <FormControlLabel value="6 Months" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 6 Months</Typography>} />
-                  <FormControlLabel value="1 Year" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 1 Year</Typography>} />
-                  <FormControlLabel value="5 Years" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 5 Years</Typography>} />
+                <RadioGroup row value={form.holdingPeriod} onChange={(e) => dispatch({ type: "SET_FIELD", field: "holdingPeriod", value: e.target.value })} sx={{ flexWrap: "wrap", gap: { xs: 0, sm: 0 } }}>
+                  <FormControlLabel value="6 Months" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 6 Months</Typography>} sx={{ mr: { xs: 1, sm: 2 } }} />
+                  <FormControlLabel value="1 Year" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 1 Year</Typography>} sx={{ mr: { xs: 1, sm: 2 } }} />
+                  <FormControlLabel value="5 Years" control={<Radio size="small" />} label={<Typography sx={{ fontSize: '0.65rem' }}>Upto 5 Years</Typography>} sx={{ mr: 0 }} />
                 </RadioGroup>
               )}
               {/* This shows the red text below the radios if empty */}
@@ -1362,7 +1320,7 @@ const getPriceError = (field: string, currentForm: any): string | null => {
           {/* BOTTOM PART: Rationale (Now appears under Holding Period) */}
           <Box sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 0.5 }}>
             <Typography sx={{ fontSize: '0.7rem', fontWeight: 700 }}>Rationale</Typography>
-            <Box sx={{ width: "100%" }}>
+            <Box sx={{ width: "100%", overflowX: "auto", WebkitOverflowScrolling: "touch", pb: 0.25 }}>
               <ToggleButtonGroup
                 size="small"
                 exclusive
@@ -1370,11 +1328,14 @@ const getPriceError = (field: string, currentForm: any): string | null => {
                 onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "rationale", value: val })}
                 sx={{
                   backgroundColor: "#eef2f7",
-                  whiteSpace: "nowrap",
+                  display: "flex",
+                  flexWrap: "wrap",
+                  maxWidth: "100%",
                   "& .MuiToggleButtonGroup-grouped": {
                     border: "none",
-                    px: 1,
-                    fontSize: "0.65rem",
+                    px: { xs: 1.2, sm: 1 },
+                    py: { xs: 0.6, sm: 0.4 },
+                    fontSize: { xs: "0.7rem", sm: "0.65rem" },
                     fontWeight: 700,
                     color: "#6b7280",
                     "&.Mui-selected": {
@@ -1490,13 +1451,13 @@ const getPriceError = (field: string, currentForm: any): string | null => {
             >
               Upload Media
             </Button>
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <Typography sx={{ fontSize: '0.65rem', fontWeight: 600 }}>Is this an Algo Powered Recommendation?</Typography>
-              <Switch size="small" />
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 0.5 }}>
+              <Typography sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem' }, fontWeight: 600, lineHeight: 1.3 }}>Is this an Algo Powered Recommendation?</Typography>
+              <Switch size="small" sx={{ flexShrink: 0 }} />
             </Box>
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <Typography sx={{ fontSize: '0.65rem', fontWeight: 600 }}>Vested Interest?</Typography>
-              <Switch size="small" />
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 0.5 }}>
+              <Typography sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem' }, fontWeight: 600, lineHeight: 1.3 }}>Vested Interest?</Typography>
+              <Switch size="small" sx={{ flexShrink: 0 }} />
             </Box>
           </Box>
         </Box>
@@ -1504,22 +1465,24 @@ const getPriceError = (field: string, currentForm: any): string | null => {
         <Box
           sx={{
             display: "flex",
-            gap: 2,
+            flexDirection: { xs: "column", sm: "row" },
+            gap: { xs: 1, sm: 2 },
             mt: 2,
-            justifyContent: "flex-start", // change to "space-between" if needed
+            justifyContent: "flex-start",
           }}
         >
           <Button
-  variant="contained"
-  onClick={validateAndPublish} // Hits validation first
-  sx={{ fontWeight: 700, px: 4 }}
->
-  {isErrataMode ? "Create Errata" : "Publish Call"}
-</Button>
+            variant="contained"
+            onClick={validateAndPublish}
+            sx={{ fontWeight: 700, px: { xs: 2, sm: 4 }, width: { xs: "100%", sm: "auto" } }}
+          >
+            {isErrataMode ? "Create Errata" : "Publish Call"}
+          </Button>
 
           <Button
             variant="outlined"
-            onClick={handleTrack}   // <-- create this function
+            onClick={handleTrack}
+            sx={{ width: { xs: "100%", sm: "auto" } }}
           >
             Track
           </Button>
