@@ -1,14 +1,34 @@
 import { AppBar, Toolbar, Typography, Box, IconButton } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
+import type { SidebarItem } from "../../types/sidebar";
 
 interface HeaderProps {
   onMenuClick?: () => void;
+  items: SidebarItem[];
 }
 
-const Header = ({ onMenuClick }: HeaderProps) => {
+const Header = ({ onMenuClick, items }: HeaderProps) => {
   const HEADER_HEIGHT = 64;
   const [now, setNow] = useState(new Date());
+  const location = useLocation();
+
+  const currentTitle = useMemo(() => {
+    const pathname = location.pathname.toLowerCase();
+
+    // Sort items by path length (longest first) so more specific routes match first
+    const sorted = [...items].sort((a, b) => b.path.length - a.path.length);
+
+    const match = sorted.find((item) => {
+      const itemPath = item.path.toLowerCase();
+      // For root path "/", only match exactly
+      if (itemPath === "/") return pathname === "/";
+      return pathname.startsWith(itemPath);
+    });
+
+    return match?.label ?? "Dashboard";
+  }, [items, location.pathname]);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
@@ -65,7 +85,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
               display: { xs: "block", sm: "none" },
             }}
           >
-            Recommendations
+            {currentTitle}
           </Typography>
 
           {/* Desktop page title */}
@@ -77,7 +97,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
               display: { xs: "none", sm: "block" },
             }}
           >
-            Recommendations
+            {currentTitle}
           </Typography>
         </Box>
 
@@ -107,4 +127,5 @@ const Header = ({ onMenuClick }: HeaderProps) => {
 };
 
 export default Header;
+
 

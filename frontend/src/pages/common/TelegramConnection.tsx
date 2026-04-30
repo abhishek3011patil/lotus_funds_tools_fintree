@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { Typography, Paper, TextField, Stack, Box, Button, Alert } from "@mui/material";
+import {
+    Typography,
+    Paper,
+    TextField,
+    Stack,
+    Box,
+    Button,
+    Alert
+} from "@mui/material";
 import axios from "axios";
 
 const TelegramConnection = () => {
@@ -10,6 +18,16 @@ const TelegramConnection = () => {
     const [error, setError] = useState("");
     const [cooldown, setCooldown] = useState(0);
 
+    // 🔁 Restore from localStorage
+    useEffect(() => {
+        const savedStep = localStorage.getItem("tg_step");
+        const savedPhone = localStorage.getItem("tg_phone");
+
+        if (savedStep) setStep(savedStep as any);
+        if (savedPhone) setPhone(savedPhone);
+    }, []);
+
+    // ⏳ Cooldown timer
     useEffect(() => {
         if (cooldown > 0) {
             const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
@@ -17,6 +35,7 @@ const TelegramConnection = () => {
         }
     }, [cooldown]);
 
+    // 🔍 Check backend status (overrides local state if connected)
     useEffect(() => {
         const checkTelegram = async () => {
             try {
@@ -31,6 +50,7 @@ const TelegramConnection = () => {
 
                 if (res.data.connected) {
                     setStep("connected");
+                    localStorage.setItem("tg_step", "connected");
                 }
             } catch (err) {
                 console.error(err);
@@ -77,7 +97,11 @@ const TelegramConnection = () => {
                                 variant="contained"
                                 size="large"
                                 disabled={loading || !phone || cooldown > 0}
-                                sx={{ minWidth: 160, textTransform: "none", fontSize: "1.1rem" }}
+                                sx={{
+                                    minWidth: 160,
+                                    textTransform: "none",
+                                    fontSize: "1.1rem"
+                                }}
                                 onClick={async () => {
                                     try {
                                         setLoading(true);
@@ -102,8 +126,16 @@ const TelegramConnection = () => {
 
                                         setStep("otp");
                                         setCooldown(30);
+
+                                        // ✅ persist
+                                        localStorage.setItem("tg_step", "otp");
+                                        localStorage.setItem("tg_phone", phone);
+
                                     } catch (err: any) {
-                                        setError(err?.response?.data?.message || "Failed to send OTP");
+                                        setError(
+                                            err?.response?.data?.message ||
+                                            "Failed to send OTP"
+                                        );
                                     } finally {
                                         setLoading(false);
                                     }
@@ -151,8 +183,18 @@ const TelegramConnection = () => {
                                         );
 
                                         setStep("connected");
+
+                                        // ✅ persist
+                                        localStorage.setItem("tg_step", "connected");
+
+                                        // ❌ remove phone (optional)
+                                        localStorage.removeItem("tg_phone");
+
                                     } catch (err: any) {
-                                        setError(err?.response?.data?.message || "OTP verification failed");
+                                        setError(
+                                            err?.response?.data?.message ||
+                                            "OTP verification failed"
+                                        );
                                     } finally {
                                         setLoading(false);
                                     }
@@ -161,7 +203,13 @@ const TelegramConnection = () => {
                                 {loading ? "Verifying..." : "Verify OTP"}
                             </Button>
 
-                            <Button variant="outlined" onClick={() => setStep("phone")}>
+                            <Button
+                                variant="outlined"
+                                onClick={() => {
+                                    setStep("phone");
+                                    localStorage.setItem("tg_step", "phone");
+                                }}
+                            >
                                 Change Number
                             </Button>
                         </Stack>
@@ -171,11 +219,15 @@ const TelegramConnection = () => {
                 {/* STEP 3: CONNECTED */}
                 {step === "connected" && (
                     <Stack spacing={2}>
-                        <Alert severity="success">Telegram Connected Successfully</Alert>
+                        <Alert severity="success">
+                            Telegram Connected Successfully
+                        </Alert>
 
                         <Typography variant="body2">
                             Connected Number:{" "}
-                            {phone.replace(/(\d{2})\d{6}(\d{2})/, "$1******$2")}
+                            {phone
+                                ? phone.replace(/(\d{2})\d{6}(\d{2})/, "$1******$2")
+                                : "Hidden"}
                         </Typography>
 
                         <Button
@@ -185,6 +237,9 @@ const TelegramConnection = () => {
                                 setPhone("");
                                 setOtp("");
 
+                                // ✅ clear localStorage
+                                localStorage.removeItem("tg_step");
+                                localStorage.removeItem("tg_phone");
                             }}
                         >
                             Reconnect
