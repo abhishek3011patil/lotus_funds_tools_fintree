@@ -45,7 +45,6 @@ const upload = multer({ storage });
 
 router.post(
   "/register-ra",
-  authenticate,
   upload.fields([
     { name: "profile_image", maxCount: 1 },
     { name: "pan_card", maxCount: 1 },
