@@ -919,6 +919,14 @@ const getPriceError = (field: string, currentForm: any): string | null => {
         height: "auto",
         p: { xs: 1, sm: 1.5 },
         boxSizing: "border-box",
+ 
+    // FIX FOR MOBILE
+    width: "100%",
+    overflowX: "hidden",       
+    "& > *": {
+      minWidth: 0, // allows both panels to shrink properly on phone
+    },
+        
       }}
     >
       {/* LEFT PANEL */}
@@ -933,7 +941,10 @@ const getPriceError = (field: string, currentForm: any): string | null => {
           display: "flex",
           flexDirection: "column",
           height: "auto",
-          minHeight: "100%",
+          // minHeight: "100%",
+          minHeight: "auto",
+width: "100%",
+maxWidth: "100%",
           gap: 1.5,
           "& .MuiTextField-root": {
             "& .MuiOutlinedInput-root": {
@@ -1021,7 +1032,13 @@ const getPriceError = (field: string, currentForm: any): string | null => {
         </Box>
 
         {/* Stock & Trade Type Row */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1, gap: 1 }}>
+        <Box sx={{ display: "flex",
+    flexDirection: { xs: "column", md: "row" }, // only mobile changes
+    alignItems: { xs: "flex-start", md: "center" },
+    justifyContent: "space-between",
+    mb: 1,
+    gap: 1,
+    width: "100%", }}>
           {/* STOCK / INDEX GROUP */}
           <ToggleButtonGroup
             size="small"
@@ -1051,7 +1068,15 @@ const getPriceError = (field: string, currentForm: any): string | null => {
           </ToggleButtonGroup>
 
           {/* TRADE TYPE GROUP */}
-          <Box sx={{ overflowX: "auto" }}>
+          <Box sx={{     width: { xs: "100%", md: "auto" },
+    overflowX: { xs: "auto", md: "visible" },
+    overflowY: "hidden",
+    WebkitOverflowScrolling: "touch",
+
+    "&::-webkit-scrollbar": {
+      display: "none",
+    },
+    scrollbarWidth: "none", }}>
             <ToggleButtonGroup
               size="small"
               exclusive
@@ -1364,7 +1389,17 @@ const getPriceError = (field: string, currentForm: any): string | null => {
           }}
         >
           {/* TOP PART: Holding Period */}
-          <Box sx={{ width: "100%" }}>
+          <Box sx={{ width: "100%",
+    maxWidth: "100%",
+    overflowX: { xs: "auto", md: "visible" },
+    overflowY: "hidden",
+    boxSizing: "border-box",
+    pr: { xs: 1, md: 0 },
+
+    "&::-webkit-scrollbar": {
+      display: "none",
+    },
+    scrollbarWidth: "none", }}>
             <FormControl
               fullWidth
               error={wasValidated && !form.holdingPeriod && form.tradeType !== "Intraday"}
@@ -1426,25 +1461,35 @@ const getPriceError = (field: string, currentForm: any): string | null => {
                 exclusive
                 value={form.rationale}
                 onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "rationale", value: val })}
-                sx={{
-                  backgroundColor: "#eef2f7",
-                  whiteSpace: "nowrap",
-                  "& .MuiToggleButtonGroup-grouped": {
-                    border: "none",
-                    px: 1,
-                    fontSize: "0.65rem",
-                    fontWeight: 700,
-                    color: "#6b7280",
-                    "&.Mui-selected": {
-                      backgroundColor: "#4f6bed",
-                      color: "#fff",
-                      "&:hover": {
-                        backgroundColor: "#3b51c5",
-                      },
-                    },
-                  },
-                }}
-              >
+sx={{
+  backgroundColor: "#eef2f7",
+
+  // Mobile only fix
+  display: "flex",
+  flexWrap: { xs: "wrap", md: "nowrap" },
+  width: "100%",
+
+  "& .MuiToggleButtonGroup-grouped": {
+    border: "none",
+
+    // 2 buttons per row on phone
+    flex: { xs: "0 0 calc(50% - 4px)", md: "unset" },
+
+    px: 1,
+    fontSize: "0.65rem",
+    fontWeight: 700,
+    color: "#6b7280",
+
+    "&.Mui-selected": {
+      backgroundColor: "#4f6bed",
+      color: "#fff",
+      "&:hover": {
+        backgroundColor: "#3b51c5",
+      },
+    },
+  },
+}}
+>
                 <ToggleButton value="Overbought Condition">OVERBOUGHT</ToggleButton>
                 <ToggleButton value="Oversold Condition">OVERSOLD</ToggleButton>
                 <ToggleButton value="Momentum Play">MOMENTUM</ToggleButton>
