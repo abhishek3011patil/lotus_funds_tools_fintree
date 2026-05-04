@@ -112,13 +112,6 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized user (missing user_id)",
-      });
-    }
-
     data.email = data.email.trim().toLowerCase();
 
     // ================= CHECK EXISTING =================
