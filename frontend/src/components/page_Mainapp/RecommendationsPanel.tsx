@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { memo, useMemo } from "react";
 import {
     Box,
     Paper,
@@ -21,7 +21,7 @@ type Props = {
     onInitiate: (item: any) => void;
 };
 
-const RecommendationsPanel = React.memo(
+const RecommendationsPanel = memo(
     ({ recommendations, loading, onModify, onExit, onInitiate }: Props) => {
         const activeRecommendations = useMemo(
             () => recommendations.filter((item) => item.status === "PUBLISHED"),
@@ -45,7 +45,13 @@ const RecommendationsPanel = React.memo(
         return (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 {/* ================= ACTIVE ================= */}
-                <Paper sx={{ p: 2, overflow: "hidden", borderRadius: 2 }}>
+                <Paper
+                    sx={{
+                        p: { xs: 1, sm: 2 },
+                        overflow: { xs: "visible", sm: "hidden" },
+                        borderRadius: 2,
+                    }}
+                >
                     <Box
                         sx={{
                             display: "flex",
@@ -84,8 +90,16 @@ const RecommendationsPanel = React.memo(
                             />
                         </Box>
                     ) : (
-                        <TableContainer sx={{ maxHeight: 400 }}>
-                            <Table size="small" stickyHeader>
+                        <TableContainer
+                            sx={{
+                                maxHeight: 400,
+                                width: "100%",
+                                minWidth: 0,
+                                overflowX: "auto",
+                                WebkitOverflowScrolling: "touch",
+                            }}
+                        >
+                            <Table size="small" stickyHeader sx={{ minWidth: { xs: 420, sm: "auto" } }}>
                                 <TableHead>
                                     <TableRow>
                                         <TableCell sx={{ fontSize: "0.65rem", color: "#999", fontWeight: 700, px: 1, backgroundColor: "#fff" }}>
@@ -221,7 +235,13 @@ const RecommendationsPanel = React.memo(
                 </Paper>
 
                 {/* ================= WATCHLIST ================= */}
-                <Paper sx={{ p: 2, overflow: "hidden", borderRadius: 2 }}>
+                <Paper
+                    sx={{
+                        p: { xs: 1, sm: 2 },
+                        overflow: { xs: "visible", sm: "hidden" },
+                        borderRadius: 2,
+                    }}
+                >
                     <Box
                         sx={{
                             display: "flex",
@@ -250,8 +270,16 @@ const RecommendationsPanel = React.memo(
                         </Box>
                     </Box>
 
-                    <TableContainer sx={{ maxHeight: 400 }}>
-                        <Table size="small" stickyHeader>
+                    <TableContainer
+                        sx={{
+                            maxHeight: 400,
+                            width: "100%",
+                            minWidth: 0,
+                            overflowX: "auto",
+                            WebkitOverflowScrolling: "touch",
+                        }}
+                    >
+                        <Table size="small" stickyHeader sx={{ minWidth: { xs: 420, sm: "auto" } }}>
                             <TableHead>
                                 <TableRow>
                                     <TableCell sx={{ fontSize: "0.65rem", color: "#999", fontWeight: 700, px: 1, backgroundColor: "#fff" }}>
