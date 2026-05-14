@@ -36,6 +36,7 @@ export interface PlanCardProps {
   highlighted?: boolean;
   featuredBenefits: PlanFeature[];
   additionalBenefits: PlanBenefit[];
+  onGetStarted?: () => void;
 }
 
 const PlanCard: React.FC<PlanCardProps> = ({
@@ -55,6 +56,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
   highlighted = false,
   featuredBenefits,
   additionalBenefits,
+  onGetStarted,
 }) => {
   const currentPrice = isAnnual ? annualPrice : monthlyPrice;
   const originalPrice = isAnnual ? annualOriginalPrice : monthlyOriginalPrice;
@@ -172,6 +174,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
       <Button
         variant="contained"
         fullWidth
+        onClick={onGetStarted}
         sx={{
           bgcolor: ctaColor,
           color: ctaTextColor,

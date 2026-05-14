@@ -108,7 +108,7 @@ export default function RecommendationHistory({
 
   // Pagination
   const [page, setPage] = useState(1);
-  const rowsPerPage = 5;
+  const rowsPerPage = 10;
 
   // Fetch data
   useEffect(() => {

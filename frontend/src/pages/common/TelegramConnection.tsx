@@ -23,7 +23,9 @@ const TelegramConnection = () => {
         const savedStep = localStorage.getItem("tg_step");
         const savedPhone = localStorage.getItem("tg_phone");
 
-        if (savedStep) setStep(savedStep as any);
+        if (savedStep === "phone" || savedStep === "otp" || savedStep === "connected") {
+            setStep(savedStep);
+        }
         if (savedPhone) setPhone(savedPhone);
     }, []);
 
@@ -61,16 +63,17 @@ const TelegramConnection = () => {
     }, []);
 
     return (
-        <Box sx={{ mt: 4 }}>
+        <Box sx={{ mt: 4, width: "100%" }}>
             <Paper
                 sx={{
                     p: 3,
                     border: "1px solid #E9E9EE",
                     borderRadius: 2,
                     boxShadow: "none",
+                    width: "100%",
                 }}
             >
-                <Typography variant="h6" fontWeight={600} mb={2}>
+                <Typography variant="h6" fontWeight={700} sx={{ fontSize: 20, mb: 2 }}>
                     Connect Telegram
                 </Typography>
 
@@ -90,7 +93,11 @@ const TelegramConnection = () => {
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
                             size="small"
-                            sx={{ width: { xs: "100%", sm: "50%" } }}
+                            sx={{
+                                width: { xs: "100%", sm: "50%", md: "33%" },
+                                "& .MuiInputLabel-root": { fontSize: 14 },
+                                "& .MuiInputBase-input": { fontSize: 15 },
+                            }}
                         />
 
                         <Box sx={{ textAlign: "left", mt: 1 }}>
@@ -101,7 +108,7 @@ const TelegramConnection = () => {
                                 sx={{
                                     minWidth: 160,
                                     textTransform: "none",
-                                    fontSize: "1.1rem"
+                                    fontSize: 15,
                                 }}
                                 onClick={async () => {
                                     try {
@@ -132,11 +139,15 @@ const TelegramConnection = () => {
                                         localStorage.setItem("tg_step", "otp");
                                         localStorage.setItem("tg_phone", phone);
 
-                                    } catch (err: any) {
-                                        setError(
-                                            err?.response?.data?.message ||
-                                            "Failed to send OTP"
-                                        );
+                                    } catch (err: unknown) {
+                                        if (axios.isAxiosError(err)) {
+                                            setError(
+                                                err.response?.data?.message ||
+                                                "Failed to send OTP"
+                                            );
+                                        } else {
+                                            setError("Failed to send OTP");
+                                        }
                                     } finally {
                                         setLoading(false);
                                     }
@@ -160,7 +171,11 @@ const TelegramConnection = () => {
                             value={otp}
                             onChange={(e) => setOtp(e.target.value)}
                             size="small"
-                            sx={{ width: { xs: "100%", sm: "50%" } }}
+                            sx={{
+                                width: { xs: "100%", sm: "50%", md: "33%" },
+                                "& .MuiInputLabel-root": { fontSize: 14 },
+                                "& .MuiInputBase-input": { fontSize: 15 },
+                            }}
                         />
 
                         <Stack direction="row" spacing={2}>
@@ -192,11 +207,15 @@ const TelegramConnection = () => {
                                         // ❌ remove phone (optional)
                                         localStorage.removeItem("tg_phone");
 
-                                    } catch (err: any) {
-                                        setError(
-                                            err?.response?.data?.message ||
-                                            "OTP verification failed"
-                                        );
+                                    } catch (err: unknown) {
+                                        if (axios.isAxiosError(err)) {
+                                            setError(
+                                                err.response?.data?.message ||
+                                                "OTP verification failed"
+                                            );
+                                        } else {
+                                            setError("OTP verification failed");
+                                        }
                                     } finally {
                                         setLoading(false);
                                     }

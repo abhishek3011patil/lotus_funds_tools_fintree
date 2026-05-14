@@ -252,11 +252,9 @@ if (existingUser.rows.length > 0) {
     });
 
     // ================= SEND EMAIL =================
-    const link =
-      `${process.env.FRONTEND_URL}/set-password?token=${token}`;
-
+    const link = `${process.env.FRONTEND_URL}/subscription?token=${token}`;
     await sendApprovalMail(email, name, link);
-
+    
     return res.json({
       success: true,
       message: `${type} approved successfully ✅`,

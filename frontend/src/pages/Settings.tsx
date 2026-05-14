@@ -49,15 +49,29 @@ const Settings = () => {
         </Alert>
       )}
 
-      <div style={{ marginBottom: "30px" }}>
+      <div
+        style={{
+          marginBottom: "30px",
+          width: "100%",
+          maxWidth: "1000px",
+        }}
+      >
         <ChangePassword />
       </div>
 
-      <div style={{ marginBottom: "30px" }}>
+      <div
+        style={{
+          marginBottom: "30px",
+          width: "100%",
+          maxWidth: "1000px",
+        }}
+      >
         <AddParticipant />
       </div>
 
-      <TelegramConnection />
+      <div style={{ width: "100%", maxWidth: "1000px" }}>
+        <TelegramConnection />
+      </div>
     </div>
   );
 };

@@ -56,10 +56,15 @@ const AdminDashboard = () => {
   const [panelMode, setPanelMode] = useState<"ra" | "participant">("ra");
 
   type Participant = {
-  id: string; // ✅ DB ID (IMPORTANT)
-  telegram_user_id: number;
+  id: string;
+
+  telegram_user_id: number | string;
+
   telegram_client_name: string;
+
   phone_number?: string;
+
+  entity_type?: "USER" | "GROUP" | "CHANNEL";
 };
 
 const [participantsList, setParticipantsList] = useState<Participant[]>([]);
@@ -650,7 +655,7 @@ setParticipantUsername("");
                   <TextField
                     fullWidth
                     size="small"
-                    placeholder="Search by Phone or Username"
+                    placeholder="Search by Phone, Username, Group or Channel"
                     value={participantSearchQuery}
                     onChange={(e) => setParticipantSearchQuery(e.target.value)}
                     sx={{ mb: 2 }}
@@ -669,58 +674,99 @@ setParticipantUsername("");
                     <TableContainer component={Paper} sx={{ overflowX: "auto" }}>
                       <Table size="small" sx={{ minWidth: 400 }}>
                         <TableHead>
-                          <TableRow>
-                            <TableCell>Phone</TableCell>
-                            <TableCell>Username</TableCell>
-                            <TableCell>Userid</TableCell>
-                          </TableRow>
-                        </TableHead>
+  <TableRow>
+    <TableCell>Type</TableCell>
+    <TableCell>Phone</TableCell>
+    <TableCell>Username</TableCell>
+    <TableCell>User ID</TableCell>
+  </TableRow>
+</TableHead>
 
                         <TableBody>
-                          {participantsList
-                            .filter((p) => {
-                              const q = participantSearchQuery.trim().toLowerCase();
-                              if (!q) return true;
-                              return (
-                                String(p.phone_number || "").toLowerCase().includes(q) ||
-                                String(p.telegram_client_name || "").toLowerCase().includes(q) ||
-                                String(p.telegram_user_id || "").toLowerCase().includes(q)
-                              );
-                            })
-                            .map((p) => {
-                              // Check editing based on telegram_user_id
-                              const isRowEditing = editingCell?.id === String(p.telegram_user_id);
+  {participantsList
+    .filter((p) => {
+      const q = participantSearchQuery.trim().toLowerCase();
 
-                              return (
-                                <TableRow
-  key={p.id} // ✅ correct
-  selected={participant?.id === p.id} // ✅ FIX
-  onClick={() => {
-    if (isRowEditing) return;
-    setParticipant(p);
-    setParticipantUsername(p.telegram_client_name || "");
-  }}
-  sx={{ cursor: "pointer" }}
->
-                                  <TableCell>
-                                    {renderEditableCell(p, "phone_number", p.phone_number)}
-                                  </TableCell>
+      if (!q) return true;
 
-                                  <TableCell>
-                                    {renderEditableCell(
-                                      p,
-                                      "telegram_client_name",
-                                      p.telegram_client_name
-                                    )}
-                                  </TableCell>
+      return (
+        String(p.phone_number || "")
+          .toLowerCase()
+          .includes(q) ||
 
-                                  <TableCell>
-                                    {p.telegram_user_id}
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                        </TableBody>
+        String(p.telegram_client_name || "")
+          .toLowerCase()
+          .includes(q) ||
+
+        String(p.telegram_user_id || "")
+          .toLowerCase()
+          .includes(q) ||
+
+        String(p.entity_type || "")
+          .toLowerCase()
+          .includes(q)
+      );
+    })
+    .map((p) => {
+      const isRowEditing =
+        editingCell?.id === String(p.id);
+
+      const type = p.entity_type || "USER";
+
+      return (
+        <TableRow
+          key={p.id}
+          selected={participant?.id === p.id}
+          onClick={() => {
+            if (isRowEditing) return;
+
+            setParticipant(p);
+
+            setParticipantUsername(
+              p.telegram_client_name || ""
+            );
+          }}
+          sx={{ cursor: "pointer" }}
+        >
+          {/* TYPE */}
+          <TableCell>
+            {type === "GROUP"
+              ? "👥 Group"
+              : type === "CHANNEL"
+              ? "📢 Channel"
+              : "👤 User"}
+          </TableCell>
+
+          {/* PHONE */}
+          <TableCell>
+            {type === "USER"
+              ? renderEditableCell(
+                  p,
+                  "phone_number",
+                  p.phone_number
+                )
+              : type === "GROUP"
+              ? "Group"
+              : "Channel"}
+          </TableCell>
+
+          {/* USERNAME */}
+          <TableCell>
+            {renderEditableCell(
+              p,
+              "telegram_client_name",
+              p.telegram_client_name
+            )}
+          </TableCell>
+
+          {/* TELEGRAM ID */}
+          <TableCell>
+            {p.telegram_user_id}
+          </TableCell>
+        </TableRow>
+      );
+    })}
+</TableBody>
                       </Table>
                     </TableContainer>
                   )}

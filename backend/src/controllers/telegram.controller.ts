@@ -75,16 +75,19 @@ export const getAllUsers = async (req: Request, res: Response) => {
 };
 
 
-export const saveTelegramUser = async (req: AuthRequest, res: Response) => {
+export const saveTelegramUser = async (
+  req: AuthRequest,
+  res: Response
+) => {
   try {
     const {
       telegram_user_id,
       telegram_client_name,
       phone_number,
-      user_id, // ✅ RA ID from frontend
+      user_id,
     } = req.body;
 
-    // ✅ 1. Validate RA ID presence
+    // ✅ Validate RA ID
     if (!user_id) {
       return res.status(400).json({
         success: false,
@@ -92,7 +95,7 @@ export const saveTelegramUser = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // ✅ 2. Ensure RA exists (prevents FK error)
+    // ✅ Ensure RA exists
     const userCheck = await pool.query(
       `SELECT id FROM users WHERE id = $1`,
       [user_id]
@@ -101,144 +104,236 @@ export const saveTelegramUser = async (req: AuthRequest, res: Response) => {
     if (userCheck.rows.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Invalid RA ID (not found in users table)",
+        message:
+          "Invalid RA ID (not found in users table)",
       });
     }
 
-    // ✅ 3. At least one field required
-    if (!telegram_user_id && !telegram_client_name && !phone_number) {
+    // ✅ At least one field required
+    if (
+      !telegram_user_id &&
+      !telegram_client_name &&
+      !phone_number
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Provide telegram_user_id or username or phone",
+        message:
+          "Provide telegram_user_id or username or phone",
       });
     }
 
-    // ✅ 4. Get RA Telegram session (optional)
+    // ✅ Get RA Telegram session
     const sessionResult = await pool.query(
-      `SELECT telegram_session FROM users WHERE id = $1`,
+      `
+      SELECT telegram_session
+      FROM users
+      WHERE id = $1
+      `,
       [user_id]
     );
 
-    const sessionString = sessionResult.rows[0]?.telegram_session;
+    const sessionString =
+      sessionResult.rows[0]?.telegram_session;
 
-    // ✅ 5. Prepare resolved values
-    let resolvedTelegramId = telegram_user_id || null;
-    let resolvedUsername = telegram_client_name || "";
+    // ✅ Default values
+    let resolvedTelegramId =
+      telegram_user_id || null;
 
-    // 👉 Normalize username if entered manually
-    if (resolvedUsername && !resolvedUsername.startsWith("@")) {
-      resolvedUsername = `@${resolvedUsername}`;
+    let resolvedUsername =
+      telegram_client_name || "";
+
+    let entityType = "USER";
+
+    // Normalize username
+    if (
+      resolvedUsername &&
+      !resolvedUsername.startsWith("@")
+    ) {
+      resolvedUsername =
+        `@${resolvedUsername}`;
     }
 
-    // ✅ 6. STRICT Telegram check ONLY if session exists
+    // ✅ Verify from Telegram if session exists
     if (sessionString) {
+
       try {
-        const client = await createClient(sessionString);
 
-        let entity: any;
+        const client =
+          await createClient(sessionString);
 
-        if (telegram_user_id) {
-          entity = await client.getEntity(telegram_user_id);
-        } else if (telegram_client_name) {
-          entity = await client.getEntity(telegram_client_name);
-        } else if (phone_number) {
-          entity = await client.getEntity(phone_number);
-        }
+        // ✅ Supports:
+        // USER
+        // GROUP
+        // CHANNEL
+        const entity: any =
+          await client.getEntity(
+            telegram_user_id ||
+            telegram_client_name ||
+            phone_number
+          );
 
         if (!entity || !entity.id) {
           return res.status(400).json({
             success: false,
-            message: "User not found on Telegram",
+            message:
+              "Telegram entity not found",
           });
         }
 
-        // ✅ Always trust Telegram data if available
-        resolvedTelegramId = entity.id.toString();
+        // ✅ Telegram ID
+        resolvedTelegramId =
+          entity.id.toString();
 
+        // ✅ Detect entity type
+        if (entity.className === "Channel") {
+          entityType = entity.megagroup
+            ? "GROUP"
+            : "CHANNEL";
+        }
+
+        if (entity.className === "Chat") {
+          entityType = "GROUP";
+        }
+
+        // ✅ Resolve name
         if (entity.username) {
-          resolvedUsername = `@${entity.username}`;
+          resolvedUsername =
+            `@${entity.username}`;
+
+        } else if (entity.title) {
+
+          resolvedUsername =
+            entity.title;
+
+        } else if (
+          entity.firstName ||
+          entity.lastName
+        ) {
+
+          resolvedUsername =
+            `${entity.firstName || ""} ${
+              entity.lastName || ""
+            }`.trim();
         }
 
       } catch (err) {
-        console.error("❌ Telegram lookup failed:", err);
+
+        console.error(
+          "❌ Telegram lookup failed:",
+          err
+        );
+
         return res.status(400).json({
           success: false,
-          message: "User not found on Telegram",
+          message:
+            "Telegram user/group/channel not found",
         });
       }
     }
 
-    // ✅ 7. SAME QUERY (unchanged)
+    // ✅ Save in DB
     const query = `
       INSERT INTO telegram_users (
         telegram_user_id,
         telegram_client_name,
         phone_number,
+        user_id,
+        entity_type
+      )
+      VALUES ($1, $2, $3, $4, $5)
+
+      ON CONFLICT (
+        telegram_user_id,
         user_id
       )
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (telegram_user_id, user_id)
+
       DO UPDATE SET
-        telegram_client_name = EXCLUDED.telegram_client_name,
-        phone_number = EXCLUDED.phone_number
+
+        telegram_client_name =
+          EXCLUDED.telegram_client_name,
+
+        phone_number =
+          EXCLUDED.phone_number,
+
+        entity_type =
+          EXCLUDED.entity_type
+
       RETURNING *;
     `;
 
-    const result = await pool.query(query, [
-      resolvedTelegramId,
-      resolvedUsername, // ✅ FIXED HERE
-      phone_number || "",
-      user_id,
-    ]);
+    const result = await pool.query(
+      query,
+      [
+        resolvedTelegramId,
+        resolvedUsername,
+        phone_number || "",
+        user_id,
+        entityType,
+      ]
+    );
 
-    
+    // ✅ AUDIT LOG (ADMIN ONLY)
+    if (req.user?.role === "ADMIN") {
 
-    // ✅ AUDIT LOG (ONLY ADMIN)
-if (req.user?.role === "ADMIN") {
-  await createAuditLog({
-    adminId: req.user?.id,
+      await createAuditLog({
+        adminId: req.user?.id,
 
-    adminName: req.user?.name || "ADMIN",
+        adminName:
+          req.user?.name || "ADMIN",
 
-    adminRole: req.user?.role || "ADMIN",
+        adminRole:
+          req.user?.role || "ADMIN",
 
-    action: "ADD",
+        action: "ADD",
 
-    module: "TELEGRAM_CLIENT",
+        module: "TELEGRAM_CLIENT",
 
-    targetEntity:
-      resolvedUsername ||
-      resolvedTelegramId ||
-      phone_number,
+        targetEntity:
+          resolvedUsername ||
+          resolvedTelegramId ||
+          phone_number,
 
-    targetType: "CLIENT",
+        targetType: entityType,
 
-    description: `Admin added Telegram client for RA ID ${user_id}`,
+        description:
+          `Admin added Telegram ${entityType} for RA ID ${user_id}`,
 
-    status: "SUCCESS",
+        status: "SUCCESS",
 
-   ipAddress: getClientIp(req),
+        ipAddress: getClientIp(req),
 
-    device: req.headers["user-agent"] as string,
+        device:
+          req.headers[
+            "user-agent"
+          ] as string,
 
-    newValue: result.rows[0],
-  });
-}
+        newValue: result.rows[0],
+      });
+    }
 
     return res.json({
       success: true,
+
       data: result.rows[0],
+
       message: sessionString
-        ? "Saved after Telegram verification"
-        : "Saved (Telegram not connected, skipped verification)",
+        ? `${entityType} saved after Telegram verification`
+        : `${entityType} saved (Telegram not connected, verification skipped)`,
     });
 
   } catch (error: any) {
-    console.error("SAVE TELEGRAM USER ERROR:", error);
+
+    console.error(
+      "SAVE TELEGRAM ENTITY ERROR:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
-      message: error.message || "Internal server error",
+
+      message:
+        error.message ||
+        "Internal server error",
     });
   }
 };
@@ -433,11 +528,19 @@ if (role === "ADMIN") {
   }
 };
 
-export const getParticipantsByRA = async (req: Request, res: Response) => {
+export const getParticipantsByRA = async (
+  req: Request,
+  res: Response
+) => {
   try {
+
     const { raId } = req.params;
 
-    if (!raId || raId === "undefined" || raId === "null") {
+    if (
+      !raId ||
+      raId === "undefined" ||
+      raId === "null"
+    ) {
       return res.status(400).json({
         success: false,
         message: "Invalid RA ID",
@@ -445,28 +548,40 @@ export const getParticipantsByRA = async (req: Request, res: Response) => {
     }
 
     const result = await pool.query(
-      `SELECT 
-        id,  -- ✅ CRITICAL (DB PRIMARY KEY)
+      `
+      SELECT 
+        id,
         telegram_user_id,
         telegram_client_name,
-        phone_number
-       FROM telegram_users
-       WHERE user_id = $1
-       ORDER BY telegram_client_name ASC`,
+        phone_number,
+        entity_type
+      FROM telegram_users
+      WHERE user_id = $1
+      ORDER BY telegram_client_name ASC
+      `,
       [raId]
     );
 
     return res.json({
       success: true,
+
+      count: result.rows.length,
+
       data: result.rows,
     });
 
   } catch (err) {
-    console.error("GET PARTICIPANTS ERROR:", err);
+
+    console.error(
+      "GET PARTICIPANTS ERROR:",
+      err
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch participants",
+
+      message:
+        "Failed to fetch participants",
     });
   }
 };
@@ -480,9 +595,13 @@ export const sendMessageToRAClients = async (
   res: Response
 ) => {
   try {
-    const raId = req.user!.id;
-    const { message: frontendMessage } = req.body;
 
+    const raId = req.user!.id;
+
+    const { message: frontendMessage } =
+      req.body;
+
+    // ✅ Validate message
     if (!frontendMessage) {
       return res.status(400).json({
         success: false,
@@ -490,13 +609,21 @@ export const sendMessageToRAClients = async (
       });
     }
 
-    // ✅ 1. GET TELEGRAM SESSION
+    // ==================================================
+    // ✅ GET TELEGRAM SESSION
+    // ==================================================
+
     const sessionResult = await pool.query(
-      `SELECT telegram_session FROM users WHERE id = $1`,
+      `
+      SELECT telegram_session
+      FROM users
+      WHERE id = $1
+      `,
       [raId]
     );
 
-    const sessionString = sessionResult.rows[0]?.telegram_session;
+    const sessionString =
+      sessionResult.rows[0]?.telegram_session;
 
     if (!sessionString) {
       return res.status(400).json({
@@ -505,12 +632,18 @@ export const sendMessageToRAClients = async (
       });
     }
 
-    const client = await createClient(sessionString);
+    // ✅ Create Telegram client
+    const client = await createClient(
+      sessionString
+    );
 
-    // ✅ 2. GET RA DETAILS (FIXED TABLE)
+    // ==================================================
+    // ✅ GET RA DETAILS
+    // ==================================================
+
     const raResult = await pool.query(
       `
-      SELECT 
+      SELECT
         salutation,
         first_name,
         middle_name,
@@ -534,6 +667,7 @@ export const sendMessageToRAClients = async (
       });
     }
 
+    // ✅ Full Name
     const fullName = [
       ra.salutation,
       ra.first_name,
@@ -543,7 +677,10 @@ export const sendMessageToRAClients = async (
       .filter(Boolean)
       .join(" ");
 
-    // ✅ 3. FINAL MESSAGE (TEMPLATE)
+    // ==================================================
+    // ✅ FINAL MESSAGE
+    // ==================================================
+
     const finalMessage = `
 ${frontendMessage}
 
@@ -559,63 +696,194 @@ Read Full Disclaimer / Disclosure at :
 https://lotusfunds.com/disclaimer&disclosure
 `;
 
-    // ✅ 4. FETCH CLIENTS
+    // ==================================================
+    // ✅ FETCH USERS + GROUPS + CHANNELS
+    // ==================================================
+
     const users = await pool.query(
-      `SELECT telegram_user_id FROM telegram_users WHERE user_id = $1`,
+      `
+      SELECT
+        telegram_user_id,
+        telegram_client_name,
+        entity_type
+      FROM telegram_users
+      WHERE user_id = $1
+      `,
       [raId]
     );
 
+    if (users.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "No Telegram participants found",
+      });
+    }
+
+    // ==================================================
+    // ✅ SEND MESSAGES
+    // ==================================================
+
     let successCount = 0;
+
     let failCount = 0;
 
-    for (const u of users.rows) {
-      try {
-        const entity = await client.getEntity(u.telegram_user_id);
+    const failedEntities: any[] = [];
 
-        await client.sendMessage(entity, { message: finalMessage });
+    for (const u of users.rows) {
+
+      try {
+
+        console.log(
+          `📨 Sending to ${u.entity_type}:`,
+          u.telegram_client_name ||
+            u.telegram_user_id
+        );
+
+        // ✅ Resolve entity
+        const entity =
+          await client.getEntity(
+            u.telegram_user_id
+          );
+
+        // ✅ Send message
+        await client.sendMessage(entity, {
+          message: finalMessage,
+        });
+
+        console.log(
+          `✅ Sent to ${u.entity_type}:`,
+          u.telegram_client_name
+        );
 
         successCount++;
 
+        // ✅ Delay to avoid flood wait
         await sleep(2000);
 
       } catch (err: any) {
-        if (err.errorMessage?.includes("FLOOD_WAIT")) {
-          const seconds = parseInt(err.errorMessage.split("_").pop());
 
-          console.log(`⏳ Flood wait ${seconds}s`);
+        console.error(
+          `❌ Failed for ${u.entity_type}:`,
+          u.telegram_client_name,
+          err.message
+        );
+
+        // ==========================================
+        // ✅ FLOOD WAIT HANDLING
+        // ==========================================
+
+        if (
+          err.errorMessage?.includes(
+            "FLOOD_WAIT"
+          )
+        ) {
+
+          const seconds = parseInt(
+            err.errorMessage
+              .split("_")
+              .pop()
+          );
+
+          console.log(
+            `⏳ Flood wait ${seconds}s`
+          );
 
           await sleep(seconds * 1000);
 
           try {
-            const entity = await client.getEntity(u.telegram_user_id);
-            await client.sendMessage(entity, { message: finalMessage });
+
+            const retryEntity =
+              await client.getEntity(
+                u.telegram_user_id
+              );
+
+            await client.sendMessage(
+              retryEntity,
+              {
+                message: finalMessage,
+              }
+            );
+
+            console.log(
+              `✅ Retry success:`,
+              u.telegram_client_name
+            );
+
             successCount++;
-          } catch {
+
+          } catch (retryErr: any) {
+
+            console.log(
+              `❌ Retry failed:`,
+              retryErr.message
+            );
+
             failCount++;
+
+            failedEntities.push({
+              entity:
+                u.telegram_client_name ||
+                u.telegram_user_id,
+
+              type: u.entity_type,
+
+              reason:
+                retryErr.message,
+            });
           }
+
         } else {
-          console.log("❌ Failed:", u.telegram_user_id, err.message);
+
           failCount++;
+
+          failedEntities.push({
+            entity:
+              u.telegram_client_name ||
+              u.telegram_user_id,
+
+            type: u.entity_type,
+
+            reason: err.message,
+          });
         }
       }
     }
 
+    // ==================================================
+    // ✅ FINAL RESPONSE
+    // ==================================================
+
     return res.json({
       success: true,
-      message: "Messages processed",
+
+      message:
+        "Messages processed successfully",
+
       stats: {
         total: users.rows.length,
+
         sent: successCount,
+
         failed: failCount,
       },
+
+      failedEntities,
     });
 
   } catch (err: any) {
-    console.error("SEND MESSAGE ERROR:", err);
+
+    console.error(
+      "SEND MESSAGE ERROR:",
+      err
+    );
 
     return res.status(500).json({
       success: false,
-      message: err.message || "Internal server error",
+
+      message:
+        err.message ||
+        "Internal server error",
     });
   }
 };
@@ -771,7 +1039,9 @@ export const saveParticipantRA = async (
   req: AuthRequest,
   res: Response
 ) => {
+
   try {
+
     const userId = req.user?.id;
 
     if (!userId) {
@@ -781,241 +1051,217 @@ export const saveParticipantRA = async (
       });
     }
 
-    let { telegram_client_name } = req.body;
+    let {
+      telegram_client_name,
+    } = req.body;
 
     if (!telegram_client_name) {
       return res.status(400).json({
         success: false,
-        message: "Telegram username is required",
+        message:
+          "Telegram username is required",
       });
     }
 
     // ✅ Normalize username
-    telegram_client_name = telegram_client_name
-      .trim()
-      .replace("@", "");
+    telegram_client_name =
+      telegram_client_name
+        .trim()
+        .replace("@", "");
 
-    // 🔥 STEP 1: FETCH TELEGRAM SESSION FROM DB (IMPORTANT FIX)
+    // ==========================================
+    // ✅ GET TELEGRAM SESSION
+    // ==========================================
+
     const userResult = await pool.query(
-      `SELECT telegram_session FROM users WHERE id = $1`,
+      `
+      SELECT telegram_session
+      FROM users
+      WHERE id = $1
+      `,
       [userId]
     );
 
-    const sessionString = userResult.rows[0]?.telegram_session;
+    const sessionString =
+      userResult.rows[0]?.telegram_session;
 
     if (!sessionString) {
       return res.status(401).json({
         success: false,
-        message: "Telegram session not found. Please login again.",
+        message:
+          "Telegram session not found",
       });
     }
 
-    // 🔥 STEP 2: CREATE CLIENT WITH SESSION STRING
-    const client = await createClient(sessionString);
+    // ✅ Create client
+    const client =
+      await createClient(sessionString);
 
-    let telegramUser: Api.User;
+    // ==========================================
+    // ✅ GET ENTITY
+    // ==========================================
+
+    let entity: any;
 
     try {
-      const result = await client.invoke(
-        new Api.contacts.ResolveUsername({
-          username: telegram_client_name,
-        })
+
+      entity = await client.getEntity(
+        telegram_client_name
       );
 
-      const foundUser = result.users?.[0] as Api.User | undefined;
-
-      if (!foundUser || !("id" in foundUser)) {
-        return res.status(404).json({
-          success: false,
-          message: "Telegram user not found",
-        });
-      }
-
-      telegramUser = foundUser;
     } catch (telegramError: any) {
 
-  console.error("❌ TELEGRAM ERROR:", telegramError);
+      console.error(
+        "❌ TELEGRAM ERROR:",
+        telegramError
+      );
 
-  try {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Telegram entity not found",
+      });
+    }
 
-    console.log("🔥 SAVING FAILED AUDIT LOG");
+    // ==========================================
+    // ✅ DETECT ENTITY TYPE
+    // ==========================================
 
-    await createAuditLog({
-      adminId: req.user?.id,
+    let entityType = "USER";
 
-      adminName:
-        req.user?.name ||
-        req.user?.email ||
-        `RA_${req.user?.id}`,
+    if (
+      entity.className === "Channel"
+    ) {
 
-      adminRole:
-        req.user?.role || "RESEARCH_ANALYST",
+      entityType =
+        entity.broadcast
+          ? "CHANNEL"
+          : "GROUP";
 
-      action: "ADD",
+    } else if (
+      entity.className === "Chat"
+    ) {
 
-      module: "TELEGRAM_CLIENT",
+      entityType = "GROUP";
+    }
 
-      targetEntity:
-        telegram_client_name || "UNKNOWN",
+    // ==========================================
+    // ✅ GET TELEGRAM ID
+    // ==========================================
 
-      targetType: "CLIENT", // ✅ IMPORTANT FIX
+    let telegramId = "";
 
-      description:
-        "RA failed to add Telegram client",
+    if (
+      entityType === "GROUP" ||
+      entityType === "CHANNEL"
+    ) {
 
-      status: "FAILED",
+      // ✅ IMPORTANT
+      telegramId = `-100${entity.id.toString()}`;
 
-      reason:
-        telegramError?.message ||
-        telegramError?.errorMessage ||
-        "Telegram user not found",
+    } else {
 
-      ipAddress: getClientIp(req),
+      telegramId =
+        entity.id.toString();
+    }
 
-      device:
-        (req.headers["user-agent"] as string) ||
-        "Unknown Device",
+    // ==========================================
+    // ✅ USERNAME
+    // ==========================================
 
-      oldValue: null,
+    const username =
+      entity.username
+        ? `@${entity.username}`
+        : `@${telegram_client_name}`;
 
-      newValue: {
-        attempted_username: telegram_client_name,
-      },
-    });
+    // ==========================================
+    // ✅ PHONE (ONLY USERS)
+    // ==========================================
 
-    console.log("✅ FAILED AUDIT LOG SAVED");
+    let phone = null;
 
-  } catch (auditErr: any) {
+    if (
+      entityType === "USER"
+    ) {
 
-    console.error(
-      "❌ AUDIT LOG FAILED FULL:",
-      auditErr
-    );
-  }
+      phone =
+        entity.phone || null;
 
-  return res.status(404).json({
-    success: false,
-    message:
-      "Invalid Telegram username or inaccessible user",
-  });
-}
+      if (
+        phone &&
+        !phone.startsWith("+")
+      ) {
+        phone = `+${phone}`;
+      }
+    }
 
-    // ✅ Extract data
-    const telegramUserId = telegramUser.id.toString();
+    // ==========================================
+    // ✅ SAVE TO DB
+    // ==========================================
 
-// ✅ Always ensure @ prefix for username
-const username = telegramUser.username
-  ? `@${telegramUser.username}`
-  : `@${telegram_client_name}`;
-
-// ⚠️ Telegram phone is often raw or missing
-let phone = (telegramUser as any).phone || null;
-
-// ✅ Ensure + prefix if phone exists
-if (phone && typeof phone === "string" && !phone.startsWith("+")) {
-  phone = `+${phone}`;
-}
-
-    // ✅ Save to DB
     const query = `
       INSERT INTO telegram_users (
         telegram_user_id,
         telegram_client_name,
         phone_number,
+        user_id,
+        entity_type
+      )
+      VALUES ($1, $2, $3, $4, $5)
+
+      ON CONFLICT (
+        telegram_user_id,
         user_id
       )
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (telegram_user_id, user_id)
+
       DO UPDATE SET
-        telegram_client_name = EXCLUDED.telegram_client_name,
-        phone_number = EXCLUDED.phone_number
+        telegram_client_name =
+          EXCLUDED.telegram_client_name,
+
+        phone_number =
+          EXCLUDED.phone_number,
+
+        entity_type =
+          EXCLUDED.entity_type
+
       RETURNING *;
     `;
 
-    const result = await pool.query(query, [
-      telegramUserId,
-      username,
-      phone,
-      userId,
-    ]);
-
-    // ✅ AUDIT LOG FOR RA TELEGRAM CLIENT ADD
-await createAuditLog({
-  adminId: req.user?.id,
-
-  // RA username/email/name
-  adminName: req.user?.name || "RA",
-
-  // RA role
-  adminRole: req.user?.role || "RESEARCH_ANALYST",
-
-  action: "ADD",
-
-  module: "TELEGRAM_CLIENT",
-
-  // Which client added
-  targetEntity: username || telegramUserId,
-
-  targetType: "RA",
-
-  description: `RA added Telegram client ${username}`,
-
-  status: "SUCCESS",
-
-  ipAddress: getClientIp(req),
-
-  device: req.headers["user-agent"] as string,
-
-  oldValue: null,
-
-  newValue: result.rows[0],
-});
+    const result = await pool.query(
+      query,
+      [
+        telegramId,
+        username,
+        phone,
+        userId,
+        entityType,
+      ]
+    );
 
     return res.status(200).json({
       success: true,
-      message: "Participant saved successfully",
+
+      message:
+        `${entityType} saved successfully`,
+
       data: result.rows[0],
     });
-} catch (err: any) {
-  console.error("SAVE RA PARTICIPANT ERROR:", err);
 
-  // ❌ FAILED AUDIT
-  await createAuditLog({
-    adminId: req.user?.id,
+  } catch (err: any) {
 
-    adminName: req.user?.name || "RA",
+    console.error(
+      "SAVE TELEGRAM ENTITY ERROR:",
+      err
+    );
 
-    adminRole: req.user?.role || "RESEARCH_ANALYST",
+    return res.status(500).json({
+      success: false,
 
-    action: "ADD",
-
-    module: "TELEGRAM_CLIENT",
-
-    targetEntity:
-      req.body?.telegram_client_name || "UNKNOWN",
-
-    targetType: "RA",
-
-    description: "RA failed to add Telegram client",
-
-    status: "FAILED",
-
-    reason: err.message || "Failed to save participant",
-
-    ipAddress: getClientIp(req),
-
-    device: req.headers["user-agent"] as string,
-
-    oldValue: null,
-
-    newValue: null,
-  });
-
-  return res.status(500).json({
-    success: false,
-    message: err.message || "Failed to save participant",
-  });
-}
+      message:
+        err.message ||
+        "Failed to save entity",
+    });
+  }
 };
 
 export const getMyParticipants = async (
@@ -1023,6 +1269,7 @@ export const getMyParticipants = async (
   res: Response
 ) => {
   try {
+
     const userId = req.user?.id;
 
     if (!userId) {
@@ -1038,7 +1285,8 @@ export const getMyParticipants = async (
         id,
         telegram_user_id,
         telegram_client_name,
-        phone_number
+        phone_number,
+        entity_type
       FROM telegram_users
       WHERE user_id = $1
       ORDER BY telegram_client_name ASC
@@ -1048,11 +1296,14 @@ export const getMyParticipants = async (
 
     return res.status(200).json({
       success: true,
+
       count: result.rows.length,
+
       data: result.rows,
     });
 
   } catch (err: any) {
+
     console.error(
       "GET MY PARTICIPANTS ERROR:",
       err
@@ -1060,8 +1311,10 @@ export const getMyParticipants = async (
 
     return res.status(500).json({
       success: false,
+
       message:
-        err.message || "Failed to fetch participants",
+        err.message ||
+        "Failed to fetch participants",
     });
   }
 };

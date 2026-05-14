@@ -73,25 +73,29 @@ const handleConfirm = async () => {
         setOldPassword("");
         setNewPassword("");
 
-    } catch (err: any) {
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
         console.log("ERROR:", err.response?.data);
         setError(err.response?.data?.message || "Something went wrong");
+      } else {
+        setError("Something went wrong");
+      }
     } finally {
         setLoading(false);
     }
 };
     return (
-  <Box sx={{ mt: 4, ml: 2 }}> {/* 👈 slight left spacing */}
+  <Box sx={{ mt: 4, width: "100%" }}>
     <Paper
       sx={{
         p: 3,
         border: "1px solid #E9E9EE",
         borderRadius: 2,
         boxShadow: "none",
-        maxWidth: 500,
+        width: "100%",
       }}
     >
-      <Typography variant="h6" fontWeight={600} mb={2}>
+      <Typography variant="h6" fontWeight={700} sx={{ fontSize: 17  , mb: 2 }}>
         Change Password
       </Typography>
 
@@ -110,7 +114,11 @@ const handleConfirm = async () => {
           label="Old Password"
           type={showOldPassword ? "text" : "password"}
           size="small"
-          sx={{ width: { xs: "100%", sm: "50%" } }}
+          sx={{
+            width: { xs: "100%", sm: "50%", md: "33%" },
+            "& .MuiInputLabel-root": { fontSize: 14 },
+            "& .MuiInputBase-input": { fontSize: 15 },
+          }}
           value={oldPassword}
           onChange={(e) => setOldPassword(e.target.value)}
           InputProps={{
@@ -128,7 +136,11 @@ const handleConfirm = async () => {
           label="New Password"
           type={showNewPassword ? "text" : "password"}
           size="small"
-          sx={{ width: { xs: "100%", sm: "50%" } }}
+          sx={{
+            width: { xs: "100%", sm: "50%", md: "33%" },
+            "& .MuiInputLabel-root": { fontSize: 14 },
+            "& .MuiInputBase-input": { fontSize: 15 },
+          }}
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
           InputProps={{
@@ -151,6 +163,7 @@ const handleConfirm = async () => {
             width: { xs: "100%", sm: "auto" },
             minWidth: 160,
             textTransform: "none",
+            fontSize: 15,
           }}
         >
           {loading ? <CircularProgress size={24} /> : "Confirm"}
