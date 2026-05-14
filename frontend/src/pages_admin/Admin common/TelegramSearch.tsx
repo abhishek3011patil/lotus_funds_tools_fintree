@@ -1,4 +1,13 @@
-import { Box, TextField, Button, Paper } from "@mui/material";
+import {
+  Box,
+  TextField,
+  Button,
+  Paper,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
+  Typography,
+} from "@mui/material";
 import { Send as SendIcon } from "@mui/icons-material";
 import { useState } from "react";
 import axios from "axios";
@@ -14,6 +23,7 @@ export const TelegramSearch = ({ raId, onSaved }: TelegramSearchProps) => {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const [phoneError, setPhoneError] = useState("");
+  const [entityType, setEntityType] = useState("USER");
 
   const handleSave = async () => {
   // ✅ At least one field required
@@ -107,43 +117,98 @@ export const TelegramSearch = ({ raId, onSaved }: TelegramSearchProps) => {
             gap: 3,
           }}
         >
-          {/* Username */}
-          <TextField
-            fullWidth
-            label="Telegram Username"
-            placeholder="@username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
 
-          {/* Telegram ID */}
-          <TextField
-            fullWidth
-            label="Telegram ID"
-            placeholder="123456789"
-            value={telegramId}
-            onChange={(e) => setTelegramId(e.target.value)}
-          />
+        {/* Entity Type */}
+<Box sx={{ gridColumn: "1 / -1" }}>
+  <Typography sx={{ mb: 1, fontWeight: 600 }}>
+    Type
+  </Typography>
 
-          {/* Phone */}
-          <TextField
-  fullWidth
-  label="Phone Number"
-  placeholder="+919876543210"
-  value={phoneNumber}
-  error={!!phoneError}
-  helperText={phoneError}
-  onChange={(e) => {
-    const value = e.target.value;
-    setPhoneNumber(value);
-
-    if (value && !value.startsWith("+91")) {
-      setPhoneError("Phone number must start with +91");
-    } else {
-      setPhoneError("");
+  <RadioGroup
+    row
+    value={entityType}
+    onChange={(e) =>
+      setEntityType(e.target.value)
     }
-  }}
+  >
+    <FormControlLabel
+      value="USER"
+      control={<Radio />}
+      label="User"
+    />
+
+    <FormControlLabel
+      value="GROUP"
+      control={<Radio />}
+      label="Group"
+    />
+
+    <FormControlLabel
+      value="CHANNEL"
+      control={<Radio />}
+      label="Channel"
+    />
+  </RadioGroup>
+</Box>
+         {/* Username */}
+<TextField
+  fullWidth
+  label={
+    entityType === "USER"
+      ? "Telegram Username"
+      : entityType === "GROUP"
+      ? "Group Username or Link"
+      : "Channel Username or Link"
+  }
+  placeholder={
+    entityType === "USER"
+      ? "@username"
+      : entityType === "GROUP"
+      ? "@group_username"
+      : "@channel_username"
+  }
+  value={username}
+  onChange={(e) => setUsername(e.target.value)}
 />
+
+         {entityType === "USER" && (
+  <>
+    {/* Telegram ID */}
+    <TextField
+      fullWidth
+      label="Telegram ID"
+      placeholder="123456789"
+      value={telegramId}
+      onChange={(e) => setTelegramId(e.target.value)}
+    />
+  </>
+)}
+
+        {entityType === "USER" && (
+  <>
+    {/* Phone */}
+    <TextField
+      fullWidth
+      label="Phone Number"
+      placeholder="+919876543210"
+      value={phoneNumber}
+      error={!!phoneError}
+      helperText={phoneError}
+      onChange={(e) => {
+        const value = e.target.value;
+        setPhoneNumber(value);
+
+        if (value && !value.startsWith("+91")) {
+          setPhoneError(
+            "Phone number must start with +91"
+          );
+        } else {
+          setPhoneError("");
+        }
+      }}
+    />
+  </>
+)}
 
           {/* Save Button */}
           <Box sx={{ gridColumn: "1 / -1", mt: 1 }}>
