@@ -112,6 +112,8 @@ export const approveUser = async (
     }
 
   // ================= CHECK EXISTING USER =================
+// ================= CHECK EXISTING USER =================
+
 const normalizedEmail = email
   .trim()
   .toLowerCase()
@@ -129,13 +131,93 @@ const existingUser = await client.query(
 
 if (existingUser.rows.length > 0) {
 
-  await client.query("ROLLBACK");
+  const existing = existingUser.rows[0];
 
-  console.log("USER ALREADY EXISTS:", existingUser.rows[0]);
+  console.log("EXISTING USER:", existing);
+
+  // ✅ RE-ACTIVATE SUSPENDED USER
+  if (
+    existing.status &&
+    existing.status.toLowerCase() === "suspended"
+  ) {
+
+    // ================= CREATE NEW RESET TOKEN =================
+    const token = crypto.randomBytes(32).toString("hex");
+
+    // ✅ RESET USER FLOW AGAIN
+    // User must do:
+    // Email -> Payment -> Set Password -> OTP -> Login
+
+    await client.query(
+      `
+      UPDATE users
+      SET
+        status = 'inactive',
+        password_hash = $1,
+        reset_token = $2,
+        token_expiry = $3,
+        suspended_at = NULL,
+        suspended_reason = NULL,
+        updated_at = NOW()
+      WHERE id = $4
+      `,
+      [
+        await bcrypt.hash("temp123", 10),
+        token,
+        new Date(Date.now() + 60 * 60 * 1000),
+        existing.id,
+      ]
+    );
+
+    // ================= UPDATE DETAILS TABLE =================
+    if (type === "RA") {
+
+      await client.query(
+        `
+        UPDATE ra_details
+        SET
+          status = 'approved',
+          user_id = $1
+        WHERE id = $2
+        `,
+        [existing.id, userId]
+      );
+
+    } else {
+
+      await client.query(
+        `
+        UPDATE broker_details
+        SET
+          status = 'approved',
+          user_id = $1
+        WHERE id = $2
+        `,
+        [existing.id, userId]
+      );
+    }
+
+    // ================= COMMIT =================
+    await client.query("COMMIT");
+
+    // ================= SEND EMAIL AGAIN =================
+    const link = `${process.env.FRONTEND_URL}/subscription?token=${token}`;
+
+    await sendApprovalMail(email, name, link);
+
+    return res.status(200).json({
+      success: true,
+      message: `${type} reactivated successfully ✅`,
+      user_id: existing.id,
+    });
+  }
+
+  // ❌ ALREADY APPROVED USER
+  await client.query("ROLLBACK");
 
   return res.status(409).json({
     success: false,
-   message: `${type} already approved`,
+    message: `${type} already approved`,
   });
 }
     // ================= CREATE USER =================
@@ -270,6 +352,153 @@ if (existingUser.rows.length > 0) {
 }
 
     console.error("Approve Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Server error",
+    });
+
+  } finally {
+    client.release();
+  }
+};
+/* ================= SUSPEND USER ================= */
+
+export const suspendUser = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  const client = await pool.connect();
+
+  try {
+
+    // ✅ FIXED
+    const { userId, suspendReason } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "userId required",
+      });
+    }
+
+    await client.query("BEGIN");
+
+    // ✅ DEBUG LOG
+    console.log("Suspend userId:", userId);
+
+    const userRes = await client.query(
+      `
+      SELECT id, name, email, role, status
+      FROM users
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [userId]
+    );
+
+    console.log("FOUND USER:", userRes.rows);
+
+    if (userRes.rows.length === 0) {
+
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const user = userRes.rows[0];
+
+    if (user.role === "RESEARCH_ANALYST") {
+  await client.query(
+    `
+    UPDATE ra_details
+    SET status = 'suspended'
+    WHERE user_id = $1
+    `,
+    [userId]
+  );
+}
+
+if (user.role === "BROKER") {
+  await client.query(
+    `
+    UPDATE broker_details
+    SET status = 'suspended'
+    WHERE user_id = $1
+    `,
+    [userId]
+  );
+}
+
+    if (user.status.toLowerCase() !== "active") {
+
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        success: false,
+        message: `Cannot suspend ${user.status} user`,
+      });
+    }
+
+    await client.query(
+      `
+      UPDATE users
+      SET
+        status = 'suspended',
+        suspended_at = NOW(),
+        suspended_reason = $1,
+        updated_at = NOW()
+      WHERE id = $2
+      `,
+      [
+        suspendReason || "Suspended by admin",
+        userId,
+      ]
+    );
+
+    await client.query("COMMIT");
+
+    await createAuditLog({
+      adminId: req.user?.id,
+      adminName: req.user?.name || "ADMIN",
+      adminRole: req.user?.role || "ADMIN",
+      action: "SUSPEND",
+      module: user.role,
+      targetEntity: user.email,
+      targetType: user.role,
+      description: `${user.role} suspended by admin`,
+      status: "SUCCESS",
+      reason: suspendReason || "Suspended by admin",
+      ipAddress: getClientIp(req),
+      device: req.headers["user-agent"] as string,
+      oldValue: {
+        status: "active",
+      },
+      newValue: {
+        status: "suspended",
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "User suspended successfully ✅",
+    });
+
+  } catch (error) {
+
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackError) {
+      console.error("Rollback Error:", rollbackError);
+    }
+
+    console.error("Suspend User Error:", error);
 
     return res.status(500).json({
       success: false,

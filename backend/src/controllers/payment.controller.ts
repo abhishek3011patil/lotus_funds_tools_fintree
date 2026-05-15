@@ -60,15 +60,14 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
 
   if (expectedSignature === razorpay_signature) {
     try {
-    const result = await pool.query(
-      `UPDATE users 
-       SET payment_status = 'completed', 
-           is_active = true, 
-           status = 'approved' 
-       WHERE reset_token = $1 
-       RETURNING id, reset_token`,
-      [resetToken]
-    );
+const result = await pool.query(
+  `UPDATE users 
+   SET payment_status = 'completed',
+       amount_paid = $1
+   WHERE reset_token = $2
+   RETURNING id, reset_token`,
+  [amountPaid || 0, resetToken]
+);
 
     if (result.rowCount === 0) {
        res.status(404).json({ message: "Invalid session or payment already processed." });
@@ -81,8 +80,12 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
         token: result.rows[0].reset_token // Pass the token back just in case
     });
   } catch (error) {
-    res.status(500).json({ message: "Server Error" });
-  }
+  console.error("VERIFY PAYMENT ERROR:", error);
+
+  res.status(500).json({
+    message: "Server Error"
+  });
+}
   } else {
     console.error("❌ SIGNATURE MISMATCH!");
     res.status(400).send("Invalid Signature");
@@ -93,17 +96,15 @@ export const activateFreePlan = async (req: Request, res: Response) => {
   const { resetToken, planName } = req.body;
 
   try {
-    const result = await pool.query(
-      `UPDATE users 
-       SET payment_status = 'completed', 
-           is_active = true, 
-           status = 'approved',
-           plan_selected = $1,
-           amount_paid = 0 
-       WHERE reset_token = $2 
-       RETURNING id`,
-      [planName, resetToken]
-    );
+   const result = await pool.query(
+  `UPDATE users 
+   SET payment_status = 'completed',
+       plan_selected = $1,
+       amount_paid = 0
+   WHERE reset_token = $2
+   RETURNING id`,
+  [planName, resetToken]
+);
 
     if (result.rowCount === 0) {
       return res.status(404).json({ message: "Invalid session or user not found." });
