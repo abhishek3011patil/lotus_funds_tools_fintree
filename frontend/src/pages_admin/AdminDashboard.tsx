@@ -18,6 +18,9 @@ import PaginationItem from "@mui/material/PaginationItem";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { useNavigate } from "react-router-dom";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogActions from "@mui/material/DialogActions";
 
 import TelegramSearch from "./Admin common/TelegramSearch";
 
@@ -54,6 +57,9 @@ const AdminDashboard = () => {
 
   const [selectedRA, setSelectedRA] = useState<AdminRow | null>(null);
   const [panelMode, setPanelMode] = useState<"ra" | "participant">("ra");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+const [confirmType, setConfirmType] = useState<"RA" | "BROKER" | null>(null);
+const [confirmId, setConfirmId] = useState<string | null>(null);
 
   type Participant = {
   id: string;
@@ -72,6 +78,7 @@ const [participant, setParticipant] = useState<Participant | null>(null);
   const [participantUsername, setParticipantUsername] = useState("");
   const [participantLoading, setParticipantLoading] = useState(false);
   const [participantSearchQuery, setParticipantSearchQuery] = useState("");
+
 
   const [editingCell, setEditingCell] = useState<{
     id: string;
@@ -110,7 +117,8 @@ const [participant, setParticipant] = useState<Participant | null>(null);
         }
 
         const formatted: AdminRow[] = data.map((item: any) => ({
-          id: item.id || item.user_id,
+          id: item.ra_id || item.broker_id, 
+          userId: item.user_id,  
           name:
             `${item.first_name || ""} ${item.surname || ""}`.trim() ||
             item.name ||
@@ -148,15 +156,17 @@ const [participant, setParticipant] = useState<Participant | null>(null);
   }, [searchQuery]);
 
   /* ================= STATUS COLOR ================= */
-  const statusColor = (status: AdminRow["status"]) => {
-    const s = status.toLowerCase();
+ const statusColor = (status: AdminRow["status"]) => {
+  const s = status.toLowerCase();
 
-    if (s === "approved") return "success";
-    if (s === "rejected") return "error";
-    if (s === "pending") return "warning";
+  if (s === "approved") return "success";
+  if (s === "active") return "success";
+  if (s === "rejected") return "error";
+  if (s === "pending") return "warning";
+  if (s === "suspended") return "secondary";
 
-    return "default";
-  };
+  return "default";
+};
 
   /* ================= FILTER (Approved only) ================= */
   const approvedRows = rows.filter(
@@ -164,6 +174,12 @@ const [participant, setParticipant] = useState<Participant | null>(null);
       (row.raStatus || "").toLowerCase() === "approved" ||
       (row.status || "").toLowerCase() === "active"
   );
+
+const suspendedRows = rows.filter(
+  (row) =>
+    (row.status || "").toLowerCase() === "suspended" ||
+    (row.raStatus || "").toLowerCase() === "suspended"
+);
 
   const filteredRows = approvedRows.filter((row) => {
     const query = searchQuery.toLowerCase();
@@ -179,6 +195,24 @@ const [participant, setParticipant] = useState<Participant | null>(null);
     (page - 1) * ITEMS_PER_PAGE,
     page * ITEMS_PER_PAGE
   );
+
+  const filteredSuspendedRows = suspendedRows.filter((row) => {
+  const query = searchQuery.toLowerCase();
+
+  return (
+    row.name.toLowerCase().includes(query) ||
+    row.phone.includes(query)
+  );
+});
+
+const suspendedPageCount = Math.ceil(
+  filteredSuspendedRows.length / ITEMS_PER_PAGE
+);
+
+const paginatedSuspendedRows = filteredSuspendedRows.slice(
+  (page - 1) * ITEMS_PER_PAGE,
+  page * ITEMS_PER_PAGE
+);
 
   /* ================= FILE VIEW ================= */
   const openFile = (file?: string) => {
@@ -435,7 +469,34 @@ setParticipantUsername("");
       </span>
     );
   };
+  /* ================= APPROVE ================= */
+const handleApprove = async (id: string, type: "RA" | "BROKER") => {
+  const token = localStorage.getItem("token");
 
+  const res = await fetch(
+    `${import.meta.env.VITE_API_URL}/admin/approve-user`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        userId: id,   // MUST be ra_details.id OR broker_details.id
+        type,
+      }),
+    }
+  );
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    alert(data?.message || "Approve failed");
+    return;
+  }
+
+  alert(data.message);
+};
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {/* <Typography variant="h5" fontWeight={600}>
@@ -546,6 +607,72 @@ setParticipantUsername("");
         />
       )}
 
+      {/* ================= SUSPENDED USERS TABLE ================= */}
+
+<Box sx={{ mt: 5 }}>
+  <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+    Suspended Users
+  </Typography>
+
+  <TableContainer component={Paper} variant="outlined">
+    <Table size="small">
+
+      <TableHead sx={{ backgroundColor: "#f6f6f6" }}>
+        <TableRow>
+          <TableCell>Name</TableCell>
+          <TableCell>Status</TableCell>
+          <TableCell>Age / Time</TableCell>
+          <TableCell align="right">Action</TableCell>
+        </TableRow>
+      </TableHead>
+
+      <TableBody>
+
+        {paginatedSuspendedRows.map((row) => (
+          <TableRow key={row.id}>
+
+            <TableCell>{row.name}</TableCell>
+
+            <TableCell>
+              <Chip
+                size="small"
+                label={row.status || row.raStatus}
+                color="secondary"
+              />
+            </TableCell>
+
+            <TableCell>{row["age/time"]}</TableCell>
+
+            <TableCell align="right">
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => {
+                  setPanelMode("ra");
+                  setSelectedRA(row);
+                }}
+              >
+                View Details
+              </Button>
+            </TableCell>
+
+          </TableRow>
+        ))}
+
+        {filteredSuspendedRows.length === 0 && (
+          <TableRow>
+            <TableCell colSpan={4} align="center">
+              No suspended users
+            </TableCell>
+          </TableRow>
+        )}
+
+      </TableBody>
+
+    </Table>
+  </TableContainer>
+</Box>
+
       {/* SIDE PANEL */}
       {selectedRA && (
         <Paper
@@ -605,22 +732,53 @@ setParticipantUsername("");
                 <Button onClick={() => openFile(selectedRA.cheque)}>View Cheque</Button>
               </Box>
 
-              <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  fullWidth
-                  onClick={() => {
-                    const link = getTelegramLink(selectedRA.telegram);
-                    if (!link) {
-                      alert("Telegram link is not available for this user.");
-                      return;
-                    }
-                    window.open(link, "_blank", "noopener,noreferrer");
-                  }}
-                >
-                  Join Telegram
-                </Button>
+
+
+
+ {/* APPROVE / EDIT */}
+<Box
+  sx={{
+    display: "flex",
+    gap: 2,
+    mt: 3,
+  }}
+>
+  {/* APPROVE */}
+  <Button
+    variant="contained"
+    color="success"
+    fullWidth
+    disabled={selectedRA.raStatus?.toLowerCase() === "approved"}
+    onClick={() => {
+  setConfirmId(selectedRA.id);
+  setConfirmType("RA");
+  setConfirmOpen(true);
+}}
+    sx={{
+      py: 1.2,
+      fontWeight: 600,
+      borderRadius: 2,
+    }}
+  >
+    Approve
+  </Button>
+  
+
+  {/* EDIT */}
+  <Button
+    variant="contained"
+    color="warning"
+    fullWidth
+    onClick={() => handleEdit(selectedRA.id)}
+    sx={{
+      py: 1.2,
+      fontWeight: 600,
+      borderRadius: 2,
+    }}
+  >
+    Edit
+  </Button>
+
 
                 {/* <Button
                   variant="contained"
@@ -843,7 +1001,36 @@ setParticipantUsername("");
           )}
         />
       )}
+
+      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+  <DialogTitle>
+    Are you sure you want to approve this user?
+  </DialogTitle>
+
+  <DialogActions>
+    <Button onClick={() => setConfirmOpen(false)}>
+      No
+    </Button>
+
+    <Button
+      variant="contained"
+      color="success"
+      onClick={() => {
+        if (!confirmId || !confirmType) return;
+
+        handleApprove(confirmId, confirmType);
+
+        setConfirmOpen(false);
+        setConfirmId(null);
+        setConfirmType(null);
+      }}
+    >
+      Yes
+    </Button>
+  </DialogActions>
+</Dialog>
     </Box>
+    
   );
 };
 

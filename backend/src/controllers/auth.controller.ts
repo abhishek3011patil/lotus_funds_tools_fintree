@@ -150,9 +150,17 @@ export const login = async (req: Request, res: Response) => {
 
       user = userRes.rows[0];
 
-      if (user.status.toLowerCase() !== "active") {
-        return res.status(403).json({ message: "Account inactive ❌" });
-      }
+    if (user.status.toLowerCase() === "suspended") {
+  return res.status(403).json({
+    message: "Account suspended by admin ❌",
+  });
+}
+
+if (user.status.toLowerCase() !== "active") {
+  return res.status(403).json({
+    message: "Account inactive ❌",
+  });
+}
     }
 
     /* ================= PASSWORD CHECK ================= */
