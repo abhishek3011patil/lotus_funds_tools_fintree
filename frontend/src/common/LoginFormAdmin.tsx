@@ -60,8 +60,16 @@ const LoginFormAdmin: React.FC = () => {
       console.log("LOGIN RESPONSE:", res.data);
 
       localStorage.setItem("token", token);
-      localStorage.setItem("username", username);
-      localStorage.setItem("role", role);
+
+// ✅ ADD THIS
+localStorage.setItem(
+  "tokenExpiry",
+  (Date.now() + 60 * 1000).toString()
+);
+
+localStorage.setItem("username", res.data.username);
+
+localStorage.setItem("role", role);
 
       // Redirect based on role
       if (role === "ADMIN") navigate("/admin");
