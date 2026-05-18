@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Typography, ToggleButtonGroup, ToggleButton, Chip } from "@mui/material";
 import PlanCard, { PlanFeature, PlanBenefit } from "./PlanCard";
+import PaymentMethod from "./payment/PaymentMethod";
+import { useSearchParams, useNavigate } from "react-router-dom";
 
 interface PlanConfig {
   planName: string;
@@ -215,9 +217,72 @@ const plans: PlanConfig[] = [
 ];
 
 const SubscriptionPage: React.FC = () => {
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">(
-    "monthly"
-  );
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly");
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<{ planName: string; price: string } | null>(null);
+  
+  // 1. Properly initialize search params and token state
+  const [searchParams] = useSearchParams();
+  const [token, setToken] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // 2. Capture token from URL on mount
+    const t = searchParams.get("token");
+    setToken(t);
+    
+    if (!t) {
+      console.warn("No token found in URL. Please use the link from your email.");
+    }
+  }, [searchParams]);
+
+  const handleGetStarted = (planName: string, price: string) => {
+    // 3. Logic for the FREE PLAN
+    if (planName === "Free of Charge" || price.includes("₹0")) {
+      handleFreePlanActivation();
+      return;
+    }
+
+    // 4. Logic for PAID PLANS
+    setSelectedPlan({ planName, price });
+    setPaymentOpen(true);
+  };
+
+  const handleFreePlanActivation = async () => {
+    if (!token) {
+      alert("Invalid session. Please open the link from your email.");
+      return;
+    }
+
+    try {
+      // Use absolute path to port 5000 for local testing
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/payments/activate-free-plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          resetToken: token,
+          planName: "Free" 
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // ✅ SUCCESS: Move to set-password
+        window.location.href = `/set-password?token=${token}`;
+      } else {
+        alert(data.message || "Failed to activate free plan");
+      }
+    } catch (error) {
+      console.error("Free plan activation error:", error);
+      alert("Network error. Please check if your backend is running on port 5000.");
+    }
+  };
+
+  const handlePaymentClose = () => {
+    setPaymentOpen(false);
+    setSelectedPlan(null);
+  };
 
   const handleBillingChange = (
     _: React.MouseEvent<HTMLElement>,
@@ -343,9 +408,22 @@ const SubscriptionPage: React.FC = () => {
             key={plan.planName}
             {...plan}
             isAnnual={billingCycle === "annual"}
+            onGetStarted={() => handleGetStarted(
+              plan.planName,
+              billingCycle === "annual" ? plan.annualPrice : plan.monthlyPrice
+            )}
           />
         ))}
       </Box>
+
+      {/* Payment Method Dialog */}
+      <PaymentMethod
+        open={paymentOpen}
+        onClose={handlePaymentClose}
+        planName={selectedPlan?.planName || ""}
+        planPrice={selectedPlan?.price || ""}
+        resetToken={token} 
+      />
 
       {/* Footer */}
       <Box sx={{ textAlign: "center", mt: 5 }}>

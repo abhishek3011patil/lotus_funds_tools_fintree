@@ -18,9 +18,14 @@ import TelegramSearch from "../../pages_admin/Admin common/TelegramSearch";
 
 interface Participant {
   id: string;
+
   phone_number?: string;
+
   telegram_client_name?: string;
+
   telegram_user_id?: string | number;
+
+  entity_type?: "USER" | "GROUP" | "CHANNEL";
 }
 
 const AddParticipant: React.FC = () => {
@@ -86,26 +91,21 @@ const AddParticipant: React.FC = () => {
   return (
     <Box
       sx={{
-        width: "95%",
-        mx: "auto",
         mt: 4,
-        ml: 2,
+        width: "100%",
       }}
     >
-      <Typography fontWeight={600}>
+      <Typography fontWeight={700} sx={{ fontSize: 18 }}>
         View Participant
       </Typography>
 
       {/* Participants Section */}
       <Box sx={{ mt: 2 }}>
-        <Typography fontWeight={600} sx={{ mb: 1 }}>
+        <Typography fontWeight={700} sx={{ mb: 1, fontSize: 16 }}>
           Participants
         </Typography>
 
-        <Typography
-          color="text.secondary"
-          sx={{ mb: 1, mt: 1 }}
-        >
+        <Typography color="text.secondary" sx={{ mb: 1, mt: 1, fontSize: 14 }}>
           Search User
         </Typography>
 
@@ -117,7 +117,11 @@ const AddParticipant: React.FC = () => {
           onChange={(e) =>
             setSearchQuery(e.target.value)
           }
-          sx={{ mb: 2 }}
+          sx={{
+            mb: 2,
+            "& .MuiInputLabel-root": { fontSize: 14 },
+            "& .MuiInputBase-input": { fontSize: 15 },
+          }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -136,46 +140,60 @@ const AddParticipant: React.FC = () => {
           >
             <Table size="small" sx={{ minWidth: 400 }}>
               <TableHead>
-                <TableRow>
-                  <TableCell>Phone</TableCell>
-                  <TableCell>Username</TableCell>
-                  <TableCell>User ID</TableCell>
-                </TableRow>
-              </TableHead>
+  <TableRow>
+    <TableCell>Type</TableCell>
+    <TableCell>Phone</TableCell>
+    <TableCell>Username</TableCell>
+    <TableCell>User ID</TableCell>
+  </TableRow>
+</TableHead>
 
               <TableBody>
-                {filteredParticipants.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={3}
-                      align="center"
-                    >
-                      No participants found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredParticipants.map(
-                    (participant) => (
-                      <TableRow key={participant.id}>
-                        <TableCell>
-                          {participant.phone_number ||
-                            "N/A"}
-                        </TableCell>
+  {filteredParticipants.length === 0 ? (
+    <TableRow>
+      <TableCell colSpan={4} align="center">
+        No participants found
+      </TableCell>
+    </TableRow>
+  ) : (
+    filteredParticipants.map((participant) => {
+      const type = participant.entity_type || "USER";
 
-                        <TableCell>
-                          {participant.telegram_client_name ||
-                            "N/A"}
-                        </TableCell>
+      return (
+        <TableRow key={participant.id}>
+          
+          {/* TYPE */}
+          <TableCell>
+            {type === "GROUP"
+              ? "👥 Group"
+              : type === "CHANNEL"
+              ? "📢 Channel"
+              : "👤 User"}
+          </TableCell>
 
-                        <TableCell>
-                          {participant.telegram_user_id ||
-                            "N/A"}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  )
-                )}
-              </TableBody>
+          {/* PHONE */}
+          <TableCell>
+            {type === "USER"
+              ? participant.phone_number || "N/A"
+              : type === "GROUP"
+              ? "Group"
+              : "Channel"}
+          </TableCell>
+
+          {/* USERNAME */}
+          <TableCell>
+            {participant.telegram_client_name || "N/A"}
+          </TableCell>
+
+          {/* TELEGRAM ID */}
+          <TableCell>
+            {participant.telegram_user_id || "N/A"}
+          </TableCell>
+        </TableRow>
+      );
+    })
+  )}
+</TableBody>
             </Table>
           </TableContainer>
         )}
@@ -183,10 +201,7 @@ const AddParticipant: React.FC = () => {
 
       {/* Add New Participant */}
       <Box sx={{ mt: 3 }}>
-        <Typography
-          fontWeight={600}
-          sx={{ mb: 1 }}
-        >
+        <Typography fontWeight={700} sx={{ mb: 1, fontSize: 16 }}>
           Add New Participant
         </Typography>
 

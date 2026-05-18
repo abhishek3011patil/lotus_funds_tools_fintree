@@ -1,39 +1,27 @@
 import { Box } from "@mui/material";
 import { Outlet } from "react-router-dom";
 import { useState } from "react";
-import SettingsIcon from '@mui/icons-material/Settings';
+
+import SettingsIcon from "@mui/icons-material/Settings";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import FolderIcon from "@mui/icons-material/Folder";
+
 import Header from "./Header";
 import Sidebar from "../page_Mainapp/Sidebar";
+
 import type { SidebarItem } from "../../types/sidebar";
 
-const appSidebarItems: SidebarItem[] = [
-  {
-    label: "Dashboard",
-    path: "/",
-    icon: <DashboardIcon sx={{ mr: 1.5 }} />,
-  },
-  {
-    label: "Recommendations",
-    path: "/recommendations",
-    icon: <CheckBoxIcon sx={{ mr: 1.5 }} />,
-  },
-  {
-    label: "Performance",
-    path: "/performance",
-    icon: <FolderIcon sx={{ mr: 1.5 }} />,
-  },
-  {
-    label: "Settings",
-    path: "/settings",
-    icon: <SettingsIcon sx={{ mr: 1.5 }} />,
-  },
-];
+import Badge from "@mui/material/Badge";
+
+import { useTelegramNotification } from "../../hooks/useTelegramNotification";
 
 const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // ✅ MUST BE INSIDE COMPONENT
+  const { telegramDisconnected } =
+    useTelegramNotification();
 
   const handleMenuClick = () => {
     setSidebarOpen(true);
@@ -43,9 +31,45 @@ const AppLayout = () => {
     setSidebarOpen(false);
   };
 
+  // ✅ ITEMS INSIDE COMPONENT
+  const appSidebarItems: SidebarItem[] = [
+    {
+      label: "Dashboard",
+      path: "/",
+      icon: <DashboardIcon sx={{ mr: 1.5 }} />,
+    },
+    {
+      label: "Recommendations",
+      path: "/recommendations",
+      icon: <CheckBoxIcon sx={{ mr: 1.5 }} />,
+    },
+    {
+      label: "Performance",
+      path: "/performance",
+      icon: <FolderIcon sx={{ mr: 1.5 }} />,
+    },
+    {
+      label: "Settings",
+      path: "/settings",
+      icon: (
+        <Badge
+          color="error"
+          variant="dot"
+          invisible={!telegramDisconnected}
+        >
+          <SettingsIcon sx={{ mr: 1.5 }} />
+        </Badge>
+      ),
+    },
+  ];
+
   return (
     <Box sx={{ display: "flex" }}>
-      <Header onMenuClick={handleMenuClick} items={appSidebarItems} />
+      <Header
+        onMenuClick={handleMenuClick}
+        items={appSidebarItems}
+      />
+
       <Sidebar
         open={sidebarOpen}
         onClose={handleSidebarClose}
@@ -58,7 +82,10 @@ const AppLayout = () => {
           flexGrow: 1,
           mt: 8,
           p: 3,
-          width: { xs: "100%", sm: "calc(100% - 220px)" },
+          width: {
+            xs: "100%",
+            sm: "calc(100% - 220px)",
+          },
         }}
       >
         <Outlet />

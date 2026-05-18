@@ -11,6 +11,7 @@ import {
     TableRow,
     Button,
 } from "@mui/material";
+
 import LoadingPage from "../../common/LoadingPage";
 
 type Props = {
@@ -22,29 +23,61 @@ type Props = {
 };
 
 const RecommendationsPanel = memo(
-    ({ recommendations, loading, onModify, onExit, onInitiate }: Props) => {
+    ({
+        recommendations,
+        loading,
+        onModify,
+        onExit,
+        onInitiate,
+    }: Props) => {
+
+        // =========================================================
+        // ONLY LATEST RECORDS
+        // =========================================================
+        const latestRecommendations = useMemo(
+            () =>
+                recommendations.filter(
+                    (item) => item.is_latest !== false
+                ),
+            [recommendations]
+        );
+
+        // =========================================================
+        // ACTIVE RECOMMENDATIONS
+        // =========================================================
         const activeRecommendations = useMemo(
-            () => recommendations.filter((item) => item.status === "PUBLISHED"),
-            [recommendations]
+            () =>
+                latestRecommendations.filter(
+                    (item) => item.status === "PUBLISHED"
+                ),
+            [latestRecommendations]
         );
 
+        // =========================================================
+        // WATCHLIST
+        // =========================================================
         const watchlistRecommendations = useMemo(
-            () => recommendations.filter((item) => item.status === "DRAFT"),
-            [recommendations]
+            () =>
+                latestRecommendations.filter(
+                    (item) => item.status === "DRAFT"
+                ),
+            [latestRecommendations]
         );
 
-        // const getResearcherName = (item: any) =>
-        //     item.researcherName ||
-        //     item.researcher ||
-        //     item.researcher_name ||
-        //     item.createdBy ||
-        //     item.created_by ||
-        //     item.username ||
-        //     "-";
+        console.log("RECOMMENDATIONS:", recommendations);
+        console.log("ACTIVE:", activeRecommendations);
 
         return (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {/* ================= ACTIVE ================= */}
+            <Box
+                sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 2,
+                }}
+            >
+                {/* =========================================================
+                    ACTIVE RECOMMENDATIONS
+                ========================================================= */}
                 <Paper
                     sx={{
                         p: { xs: 1, sm: 2 },
@@ -52,6 +85,7 @@ const RecommendationsPanel = memo(
                         borderRadius: 2,
                     }}
                 >
+                    {/* HEADER */}
                     <Box
                         sx={{
                             display: "flex",
@@ -60,7 +94,10 @@ const RecommendationsPanel = memo(
                             mb: 2,
                         }}
                     >
-                        <Typography fontWeight={700} sx={{ fontSize: "0.9rem" }}>
+                        <Typography
+                            fontWeight={700}
+                            sx={{ fontSize: "0.9rem" }}
+                        >
                             Active Recommendations
                         </Typography>
 
@@ -81,7 +118,13 @@ const RecommendationsPanel = memo(
                     </Box>
 
                     {loading ? (
-                        <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
+                        <Box
+                            sx={{
+                                display: "flex",
+                                justifyContent: "center",
+                                py: 5,
+                            }}
+                        >
                             <LoadingPage
                                 title="Loading"
                                 subtitle="Fetching recommendations..."
@@ -99,19 +142,52 @@ const RecommendationsPanel = memo(
                                 WebkitOverflowScrolling: "touch",
                             }}
                         >
-                            <Table size="small" stickyHeader sx={{ minWidth: { xs: 420, sm: "auto" } }}>
+                            <Table
+                                size="small"
+                                stickyHeader
+                                sx={{
+                                    minWidth: {
+                                        xs: 420,
+                                        sm: "auto",
+                                    },
+                                }}
+                            >
                                 <TableHead>
                                     <TableRow>
-                                        <TableCell sx={{ fontSize: "0.65rem", color: "#999", fontWeight: 700, px: 1, backgroundColor: "#fff" }}>
+                                        <TableCell
+                                            sx={{
+                                                fontSize: "0.65rem",
+                                                color: "#999",
+                                                fontWeight: 700,
+                                                px: 1,
+                                                backgroundColor: "#fff",
+                                            }}
+                                        >
                                             Published Date
                                         </TableCell>
-                                        <TableCell sx={{ fontSize: "0.65rem", color: "#999", fontWeight: 700, px: 1, backgroundColor: "#fff" }}>
+
+                                        <TableCell
+                                            sx={{
+                                                fontSize: "0.65rem",
+                                                color: "#999",
+                                                fontWeight: 700,
+                                                px: 1,
+                                                backgroundColor: "#fff",
+                                            }}
+                                        >
                                             Recommendation
                                         </TableCell>
-                                        {/* <TableCell sx={{ fontSize: "0.65rem", color: "#999", fontWeight: 700, px: 1, backgroundColor: "#fff" }}>
-                                            Researcher Name
-                                        </TableCell> */}
-                                        <TableCell align="right" sx={{ fontSize: "0.65rem", color: "#999", fontWeight: 700, px: 1, backgroundColor: "#fff" }}>
+
+                                        <TableCell
+                                            align="right"
+                                            sx={{
+                                                fontSize: "0.65rem",
+                                                color: "#999",
+                                                fontWeight: 700,
+                                                px: 1,
+                                                backgroundColor: "#fff",
+                                            }}
+                                        >
                                             Action
                                         </TableCell>
                                     </TableRow>
@@ -120,78 +196,208 @@ const RecommendationsPanel = memo(
                                 <TableBody>
                                     {activeRecommendations.length > 0 ? (
                                         activeRecommendations.map((item) => {
-                                            const dateObj = new Date(item.created_at);
+
+                                            const dateObj = new Date(
+                                                item.created_at
+                                            );
 
                                             return (
                                                 <TableRow
                                                     key={item.id}
                                                     sx={{
-                                                        "&:last-child td, &:last-child th": { border: 0 },
-                                                        "&:hover": { backgroundColor: "#fcfcfc" },
+                                                        "&:last-child td, &:last-child th":
+                                                            {
+                                                                border: 0,
+                                                            },
+                                                        "&:hover": {
+                                                            backgroundColor:
+                                                                "#fcfcfc",
+                                                        },
                                                     }}
                                                 >
-                                                    <TableCell sx={{ px: 1, py: 1.5 }}>
-                                                        <Typography sx={{ fontSize: "0.65rem", color: "#666", fontWeight: 500 }}>
+                                                    {/* DATE */}
+                                                    <TableCell
+                                                        sx={{
+                                                            px: 1,
+                                                            py: 1.5,
+                                                        }}
+                                                    >
+                                                        <Typography
+                                                            sx={{
+                                                                fontSize:
+                                                                    "0.65rem",
+                                                                color: "#666",
+                                                                fontWeight: 500,
+                                                            }}
+                                                        >
                                                             {dateObj.toLocaleDateString()}
                                                         </Typography>
-                                                        <Typography sx={{ fontSize: "0.65rem", color: "#999" }}>
-                                                            {dateObj.toLocaleTimeString([], {
-                                                                hour: "2-digit",
-                                                                minute: "2-digit",
-                                                            })}
+
+                                                        <Typography
+                                                            sx={{
+                                                                fontSize:
+                                                                    "0.65rem",
+                                                                color: "#999",
+                                                            }}
+                                                        >
+                                                            {dateObj.toLocaleTimeString(
+                                                                [],
+                                                                {
+                                                                    hour: "2-digit",
+                                                                    minute:
+                                                                        "2-digit",
+                                                                }
+                                                            )}
                                                         </Typography>
                                                     </TableCell>
 
-                                                    <TableCell sx={{ px: 1, py: 1.5 }}>
-                                                        <Typography
+                                                    {/* RECOMMENDATION */}
+                                                    <TableCell
+                                                        sx={{
+                                                            px: 1,
+                                                            py: 1.5,
+                                                        }}
+                                                    >
+                                                        {/* TOP ROW */}
+                                                        <Box
                                                             sx={{
-                                                                fontSize: "0.75rem",
-                                                                fontWeight: 700,
-                                                                color: item.action === "BUY" ? "#2e7d32" : "#d32f2f",
+                                                                display: "flex",
+                                                                alignItems:
+                                                                    "center",
+                                                                gap: 1,
+                                                                flexWrap:
+                                                                    "wrap",
                                                             }}
                                                         >
-                                                            {item.action} {item.instrument} {item.call_type?.toUpperCase()}
+                                                            <Typography
+                                                                sx={{
+                                                                    fontSize:
+                                                                        "0.75rem",
+                                                                    fontWeight: 700,
+                                                                    color:
+                                                                        item.action ===
+                                                                        "BUY"
+                                                                            ? "#2e7d32"
+                                                                            : "#d32f2f",
+                                                                }}
+                                                            >
+                                                                {item.action}{" "}
+                                                                {
+                                                                    item.instrument
+                                                                }{" "}
+                                                                {item.call_type?.toUpperCase()}
+                                                            </Typography>
+
+                                                            {/* ERRATA BADGE */}
+                                                            {String(
+                                                                item.version_type
+                                                            ).toUpperCase() ===
+                                                                "ERRATA" && (
+                                                                <Box
+                                                                    sx={{
+                                                                        backgroundColor:
+                                                                            "#fff3e0",
+                                                                        color:
+                                                                            "#e65100",
+                                                                        px: 1,
+                                                                        py: 0.2,
+                                                                        borderRadius:
+                                                                            "4px",
+                                                                        fontSize:
+                                                                            "0.6rem",
+                                                                        fontWeight: 700,
+                                                                        border:
+                                                                            "1px solid #ffcc80",
+                                                                    }}
+                                                                >
+                                                                    ERRATA
+                                                                </Box>
+                                                            )}
+                                                        </Box>
+
+                                                        {/* NAME */}
+                                                        <Typography
+                                                            sx={{
+                                                                fontSize:
+                                                                    "0.65rem",
+                                                                color: "#333",
+                                                                fontWeight: 600,
+                                                            }}
+                                                        >
+                                                            {item.name} •{" "}
+                                                            {item.trade_type}
                                                         </Typography>
 
-                                                        <Typography sx={{ fontSize: "0.65rem", color: "#333", fontWeight: 600 }}>
-                                                            {item.name} • {item.trade_type}
-                                                        </Typography>
-
+                                                        {/* DETAILS */}
                                                         <Typography
                                                             variant="caption"
                                                             sx={{
-                                                                fontSize: "0.65rem",
+                                                                fontSize:
+                                                                    "0.65rem",
                                                                 color: "#999",
                                                                 mt: 0.5,
                                                                 display: "block",
                                                             }}
                                                         >
-                                                            @{item.entry?.ideal} | TP {item.targets?.join(", ")} | SL {item.stop_losses?.[0]}
+                                                            @
+                                                            {
+                                                                item.entry
+                                                                    ?.ideal
+                                                            }{" "}
+                                                            | TP{" "}
+                                                            {item.targets?.join(
+                                                                ", "
+                                                            )}{" "}
+                                                            | SL{" "}
+                                                            {
+                                                                item
+                                                                    .stop_losses?.[0]
+                                                            }
                                                         </Typography>
                                                     </TableCell>
 
-                                                    {/* <TableCell sx={{ px: 1, py: 1.5 }}>
-                                                        <Typography sx={{ fontSize: "0.7rem", color: "#333", fontWeight: 600 }}>
-                                                            {getResearcherName(item)}
-                                                        </Typography>
-                                                    </TableCell> */}
-
-                                                    <TableCell align="right" sx={{ px: 1, py: 1.5 }}>
-                                                        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                                                    {/* ACTIONS */}
+                                                    <TableCell
+                                                        align="right"
+                                                        sx={{
+                                                            px: 1,
+                                                            py: 1.5,
+                                                        }}
+                                                    >
+                                                        <Box
+                                                            sx={{
+                                                                display: "flex",
+                                                                flexDirection:
+                                                                    "column",
+                                                                gap: 0.5,
+                                                            }}
+                                                        >
                                                             <Button
                                                                 size="small"
-                                                                onClick={() => onModify(item)}
+                                                                onClick={() =>
+                                                                    onModify(
+                                                                        item
+                                                                    )
+                                                                }
                                                                 sx={{
-                                                                    fontSize: "0.6rem",
-                                                                    textTransform: "none",
-                                                                    color: "#757575",
-                                                                    minWidth: "auto",
+                                                                    fontSize:
+                                                                        "0.6rem",
+                                                                    textTransform:
+                                                                        "none",
+                                                                    color:
+                                                                        "#757575",
+                                                                    minWidth:
+                                                                        "auto",
                                                                     p: 0,
-                                                                    justifyContent: "flex-end",
-                                                                    "&:hover": {
-                                                                        backgroundColor: "transparent",
-                                                                        textDecoration: "underline",
-                                                                    },
+                                                                    justifyContent:
+                                                                        "flex-end",
+                                                                    "&:hover":
+                                                                        {
+                                                                            backgroundColor:
+                                                                                "transparent",
+                                                                            textDecoration:
+                                                                                "underline",
+                                                                        },
                                                                 }}
                                                             >
                                                                 Modify/Errata
@@ -199,19 +405,31 @@ const RecommendationsPanel = memo(
 
                                                             <Button
                                                                 size="small"
-                                                                onClick={() => onExit(item.id)}
+                                                                onClick={() =>
+                                                                    onExit(
+                                                                        item.id
+                                                                    )
+                                                                }
                                                                 sx={{
-                                                                    fontSize: "0.65rem",
-                                                                    textTransform: "none",
-                                                                    color: "#6200ea",
+                                                                    fontSize:
+                                                                        "0.65rem",
+                                                                    textTransform:
+                                                                        "none",
+                                                                    color:
+                                                                        "#6200ea",
                                                                     fontWeight: 800,
-                                                                    minWidth: "auto",
+                                                                    minWidth:
+                                                                        "auto",
                                                                     p: 0,
-                                                                    justifyContent: "flex-end",
-                                                                    "&:hover": {
-                                                                        backgroundColor: "transparent",
-                                                                        color: "#4500a0",
-                                                                    },
+                                                                    justifyContent:
+                                                                        "flex-end",
+                                                                    "&:hover":
+                                                                        {
+                                                                            backgroundColor:
+                                                                                "transparent",
+                                                                            color:
+                                                                                "#4500a0",
+                                                                        },
                                                                 }}
                                                             >
                                                                 Exit
@@ -223,7 +441,15 @@ const RecommendationsPanel = memo(
                                         })
                                     ) : (
                                         <TableRow>
-                                            <TableCell colSpan={4} align="center" sx={{ py: 4, color: "#999", fontSize: "0.8rem" }}>
+                                            <TableCell
+                                                colSpan={4}
+                                                align="center"
+                                                sx={{
+                                                    py: 4,
+                                                    color: "#999",
+                                                    fontSize: "0.8rem",
+                                                }}
+                                            >
                                                 No active recommendations.
                                             </TableCell>
                                         </TableRow>

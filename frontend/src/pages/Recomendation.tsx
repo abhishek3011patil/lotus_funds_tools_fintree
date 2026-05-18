@@ -310,10 +310,27 @@ const NewRecommendation = () => {
       // =========================================================
       // ✅ TELEGRAM SEND (UNCHANGED)
       // =========================================================
-      try {
-        const now = new Date();
+try {
 
-        const message = `
+  // ✅ CHECK TELEGRAM STATUS FIRST
+  const telegramStatus = await axios.get(
+    `${import.meta.env.VITE_API_URL}/api/telegram/status`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  // ❌ IF NOT CONNECTED
+  if (!telegramStatus.data.connected) {
+    console.log("⚠️ Telegram not connected");
+    return;
+  }
+
+  const now = new Date();
+
+  const message = `
 Date & Time : ${now.toLocaleString()}
 
 *${form.action}* *${finalDisplayName}*
@@ -350,23 +367,24 @@ Rationale: ${form.rationale}
 Underlying Study: ${form.underlyingStudy?.label || "N/A"}
 `;
 
-        await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
-          { message },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+  await axios.post(
+    `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
+    { message },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
 
-        console.log("✅ Telegram sent ONLY to this RA clients");
-      } catch (telegramErr: any) {
-        console.error(
-          "⚠️ Telegram failed:",
-          telegramErr?.response?.data || telegramErr?.message
-        );
-      }
+  console.log("✅ Telegram sent ONLY to this RA clients");
+
+} catch (telegramErr: any) {
+  console.error(
+    "⚠️ Telegram failed:",
+    telegramErr?.response?.data || telegramErr?.message
+  );
+}
     }
 
     // =========================================================
@@ -676,62 +694,70 @@ Underlying Study: ${form.underlyingStudy?.label || "N/A"}
 
 
   //instiate
-  const token = localStorage.getItem("token");
-  const handleInitiate = useCallback(async (item: any) => {
-    try {
-      const token = localStorage.getItem("token");
+const handleInitiate = useCallback(async (item: any) => {
+  try {
+    const token = localStorage.getItem("token");
 
-      await axios.patch(
-        `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/publish`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+    // ✅ FIRST CHECK TELEGRAM STATUS
+    const telegramStatus = await axios.get(
+      `${import.meta.env.VITE_API_URL}/api/telegram/status`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
-      setRecommendations((prev) =>
-        prev.map((rec) =>
-          rec.id === item.id
-            ? { ...rec, status: "PUBLISHED" }
-            : rec
-        )
-      );
+    // ❌ BLOCK PUBLISH
+    if (!telegramStatus.data.connected) {
+      alert("Please connect Telegram first");
+      return;
+    }
 
-      // 📤 Send Telegram notification after publishing draft
- try {
-  const telegramRes = await axios.post(
-    `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
-    {
-      ra_user_id: res.data?.id || res.data?.data?.ra_user_id,
-      action: form.action,
-      symbol: finalDisplayName,
-      callType: form.callType,
-      tradeType: form.tradeType,
-      entry: form.entry,
-      target: form.target,
-      stopLoss: form.stopLoss,
-      rationale: form.rationale,
-      holding: form.holdingPeriod,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
+    // ✅ ONLY AFTER TELEGRAM CONNECTED
+    await axios.patch(
+      `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/publish`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    // ✅ UPDATE UI
+    setRecommendations((prev) =>
+      prev.map((rec) =>
+        rec.id === item.id
+          ? { ...rec, status: "PUBLISHED" }
+          : rec
+      )
+    );
+
+    // ✅ SEND TELEGRAM MESSAGE
+    await axios.post(
+      `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
+      {
+        ra_user_id: item.ra_user_id || item.user_id,
+        action: item.action,
+        symbol: item.display_name || item.symbol,
       },
-    }
-  );
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
-  console.log("✅ Telegram Response:", telegramRes.data);
+  } catch (err: any) {
+    console.error(err);
 
-} catch (err: any) {
-  console.error("❌ Telegram FULL ERROR:", err);
-}
-    } catch (error) {
-      console.error("Publish failed:", error);
-    }
-  }, []);
-
+    alert(
+      err?.response?.data?.message ||
+      "Something went wrong"
+    );
+  }
+}, []);
 
   const handleTrack = async () => {
   try {
@@ -1120,7 +1146,15 @@ maxWidth: "100%",
         </Box>
 
         {/* Script Row */}
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 1 }}>
+        <Box
+  sx={{
+    display: "flex",
+    flexDirection: { xs: "column", sm: "row" }, // mobile = column, desktop = row
+    gap: 1,
+    mb: 1,
+    width: "100%",
+  }}
+>
           <Box sx={{ position: 'relative', display: 'flex', flexGrow: 1 }}>
             {suggestion && suggestion.toLowerCase().startsWith(inputValue.toLowerCase()) && (
               <Box

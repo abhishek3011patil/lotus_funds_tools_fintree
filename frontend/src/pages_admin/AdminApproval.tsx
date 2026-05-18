@@ -26,9 +26,10 @@ import AdminFilter, { type AdminFilterValue } from "../assets/adminFilter";
 
 type AdminRow = {
   id: string;
+   user_id?: string;
   name: string;
   phone: string;
-  type: "RA" | "Broker";
+  type: "RA" | "BROKER";
 
   profile?: string;
   pan?: string;
@@ -45,7 +46,7 @@ type AdminRow = {
   financial_statements?: string;   // financial_statements text
   ca_certificate?: string;
 
-  status: "Pending" | "Approved" | "Rejected" | string;
+  status: "Pending" | "Approved" | "Rejected" | "Suspended"| string;
   rejectionReason?: string;
 
   "age/time": string;
@@ -61,6 +62,7 @@ const AdminApproval = () => {
   const [page, setPage] = useState(1);
   const [selectedRA, setSelectedRA] = useState<AdminRow | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [suspendReason, setSuspendReason] = useState("");
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmType, setConfirmType] = useState<"approve" | "reject" | null>(null);
@@ -104,6 +106,7 @@ const AdminApproval = () => {
 
         const formatted: AdminRow[] = data.map((item: any) => ({
   id: String(item.id),
+user_id: item.user_id ? String(item.user_id) : "",
   type: "RA",
 
   name: `${item.first_name || ""} ${item.surname || ""}`.trim(),
@@ -162,7 +165,8 @@ const AdminApproval = () => {
 
         const formatted: AdminRow[] = data.map((item: any) => ({
   id: String(item.id),
-  type: "Broker", // ✅ MUST match type exactly
+ user_id: item.user_id ? String(item.user_id) : "",
+  type: "BROKER", // ✅ MUST match type exactly
 
   name: item.legal_name || "N/A",
   phone: item.mobile || "",
@@ -197,16 +201,16 @@ useEffect(() => {
 }, [searchQuery, filter, brokerSearch, brokerFilter]);
 
   /* ================= STATUS COLOR ================= */
+const statusColor = (status: AdminRow["status"]) => {
+  const s = status.toLowerCase();
 
-  const statusColor = (status: AdminRow["status"]) => {
-    const s = status.toLowerCase();
+  if (s === "approved") return "success";
+  if (s === "rejected") return "error";
+  if (s === "pending") return "warning";
+  if (s === "suspended") return "secondary";
 
-    if (s === "approved") return "success";
-    if (s === "rejected") return "error";
-    if (s === "pending") return "warning";
-
-    return "default";
-  };
+  return "default";
+};
 
   /* ================= FILTER ================= */
 
@@ -351,6 +355,91 @@ const openFile = (file?: string | string[]) => {
       alert("Server error while rejecting ❌");
     }
   };
+
+  /* ================= SUSPEND ================= */
+const handleSuspend = async (
+  id: string,
+  type: "RA" | "BROKER"
+) => {
+
+  // ✅ Validation
+  if (!suspendReason.trim()) {
+    alert("Please enter suspend reason");
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(
+      `${import.meta.env.VITE_API_URL}/admin/suspend-user`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+
+        // ✅ Send suspend reason
+        body: JSON.stringify({
+          userId: id,
+          type,
+          suspendReason,
+        }),
+      }
+    );
+
+    const data = await res.json();
+
+    // ✅ API failed
+    if (!res.ok || data.success === false) {
+      alert(data.message || "Suspend failed ❌");
+      return;
+    }
+
+    alert("User Suspended ✅");
+
+    // ✅ Update RA table
+    if (type === "RA") {
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                status: "Suspended",
+              }
+            : r
+        )
+      );
+
+      // ✅ Clear state
+      setSuspendReason("");
+      setSelectedRA(null);
+    }
+
+    // ✅ Update Broker table
+    else {
+      setBrokerRows((prev) =>
+        prev.map((b) =>
+          b.id === id
+            ? {
+                ...b,
+                status: "Suspended",
+              }
+            : b
+        )
+      );
+
+      // ✅ Clear state
+      setSuspendReason("");
+      setSelectedBroker(null);
+    }
+
+  } catch (error) {
+    console.error("Suspend Error:", error);
+    alert("Server error while suspending ❌");
+  }
+};
 
 
   /* ================= Edit ================= */
@@ -524,12 +613,27 @@ const openFile = (file?: string | string[]) => {
     sx={{ mt: 2 }}
   />
 )}
+{selectedRA.status.toLowerCase() === "approved" && (
+  <TextField
+    fullWidth
+    multiline
+    rows={2}
+    placeholder="Suspend Reason"
+    value={suspendReason}
+    onChange={(e) => setSuspendReason(e.target.value)}
+    sx={{ mt: 2 }}
+  />
+)}
           <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
 
             <Button
               variant="contained"
               color="success"
               fullWidth
+              disabled={
+  selectedRA.status.toLowerCase() === "approved" &&
+  selectedRA.status.toLowerCase() !== "suspended"
+}
               onClick={() => {
                 setSelectedId(selectedRA.id);
                 setConfirmType("approve");
@@ -551,6 +655,19 @@ const openFile = (file?: string | string[]) => {
     }}
   >
     Reject
+  </Button>
+)}
+
+{selectedRA.status.toLowerCase() === "approved" && (
+  <Button
+    variant="contained"
+    color="secondary"
+    fullWidth
+    onClick={() =>
+  handleSuspend(selectedRA.user_id || "", "RA")
+}
+  >
+    Suspend
   </Button>
 )}
             <Button
@@ -783,11 +900,28 @@ const openFile = (file?: string | string[]) => {
     sx={{ mt: 2 }}
   />
 )}
+{selectedBroker.status.toLowerCase() === "approved" && (
+  <TextField
+    fullWidth
+    multiline
+    rows={2}
+    placeholder="Suspend Reason"
+    value={suspendReason}
+    onChange={(e) => setSuspendReason(e.target.value)}
+    sx={{ mt: 2 }}
+  />
+)}
+
           <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
+            
             <Button
               variant="contained"
               color="success"
               fullWidth
+             disabled={
+  selectedBroker.status.toLowerCase() === "approved" &&
+  selectedBroker.status.toLowerCase() !== "suspended"
+}
               onClick={() => {
                 setSelectedId(selectedBroker.id);
                 setConfirmType("approve");
@@ -808,6 +942,19 @@ const openFile = (file?: string | string[]) => {
     }}
   >
     Reject
+  </Button>
+)}
+
+{selectedBroker.status.toLowerCase() === "approved" && (
+  <Button
+    variant="contained"
+    color="secondary"
+    fullWidth
+    onClick={() =>
+  handleSuspend(selectedBroker.user_id || "", "BROKER")
+}
+  >
+    Suspend
   </Button>
 )}
 

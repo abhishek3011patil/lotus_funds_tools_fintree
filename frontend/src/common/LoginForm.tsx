@@ -4,21 +4,14 @@ import {
   Typography,
   TextField,
   Button,
-  MenuItem,
-  FormControl,
-  InputLabel,
   IconButton,
   InputAdornment,
-  Select,
   CircularProgress,
   Link
 } from "@mui/material";
-import type { SelectChangeEvent } from "@mui/material";
 
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
-import RestartAltIcon from "@mui/icons-material/RestartAlt";
-
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import LoadingPage from "./LoadingPage";
@@ -26,12 +19,7 @@ import LoadingPage from "./LoadingPage";
 const LoginForm: React.FC = () => {
 
   const navigate = useNavigate();
-
-
-
-
   const [showPassword, setShowPassword] = useState(false);
-
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -45,8 +33,6 @@ const LoginForm: React.FC = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
-
-
 
   const handleClickShowPassword = () =>
     setShowPassword((show) => !show);
@@ -69,9 +55,16 @@ const LoginForm: React.FC = () => {
       const { token, role } = res.data;
 
       localStorage.setItem("token", token);
-      localStorage.setItem("username", res.data.username);
 
-      localStorage.setItem("role", role);
+// ✅ ADD THIS
+localStorage.setItem(
+  "tokenExpiry",
+  (Date.now() + 60 * 1000).toString()
+);
+
+localStorage.setItem("username", res.data.username);
+
+localStorage.setItem("role", role);
       console.log("LOGIN:", res.data);
 
 
