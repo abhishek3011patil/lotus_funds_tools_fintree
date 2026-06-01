@@ -57,9 +57,11 @@ const LoginForm: React.FC = () => {
       localStorage.setItem("token", token);
 
 // ✅ ADD THIS
+const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+
 localStorage.setItem(
   "tokenExpiry",
-  (Date.now() + 60 * 1000).toString()
+  (Date.now() + THIRTY_DAYS).toString()
 );
 
 localStorage.setItem("username", res.data.username);

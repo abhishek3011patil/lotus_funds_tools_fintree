@@ -180,7 +180,7 @@ if (user.status.toLowerCase() !== "active") {
   name: user.username || user.email
 },
       process.env.JWT_SECRET as string,
-      { expiresIn: "1m" }
+      { expiresIn: "30d" }
     );
 
    if (
