@@ -938,7 +938,7 @@ const handleApprove = async (id: string, type: "RA" | "BROKER") => {
 
   {selectedRA && (
     <TelegramSearch
-      raId={selectedRA.id}   // ✅ correct
+      raId={selectedRA.userId}   // ✅ correct
       onSaved={() => {
         fetchParticipants(selectedRA.id); // ✅ refresh correctly
       }}

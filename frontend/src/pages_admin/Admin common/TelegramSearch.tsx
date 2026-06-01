@@ -24,6 +24,8 @@ export const TelegramSearch = ({ raId, onSaved }: TelegramSearchProps) => {
   const [loading, setLoading] = useState(false);
   const [phoneError, setPhoneError] = useState("");
   const [entityType, setEntityType] = useState("USER");
+  console.log("raId prop =", raId);
+console.trace("TelegramSearch rendered from");
 
   const handleSave = async () => {
   // ✅ At least one field required

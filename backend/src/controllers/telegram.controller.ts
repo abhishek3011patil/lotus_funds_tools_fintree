@@ -79,6 +79,9 @@ export const saveTelegramUser = async (
   req: AuthRequest,
   res: Response
 ) => {
+   console.log("=== SAVE USER ===");
+  console.log("req.user:", req.user);
+  console.log("req.body:", req.body);
   try {
     const {
       telegram_user_id,
