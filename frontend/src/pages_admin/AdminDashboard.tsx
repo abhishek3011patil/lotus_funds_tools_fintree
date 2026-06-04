@@ -118,6 +118,7 @@ const [participant, setParticipant] = useState<Participant | null>(null);
 
         const formatted: AdminRow[] = data.map((item: any) => ({
           id: item.ra_id || item.broker_id, 
+          
           userId: item.user_id,  
           name:
             `${item.first_name || ""} ${item.surname || ""}`.trim() ||
@@ -227,7 +228,9 @@ const paginatedSuspendedRows = filteredSuspendedRows.slice(
 
   /* ================= EDIT ================= */
   const handleEdit = (id: string) => {
+    
     navigate(`/admin/edit-ra/${id}`);
+    
   };
 
   /* ================= TELEGRAM LINK ================= */
@@ -256,7 +259,7 @@ const paginatedSuspendedRows = filteredSuspendedRows.slice(
 
   const fetchParticipants = async (raId: string) => {
   if (!raId) {
-    console.error("❌ RA ID is missing");
+    console.error(" RA ID is missing");
     return;
   }
 
@@ -527,7 +530,7 @@ const handleApprove = async (id: string, type: "RA" | "BROKER") => {
               <TableCell>Name</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Age / Time</TableCell>
-              <TableCell align="right">Action</TableCell>
+              {/* <TableCell align="right">Action</TableCell> */}
               <TableCell>Telegram</TableCell>
             </TableRow>
           </TableHead>
@@ -546,9 +549,9 @@ const handleApprove = async (id: string, type: "RA" | "BROKER") => {
                 </TableCell>
                 <TableCell>{row["age/time"]}</TableCell>
 
-                <TableCell align="right">
+                {/* <TableCell align="right">
                   <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
-                    <Button
+                     <Button
                       size="small"
                       variant="outlined"
                       onClick={() => {
@@ -557,9 +560,9 @@ const handleApprove = async (id: string, type: "RA" | "BROKER") => {
                       }}
                     >
                       View
-                    </Button>
+                    </Button> 
                   </Box>
-                </TableCell>
+                </TableCell> */}
 
                 <TableCell>
                   <Box

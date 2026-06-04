@@ -655,6 +655,32 @@ const EditPage = () => {
 )}
 
 {/*end*/}
+{type?.toUpperCase() === "RA" && (
+  <Grid item xs={12}>
+    <Paper sx={{ p: 3 }}>
+      <Typography variant="h6">
+        Research Analyst Disclaimer
+      </Typography>
+
+      <Divider sx={{ mb: 2 }} />
+
+      <Grid container spacing={2}>
+        <Grid item xs={12}>
+          <TextField
+            fullWidth
+            multiline
+            rows={8}
+            name="additional_comments"
+            label="Disclaimer Text"
+            value={fields.additional_comments || ""}
+            onChange={handleChange}
+            placeholder="Enter Research Analyst Disclaimer"
+          />
+        </Grid>
+      </Grid>
+    </Paper>
+  </Grid>
+)}
 
         {/* Files */}
         <Grid item xs={12}>

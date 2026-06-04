@@ -22,11 +22,14 @@ import type { SelectChangeEvent } from "@mui/material";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 
+import { State, City } from "country-state-city";
+import { useNavigate } from "react-router-dom";
 
 
 const RegistrationPage: React.FC = () => {
-
+const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
+  
   const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
   const API_URL = import.meta.env.VITE_API_URL;
 
@@ -110,9 +113,9 @@ const RegistrationPage: React.FC = () => {
   // Data Lists
   const bankOptions = ["AU Small Finance Bank", "Axis Bank", "Bank of Baroda", "Bank of India", "Bank of Maharashtra", "Canara Bank", "Central Bank of India", "Citibank", "DBS Bank India", "Equitas Small Finance Bank", "Federal Bank", "HDFC Bank", "HSBC", "ICICI Bank", "IDFC First Bank", "Indian Bank", "Indian Overseas Bank", "IndusInd Bank", "Kotak Mahindra Bank", "Punjab & Sind Bank", "Punjab National Bank (PNB)", "RBL Bank", "South Indian Bank", "Standard Chartered", "State Bank of India (SBI)", "UCO Bank", "Ujjivan Small Finance Bank", "Union Bank of India", "Yes Bank"];
 
-  const academicOptions = ["Graduate – Finance", "Graduate – Accountancy", "Graduate – Business Management", "Graduate – Commerce", "Graduate – Economics", "Graduate – Capital Markets", "Graduate – Banking", "Graduate – Insurance", "Graduate – Actuarial Science", "Graduate – Other Financial Services", "Post Graduate – Finance", "Post Graduate – Accountancy", "Post Graduate – Business Management", "Post Graduate – Commerce", "Post Graduate – Economics", "Post Graduate – Capital Markets", "Post Graduate – Banking", "Post Graduate – Insurance", "Post Graduate – Actuarial Science", "Post Graduate – Other Financial Services", "Diploma – Finance / Financial Services", "Diploma – Capital Markets / Securities Markets"];
+  const academicOptions = ["Graduate – Finance", "Graduate – Accountancy", "Graduate – Business Management", "Graduate – Commerce", "Graduate – Economics", "Graduate – Capital Markets", "Graduate – Banking", "Graduate – Insurance", "Graduate – Actuarial Science", "Graduate – Other Financial Services", "Post Graduate – Finance", "Post Graduate – Accountancy", "Post Graduate – Business Management", "Post Graduate – Commerce", "Post Graduate – Economics", "Post Graduate – Capital Markets", "Post Graduate – Banking", "Post Graduate – Insurance", "Post Graduate – Actuarial Science", "Post Graduate – Other Financial Services", "Diploma – Finance / Financial Services", "Diploma – Capital Markets / Securities Markets", "Other"];
 
-  const professionalOptions = ["Chartered Accountant (CA)", "Company Secretary (CS)", "Cost & Management Accountant (CMA)", "FRM – Financial Risk Manager (GARP)", "NISM Series VIII – Equity Derivatives", "NISM Series XIII – Common Derivatives", "NISM Currency / Commodity Market Modules"];
+  const professionalOptions = ["Chartered Accountant (CA)", "Company Secretary (CS)", "Cost & Management Accountant (CMA)", "FRM – Financial Risk Manager (GARP)", "NISM Series VIII – Equity Derivatives", "NISM Series XIII – Common Derivatives", "NISM Currency / Commodity Market Modules", "Other"];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target as HTMLInputElement;
@@ -121,11 +124,23 @@ const RegistrationPage: React.FC = () => {
     if (type !== "checkbox" && value.trim() !== "") setErrors(prev => ({ ...prev, [name]: false }));
   };
 
-  const handleSelect = (e: SelectChangeEvent) => {
-    const name = e.target.name as string;
-    setFormData({ ...formData, [name]: e.target.value });
-    setErrors(prev => ({ ...prev, [name]: false }));
-  };
+const handleSelect = (e: SelectChangeEvent) => {
+  const name = e.target.name as string;
+  const value = e.target.value;
+
+  setFormData(prev => ({
+    ...prev,
+    [name]: value,
+
+    // Reset city when state changes
+    ...(name === "state" ? { city: "" } : {}),
+  }));
+
+  setErrors(prev => ({
+    ...prev,
+    [name]: false,
+  }));
+};
   
 
   const validateStep = () => {
@@ -192,19 +207,15 @@ Object.entries(fileMapping).forEach(([key, file]) => {
   const token = localStorage.getItem("token");
 
 
-    const response = await axios.post(
-      `${API_URL}/api/registration/register-ra`,
-      form,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`, // ⭐ ADD THIS
-        },
-      }
-    );
+  const response = await axios.post(
+  `${API_URL}/api/registration/register-ra`,
+  form
+);
 
     if (response.data.success) {
-      alert("✅ Registration submitted successfully!");
-    }
+  alert("✅ Registration submitted successfully!");
+  navigate("/login");
+}
 
   } catch (error: any) {
     if (error.response) {
@@ -360,6 +371,16 @@ const styles = {
     "&:hover": { bgcolor: "#3D56CA" }
   },
 };
+const states = State.getStatesOfCountry("IN");
+const selectedState = states.find(
+  (s) => s.name === formData.state
+);
+
+const cities = selectedState
+  ? City.getCitiesOfState("IN", selectedState.isoCode)
+  : [];
+
+
 
   return (
     <Box sx={styles.container}>
@@ -564,7 +585,11 @@ const styles = {
                 label="State"
                 onChange={handleSelect}
               >
-                <MenuItem value="Maharashtra">Maharashtra</MenuItem>
+                {states.map((state) => (
+           <MenuItem key={state.isoCode} value={state.name}>
+            {state.name}
+            </MenuItem>
+             ))}
               </Select>
               {errors.state && <FormHelperText>Required</FormHelperText>}
             </FormControl>
@@ -579,7 +604,11 @@ const styles = {
                 label="City"
                 onChange={handleSelect}
               >
-                <MenuItem value="Mumbai">Mumbai</MenuItem>
+                    {cities.map((city) => (
+             <MenuItem key={city.name} value={city.name}>
+             {city.name}
+            </MenuItem>
+              ))}
               </Select>
               {errors.city && <FormHelperText>Required</FormHelperText>}
             </FormControl>
@@ -1309,7 +1338,7 @@ const styles = {
           )}
           <Box sx={{ textAlign: 'right' }}>
             <Button variant="contained" sx={styles.saveBtn} onClick={handleSave}>
-              {currentStep === 4 ? "Continue" : "Save & Continue"}
+              {currentStep === 4 ? "Submit" : "Save & Continue"}
             </Button>
           </Box>
         </Box>

@@ -99,6 +99,7 @@ router.put("/reject/:type/:id", authenticate, requireAdmin, rejectUser);
 router.get("/ra/:id", authenticate, requireAdmin, getRegistrationById);
 router.get("/broker/:id", authenticate, requireAdmin, getBrokerById);
 
+
 /* ================= TEST ROUTE ================= */
 
 router.get("/test", (req: Request, res: Response) => {
