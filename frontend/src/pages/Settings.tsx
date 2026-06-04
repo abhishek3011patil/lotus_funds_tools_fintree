@@ -9,6 +9,8 @@ import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 
 import { useTelegramNotification } from "../hooks/useTelegramNotification";
+import Button from "@mui/material/Button/Button";
+import RASettingsDisclaimer from "../common/RASettingsDisclaimer";
 
 const Settings = () => {
 
@@ -58,6 +60,16 @@ const Settings = () => {
       >
         <ChangePassword />
       </div>
+
+     <div
+  style={{
+    marginTop: "30px",
+    width: "100%",
+    maxWidth: "1000px",
+  }}
+>
+  <RASettingsDisclaimer />
+</div>
 
       <div
         style={{

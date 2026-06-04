@@ -632,3 +632,89 @@ if (
         return res.status(500).json({ message: "Server error" });
     }
 };
+
+
+
+    // =========================================================
+    // 1️⃣ change disclaimer 
+    // =========================================================
+
+
+
+export const getRADisclaimer = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        message: "Unauthorized user",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT additional_comments
+      FROM ra_details
+      WHERE user_id = $1
+      `,
+      [userId]
+    );
+
+    return res.json({
+      success: true,
+      disclaimer:
+        result.rows[0]?.additional_comments || "",
+    });
+  } catch (error) {
+    console.error("GET DISCLAIMER ERROR:", error);
+
+    return res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+export const updateRADisclaimer = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user?.id;
+    const { disclaimer } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        message: "Unauthorized user",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      UPDATE ra_details
+      SET additional_comments = $1
+      WHERE user_id = $2
+      RETURNING additional_comments
+      `,
+      [
+        disclaimer,
+        userId,
+      ]
+    );
+
+    return res.json({
+      success: true,
+      disclaimer:
+        result.rows[0]?.additional_comments || "",
+      message: "Disclaimer updated successfully",
+    });
+  } catch (error) {
+    console.error("UPDATE DISCLAIMER ERROR:", error);
+
+    return res.status(500).json({
+      message: "Server error",
+    });
+  }
+};

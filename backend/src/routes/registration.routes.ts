@@ -15,6 +15,7 @@ import {
   getAllRegistrationsActiveUsers,
   updateBroker,
 } from "../controllers/registration.controller";
+import { getRADisclaimer, updateRADisclaimer } from "../controllers/researchCalls.controller";
 
 
 const router = express.Router();
@@ -99,7 +100,17 @@ router.put("/reject/:type/:id", authenticate, requireAdmin, rejectUser);
 router.get("/ra/:id", authenticate, requireAdmin, getRegistrationById);
 router.get("/broker/:id", authenticate, requireAdmin, getBrokerById);
 
+router.get(
+  "/research/disclaimer",
+  authenticate,
+  getRADisclaimer
+);
 
+router.put(
+  "/research/disclaimer",
+  authenticate,
+  updateRADisclaimer
+);
 /* ================= TEST ROUTE ================= */
 
 router.get("/test", (req: Request, res: Response) => {

@@ -606,7 +606,9 @@ export const getBrokerById = async (req: Request, res: Response) => {
 /* ================= UPDATE RA REGISTRATION ================= */
 
 export const updateRARegistration = async (req: AuthRequest, res: Response) => {
+  
   try {
+    console.log(req.files);
     const { id } = req.params;
     const data = req.body || {};
     const files = req.files as any;
@@ -616,28 +618,92 @@ export const updateRARegistration = async (req: AuthRequest, res: Response) => {
   [id]
 );
 
-    const result = await pool.query(
-      
-      `
-      UPDATE ra_details
-      SET
-        first_name = $1,
-        surname = $2,
-        email = $3,
-        mobile = $4,
-        profile_image = COALESCE($5, profile_image)
-      WHERE id = $6
-      RETURNING *
-      `,
-      [
-        data.first_name,
-        data.surname,
-        data.email,
-        data.mobile,
-        files?.profile_image?.[0]?.filename || null,
-        id,
-      ]
-    );
+   const allowedFields = [
+  "salutation",
+  "first_name",
+  "middle_name",
+  "surname",
+  "org_name",
+  "designation",
+  "short_bio",
+  "email",
+  "mobile",
+  "telephone",
+  "country",
+  "state",
+  "city",
+  "pincode",
+  "address_line1",
+  "address_line2",
+  "sebi_reg_no",
+  "sebi_start_date",
+  "sebi_expiry_date",
+  "nism_reg_no",
+  "nism_valid_till",
+  "academic_qualification",
+  "professional_qualification",
+  "market_experience",
+  "expertise",
+  "markets",
+  "bank_name",
+  "account_holder",
+  "account_number",
+  "ifsc_code",
+  "pan_number",
+  "address_proof_type",
+  "declare_info_true",
+  "consent_verification",
+  "no_guaranteed_returns",
+  "conflict_of_interest",
+  "personal_trading",
+  "sebi_compliance",
+  "platform_policy",
+  "additional_comments",
+];
+
+const updates: string[] = [];
+const values: any[] = [];
+
+allowedFields.forEach((field) => {
+  if (data[field] !== undefined) {
+    updates.push(`${field} = $${values.length + 1}`);
+    values.push(data[field]);
+  }
+});
+
+const fileMap = {
+  profile_image: files?.profile_image?.[0]?.filename,
+  pan_card: files?.pan_card?.[0]?.filename,
+  address_proof_document:
+    files?.address_proof_document?.[0]?.filename,
+  sebi_certificate:
+    files?.sebi_certificate?.[0]?.filename,
+  sebi_receipt:
+    files?.sebi_receipt?.[0]?.filename,
+  nism_certificate:
+    files?.nism_certificate?.[0]?.filename,
+  cancelled_cheque:
+    files?.cancelled_cheque?.[0]?.filename,
+};
+
+Object.entries(fileMap).forEach(([field, value]) => {
+  if (value) {
+    updates.push(`${field} = $${values.length + 1}`);
+    values.push(value);
+  }
+});
+
+values.push(id);
+
+const result = await pool.query(
+  `
+  UPDATE ra_details
+  SET ${updates.join(", ")}
+  WHERE id = $${values.length}
+  RETURNING *
+  `,
+  values
+);
 
     // ================= UPDATE LOGIN EMAIL =================
 
