@@ -512,3 +512,95 @@ if (user.role === "BROKER") {
     client.release();
   }
 };
+
+
+export const activateRA = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const { id } = req.params;
+
+    const oldData = await pool.query(
+      `
+      SELECT *
+      FROM users
+      WHERE id = $1
+      `,
+      [id]
+    );
+    const currentUser = oldData.rows[0];
+
+if (!currentUser) {
+  return res.status(404).json({
+    success: false,
+    message: "User not found",
+  });
+}
+
+if (currentUser.status === "active") {
+  return res.status(400).json({
+    success: false,
+    message: "User is already active",
+  });
+}
+
+    const result = await pool.query(
+      `
+      UPDATE users
+      SET
+        status = 'active',
+        is_active = true,
+        suspended_at = NULL,
+        suspended_reason = NULL
+      WHERE id = $1
+      RETURNING *
+      `,
+      [id]
+    );
+
+    await pool.query(
+      `
+     UPDATE ra_details
+  SET status = 'approved'
+  WHERE user_id = $1
+      `,
+      [id]
+    );
+
+    await createAuditLog({
+      adminName: req.user?.name || "ADMIN",
+      adminId: req.user?.id,
+      adminRole: req.user?.role || "ADMIN",
+
+      action: "ACTIVATE",
+      module: "RA",
+
+      targetEntity: result.rows[0].email,
+      targetType: "RA",
+
+      description: "RA account activated",
+
+      status: "SUCCESS",
+
+      ipAddress: getClientIp(req),
+      device: req.headers["user-agent"],
+
+      oldValue: oldData.rows[0],
+      newValue: result.rows[0],
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "RA activated successfully",
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};

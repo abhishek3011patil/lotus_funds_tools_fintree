@@ -51,12 +51,14 @@ type AdminRow = {
 const ITEMS_PER_PAGE = 10;
 
 const AdminDashboard = () => {
+  
   const [rows, setRows] = useState<AdminRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
 
   const [selectedRA, setSelectedRA] = useState<AdminRow | null>(null);
   const [panelMode, setPanelMode] = useState<"ra" | "participant">("ra");
+  const [suspendReason, setSuspendReason] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
 const [confirmType, setConfirmType] = useState<"RA" | "BROKER" | null>(null);
 const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -79,6 +81,7 @@ const [participant, setParticipant] = useState<Participant | null>(null);
   const [participantLoading, setParticipantLoading] = useState(false);
   const [participantSearchQuery, setParticipantSearchQuery] = useState("");
 
+  
 
   const [editingCell, setEditingCell] = useState<{
     id: string;
@@ -89,68 +92,114 @@ const [participant, setParticipant] = useState<Participant | null>(null);
   const navigate = useNavigate();
 
   /* ================= LOAD DATA ================= */
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const token = localStorage.getItem("token");
+ const loadRegistrations = async () => {
+  try {
+    const token = localStorage.getItem("token");
 
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/registration/all-registrations-active-users`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          const errBody = await response.json();
-          console.error("Error response:", errBody);
-          return;
-        }
-
-        const data = await response.json();
-
-        if (!Array.isArray(data)) {
-          console.error("Expected array but got:", data);
-          return;
-        }
-
-        const formatted: AdminRow[] = data.map((item: any) => ({
-          id: item.ra_id || item.broker_id, 
-          
-          userId: item.user_id,  
-          name:
-            `${item.first_name || ""} ${item.surname || ""}`.trim() ||
-            item.name ||
-            "N/A",
-          phone: item.mobile || "",
-          profile: item.profile_image,
-          pan: item.pan_card,
-          address: item.address_proof_document,
-          sebi: item.sebi_certificate,
-          sebi_receipt: item.sebi_receipt,
-          nism: item.nism_certificate,
-          cheque: item.cancelled_cheque,
-          telegram_id: item.telegram_user_id
-            ? String(item.telegram_user_id)
-            : "",
-          status: item.user_status,
-          raStatus: item.ra_status,
-          rejectionReason: item.rejection_reason || "",
-          "age/time": "Just now"
-        }));
-        console.log("RA DATA:", data);
-
-        console.log(formatted);
-        setRows(formatted);
-      } catch (error) {
-        console.error("Failed to load admin data:", error);
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/registration/all-registrations-active-users`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       }
-    };
+    );
 
-    load();
-  }, []);
+    if (!response.ok) {
+      const errBody = await response.json();
+      console.error("Error response:", errBody);
+      return;
+    }
+
+    const data = await response.json();
+
+    if (!Array.isArray(data)) {
+      console.error("Expected array but got:", data);
+      return;
+    }
+
+    const formatted: AdminRow[] = data.map((item: any) => ({
+      id: item.ra_id || item.broker_id,
+
+      userId: item.user_id,
+
+      name:
+        `${item.first_name || ""} ${item.surname || ""}`.trim() ||
+        item.name ||
+        "N/A",
+
+      phone: item.mobile || "",
+
+      profile: item.profile_image,
+      pan: item.pan_card,
+      address: item.address_proof_document,
+      sebi: item.sebi_certificate,
+      sebi_receipt: item.sebi_receipt,
+      nism: item.nism_certificate,
+      cheque: item.cancelled_cheque,
+
+      telegram_id: item.telegram_user_id
+        ? String(item.telegram_user_id)
+        : "",
+
+      status: item.user_status,
+      raStatus: item.ra_status,
+      rejectionReason: item.rejection_reason || "",
+
+      "age/time": "Just now",
+    }));
+
+    setRows(formatted);
+
+  } catch (error) {
+    console.error(
+      "Failed to load admin data:",
+      error
+    );
+  }
+};
+
+const handleActivate = async (
+  userId: number
+) => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/admin/activate/ra/${userId}`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      alert(
+        result.message ||
+          "Failed to activate RA"
+      );
+      return;
+    }
+
+    alert("RA activated successfully");
+
+    // refresh table
+    loadRegistrations();
+
+  } catch (error) {
+    console.error(error);
+
+    alert("Failed to activate RA");
+  }
+};
+
+useEffect(() => {
+  loadRegistrations();
+}, []);
 
   useEffect(() => {
     setPage(1);
@@ -451,6 +500,10 @@ setParticipantUsername("");
       );
     }
 
+
+    // suspended logic
+
+
     return (
       <span
         style={{ display: "block", minHeight: "20px", cursor: "pointer" }}
@@ -500,12 +553,55 @@ const handleApprove = async (id: string, type: "RA" | "BROKER") => {
 
   alert(data.message);
 };
+
+
+const handleSuspend = async (userId: string) => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/admin/suspend-user`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId,
+          suspendReason,
+        }),
+      }
+    );
+
+    const result = await response.json();
+
+console.log("STATUS:", response.status);
+console.log("RESULT:", result);
+
+    if (!response.ok) {
+      alert(result.message || "Failed to suspend user");
+      return;
+    }
+
+    alert("User suspended successfully");
+
+    
+
+    // reload table
+    window.location.reload();
+
+  } catch (error) {
+    console.error(error);
+    alert("Failed to suspend user");
+  }
+};
+
+
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      {/* <Typography variant="h5" fontWeight={600}>
-        Admin Recommendations
-      </Typography> */}
-
+        
       {/* SEARCH */}
       <TextField
         placeholder="Search by name or mobile"
@@ -530,7 +626,7 @@ const handleApprove = async (id: string, type: "RA" | "BROKER") => {
               <TableCell>Name</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Age / Time</TableCell>
-              {/* <TableCell align="right">Action</TableCell> */}
+               <TableCell align="right">Action</TableCell> 
               <TableCell>Telegram</TableCell>
             </TableRow>
           </TableHead>
@@ -549,7 +645,7 @@ const handleApprove = async (id: string, type: "RA" | "BROKER") => {
                 </TableCell>
                 <TableCell>{row["age/time"]}</TableCell>
 
-                {/* <TableCell align="right">
+                 <TableCell align="right">
                   <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
                      <Button
                       size="small"
@@ -562,7 +658,7 @@ const handleApprove = async (id: string, type: "RA" | "BROKER") => {
                       View
                     </Button> 
                   </Box>
-                </TableCell> */}
+                </TableCell> 
 
                 <TableCell>
                   <Box
@@ -639,7 +735,7 @@ const handleApprove = async (id: string, type: "RA" | "BROKER") => {
             <TableCell>
               <Chip
                 size="small"
-                label={row.status || row.raStatus}
+                label={ row.raStatus}
                 color="secondary"
               />
             </TableCell>
@@ -742,56 +838,59 @@ const handleApprove = async (id: string, type: "RA" | "BROKER") => {
 <Box
   sx={{
     display: "flex",
+    flexDirection: "column",
     gap: 2,
     mt: 3,
   }}
 >
-  {/* APPROVE */}
-  <Button
-    variant="contained"
-    color="success"
-    fullWidth
-    disabled={selectedRA.raStatus?.toLowerCase() === "approved"}
-    onClick={() => {
-  setConfirmId(selectedRA.id);
-  setConfirmType("RA");
-  setConfirmOpen(true);
-}}
-    sx={{
-      py: 1.2,
-      fontWeight: 600,
-      borderRadius: 2,
-    }}
-  >
-    Approve
-  </Button>
-  
+  {selectedRA.status?.toLowerCase() === "active" ? (
+    <>
+      <TextField
+        fullWidth
+        multiline
+        rows={2}
+        placeholder="Suspend Reason"
+        value={suspendReason}
+        onChange={(e) => setSuspendReason(e.target.value)}
+      />
 
-  {/* EDIT */}
-  <Button
-    variant="contained"
-    color="warning"
-    fullWidth
-    onClick={() => handleEdit(selectedRA.id)}
-    sx={{
-      py: 1.2,
-      fontWeight: 600,
-      borderRadius: 2,
-    }}
-  >
-    Edit
-  </Button>
+      <Button
+        variant="contained"
+        color="error"
+        fullWidth
+        onClick={() => {
+          if (!suspendReason.trim()) {
+            alert("Please enter suspend reason");
+            return;
+          }
 
-
-                {/* <Button
-                  variant="contained"
-                  color="warning"
-                  fullWidth
-                  onClick={() => handleEdit(selectedRA.id)}
-                >
-                  Edit
-                </Button> */}
-              </Box>
+          handleSuspend(selectedRA.userId || "");
+        }}
+        sx={{
+          py: 1.2,
+          fontWeight: 600,
+          borderRadius: 2,
+        }}
+      >
+        Suspend
+      </Button>
+    </>
+  ) : (
+    <Button
+      variant="contained"
+      color="success"
+      fullWidth
+      onClick={() => handleActivate(selectedRA.userId)}
+      sx={{
+        py: 1.2,
+        fontWeight: 600,
+        borderRadius: 2,
+      }}
+    >
+      Activate
+    </Button>
+  )}
+</Box>
             </>
           ) : (
             <>

@@ -654,7 +654,8 @@ export const sendMessageToRAClients = async (
         org_name,
         sebi_reg_no,
         mobile,
-        email
+        email,
+        additional_comments
       FROM ra_details
       WHERE user_id = $1
       `,
@@ -662,6 +663,9 @@ export const sendMessageToRAClients = async (
     );
 
     const ra = raResult.rows[0];
+    const disclaimer =
+  ra.additional_comments ||
+  "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
 
     if (!ra) {
       return res.status(400).json({
@@ -688,7 +692,7 @@ export const sendMessageToRAClients = async (
 ${frontendMessage}
 
 *DISCLAIMER CUM DISCLOSURE:*
-Investment in securities market are subject to market risks. Read all the related documents carefully before investing.
+${disclaimer}
 
 Research Analyst: ${fullName} (${ra.org_name || "N/A"})
 SEBI Registration No: ${ra.sebi_reg_no || "N/A"}

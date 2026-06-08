@@ -1,6 +1,5 @@
 import bcrypt from "bcrypt";
 
-(async () => {
-    const hash = await bcrypt.hash("123", 10);
-    console.log("Hash for 123:", hash);
-})();
+
+
+bcrypt.hash($2b$10$953gxBCRqVPwNtf1XW.LBeORnw6T8r/gylbUnjtLVfvRmz86x8PFa, 10)

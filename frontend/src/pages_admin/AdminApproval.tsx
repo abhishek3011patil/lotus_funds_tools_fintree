@@ -602,29 +602,8 @@ const handleSuspend = async (
             <Button onClick={() => openFile(selectedRA.cheque)}>View Cheque</Button>
           </Box>
 
-          {selectedRA.status.toLowerCase() !== "approved" && (
-  <TextField
-    fullWidth
-    multiline
-    rows={2}
-    placeholder="Rejection Reason"
-    value={rejectReason}
-    onChange={(e) => setRejectReason(e.target.value)}
-    sx={{ mt: 2 }}
-  />
-)}
-{selectedRA.status.toLowerCase() === "approved" && (
-  <TextField
-    fullWidth
-    multiline
-    rows={2}
-    placeholder="Suspend Reason"
-    value={suspendReason}
-    onChange={(e) => setSuspendReason(e.target.value)}
-    sx={{ mt: 2 }}
-  />
-)}
-          <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
+
+       <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
 
             <Button
               variant="contained"
@@ -658,18 +637,7 @@ const handleSuspend = async (
   </Button>
 )}
 
-{selectedRA.status.toLowerCase() === "approved" && (
-  <Button
-    variant="contained"
-    color="secondary"
-    fullWidth
-    onClick={() =>
-  handleSuspend(selectedRA.user_id || "", "RA")
-}
-  >
-    Suspend
-  </Button>
-)}
+
             <Button
               variant="contained"
               color="warning"
@@ -945,18 +913,7 @@ const handleSuspend = async (
   </Button>
 )}
 
-{selectedBroker.status.toLowerCase() === "approved" && (
-  <Button
-    variant="contained"
-    color="secondary"
-    fullWidth
-    onClick={() =>
-  handleSuspend(selectedBroker.user_id || "", "BROKER")
-}
-  >
-    Suspend
-  </Button>
-)}
+
 
             <Button
               variant="contained"

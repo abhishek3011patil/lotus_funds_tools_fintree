@@ -350,7 +350,7 @@ export const approveRegistration = async (req: Request, res: Response) => {
       `
       WITH new_user AS (
         INSERT INTO users (username, password_hash, role, status)
-        VALUES ($1, $2, 'RESEARCH_ANALYST', 'ACTIVE')
+        VALUES ($1, $2, 'RESEARCH_ANALYST', 'active')
         RETURNING id
       )
       UPDATE ra_details
