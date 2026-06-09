@@ -599,6 +599,9 @@ export const sendMessageToRAClients = async (
 ) => {
   try {
 
+    console.log("SEND RA MESSAGE HIT");
+console.log("BODY RECEIVED:", req.body);
+
     const raId = req.user!.id;
 
     const { message: frontendMessage } =

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Box,
   Typography,
@@ -35,9 +35,7 @@ const NewPassword: React.FC = () => {
   const API_URL = import.meta.env.VITE_API_URL;
 
   // Remove old login session
-  useEffect(() => {
-    localStorage.removeItem("token");
-  }, []);
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -110,7 +108,7 @@ const NewPassword: React.FC = () => {
       />
     );
   }
-
+ console.log("NEW PASSWORD PAGE OPENED", window.location.href, token);
   return (
     <Box
       sx={{

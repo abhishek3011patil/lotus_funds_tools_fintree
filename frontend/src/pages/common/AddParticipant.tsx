@@ -95,9 +95,9 @@ const AddParticipant: React.FC = () => {
         width: "100%",
       }}
     >
-      <Typography fontWeight={700} sx={{ fontSize: 18 }}>
+      {/* <Typography fontWeight={700} sx={{ fontSize: 18 }}>
         View Participant
-      </Typography>
+      </Typography> */}
 
       {/* Participants Section */}
       <Box sx={{ mt: 2 }}>

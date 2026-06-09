@@ -245,36 +245,80 @@ const NewRecommendation = () => {
     // =========================================================
     // ✅ ERRATA FLOW (NO FILE HERE)
     // =========================================================
-    if (isErrataMode && errataSourceId) {
-      const updates = {
-        entry_price: form.entry || undefined,
-        target_price: form.target || undefined,
-        stop_loss: form.stopLoss || undefined,
-        target_price_2: form.target2 || undefined,
-        target_price_3: form.target3 || undefined,
-        stop_loss_2: form.stopLoss2 || undefined,
-        stop_loss_3: form.stopLoss3 || undefined,
-        entry_price_low: form.entryLow || undefined,
-        entry_price_upper: form.entryUpper || undefined,
-        holding_period: form.holdingPeriod || undefined,
-        rationale: form.rationale || undefined,
-        underlying_study: form.underlyingStudy?.label || undefined,
-        research_remarks: form.remark || undefined,
-      };
+   if (isErrataMode && errataSourceId) {
+  const updates = {
+    entry_price: form.entry || undefined,
+    target_price: form.target || undefined,
+    stop_loss: form.stopLoss || undefined,
+    target_price_2: form.target2 || undefined,
+    target_price_3: form.target3 || undefined,
+    stop_loss_2: form.stopLoss2 || undefined,
+    stop_loss_3: form.stopLoss3 || undefined,
+    entry_price_low: form.entryLow || undefined,
+    entry_price_upper: form.entryUpper || undefined,
+    holding_period: form.holdingPeriod || undefined,
+    rationale: form.rationale || undefined,
+    underlying_study: form.underlyingStudy?.label || undefined,
+    research_remarks: form.remark || undefined,
+  };
 
-      res = await axios.post(
-        import.meta.env.VITE_API_URL + "/api/research/calls/errata",
-        {
-          call_id: errataSourceId,
-          updates,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      alert("Errata Created ✅");
+  res = await axios.post(
+    import.meta.env.VITE_API_URL + "/api/research/calls/errata",
+    {
+      call_id: errataSourceId,
+      updates,
+    },
+    {
+      headers: { Authorization: `Bearer ${token}` },
     }
+  );
+
+  const errataMessage = `
+🚨 ERRATA / CORRECTION
+
+${form.action} ${finalDisplayName}
+
+Updated Values:
+Entry: ${form.entry || "-"}
+Target: ${form.target || "-"}
+SL: ${form.stopLoss || "-"}
+
+Reason:
+${form.remark || "Correction issued by Research Analyst"}
+`.trim();
+
+  console.log("ERRATA TELEGRAM MESSAGE:", errataMessage);
+
+  const telegramStatus = await axios.get(
+  `${import.meta.env.VITE_API_URL}/api/telegram/status`,
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
+
+if (!telegramStatus.data.connected) {
+  console.log("⚠️ Telegram not connected");
+  alert("Errata created, but Telegram is not connected");
+  return;
+}
+ console.log("ERRATA TELEGRAM V2");
+  await axios.post(
+    `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
+    {
+      message: errataMessage,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  alert("Errata Created ✅");
+}
 
     // =========================================================
     // ✅ NORMAL CREATE (WITH FILE)
@@ -698,7 +742,11 @@ const handleInitiate = useCallback(async (item: any) => {
   try {
     const token = localStorage.getItem("token");
 
-    // ✅ FIRST CHECK TELEGRAM STATUS
+    if (!token) {
+      alert("Please login again");
+      return;
+    }
+
     const telegramStatus = await axios.get(
       `${import.meta.env.VITE_API_URL}/api/telegram/status`,
       {
@@ -708,13 +756,11 @@ const handleInitiate = useCallback(async (item: any) => {
       }
     );
 
-    // ❌ BLOCK PUBLISH
     if (!telegramStatus.data.connected) {
       alert("Please connect Telegram first");
       return;
     }
 
-    // ✅ ONLY AFTER TELEGRAM CONNECTED
     await axios.patch(
       `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/publish`,
       {},
@@ -725,7 +771,6 @@ const handleInitiate = useCallback(async (item: any) => {
       }
     );
 
-    // ✅ UPDATE UI
     setRecommendations((prev) =>
       prev.map((rec) =>
         rec.id === item.id
@@ -734,13 +779,55 @@ const handleInitiate = useCallback(async (item: any) => {
       )
     );
 
-    // ✅ SEND TELEGRAM MESSAGE
+    const getEntry = () => {
+      if (!item.entry) return "-";
+
+      if (item.entry.low && item.entry.high) {
+        return `${item.entry.low} - ${item.entry.high}`;
+      }
+
+      return item.entry.ideal || "-";
+    };
+
+    const publishMessage = `
+Date & Time : ${new Date().toLocaleString()}
+
+*${item.action || "N/A"}* *${item.name || item.symbol || "N/A"}*
+Call Type : ${item.exchange || "N/A"} ${item.call_type || "N/A"} ${item.trade_type || "N/A"}
+
+Entry: ${getEntry()}
+
+Target: ${item.targets?.[0] || "-"}
+
+${
+  item.targets?.[1] || item.targets?.[2]
+    ? `Target 2: ${item.targets?.[1] || "-"}
+Target 3: ${item.targets?.[2] || "-"}`
+    : ""
+}
+
+SL: ${item.stop_losses?.[0] || "-"}
+
+${
+  item.stop_losses?.[1] || item.stop_losses?.[2]
+    ? `SL 2: ${item.stop_losses?.[1] || "-"}
+SL 3: ${item.stop_losses?.[2] || "-"}`
+    : ""
+}
+
+Expiry: ${item.expiry_date || "N/A"}
+Holding Period: ${item.holding_period || "N/A"}
+
+Rationale: ${item.rationale || "N/A"}
+Underlying Study: ${item.underlying_study || "N/A"}
+`.trim();
+
+    console.log("TELEGRAM MESSAGE:", publishMessage);
+
     await axios.post(
       `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
       {
-        ra_user_id: item.ra_user_id || item.user_id,
-        action: item.action,
-        symbol: item.display_name || item.symbol,
+        message: publishMessage,
       },
       {
         headers: {
@@ -749,6 +836,7 @@ const handleInitiate = useCallback(async (item: any) => {
       }
     );
 
+    alert("Call initiated successfully ✅");
   } catch (err: any) {
     console.error(err);
 
@@ -1662,6 +1750,7 @@ sx={{
           <Button
             variant="outlined"
             onClick={handleTrack}   // <-- create this function
+            disabled={isErrataMode}
           >
             Track
           </Button>

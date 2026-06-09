@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { activateRA, approveUser, suspendUser } from "../controllers/admin.controller";
+import { activateRA, approveUser, resendPasswordLink, suspendUser } from "../controllers/admin.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 import { requireAdmin } from "../middlewares/admin.middleware";
 
@@ -15,6 +15,12 @@ router.post("/suspend-user", suspendUser);
 router.get("/test", (req, res) => {
   res.send("ADMIN ROUTE WORKING");
 });
+
+router.post(
+  "/resend-password-link",
+  
+  resendPasswordLink
+);
 
 router.put(
   "/activate/ra/:id",

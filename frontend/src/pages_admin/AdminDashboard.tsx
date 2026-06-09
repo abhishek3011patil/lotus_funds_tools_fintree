@@ -44,7 +44,7 @@ type AdminRow = {
   status: string;
   raStatus?: string;
   rejectionReason?: string;
-
+ suspendReason?: string;
   "age/time": string;
 };
 
@@ -104,6 +104,7 @@ const [participant, setParticipant] = useState<Participant | null>(null);
         },
       }
     );
+   
 
     if (!response.ok) {
       const errBody = await response.json();
@@ -117,6 +118,8 @@ const [participant, setParticipant] = useState<Participant | null>(null);
       console.error("Expected array but got:", data);
       return;
     }
+
+    console.log("Raw data from API:", data);
 
     const formatted: AdminRow[] = data.map((item: any) => ({
       id: item.ra_id || item.broker_id,
@@ -145,6 +148,7 @@ const [participant, setParticipant] = useState<Participant | null>(null);
       status: item.user_status,
       raStatus: item.ra_status,
       rejectionReason: item.rejection_reason || "",
+      suspendReason: item.suspended_reason || "",
 
       "age/time": "Just now",
     }));
@@ -597,6 +601,35 @@ console.log("RESULT:", result);
   }
 };
 
+const handleResendPasswordLink = async (userId: string) => {
+  try {
+    const res = await fetch(
+  `${import.meta.env.VITE_API_URL}/admin/resend-password-link`,
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ userId }),
+  }
+);
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Failed to send link");
+    }
+
+    alert("Password setup link sent successfully ✅");
+
+  } catch (error) {
+    console.error(error);
+    alert("Failed to send password setup link");
+  }
+};
+
+
 
 
   return (
@@ -721,7 +754,9 @@ console.log("RESULT:", result);
           <TableCell>Name</TableCell>
           <TableCell>Status</TableCell>
           <TableCell>Age / Time</TableCell>
+          <TableCell>Suspend Reason</TableCell>
           <TableCell align="right">Action</TableCell>
+          
         </TableRow>
       </TableHead>
 
@@ -741,7 +776,9 @@ console.log("RESULT:", result);
             </TableCell>
 
             <TableCell>{row["age/time"]}</TableCell>
-
+              <TableCell>
+                {row.suspendReason || "-"}
+              </TableCell>
             <TableCell align="right">
               <Button
                 size="small"
@@ -829,7 +866,18 @@ console.log("RESULT:", result);
                 </Button>
                 <Button onClick={() => openFile(selectedRA.nism)}>View NISM</Button>
                 <Button onClick={() => openFile(selectedRA.cheque)}>View Cheque</Button>
+                <Button
+  size="small"
+  onClick={() =>
+    selectedRA?.userId &&
+    handleResendPasswordLink((selectedRA.userId))
+  }
+>
+  Resend Password Link
+</Button>
               </Box>
+
+              
 
 
 
@@ -875,6 +923,8 @@ console.log("RESULT:", result);
         Suspend
       </Button>
     </>
+    
+    
   ) : (
     <Button
       variant="contained"
@@ -889,7 +939,9 @@ console.log("RESULT:", result);
     >
       Activate
     </Button>
+    
   )}
+     
 </Box>
             </>
           ) : (

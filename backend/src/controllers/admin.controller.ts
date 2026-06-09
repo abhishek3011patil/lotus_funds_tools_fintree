@@ -201,7 +201,7 @@ if (existingUser.rows.length > 0) {
     await client.query("COMMIT");
 
     // ================= SEND EMAIL AGAIN =================
-    const link = `${process.env.FRONTEND_URL}/subscription?token=${token}`;
+   const link = `${process.env.FRONTEND_URL}/set-password?token=${token}`;
 
     await sendApprovalMail(email, name, link);
 
@@ -334,7 +334,7 @@ if (existingUser.rows.length > 0) {
     });
 
     // ================= SEND EMAIL =================
-    const link = `${process.env.FRONTEND_URL}/subscription?token=${token}`;
+    const link = `${process.env.FRONTEND_URL}/set-password?token=${token}`;
     await sendApprovalMail(email, name, link);
     
     return res.json({
@@ -604,3 +604,77 @@ if (currentUser.status === "active") {
     });
   }
 };
+
+
+export const resendPasswordLink = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const { userId } = req.body;
+
+    const userRes = await pool.query(
+      `
+      SELECT id, name, email
+      FROM users
+      WHERE id = $1
+      `,
+      [userId]
+    );
+
+    console.log("FOUND:", userRes.rows);
+
+    if (userRes.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+    console.log("BODY:", req.body);
+console.log("USER ID:", req.body.userId);
+    const user = userRes.rows[0];
+
+    const token = crypto.randomBytes(32).toString("hex");
+console.log("QUERYING USER:", userId);
+    await pool.query(
+      `
+      UPDATE users
+      SET
+        reset_token = $1,
+        token_expiry = $2,
+        updated_at = NOW()
+      WHERE id = $3
+      `,
+      [
+        token,
+        new Date(Date.now() + 60 * 60 * 1000),
+        userId,
+      ]
+      
+    );
+
+    const link =
+      `${process.env.FRONTEND_URL}set-password?token=${token}`;
+
+    await sendApprovalMail(
+      user.email,
+      user.name,
+      link
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Password link sent successfully ✅",
+    });
+
+  } catch (error) {
+    console.error("Resend Password Link Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+    
+  }
+};
+

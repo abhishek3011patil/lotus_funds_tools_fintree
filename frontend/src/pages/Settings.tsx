@@ -11,6 +11,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { useTelegramNotification } from "../hooks/useTelegramNotification";
 import Button from "@mui/material/Button/Button";
 import RASettingsDisclaimer from "../common/RASettingsDisclaimer";
+import RemoveParticipant from "../components/setting/RA_setting_component/ManageParticipants";
 
 const Settings = () => {
 
@@ -71,7 +72,7 @@ const Settings = () => {
   <RASettingsDisclaimer />
 </div>
 
-      <div
+      {/* <div
         style={{
           marginBottom: "30px",
           width: "100%",
@@ -79,7 +80,17 @@ const Settings = () => {
         }}
       >
         <AddParticipant />
-      </div>
+      </div> */}
+
+      <div
+  style={{
+    marginBottom: "30px",
+    width: "100%",
+    maxWidth: "1000px",
+  }}
+>
+  <RemoveParticipant />
+</div>
 
       <div style={{ width: "100%", maxWidth: "1000px" }}>
         <TelegramConnection />

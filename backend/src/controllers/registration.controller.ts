@@ -87,7 +87,7 @@ export const getAllRegistrationsActiveUsers = async (req: Request, res: Response
   u.username,
   u.role,
   u.status AS user_status,
-
+   u.suspended_reason,
   rd.id AS ra_id,
   rd.first_name,
   rd.surname,
