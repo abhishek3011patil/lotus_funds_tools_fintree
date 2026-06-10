@@ -404,7 +404,11 @@ SL 3: ${form.stopLoss3}`
     : ""
 }
 
-Expiry: ${form.expiry || "N/A"}
+Expiry: ${
+  form.expiry
+    ? new Date(form.expiry).toLocaleString()
+    : "N/A"
+}
 Holding Period: ${form.holdingPeriod || "N/A"}
 
 Rationale: ${form.rationale}
@@ -815,7 +819,11 @@ SL 3: ${item.stop_losses?.[2] || "-"}`
     : ""
 }
 
-Expiry: ${item.expiry_date || "N/A"}
+Expiry: ${item.expiry_date
+  ? new Date(item.expiry_date).toLocaleString()
+  : "N/A"}
+
+
 Holding Period: ${item.holding_period || "N/A"}
 
 Rationale: ${item.rationale || "N/A"}
