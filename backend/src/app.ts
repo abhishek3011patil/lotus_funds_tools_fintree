@@ -17,7 +17,7 @@ app.set("trust proxy", true);
 console.log("🔥 APP FILE LOADED");
 
 const allowedOrigins = [
-  "https://8x946q4k-5173.inc1.devtunnels.ms",
+  "https://ng52ddcn-5173.inc1.devtunnels.ms",
   "http://localhost:5173"
 ];
 app.use((req, res, next) => {

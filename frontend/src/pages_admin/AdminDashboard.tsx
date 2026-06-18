@@ -46,6 +46,7 @@ type AdminRow = {
   rejectionReason?: string;
  suspendReason?: string;
   "age/time": string;
+  pending_requests: number;
 };
 
 const ITEMS_PER_PAGE = 10;
@@ -149,7 +150,7 @@ const [participant, setParticipant] = useState<Participant | null>(null);
       raStatus: item.ra_status,
       rejectionReason: item.rejection_reason || "",
       suspendReason: item.suspended_reason || "",
-
+      pending_requests: item.pending_requests || 0,
       "age/time": "Just now",
     }));
 
@@ -659,6 +660,7 @@ const handleResendPasswordLink = async (userId: string) => {
               <TableCell>Name</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Age / Time</TableCell>
+              <TableCell>Requests</TableCell>
                <TableCell align="right">Action</TableCell> 
               <TableCell>Telegram</TableCell>
             </TableRow>
@@ -676,7 +678,27 @@ const handleResendPasswordLink = async (userId: string) => {
                     color={statusColor(row.raStatus || "") as any}
                   />
                 </TableCell>
+
+                
                 <TableCell>{row["age/time"]}</TableCell>
+                <TableCell>
+  {row.pending_requests > 0 ? (
+   <Button
+  size="small"
+  color="warning"
+  variant="contained"
+  onClick={() =>
+    navigate(
+      `/admin/ra-profile-update-requests?userId=${row.userId}`
+    )
+  }
+>
+  {row.pending_requests}
+</Button>
+  ) : (
+    "-"
+  )}
+</TableCell>
 
                  <TableCell align="right">
                   <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
@@ -692,6 +714,7 @@ const handleResendPasswordLink = async (userId: string) => {
                     </Button> 
                   </Box>
                 </TableCell> 
+                
 
                 <TableCell>
                   <Box
@@ -853,9 +876,7 @@ const handleResendPasswordLink = async (userId: string) => {
                   gap: 1,
                 }}
               >
-                <Button onClick={() => openFile(selectedRA.profile)}>
-                  View Profile
-                </Button>
+{/*                 
                 <Button onClick={() => openFile(selectedRA.pan)}>View PAN</Button>
                 <Button onClick={() => openFile(selectedRA.address)}>
                   View Address
@@ -865,15 +886,25 @@ const handleResendPasswordLink = async (userId: string) => {
                   View SEBI Receipt
                 </Button>
                 <Button onClick={() => openFile(selectedRA.nism)}>View NISM</Button>
-                <Button onClick={() => openFile(selectedRA.cheque)}>View Cheque</Button>
+                <Button onClick={() => openFile(selectedRA.cheque)}>View Cheque</Button> */}
                 <Button
-  size="small"
+ 
   onClick={() =>
     selectedRA?.userId &&
     handleResendPasswordLink((selectedRA.userId))
   }
 >
   Resend Password Link
+</Button>
+
+
+<Button
+ 
+  onClick={() =>
+    navigate("/admin/ra-profile-update-requests")
+  }
+>
+  Profile Update Requests
 </Button>
               </Box>
 

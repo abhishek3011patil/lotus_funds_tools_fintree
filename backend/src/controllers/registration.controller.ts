@@ -79,15 +79,16 @@ export const getAllRegistrations = async (req: Request, res: Response) => {
 
 export const getAllRegistrationsActiveUsers = async (req: Request, res: Response) => {
   try {
-    const result = await pool.query(`
-     SELECT 
+const result = await pool.query(`
+SELECT 
   u.id AS user_id,
   u.name,
   u.email,
   u.username,
   u.role,
   u.status AS user_status,
-   u.suspended_reason,
+  u.suspended_reason,
+
   rd.id AS ra_id,
   rd.first_name,
   rd.surname,
@@ -100,17 +101,29 @@ export const getAllRegistrationsActiveUsers = async (req: Request, res: Response
   rd.nism_certificate,
   rd.cancelled_cheque,
   rd.status AS ra_status,
-  rd.rejection_reason
+  rd.rejection_reason,
+
+  COALESCE(rpur.pending_requests, 0) AS pending_requests
 
 FROM users u
 
-LEFT JOIN ra_details rd 
+LEFT JOIN ra_details rd
   ON rd.user_id = u.id
+
+LEFT JOIN (
+  SELECT
+    ra_user_id,
+    COUNT(*) AS pending_requests
+  FROM ra_profile_update_requests
+  WHERE status = 'PENDING'
+  GROUP BY ra_user_id
+) rpur
+  ON rpur.ra_user_id = u.id
 
 WHERE u.role = 'RESEARCH_ANALYST'
 
-ORDER BY u.created_at DESC;
-    `);
+ORDER BY u.created_at DESC
+`);
 
     res.status(200).json(result.rows);
 
@@ -1019,3 +1032,313 @@ export const changeRAUserPassword = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+
+export const getMyRAProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+
+    const result = await pool.query(
+      `
+      SELECT *
+      FROM ra_details
+      WHERE user_id = $1
+      `,
+      [userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        message: "RA profile not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+
+export const createRAProfileUpdateRequest = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user?.id; // UUID
+
+    const data = req.body || {};
+    const files = req.files as any;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const fileMap = {
+      profile_image: files?.profile_image?.[0]?.filename,
+      pan_card: files?.pan_card?.[0]?.filename,
+      address_proof_document:
+        files?.address_proof_document?.[0]?.filename,
+      sebi_certificate:
+        files?.sebi_certificate?.[0]?.filename,
+      sebi_receipt:
+        files?.sebi_receipt?.[0]?.filename,
+      nism_certificate:
+        files?.nism_certificate?.[0]?.filename,
+      cancelled_cheque:
+        files?.cancelled_cheque?.[0]?.filename,
+    };
+
+    const requestedChanges = {
+      ...data,
+      ...Object.fromEntries(
+        Object.entries(fileMap).filter(
+          ([_, value]) => value
+        )
+      ),
+    };
+
+    await pool.query(
+      `
+      INSERT INTO ra_profile_update_requests
+      (
+        ra_user_id,
+        requested_changes,
+        status
+      )
+      VALUES ($1, $2, 'PENDING')
+      `,
+      [
+        userId, // UUID value
+        JSON.stringify(requestedChanges),
+      ]
+    );
+
+    return res.status(201).json({
+      success: true,
+      message:
+        "Profile update request submitted successfully",
+    });
+  } catch (error) {
+    console.error(
+      "CREATE RA PROFILE UPDATE REQUEST ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+export const getRAProfileUpdateRequests = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        r.id,
+        r.ra_user_id,
+        r.requested_changes,
+        r.status,
+        r.admin_remark,
+        r.created_at,
+        r.reviewed_at,
+        u.name,
+        u.email
+      FROM ra_profile_update_requests r
+      JOIN users u ON u.id = r.ra_user_id
+      ORDER BY r.created_at DESC
+    `);
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error("GET RA PROFILE REQUESTS ERROR:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+export const approveRAProfileUpdateRequest = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  const client = await pool.connect();
+
+  try {
+    const { id } = req.params;
+
+    await client.query("BEGIN");
+
+    const requestRes = await client.query(
+      `
+      SELECT *
+      FROM ra_profile_update_requests
+      WHERE id = $1 AND status = 'PENDING'
+      `,
+      [id]
+    );
+
+    if (requestRes.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({
+        message: "Pending request not found",
+      });
+    }
+
+    const request = requestRes.rows[0];
+    const changes = request.requested_changes;
+
+    const allowedFields = [
+      "salutation",
+      "first_name",
+      "middle_name",
+      "surname",
+      "org_name",
+      "designation",
+      "short_bio",
+      "email",
+      "mobile",
+      "telephone",
+      "country",
+      "state",
+      "city",
+      "pincode",
+      "address_line1",
+      "address_line2",
+      "sebi_reg_no",
+      "sebi_start_date",
+      "sebi_expiry_date",
+      "nism_reg_no",
+      "nism_valid_till",
+      "academic_qualification",
+      "professional_qualification",
+      "market_experience",
+      "expertise",
+      "markets",
+      "bank_name",
+      "account_holder",
+      "account_number",
+      "ifsc_code",
+      "pan_number",
+      "address_proof_type",
+      "declare_info_true",
+      "consent_verification",
+      "no_guaranteed_returns",
+      "conflict_of_interest",
+      "personal_trading",
+      "sebi_compliance",
+      "platform_policy",
+      "additional_comments",
+      "profile_image",
+      "pan_card",
+      "address_proof_document",
+      "sebi_certificate",
+      "sebi_receipt",
+      "nism_certificate",
+      "cancelled_cheque",
+    ];
+
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    allowedFields.forEach((field) => {
+      if (changes[field] !== undefined) {
+        updates.push(`${field} = $${values.length + 1}`);
+        values.push(changes[field]);
+      }
+    });
+
+    if (updates.length > 0) {
+      values.push(request.ra_user_id);
+
+      await client.query(
+        `
+        UPDATE ra_details
+        SET ${updates.join(", ")}
+        WHERE user_id = $${values.length}
+        `,
+        values
+      );
+    }
+
+    if (changes.email) {
+      await client.query(
+        `
+        UPDATE users
+        SET email = $1
+        WHERE id = $2
+        `,
+        [changes.email.trim().toLowerCase(), request.ra_user_id]
+      );
+    }
+
+    await client.query(
+      `
+      UPDATE ra_profile_update_requests
+      SET status = 'APPROVED', reviewed_at = NOW()
+      WHERE id = $1
+      `,
+      [id]
+    );
+
+    await client.query("COMMIT");
+
+    return res.status(200).json({
+      success: true,
+      message: "RA profile update request approved",
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("APPROVE RA PROFILE REQUEST ERROR:", error);
+    return res.status(500).json({ message: "Server error" });
+  } finally {
+    client.release();
+  }
+};
+
+export const rejectRAProfileUpdateRequest = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const { id } = req.params;
+    const { admin_remark } = req.body;
+
+    await pool.query(
+      `
+      UPDATE ra_profile_update_requests
+      SET
+        status = 'REJECTED',
+        admin_remark = $1,
+        reviewed_at = NOW()
+      WHERE id = $2 AND status = 'PENDING'
+      `,
+      [admin_remark || null, id]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "RA profile update request rejected",
+    });
+  } catch (error) {
+    console.error("REJECT RA PROFILE REQUEST ERROR:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+

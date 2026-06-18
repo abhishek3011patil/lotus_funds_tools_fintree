@@ -27,6 +27,8 @@ const Settings = lazy(() => import("../pages/Settings"));
 const Recommendations = lazy(() => import("../pages/Recomendation"));
 const EditPage = lazy(() => import("../pages/EditPage"));
 
+
+const RAProfileEditRequest = lazy(() => import("../common/RAProfileEditRequest"));
 // --- Lazy: Morning Report Tools ---
 const MorningReportBuilder = lazy(() => import("../tools/morning-report/MorningReportBuilder"));
 const MorningReport = lazy(() => import("../tools/morning-report/MorningReport"));
@@ -55,6 +57,12 @@ const ClientNotFound = lazy(() => import("../pages_client/Notfound"));
 
 // --- Lazy: Subscription ---
 const SubscriptionPage = lazy(() => import("../subscription/SubscriptionPage"));
+
+const RAProfile = lazy(() => import("../common/RAProfile"));
+const RAProfileUpdateRequests = lazy(
+  () => import("../pages_admin/Admin common/RAProfileUpdateRequests")
+);
+
 
 // --- Fallback UI shown while a lazy chunk is loading ---
 const PageLoader = () => (
@@ -95,9 +103,40 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
+        
+
+
+
           <Route path="/" element={<Dashboard />} />
-          <Route path="/performance" element={<Performance />} />
-          <Route path="/settings" element={<Settings />} />
+<Route path="/performance" element={<Performance />} />
+<Route path="/settings" element={<Settings />} />
+
+<Route
+  path="/ra/profile"
+  element={
+    <ProtectedRoute allowedRoles={["RESEARCH_ANALYST"]}>
+      <RAProfile />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/ra/profile/edit"
+  element={
+    <ProtectedRoute allowedRoles={["RESEARCH_ANALYST"]}>
+      <RAProfileEditRequest />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/recommendations"
+  element={
+    <ProtectedRoute allowedRoles={["RESEARCH_ANALYST"]}>
+      <Recommendations />
+    </ProtectedRoute>
+  }
+/>
           <Route
             path="/recommendations"
             element={
@@ -106,6 +145,7 @@ const AppRoutes = () => {
               </ProtectedRoute>
             }
           />
+
         </Route>
 
         {/* 2. Morning Report Workflow — EMPLOYEE / ADMIN */}
@@ -176,6 +216,10 @@ const AppRoutes = () => {
           <Route path="AdminAuditLogs" element={<AdminAuditLogs />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="edit/:type/:id" element={<EditPage />} />
+        <Route
+  path="ra-profile-update-requests"
+  element={<RAProfileUpdateRequests />}
+/>
         </Route>
 
         {/* 5. Client Layout — CLIENT ONLY */}
@@ -196,6 +240,7 @@ const AppRoutes = () => {
 
         {/* Catch-all — always last */}
         <Route path="*" element={<Navigate to="/" replace />} />
+        
 
       </Routes>
     </Suspense>

@@ -2,8 +2,8 @@ import express, { Request, Response } from "express";
 import multer from "multer";
 import { authenticate } from "../middlewares/auth.middleware";
 import { requireAdmin } from "../middlewares/admin.middleware";
-import { changeRAUserPassword } from "../controllers/registration.controller";
-
+import { changeRAUserPassword, getMyRAProfile } from "../controllers/registration.controller";
+import { createRAProfileUpdateRequest } from "../controllers/registration.controller";
 import {
   registerRA,
   getAllRegistrations,
@@ -16,6 +16,13 @@ import {
   updateBroker,
 } from "../controllers/registration.controller";
 import { getRADisclaimer, updateRADisclaimer } from "../controllers/researchCalls.controller";
+
+import {
+  getRAProfileUpdateRequests,
+  approveRAProfileUpdateRequest,
+  rejectRAProfileUpdateRequest,
+} from "../controllers/registration.controller";
+
 
 
 const router = express.Router();
@@ -123,4 +130,43 @@ router.post(
   authenticate,
   changeRAUserPassword
 );
+
+router.post(
+  "/ra/profile-update-request",
+  authenticate,
+  upload.fields([
+    { name: "profile_image", maxCount: 1 },
+    { name: "pan_card", maxCount: 1 },
+    { name: "address_proof_document", maxCount: 1 },
+    { name: "sebi_certificate", maxCount: 1 },
+    { name: "sebi_receipt", maxCount: 1 },
+    { name: "nism_certificate", maxCount: 1 },
+    { name: "cancelled_cheque", maxCount: 1 },
+  ]),
+  createRAProfileUpdateRequest
+);
+
+
+router.get(
+  "/ra-profile-update-requests",
+  authenticate,
+  requireAdmin,
+  getRAProfileUpdateRequests
+);
+
+router.put(
+  "/ra-profile-update-requests/:id/approve",
+  authenticate,
+  requireAdmin,
+  approveRAProfileUpdateRequest
+);
+
+router.put(
+  "/ra-profile-update-requests/:id/reject",
+  authenticate,
+  requireAdmin,
+  rejectRAProfileUpdateRequest
+);
+router.get("/profile", authenticate, getMyRAProfile);
+
 export default router;
