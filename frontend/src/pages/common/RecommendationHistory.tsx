@@ -16,8 +16,18 @@ import {
   Stack,
   Snackbar,
   Alert,
+  Dialog,
+DialogTitle,
+DialogContent,
+DialogActions,
 } from "@mui/material";
 import LoadingPage from "../../common/LoadingPage";
+
+
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import dayjs, { Dayjs } from "dayjs";
 
 import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
@@ -59,6 +69,7 @@ interface ApiHistoryRecord {
   status?: string;
   profit_loss?: number | null;
   researcher_name?: string;
+  expiry_date?: string | null;
 }
 
 // Added Prop Interface
@@ -85,7 +96,7 @@ export default function RecommendationHistory({
     category: row.category || "-",
     instrument: row.instrument || "-",
     symbol: row.symbol || "-",
-    expiry: row.expiry ?? null,
+    expiry: row.expiry || row.expiry_date || null,
     entry: row.entry ?? "-",
     exit: row.exit ?? "-",
     status: row.status || "-",
@@ -110,6 +121,12 @@ export default function RecommendationHistory({
 const [page, setPage] = useState(1);
 const rowsPerPage = 10;
   
+
+
+const [dateFieldFilter, setDateFieldFilter] = useState<"published" | "expiry">("published");
+const [customFromDate, setCustomFromDate] = useState<Dayjs | null>(null);
+const [customToDate, setCustomToDate] = useState<Dayjs | null>(null);
+const [customDateOpen, setCustomDateOpen] = useState(false);
 
   // Fetch data
   useEffect(() => {
@@ -255,37 +272,67 @@ const rowsPerPage = 10;
         outcomeFilter === "Profit" ? item.profitLoss > 0 : item.profitLoss < 0
       );
     }
-    if (dateFilter !== "All") {
-      const now = new Date();
-      result = result.filter((item) => {
-        const itemDate = new Date(item.dateTime);
-        if (dateFilter === "Today") {
-          return itemDate.toDateString() === now.toDateString();
-        }
-        if (dateFilter === "Last 7 Days") {
-          const sevenDaysAgo = new Date();
-          sevenDaysAgo.setDate(now.getDate() - 7);
-          return itemDate >= sevenDaysAgo;
-        }
-        return true;
-      });
+   if (dateFilter !== "All") {
+  const today = dayjs().format("YYYY-MM-DD");
+
+  result = result.filter((item) => {
+    const rawDate =
+      dateFieldFilter === "expiry" ? item.expiry : item.dateTime;
+
+    if (!rawDate) return false;
+
+    const itemDate = dayjs(rawDate).format("YYYY-MM-DD");
+
+    if (dateFilter === "Today") {
+      return itemDate === today;
     }
 
+    if (dateFilter === "Last 7 Days") {
+      const sevenDaysAgo = dayjs().subtract(7, "day").format("YYYY-MM-DD");
+      return itemDate >= sevenDaysAgo && itemDate <= today;
+    }
+
+    if (dateFilter === "Custom") {
+      if (!customFromDate || !customToDate) return true;
+
+      const fromDate = customFromDate.format("YYYY-MM-DD");
+      const toDate = customToDate.format("YYYY-MM-DD");
+
+      return itemDate >= fromDate && itemDate <= toDate;
+    }
+
+    return true;
+  });
+}
+
     return result;
-  }, [data, statusFilter, typesOfCall, categoryFilter, actionFilter, outcomeFilter, dateFilter]);
+  }, [data,
+  statusFilter,
+  typesOfCall,
+  categoryFilter,
+  actionFilter,
+  outcomeFilter,
+  dateFilter,
+  dateFieldFilter,
+  customFromDate,
+  customToDate,]);
 
  const totalPages = filteredData.length === rowsPerPage ? page + 1 : page;
 
 const paginatedData = filteredData;
 
-  const handleReset = () => {
-    setDateFilter("All");
-    settypesOfCall("All");
-    setActionFilter("All");
-    setOutcomeFilter("All");
-    setCategoryFilter("All");
-    setPage(1);
-  };
+const handleReset = () => {
+  setDateFilter("All");
+  setDateFieldFilter("published");
+  setCustomFromDate(null);
+  setCustomToDate(null);
+  setCustomDateOpen(false);
+  settypesOfCall("All");
+  setActionFilter("All");
+  setOutcomeFilter("All");
+  setCategoryFilter("All");
+  setPage(1);
+};
 
   const formatDateTime = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -422,7 +469,7 @@ justifyContent: { xs: "center", md: "flex-start" },
   }}
 >
       {[
-        { value: dateFilter, setter: setDateFilter, label: "Date", options: ["Today", "Last 7 Days"] },
+      { value: dateFilter, setter: setDateFilter, label: "Date", options: ["Today", "Last 7 Days", "Custom"] },
         { value: typesOfCall, setter: settypesOfCall, label: "Type of Calls", options: ["cash", "futures", "options call", "options put"] },
         { value: actionFilter, setter: setActionFilter, label: "Action", options: ["BUY", "SELL"] },
         { value: outcomeFilter, setter: setOutcomeFilter, label: "Outcome", options: ["Profit", "Loss"] },
@@ -439,7 +486,21 @@ justifyContent: { xs: "center", md: "flex-start" },
         >
           <Select
             value={f.value}
-            onChange={(e) => { f.setter(e.target.value); setPage(1); }}
+             onOpen={() => {
+    if (f.label === "Date" && f.value === "Custom") {
+      setCustomDateOpen(true);
+    }
+  }}
+  onChange={(e) => {
+    const value = e.target.value;
+
+    f.setter(value);
+    setPage(1);
+
+    if (f.label === "Date" && value === "Custom") {
+      setCustomDateOpen(true);
+    }
+  }}
             displayEmpty
             size="small"
             sx={{
@@ -456,6 +517,7 @@ justifyContent: { xs: "center", md: "flex-start" },
         </Box>
       ))}
     </Box>
+ 
 
     {/* Reset Button */}
     <Button
@@ -642,7 +704,88 @@ justifyContent: { xs: "center", md: "flex-start" },
           </Stack>
         </Box>
       </Paper>
+<Dialog
+  open={customDateOpen}
+  onClose={() => setCustomDateOpen(false)}
+  maxWidth="xs"
+  fullWidth
+>
+  <DialogTitle>Custom Date Filter</DialogTitle>
 
+  <DialogContent>
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+        <Select
+          value={dateFieldFilter}
+          onChange={(e) =>
+            setDateFieldFilter(e.target.value as "published" | "expiry")
+          }
+          size="small"
+          fullWidth
+        >
+          <MenuItem value="published">Published Date</MenuItem>
+          <MenuItem value="expiry">Expiry Date</MenuItem>
+        </Select>
+
+        <DatePicker
+          label="From Date"
+          value={customFromDate}
+          onChange={(newValue) => setCustomFromDate(newValue)}
+          format="DD/MM/YYYY"
+          slotProps={{
+            textField: {
+              size: "small",
+              fullWidth: true,
+            },
+          }}
+        />
+
+        <DatePicker
+          label="To Date"
+          value={customToDate}
+          onChange={(newValue) => setCustomToDate(newValue)}
+          format="DD/MM/YYYY"
+          minDate={customFromDate || undefined}
+          slotProps={{
+            textField: {
+              size: "small",
+              fullWidth: true,
+            },
+          }}
+        />
+      </Box>
+    </LocalizationProvider>
+  </DialogContent>
+
+  <DialogActions>
+    <Button
+      onClick={() => {
+        setDateFilter("All");
+        setCustomFromDate(null);
+        setCustomToDate(null);
+        setCustomDateOpen(false);
+      }}
+    >
+      Clear
+    </Button>
+
+    <Button onClick={() => setCustomDateOpen(false)}>
+      Cancel
+    </Button>
+
+    <Button
+      variant="contained"
+      onClick={() => {
+        setDateFilter("Custom");
+        setPage(1);
+        setCustomDateOpen(false);
+      }}
+      disabled={!customFromDate || !customToDate}
+    >
+      Apply
+    </Button>
+  </DialogActions>
+</Dialog>
       <Snackbar
         open={notificationOpen}
         autoHideDuration={4000}
