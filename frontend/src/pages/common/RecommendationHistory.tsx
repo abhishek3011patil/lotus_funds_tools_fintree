@@ -107,14 +107,15 @@ export default function RecommendationHistory({
   const [categoryFilter, setCategoryFilter] = useState("All");
 
   // Pagination
-  const [page, setPage] = useState(1);
-  const rowsPerPage = 10;
+const [page, setPage] = useState(1);
+const rowsPerPage = 10;
+  
 
   // Fetch data
   useEffect(() => {
     const fetchHistory = async () => {
       let localHistory: HistoryRecord[] = [];
-
+      
       try {
         const stored = window.localStorage.getItem(CLIENT_HISTORY_STORAGE_KEY);
         const parsed = stored ? JSON.parse(stored) : [];
@@ -130,11 +131,14 @@ export default function RecommendationHistory({
           throw new Error("No auth token found");
         }
 
-        const res = await fetch(import.meta.env.VITE_API_URL + "/api/research/performance", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+     const res = await fetch(
+  `${import.meta.env.VITE_API_URL}/api/research/performance?page=${page}&limit=10&search=${searchQuery}`,
+  {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  }
+);
 
         if (!res.ok) {
           throw new Error(`Performance API failed with status ${res.status}`);
@@ -164,7 +168,11 @@ export default function RecommendationHistory({
     };
 
     fetchHistory();
-  }, []);
+  }, [page, searchQuery]);
+
+  useEffect(() => {
+  setPage(1);
+}, [searchQuery]);
 
   useEffect(() => {
     if (!enableAddNotification) return;
@@ -218,15 +226,7 @@ export default function RecommendationHistory({
     let result = [...data];
 
     // --- GLOBAL SEARCH LOGIC ---
-    if (searchQuery.trim() !== "") {
-      const lowerQuery = searchQuery.toLowerCase();
-      result = result.filter((item) => {
-        // This converts every value in the row to a string and checks for a match
-        return Object.values(item).some((value) => 
-          String(value).toLowerCase().includes(lowerQuery)
-        );
-      });
-    }
+
 
     // --- CONDITION FOR DASHBOARD ---
     if (statusFilter !== "All") {
@@ -272,14 +272,11 @@ export default function RecommendationHistory({
     }
 
     return result;
-  }, [data, searchQuery, statusFilter, typesOfCall, categoryFilter, actionFilter, outcomeFilter, dateFilter]);
+  }, [data, statusFilter, typesOfCall, categoryFilter, actionFilter, outcomeFilter, dateFilter]);
 
-  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+ const totalPages = filteredData.length === rowsPerPage ? page + 1 : page;
 
-  const paginatedData = filteredData.slice(
-    (page - 1) * rowsPerPage,
-    page * rowsPerPage
-  );
+const paginatedData = filteredData;
 
   const handleReset = () => {
     setDateFilter("All");
@@ -621,10 +618,9 @@ justifyContent: { xs: "center", md: "flex-start" },
           alignItems="center"
           sx={{ p: 2, borderTop: "1px solid #F0F0F0", gap: 2 }}
         >
-          <Typography fontSize="0.75rem" color="text.secondary">
-            Showing {filteredData.length > 0 ? (page - 1) * rowsPerPage + 1 : 0}-{Math.min(page * rowsPerPage, filteredData.length)} of {filteredData.length.toString().padStart(2, "0")}
-          </Typography>
-
+       <Typography fontSize="0.75rem" color="text.secondary">
+  Page {page} • {filteredData.length} records
+</Typography>
           <Stack direction="row" spacing={1}>
             <IconButton
               size="small"

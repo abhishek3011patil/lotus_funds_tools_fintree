@@ -125,9 +125,13 @@ export const createResearchCall = async (req: AuthRequest, res: Response) => {
    CREATE RESEARCH CALL  (POST /api/research/performance)
    ========================================================= */
 export const getResearchPerformance = async (req: AuthRequest, res: Response) => {
-    try {
+  try {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
+    const search = (req.query.search as string) || "";
 
-        const query = `
+    const query = `
       SELECT
         rc.created_at AS date_time,
         rc.action,
@@ -145,17 +149,26 @@ export const getResearchPerformance = async (req: AuthRequest, res: Response) =>
       FROM research_calls rc
       JOIN users u ON u.id = rc.ra_user_id
       WHERE rc.is_latest = true
+      AND (
+        rc.display_name ILIKE $3 OR
+        rc.symbol ILIKE $3 OR
+        u.name ILIKE $3
+      )
       ORDER BY rc.created_at DESC
+      LIMIT $1 OFFSET $2
     `;
 
-        const { rows } = await pool.query(query);
+    const { rows } = await pool.query(query, [
+      limit,
+      offset,
+      `%${search}%`,
+    ]);
 
-        res.json(rows);
-
-    } catch (err) {
-        console.error("PERFORMANCE API ERROR:", err);
-        res.status(500).json({ message: "Server error" });
-    }
+    res.json(rows);
+  } catch (err) {
+    console.error("PERFORMANCE API ERROR:", err);
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
 /* =========================================================

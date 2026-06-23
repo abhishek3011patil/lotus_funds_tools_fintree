@@ -40,38 +40,38 @@ const Performance: React.FC = () => {
   }, []);
 
 
-  useEffect(() => {
+  // useEffect(() => {
 
-    const fetchPerformance = async () => {
-      try {
-        const token = localStorage.getItem("token");
+  //   const fetchPerformance = async () => {
+  //     try {
+  //       const token = localStorage.getItem("token");
 
-        if (!token) {
-          console.log("No token found");
-          return;
-        }
+  //       if (!token) {
+  //         console.log("No token found");
+  //         return;
+  //       }
 
-        const res = await axios.get(
-          import.meta.env.VITE_API_URL + "/api/research/performance",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+  //       const res = await axios.get(
+  //         import.meta.env.VITE_API_URL + "/api/research/performance",
+  //         {
+  //           headers: {
+  //             Authorization: `Bearer ${token}`,
+  //           },
+  //         }
+  //       );
 
-        console.log("Performance API Response:");
-        console.log(res.data);          // full array
-        console.table(res.data);        // nice table view
+  //       console.log("Performance API Response:");
+  //       console.log(res.data);          // full array
+  //       console.table(res.data);        // nice table view
 
-      } catch (err: any) {
-        console.error("Performance API Error:", err);
-      }
-    };
+  //     } catch (err: any) {
+  //       console.error("Performance API Error:", err);
+  //     }
+  //   };
 
-    fetchPerformance();
+  //   fetchPerformance();
 
-  }, []); // runs once when page loads
+  // }, []); // runs once when page loads
 
   const BigCard = ({ title, value, green = false, red = false }: any) => (
     <Paper sx={cardStyle}>
