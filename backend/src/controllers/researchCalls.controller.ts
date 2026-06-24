@@ -2,6 +2,33 @@ import { Response } from "express";
 import { pool } from "../db";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { Router } from "express";
+import { createAuditLog } from "../utils/auditLogger";
+
+const getClientIp = (req: any): string => {
+  let ip =
+    req.headers?.["x-forwarded-for"] ||
+    req.socket?.remoteAddress ||
+    req.ip ||
+    "Unknown";
+
+  if (Array.isArray(ip)) {
+    ip = ip[0];
+  }
+
+  if (typeof ip === "string" && ip.includes(",")) {
+    ip = ip.split(",")[0].trim();
+  }
+
+  if (ip === "::1") {
+    ip = "127.0.0.1";
+  }
+
+  if (typeof ip === "string" && ip.startsWith("::ffff:")) {
+    ip = ip.replace("::ffff:", "");
+  }
+
+  return String(ip);
+};
 
 /* =========================================================
    CREATE RESEARCH CALL  (POST /api/research/calls)
@@ -73,7 +100,7 @@ export const createResearchCall = async (req: AuthRequest, res: Response) => {
         $11,$12,$13,$14,$15,$16,$17,$18,$19,
         $20,$21,$22,$23,$24,$25,$26
       )
-      RETURNING id, created_at;
+      RETURNING *;
     `;
 
     const values = [
@@ -106,6 +133,23 @@ export const createResearchCall = async (req: AuthRequest, res: Response) => {
     ];
 
     const { rows } = await pool.query(query, values);
+    await createAuditLog({
+  adminId: req.user?.id,
+  adminName: req.user?.name,
+  adminRole: req.user?.role,
+  action: status === "DRAFT" ? "CALL_DRAFT_CREATED" : "CALL_CREATED",
+  module: "RESEARCH_CALL",
+  targetEntity: rows[0].symbol,
+  targetType: "CALL",
+  description:
+    status === "DRAFT"
+      ? `Draft research call created: ${rows[0].symbol}`
+      : `Research call created: ${rows[0].symbol}`,
+  status: "SUCCESS",
+  ipAddress: getClientIp(req),
+  device: req.headers["user-agent"] as string,
+  newValue: rows[0],
+});
 
     return res.status(201).json({
       message: "Research call created successfully",
@@ -570,6 +614,22 @@ export const createErrata = async (
 
     await client.query("COMMIT");
 
+    await createAuditLog({
+  adminId: req.user?.id,
+  adminName: req.user?.name,
+  adminRole: req.user?.role,
+  action: "ERRATA_CREATED",
+  module: "RESEARCH_CALL",
+  targetEntity: insertResult.rows[0].symbol,
+  targetType: "CALL",
+  description: `Errata created for research call: ${insertResult.rows[0].symbol}`,
+  status: "SUCCESS",
+  ipAddress: getClientIp(req),
+  device: req.headers["user-agent"] as string,
+  oldValue: existingCall,
+  newValue: insertResult.rows[0],
+});
+
     return res.status(201).json({
       message: "Errata created successfully",
       data: insertResult.rows[0],
@@ -595,9 +655,10 @@ export const createErrata = async (
 
 
 export const publishDraftCall = async (req: AuthRequest, res: Response) => {
-    try {
-        const { id } = req.params;
-         const userResult = await pool.query(
+  try {
+    const { id } = req.params;
+
+    const userResult = await pool.query(
       `
       SELECT telegram_session
       FROM users
@@ -607,43 +668,58 @@ export const publishDraftCall = async (req: AuthRequest, res: Response) => {
     );
 
     const telegramSession = userResult.rows[0]?.telegram_session;
-    console.log("TELEGRAM SESSION:", telegramSession);
 
-if (
-  !telegramSession ||
-  telegramSession === "null" ||
-  telegramSession.trim() === ""
-) {
-  return res.status(400).json({
-    message: "Telegram is not connected. Please connect Telegram first."
-  });
-}
-
-
-        const result = await pool.query(
-            `UPDATE research_calls
-       SET status = 'PUBLISHED'
-       WHERE id = $1
-       AND status = 'DRAFT'
-       AND ra_user_id = $2
-       RETURNING id`,
-            [id, req.user!.id]
-        );
-
-        if (result.rowCount === 0) {
-            return res.status(400).json({
-                message: "Cannot publish this call"
-            });
-        }
-
-        return res.json({
-            message: "Call published successfully"
-        });
-
-    } catch (err) {
-        console.error("PUBLISH ERROR:", err);
-        return res.status(500).json({ message: "Server error" });
+    if (
+      !telegramSession ||
+      telegramSession === "null" ||
+      telegramSession.trim() === ""
+    ) {
+      return res.status(400).json({
+        message: "Telegram is not connected. Please connect Telegram first.",
+      });
     }
+
+    const result = await pool.query(
+      `
+      UPDATE research_calls
+      SET status = 'PUBLISHED'
+      WHERE id = $1
+      AND status = 'DRAFT'
+      AND ra_user_id = $2
+      RETURNING *
+      `,
+      [id, req.user!.id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(400).json({
+        message: "Cannot publish this call",
+      });
+    }
+
+    await createAuditLog({
+      adminId: req.user?.id,
+      adminName: req.user?.name,
+      adminRole: req.user?.role,
+      action: "DRAFT_PUBLISHED",
+      module: "RESEARCH_CALL",
+      targetEntity: result.rows[0].symbol,
+      targetType: "CALL",
+      description: `Draft research call published: ${result.rows[0].symbol}`,
+      status: "SUCCESS",
+      ipAddress: getClientIp(req),
+      device: req.headers["user-agent"] as string,
+      oldValue: { status: "DRAFT" },
+      newValue: result.rows[0],
+    });
+
+    return res.json({
+      message: "Call published successfully",
+    });
+  } catch (err) {
+    console.error("PUBLISH ERROR:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
 };
 
 

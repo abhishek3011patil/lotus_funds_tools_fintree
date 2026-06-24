@@ -116,7 +116,7 @@ export const login = async (req: Request, res: Response) => {
     // ✅ Normalize input
     loginId = loginId.trim().toLowerCase();
 
-    console.log("LOGIN INPUT:", loginId);
+    
 
     let user;
 
@@ -166,7 +166,7 @@ if (user.status.toLowerCase() !== "active") {
     /* ================= PASSWORD CHECK ================= */
     const match = await bcrypt.compare(password, user.password_hash);
 
-    console.log("PASSWORD MATCH:", match);
+   
 
     if (!match) {
       return res.status(400).json({ message: "Invalid password ❌" });

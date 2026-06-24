@@ -78,7 +78,9 @@ const NewRecommendation = () => {
   const [isErrataMode, setIsErrataMode] = useState(false);
   const [errataSourceId, setErrataSourceId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+const [isSubmitting, setIsSubmitting] = useState(false);
 
+const submittingRef = useRef(false);
 
   const transparentInputSx = {
     backgroundColor: "transparent",
@@ -199,7 +201,14 @@ const NewRecommendation = () => {
 };
 
   const handleSubmit = async () => {
+
+      if (submittingRef.current) return;
+
+  submittingRef.current = true;
+  setIsSubmitting(true);
   try {
+    
+    
     const token = localStorage.getItem("token");
 
     if (!token) {
@@ -299,8 +308,9 @@ ${form.remark || "Correction issued by Research Analyst"}
 );
 
 if (!telegramStatus.data.connected) {
-  console.log("⚠️ Telegram not connected");
   alert("Errata created, but Telegram is not connected");
+  await fetchRecommendations();
+  resetForm();
   return;
 }
  console.log("ERRATA TELEGRAM V2");
@@ -318,6 +328,11 @@ if (!telegramStatus.data.connected) {
   );
 
   alert("Errata Created ✅");
+
+await fetchRecommendations();
+resetForm();
+
+return;
 }
 
     // =========================================================
@@ -349,7 +364,7 @@ if (!telegramStatus.data.connected) {
         }
       );
 
-      alert("Research Call Created ✅");
+     
 
       // =========================================================
       // ✅ TELEGRAM SEND (UNCHANGED)
@@ -367,10 +382,12 @@ try {
   );
 
   // ❌ IF NOT CONNECTED
-  if (!telegramStatus.data.connected) {
-    console.log("⚠️ Telegram not connected");
-    return;
-  }
+ if (!telegramStatus.data.connected) {
+  alert("Research call created, but Telegram is not connected");
+  await fetchRecommendations();
+  resetForm();
+  return;
+}
 
   const now = new Date();
 
@@ -438,13 +455,19 @@ Underlying Study: ${form.underlyingStudy?.label || "N/A"}
     // =========================================================
     // ✅ REFRESH + RESET
     // =========================================================
+    
     await fetchRecommendations();
     resetForm();
+     alert("Research Call Created ✅");
 
   } catch (err: any) {
     console.error(err);
     alert(err?.response?.data?.message || "Error submitting call");
   }
+finally {
+  submittingRef.current = false;
+  setIsSubmitting(false);
+}
 };
 
   const handleToggle = useCallback(
@@ -680,24 +703,30 @@ Underlying Study: ${form.underlyingStudy?.label || "N/A"}
   }, []);
   // Temporary
   const [wasValidated, setWasValidated] = useState(false);
-  const validateAndPublish = (event: React.MouseEvent<HTMLButtonElement>) => {
+const validateAndPublish = async (
+  event: React.MouseEvent<HTMLButtonElement>
+) => {
   event.preventDefault();
+
+  if (isSubmitting) return;
+
   setWasValidated(true);
 
-  const priceErr = getPriceError("entry", form) || 
-                   getPriceError("target", form) || 
-                   getPriceError("stopLoss", form);
-  if (!priceErr) {
-    console.log("✅ Price logic passed, submitting...");
-    handleSubmit(); 
-    setWasValidated(false);
-  } else {
-    console.log("❌ Price logic failed");
+  const priceErr =
+    getPriceError("entry", form) ||
+    getPriceError("target", form) ||
+    getPriceError("stopLoss", form);
+
+  if (priceErr) {
     const priceRow = document.getElementById("prices-row");
     if (priceRow) {
       priceRow.scrollIntoView({ behavior: "smooth", block: "center" });
     }
+    return;
   }
+
+  await handleSubmit();
+  setWasValidated(false);
 };
 
 
@@ -1747,12 +1776,20 @@ sx={{
             justifyContent: "flex-start", // change to "space-between" if needed
           }}
         >
-          <Button
+   <Button
+  type="button"
+  disabled={isSubmitting}
   variant="contained"
-  onClick={validateAndPublish} // Hits validation first
+  onClick={validateAndPublish}
   sx={{ fontWeight: 700, px: 4 }}
 >
-  {isErrataMode ? "Create Errata" : "Publish Call"}
+  {isSubmitting
+    ? isErrataMode
+      ? "Creating Errata..."
+      : "Publishing..."
+    : isErrataMode
+      ? "Create Errata"
+      : "Publish Call"}
 </Button>
 
           <Button

@@ -194,7 +194,7 @@ const {
 
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
+const [isPublishing, setIsPublishing] = useState(false);
   const DATA_SOURCE = "/data.json";
 
   useEffect(() => {
@@ -306,7 +306,13 @@ const handleExit = async (id: string) => {
 }
 };
 
-  const handlePublish = async () => {
+
+
+const handlePublish = async () => {
+  if (isPublishing) return;
+
+  setIsPublishing(true);
+
   try {
     const token = localStorage.getItem("token");
 
@@ -328,11 +334,9 @@ Rationale: ${rationale}
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`, // ✅ only token
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        message,
-      }),
+      body: JSON.stringify({ message }),
     });
 
     const data = await response.json();
@@ -343,9 +347,13 @@ Rationale: ${rationale}
 
     alert("Call sent to your clients ✅");
 
+    resetForm();
+    await fetchRecommendations();
   } catch (error: any) {
     console.error("❌ Publish error:", error);
     alert(error.message || "Failed to publish");
+  } finally {
+    setIsPublishing(false);
   }
 };
 

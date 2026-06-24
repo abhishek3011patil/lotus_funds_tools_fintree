@@ -1,10 +1,10 @@
 import { Pool } from "pg";
 
-console.log("🔥 DB CONFIG:", {
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    database: process.env.DB_NAME,
-});
+// console.log("🔥 DB CONFIG:", {
+//     host: process.env.DB_HOST,
+//     user: process.env.DB_USER,
+//     database: process.env.DB_NAME,
+// });
 // Create a single pool instance for the whole app
 export const pool = new Pool({
     host: process.env.DB_HOST || "localhost",
@@ -21,13 +21,13 @@ export const pool = new Pool({
 });
 
 // Optional: simple connection test (runs on app start)
-pool.on("connect", () => {
-    console.log("✅ PostgreSQL connected");
-});
+// pool.on("connect", () => {
+//     console.log("✅ PostgreSQL connected");
+// });
 
-pool.on("error", (err) => {
-    console.error("❌ PostgreSQL pool error", err);
-});
+// pool.on("error", (err) => {
+//     console.error("❌ PostgreSQL pool error", err);
+// });
 
 
 

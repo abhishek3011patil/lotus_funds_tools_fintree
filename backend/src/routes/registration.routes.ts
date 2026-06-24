@@ -22,19 +22,19 @@ import {
   approveRAProfileUpdateRequest,
   rejectRAProfileUpdateRequest,
 } from "../controllers/registration.controller";
-
+import rateLimit from "express-rate-limit";
 
 
 const router = express.Router();
 
-console.log("🔥 registration.routes.ts LOADED");
+// console.log("🔥 registration.routes.ts LOADED");
 
-router.use((req, res, next) => {
-  console.log("📍 REG ROUTER HIT:", req.method, req.url);
-  next();
-});
+// router.use((req, res, next) => {
+//   console.log("📍 REG ROUTER HIT:", req.method, req.url);
+//   next();
+// });
 
-console.log("Registration route loaded");
+// console.log("Registration route loaded");
 
 /* ================= MULTER CONFIG ================= */
 
@@ -47,12 +47,42 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage });
+const allowedMimeTypes = [
+  "application/pdf",
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+];
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5 MB
+  },
+  fileFilter: (_req, file, cb) => {
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      return cb(
+        new Error("Only PDF, JPG, JPEG and PNG files are allowed")
+      );
+    }
+
+    cb(null, true);
+  },
+});
 
 /* ================= RA REGISTRATION (Admin Only) ================= */
+const registrationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: {
+    success: false,
+    message: "Too many registration attempts. Please try again later.",
+  },
+});
 
 router.post(
   "/register-ra",
+  registrationLimiter,
   upload.fields([
     { name: "profile_image", maxCount: 1 },
     { name: "pan_card", maxCount: 1 },
