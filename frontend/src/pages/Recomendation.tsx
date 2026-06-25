@@ -885,6 +885,10 @@ Underlying Study: ${item.underlying_study || "N/A"}
 }, []);
 
   const handleTrack = async () => {
+      if (submittingRef.current) return;
+
+  submittingRef.current = true;
+  setIsSubmitting(true);
   try {
     const token = localStorage.getItem("token");
 
@@ -978,19 +982,24 @@ Underlying Study: ${item.underlying_study || "N/A"}
         },
       }
     );
+    await fetchRecommendations();
+
+    // Optional reset
+     resetForm();
 
     alert("Draft Saved ✅");
 
     // 🔥 Refresh list
-    await fetchRecommendations();
-
-    // Optional reset
-    // resetForm();
+    
 
   } catch (err: any) {
     console.error("Track failed:", err?.response?.data || err);
     alert(err?.response?.data?.message || "Track failed");
+  }finally {
+    submittingRef.current = false;
+    setIsSubmitting(false);
   }
+  
 };
 
   // Add this helper function outside or inside your component
@@ -1792,13 +1801,13 @@ sx={{
       : "Publish Call"}
 </Button>
 
-          <Button
-            variant="outlined"
-            onClick={handleTrack}   // <-- create this function
-            disabled={isErrataMode}
-          >
-            Track
-          </Button>
+         <Button
+  type="button"
+  disabled={isSubmitting}
+  onClick={handleTrack}
+>
+  {isSubmitting ? "Saving Draft..." : "Track"}
+</Button>
         </Box>
 
       </Paper>

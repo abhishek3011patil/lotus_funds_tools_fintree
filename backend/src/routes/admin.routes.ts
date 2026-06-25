@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { activateRA, approveUser, resendPasswordLink, suspendUser } from "../controllers/admin.controller";
+import { activateRA, approveUser, getDisclaimerHistoryByRA, resendPasswordLink, suspendUser } from "../controllers/admin.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 import { requireAdmin } from "../middlewares/admin.middleware";
 
@@ -28,5 +28,11 @@ router.put(
   requireAdmin,
   activateRA
 );
+
+router.get(
+  "/history/:userId",
+  getDisclaimerHistoryByRA
+);
+
 
 export default router;

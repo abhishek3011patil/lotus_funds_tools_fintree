@@ -66,6 +66,21 @@ export const createResearchCall = async (req: AuthRequest, res: Response) => {
       research_remarks
     } = req.body;
 
+    const disclaimerResult = await pool.query(
+  `
+  SELECT additional_comments, disclaimer_updated_at
+  FROM ra_details
+  WHERE user_id = $1
+  `,
+  [req.user!.id]
+);
+
+const disclaimerSnapshot =
+  disclaimerResult.rows[0]?.additional_comments || null;
+
+const disclaimerSnapshotAt =
+  disclaimerResult.rows[0]?.disclaimer_updated_at || null;
+
     const query = `
       INSERT INTO research_calls (
         ra_user_id,
@@ -92,13 +107,15 @@ export const createResearchCall = async (req: AuthRequest, res: Response) => {
         underlying_study,
         is_algo,
         has_vested_interest,
-        research_remarks,
-        file_url   -- 👈 ADD COLUMN IN DB
+       research_remarks,
+file_url,
+disclaimer_snapshot,
+disclaimer_snapshot_at
       )
       VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
         $11,$12,$13,$14,$15,$16,$17,$18,$19,
-        $20,$21,$22,$23,$24,$25,$26
+        $20,$21,$22,$23,$24,$25,$26,$27,$28
       )
       RETURNING *;
     `;
@@ -129,7 +146,9 @@ export const createResearchCall = async (req: AuthRequest, res: Response) => {
       is_algo,
       has_vested_interest,
       research_remarks,
-      filePath  // 👈 save file path
+filePath,
+disclaimerSnapshot,
+disclaimerSnapshotAt  
     ];
 
     const { rows } = await pool.query(query, values);
@@ -770,40 +789,92 @@ export const updateRADisclaimer = async (
   req: AuthRequest,
   res: Response
 ) => {
+  const client = await pool.connect();
+
   try {
+    await client.query("BEGIN");
+
     const userId = req.user?.id;
     const { disclaimer } = req.body;
 
     if (!userId) {
+      await client.query("ROLLBACK");
       return res.status(401).json({
         message: "Unauthorized user",
       });
     }
 
-    const result = await pool.query(
+    const versionResult = await client.query(
+      `
+      SELECT COALESCE(MAX(version_number), 0) + 1 AS next_version
+      FROM disclaimer_history
+      WHERE ra_user_id = $1
+      `,
+      [userId]
+    );
+
+    const nextVersion = Number(versionResult.rows[0].next_version);
+
+    await client.query(
+      `
+      INSERT INTO disclaimer_history (
+        ra_user_id,
+        disclaimer_text,
+        version_number
+      )
+      VALUES ($1, $2, $3)
+      `,
+      [userId, disclaimer, nextVersion]
+    );
+
+    const result = await client.query(
       `
       UPDATE ra_details
-      SET additional_comments = $1
+      SET
+        additional_comments = $1,
+        disclaimer_updated_at = NOW()
       WHERE user_id = $2
-      RETURNING additional_comments
+      RETURNING additional_comments, disclaimer_updated_at
       `,
-      [
-        disclaimer,
-        userId,
-      ]
+      [disclaimer, userId]
     );
+
+    await createAuditLog({
+      adminId: req.user?.id,
+      adminName: req.user?.name,
+      adminRole: req.user?.role,
+      action: "DISCLAIMER_CREATED",
+      module: "RA_PROFILE",
+      targetEntity: req.user?.name || userId,
+      targetType: "DISCLAIMER",
+      description: `Disclaimer version ${nextVersion} created`,
+      status: "SUCCESS",
+      ipAddress: getClientIp(req),
+      device: req.headers["user-agent"] as string,
+      newValue: {
+        disclaimer,
+        version: nextVersion,
+        disclaimerUpdatedAt: result.rows[0]?.disclaimer_updated_at,
+      },
+    });
+
+    await client.query("COMMIT");
 
     return res.json({
       success: true,
-      disclaimer:
-        result.rows[0]?.additional_comments || "",
+      disclaimer: result.rows[0]?.additional_comments || "",
+      disclaimerUpdatedAt: result.rows[0]?.disclaimer_updated_at || null,
+      version: nextVersion,
       message: "Disclaimer updated successfully",
     });
   } catch (error) {
+    await client.query("ROLLBACK");
     console.error("UPDATE DISCLAIMER ERROR:", error);
 
     return res.status(500).json({
       message: "Server error",
     });
+  } finally {
+    client.release();
   }
 };

@@ -10,6 +10,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import LoadingPage from "../common/LoadingPage";
 import AdminAuditLogs from "../pages_admin/AdminAuditLogs";
 
+
 // --- Lazy: Auth & Public ---
 const LoginForm = lazy(() => import("../common/LoginForm"));
 const LoginFormAdmin = lazy(() => import("../common/LoginFormAdmin"));
@@ -49,6 +50,8 @@ const AdminRecommendations = lazy(() => import("../pages_admin/AdminRecommendati
 const AdminApproval = lazy(() => import("../pages_admin/AdminApproval"));
 const AdminSettings = lazy(() => import("../pages_admin/AdminSettings"));
 
+
+
 // --- Lazy: Client ---
 const ClientDashboard = lazy(() => import("../pages_client/Dashboard"));
 const ClientRecommendations = lazy(() => import("../pages_client/Recomendation"));
@@ -61,6 +64,9 @@ const SubscriptionPage = lazy(() => import("../subscription/SubscriptionPage"));
 const RAProfile = lazy(() => import("../common/RAProfile"));
 const RAProfileUpdateRequests = lazy(
   () => import("../pages_admin/Admin common/RAProfileUpdateRequests")
+);
+const DisclaimerHistory = lazy(
+  () => import("../pages_admin/Admin common/DisclaimerHistory")
 );
 
 
@@ -219,6 +225,10 @@ const AppRoutes = () => {
         <Route
   path="ra-profile-update-requests"
   element={<RAProfileUpdateRequests />}
+/>
+        <Route
+  path="disclaimer-history/:userId"
+  element={<DisclaimerHistory />}
 />
         </Route>
 

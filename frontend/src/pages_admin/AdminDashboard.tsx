@@ -887,6 +887,19 @@ const handleResendPasswordLink = async (userId: string) => {
                 </Button>
                 <Button onClick={() => openFile(selectedRA.nism)}>View NISM</Button>
                 <Button onClick={() => openFile(selectedRA.cheque)}>View Cheque</Button> */}
+                
+
+                <Button
+ 
+  onClick={() =>
+    selectedRA?.userId &&
+    navigate(`/admin/disclaimer-history/${selectedRA.userId}`)
+  }
+>
+  View Disclaimer History
+</Button>
+                
+                
                 <Button
  
   onClick={() =>

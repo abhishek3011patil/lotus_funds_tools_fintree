@@ -678,3 +678,48 @@ console.log("QUERYING USER:", userId);
   }
 };
 
+
+export const getDisclaimerHistoryByRA = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const { userId } = req.params;
+
+    const result = await pool.query(
+      `
+      SELECT
+        dh.id,
+        dh.version_number,
+        dh.disclaimer_text,
+        dh.created_at,
+        u.name,
+        u.username,
+        u.email
+      FROM disclaimer_history dh
+      JOIN users u ON u.id = dh.ra_user_id
+      WHERE dh.ra_user_id = $1
+      ORDER BY dh.version_number DESC
+      `,
+      [userId]
+    );
+
+    return res.json({
+      success: true,
+      ra: result.rows[0]
+        ? {
+            name: result.rows[0].name,
+            username: result.rows[0].username,
+            email: result.rows[0].email,
+          }
+        : null,
+      history: result.rows,
+    });
+  } catch (error) {
+    console.error("GET DISCLAIMER HISTORY ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
