@@ -691,10 +691,11 @@ console.log("BODY RECEIVED:", req.body);
     // ✅ FINAL MESSAGE
     // ==================================================
 
-    const finalMessage = `
+ const finalMessage = `
 ${frontendMessage}
 
-*DISCLAIMER CUM DISCLOSURE:*
+DISCLAIMER CUM DISCLOSURE:
+
 ${disclaimer}
 
 Research Analyst: ${fullName} (${ra.org_name || "N/A"})
@@ -702,8 +703,7 @@ SEBI Registration No: ${ra.sebi_reg_no || "N/A"}
 Contact No: ${ra.mobile || "N/A"}
 Email ID : ${ra.email || "N/A"}
 
-Read Full Disclaimer / Disclosure at :
-https://lotusfunds.com/disclaimer&disclosure
+Read Full Disclaimer / Disclosure at : https://lotusfunds.com/disclaimer&disclosure
 `;
 
     // ==================================================

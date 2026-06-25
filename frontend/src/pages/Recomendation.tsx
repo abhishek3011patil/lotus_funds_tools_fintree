@@ -67,6 +67,7 @@ const FLAT_STUDY_OPTIONS = UNDERLYING_STUDIES.flatMap((g) =>
 );
 
 
+
 const NewRecommendation = () => {
 
   console.log("RENDER");
@@ -96,6 +97,7 @@ const submittingRef = useRef(false);
     console.log("Selected file:", file.name);
   }
 };
+
 
   type RecommendationForm = {
     exchangeType: "NSE" | "BSE";
@@ -180,13 +182,22 @@ const submittingRef = useRef(false);
 
   const panelBg = form.action === "BUY" ? "#eef9ee" : "#fee2e2";
   const panelBorder = form.action === "BUY" ? "#7ac77a" : SELL_COLOR;
+  
 
-  const resetForm = () => {
-    dispatch({ type: "RESET" });
-    setIsErrataMode(false);
-    setErrataSourceId(null);
-    setDirectValue("");
-  };
+ const resetForm = () => {
+  dispatch({ type: "RESET" });
+
+  setIsErrataMode(false);
+  setErrataSourceId(null);
+  setDirectValue("");
+
+  // Reset uploaded media
+  setSelectedFile(null);
+
+  if (fileInputRef.current) {
+    fileInputRef.current.value = "";
+  }
+};
 
   const getRAIdFromToken = () => {
   try {
@@ -221,6 +232,25 @@ const submittingRef = useRef(false);
       suggestion.toLowerCase().startsWith(inputValue.toLowerCase())
         ? suggestion
         : inputValue;
+
+         const formatExpiry = (date: string) => {
+  const d = new Date(date);
+
+  const day = d.getDate();
+  const suffix =
+    day % 10 === 1 && day !== 11
+      ? "st"
+      : day % 10 === 2 && day !== 12
+      ? "nd"
+      : day % 10 === 3 && day !== 13
+      ? "rd"
+      : "th";
+
+  return `${day}${suffix} ${d.toLocaleString("en-IN", {
+    month: "long",
+    year: "numeric",
+  })}`;
+};
 
     // 🔹 Base payload (same as before)
     const payload = {
@@ -283,14 +313,45 @@ const submittingRef = useRef(false);
   );
 
   const errataMessage = `
-🚨 ERRATA / CORRECTION
+ERRATA / CORRECTION
 
-${form.action} ${finalDisplayName}
+Published On : ${new Date().toLocaleString("en-IN", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: true,
+})}
 
-Updated Values:
-Entry: ${form.entry || "-"}
-Target: ${form.target || "-"}
-SL: ${form.stopLoss || "-"}
+${finalDisplayName}
+
+${form.action} ${form.exchange} ${form.callType} Expiry: ${form.expiry ? formatExpiry(form.expiry) : "N/A"}
+
+Call Type  :${form.tradeType} 
+
+Entry  : ${
+  form.rangeEnabled
+    ? `${form.entryLow} - ${form.entryUpper}`
+    : form.entry
+}
+
+Target  : ${form.target}${
+  form.secondaryTargetEnabled
+    ? `
+T2  : ${form.target2}
+T3  : ${form.target3}`
+    : ""
+}
+
+SL  : ${form.stopLoss}${
+  form.stopLoss2Enabled
+    ? `
+SL 2  : ${form.stopLoss2}
+SL 3  : ${form.stopLoss3}`
+    : ""
+}
 
 Reason:
 ${form.remark || "Correction issued by Research Analyst"}
@@ -389,48 +450,58 @@ try {
   return;
 }
 
-  const now = new Date();
+ 
 
-  const message = `
-Date & Time : ${now.toLocaleString()}
+ const now = new Date();
 
-*${form.action}* *${finalDisplayName}*
-Call Type : ${form.exchange} ${form.callType} ${form.tradeType}
 
-${
+const message = `
+Published On : ${now.toLocaleString("en-IN", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: true,
+})}
+
+${form.action} ${form.exchange} ${form.callType} Expiry: ${form.expiry ? formatExpiry(form.expiry) : "N/A"}
+
+${finalDisplayName}
+
+Call Type  :${form.tradeType} 
+
+Entry  : ${
   form.rangeEnabled
-    ? `Entry: ${form.entryLow} - ${form.entryUpper}`
-    : `Entry: ${form.entry}`
+    ? `${form.entryLow} - ${form.entryUpper}`
+    : form.entry
 }
 
-Target: ${form.target}
-
-${
+Target  : ${form.target}${
   form.secondaryTargetEnabled
-    ? `Target 2: ${form.target2}
-Target 3: ${form.target3}`
+    ? `
+T2  : ${form.target2}
+T3  : ${form.target3}`
     : ""
 }
 
-SL: ${form.stopLoss}
-
-${
+SL  : ${form.stopLoss}${
   form.stopLoss2Enabled
-    ? `SL 2: ${form.stopLoss2}
-SL 3: ${form.stopLoss3}`
+    ? `
+SL 2  : ${form.stopLoss2}
+SL 3  : ${form.stopLoss3}`
     : ""
 }
 
-Expiry: ${
-  form.expiry
-    ? new Date(form.expiry).toLocaleString()
-    : "N/A"
-}
 Holding Period: ${form.holdingPeriod || "N/A"}
 
 Rationale: ${form.rationale}
 Underlying Study: ${form.underlyingStudy?.label || "N/A"}
+Remarks: ${form.remark || "N/A"}
 `;
+
+
 
   await axios.post(
     `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
@@ -822,41 +893,69 @@ const handleInitiate = useCallback(async (item: any) => {
       return item.entry.ideal || "-";
     };
 
+     const formatExpiry = (date: string) => {
+  const d = new Date(date);
+
+  const day = d.getDate();
+  const suffix =
+    day % 10 === 1 && day !== 11
+      ? "st"
+      : day % 10 === 2 && day !== 12
+      ? "nd"
+      : day % 10 === 3 && day !== 13
+      ? "rd"
+      : "th";
+
+  return `${day}${suffix} ${d.toLocaleString("en-IN", {
+    month: "long",
+    year: "numeric",
+  })}`;
+};
+
     const publishMessage = `
-Date & Time : ${new Date().toLocaleString()}
+Published On : ${new Date().toLocaleString("en-IN", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: true,
+})}
 
-*${item.action || "N/A"}* *${item.name || item.symbol || "N/A"}*
-Call Type : ${item.exchange || "N/A"} ${item.call_type || "N/A"} ${item.trade_type || "N/A"}
+${form.action} ${form.exchange} ${form.callType} Expiry: ${form.expiry ? formatExpiry(form.expiry) : "N/A"}
 
-Entry: ${getEntry()}
+${finalDisplayName}
 
-Target: ${item.targets?.[0] || "-"}
+Call Type  :${form.tradeType} 
 
-${
-  item.targets?.[1] || item.targets?.[2]
-    ? `Target 2: ${item.targets?.[1] || "-"}
-Target 3: ${item.targets?.[2] || "-"}`
+Entry  : ${
+  form.rangeEnabled
+    ? `${form.entryLow} - ${form.entryUpper}`
+    : form.entry
+}
+
+Target  : ${form.target}${
+  form.secondaryTargetEnabled
+    ? `
+T2  : ${form.target2}
+T3  : ${form.target3}`
     : ""
 }
 
-SL: ${item.stop_losses?.[0] || "-"}
-
-${
-  item.stop_losses?.[1] || item.stop_losses?.[2]
-    ? `SL 2: ${item.stop_losses?.[1] || "-"}
-SL 3: ${item.stop_losses?.[2] || "-"}`
+SL  : ${form.stopLoss}${
+  form.stopLoss2Enabled
+    ? `
+SL 2  : ${form.stopLoss2}
+SL 3  : ${form.stopLoss3}`
     : ""
 }
-
-Expiry: ${item.expiry_date
-  ? new Date(item.expiry_date).toLocaleString()
-  : "N/A"}
-
 
 Holding Period: ${item.holding_period || "N/A"}
 
 Rationale: ${item.rationale || "N/A"}
 Underlying Study: ${item.underlying_study || "N/A"}
+Remarks: ${item.research_remarks || "N/A"}
 `.trim();
 
     console.log("TELEGRAM MESSAGE:", publishMessage);

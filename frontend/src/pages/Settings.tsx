@@ -39,18 +39,8 @@ const Settings = () => {
     maxWidth: "1000px",
   }}
 >
-  <Button
-    variant="contained"
-    onClick={() => navigate("/ra/profile")}
-  >
-    View Profile
-  </Button>
-</div>
 
-
-
-
-      {telegramDisconnected && (
+    {telegramDisconnected && (
         <Alert
           severity="error"
           sx={{
@@ -76,6 +66,18 @@ const Settings = () => {
           Please connect before generating calls.
         </Alert>
       )}
+  <Button
+    variant="contained"
+    onClick={() => navigate("/ra/profile")}
+  >
+    View Profile
+  </Button>
+</div>
+
+
+
+
+    
 
       <div
         style={{
