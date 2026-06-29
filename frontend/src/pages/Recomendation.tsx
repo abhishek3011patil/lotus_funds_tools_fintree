@@ -1992,6 +1992,19 @@ sx={{
 >
   {isSubmitting ? "Saving Draft..." : "Track"}
 </Button>
+
+
+ <Button
+  type="button"
+  variant="outlined"
+  disabled={isSubmitting}
+  onClick={resetForm}
+>
+  Reset
+</Button>
+
+
+
         </Box>
 
       </Paper>
