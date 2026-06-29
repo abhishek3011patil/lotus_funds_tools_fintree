@@ -205,6 +205,7 @@ export const getResearchPerformance = async (req: AuthRequest, res: Response) =>
         rc.symbol,
         rc.expiry_date AS expiry,
         rc.entry_price AS entry,
+        rc.version_type,
         '--' AS exit,
         rc.status,
         NULL AS profit_loss,
@@ -270,7 +271,7 @@ export const getResearchCalls = async (req: AuthRequest, res: Response) => {
 
     symbol: row.symbol,
     name: row.display_name,
-
+    
     action: row.action,
     call_type: row.call_type,
     trade_type: row.trade_type,

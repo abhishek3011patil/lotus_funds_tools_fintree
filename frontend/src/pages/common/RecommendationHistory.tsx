@@ -53,6 +53,8 @@ interface HistoryRecord {
   createdBy?: string;
   created_by?: string;
   username?: string;
+  version_type?: string;
+
 }
 
 interface ApiHistoryRecord {
@@ -70,6 +72,7 @@ interface ApiHistoryRecord {
   profit_loss?: number | null;
   researcher_name?: string;
   expiry_date?: string | null;
+  version_type?: string;
 }
 
 // Added Prop Interface
@@ -99,6 +102,7 @@ export default function RecommendationHistory({
     expiry: row.expiry || row.expiry_date || null,
     entry: row.entry ?? "-",
     exit: row.exit ?? "-",
+      version_type: row.version_type,
     status: row.status || "-",
     profitLoss: Number(row.profit_loss ?? 0),
     researcher_name: row.researcher_name,
@@ -628,27 +632,59 @@ justifyContent: { xs: "center", md: "flex-start" },
                     <TableCell sx={historyBodyStyle}>
   <Box
     sx={{
-      display: "inline-block",
-      px: 1.5,
-      py: 0.5,
-      borderRadius: "4px",
-      fontSize: "0.75rem",
-      fontWeight: 700,
-      textTransform: "capitalize",
-      // THE CONDITION:
-      backgroundColor: 
-        row.status.toLowerCase() === "active" ? "#DCFCE7" : // Light Green
-        row.status.toLowerCase() === "published" ? "#DCFCE7" : // Light Green
-        row.status.toLowerCase() === "closed" ? "#FEF9C3" : // Light Yellow
-        "#F3F4F6", // Default Gray
-      color: 
-        row.status.toLowerCase() === "active" ? "#166534" : // Dark Green
-        row.status.toLowerCase() === "published" ? "#166534" : // Dark Green
-        row.status.toLowerCase() === "closed" ? "#854D0E" : // Dark Yellow/Brown
-        "#374151", // Default Dark Gray
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 0.5,
+      flexWrap: "wrap",
     }}
   >
-    {row.status}
+    <Box
+      sx={{
+        display: "inline-block",
+        px: 1.5,
+        py: 0.5,
+        borderRadius: "4px",
+        fontSize: "0.75rem",
+        fontWeight: 700,
+        textTransform: "capitalize",
+        backgroundColor:
+          row.status.toLowerCase() === "active"
+            ? "#DCFCE7"
+            : row.status.toLowerCase() === "published"
+            ? "#DCFCE7"
+            : row.status.toLowerCase() === "closed"
+            ? "#FEF9C3"
+            : "#F3F4F6",
+        color:
+          row.status.toLowerCase() === "active"
+            ? "#166534"
+            : row.status.toLowerCase() === "published"
+            ? "#166534"
+            : row.status.toLowerCase() === "closed"
+            ? "#854D0E"
+            : "#374151",
+      }}
+    >
+      {row.status}
+    </Box>
+
+ {row.version_type?.toUpperCase() === "ERRATA" && (
+  <Box
+    sx={{
+      display: "inline-block",
+      px: 1,
+      py: 0.5,
+      borderRadius: "4px",
+      fontSize: "0.7rem",
+      fontWeight: 700,
+      backgroundColor: "#f4d9a3",
+      color: "#ea0909",
+    }}
+  >
+    ERRATA
+  </Box>
+)}
   </Box>
 </TableCell>
                     <TableCell align="right" sx={historyBodyStyle}>
