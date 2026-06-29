@@ -34,10 +34,21 @@ const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
           setStatus("allowed");
         }
       })
-      .catch(() => {
-        localStorage.clear();
-        setStatus("unauth");
-      });
+      .catch((error) => {
+  const statusCode = error?.response?.status;
+  const message = error?.response?.data?.message;
+
+  // ✅ Only logout when backend actually says unauthorized
+  if (statusCode === 401) {
+    localStorage.clear();
+    setStatus("unauth");
+    return;
+  }
+
+  // ✅ Do NOT logout on CORS/network/dev tunnel error
+  console.error("Auth check failed, but not logging out:", message || error.message);
+  setStatus("allowed");
+});
   }, [allowedRoles]);
 
   if (status === "loading") {

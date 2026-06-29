@@ -620,7 +620,9 @@ justifyContent: { xs: "center", md: "flex-start" },
                         {row.symbol}
                       </Typography>
                     </TableCell>
-                    <TableCell sx={historyBodyStyle}>{row.expiry || "-"}</TableCell>
+                    {/* <TableCell sx={historyBodyStyle}>{row.expiry || "-"}</TableCell> */}
+                    <TableCell sx={historyBodyStyle}> {row.expiry ? new Date(row.expiry).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", }) : "-"} </TableCell>
+                    
                     <TableCell sx={historyBodyStyle}>{row.entry}</TableCell>
                     <TableCell sx={historyBodyStyle}>{row.exit}</TableCell>
                     <TableCell sx={historyBodyStyle}>

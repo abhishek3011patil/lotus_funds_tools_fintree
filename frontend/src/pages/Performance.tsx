@@ -214,7 +214,7 @@ const Performance: React.FC = () => {
       boxShadow: "none",
       position: "relative", // Keeps the blur contained
       overflow: "hidden",
-      filter: isComingSoon ? "blur(6px)" : "none",
+     // filter: isComingSoon ? "blur(6px)" : "none",
       pointerEvents: isComingSoon ? "none" : "auto",
     }}
   >
@@ -289,7 +289,7 @@ const Performance: React.FC = () => {
         </Paper>
 
         {/* 3. The Overlay (Outside the Paper so it stays SHARP) */}
-  {isComingSoon && (
+  {/* {isComingSoon && (
     <Typography
       sx={{
         position: "absolute",
@@ -310,7 +310,7 @@ const Performance: React.FC = () => {
     >
       Coming Soon
     </Typography>
-  )}
+  )} */}
 </Box>
         <RecommendationHistory />
 

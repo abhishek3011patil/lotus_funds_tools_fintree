@@ -64,8 +64,8 @@ const RecommendationsPanel = memo(
             [latestRecommendations]
         );
 
-        console.log("RECOMMENDATIONS:", recommendations);
-        console.log("ACTIVE:", activeRecommendations);
+        //console.log("RECOMMENDATIONS:", recommendations);
+        //console.log("ACTIVE:", activeRecommendations);
 
         return (
             <Box
