@@ -598,16 +598,19 @@ export const sendMessageToRAClients = async (
   res: Response
 ) => {
   try {
-
     console.log("SEND RA MESSAGE HIT");
-console.log("BODY RECEIVED:", req.body);
+    console.log("BODY RECEIVED:", req.body);
 
-    const raId = req.user!.id;
+    const raId = req.user?.id;
+    const { message: frontendMessage } = req.body;
 
-    const { message: frontendMessage } =
-      req.body;
+    if (!raId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
 
-    // ✅ Validate message
     if (!frontendMessage) {
       return res.status(400).json({
         success: false,
@@ -615,21 +618,50 @@ console.log("BODY RECEIVED:", req.body);
       });
     }
 
-    // ==================================================
-    // ✅ GET TELEGRAM SESSION
-    // ==================================================
+    const [sessionResult, raResult, usersResult] = await Promise.all([
+      pool.query(
+        `
+        SELECT telegram_session
+        FROM users
+        WHERE id = $1
+        `,
+        [raId]
+      ),
 
-    const sessionResult = await pool.query(
-      `
-      SELECT telegram_session
-      FROM users
-      WHERE id = $1
-      `,
-      [raId]
-    );
+      pool.query(
+        `
+        SELECT
+          salutation,
+          first_name,
+          middle_name,
+          surname,
+          org_name,
+          sebi_reg_no,
+          mobile,
+          email,
+          additional_comments
+        FROM ra_details
+        WHERE user_id = $1
+        `,
+        [raId]
+      ),
 
-    const sessionString =
-      sessionResult.rows[0]?.telegram_session;
+      pool.query(
+        `
+        SELECT
+          telegram_user_id,
+          telegram_client_name,
+          entity_type
+        FROM telegram_users
+        WHERE user_id = $1
+        `,
+        [raId]
+      ),
+    ]);
+
+    const sessionString = sessionResult.rows[0]?.telegram_session;
+    const ra = raResult.rows[0];
+    const users = usersResult.rows;
 
     if (!sessionString) {
       return res.status(400).json({
@@ -638,38 +670,6 @@ console.log("BODY RECEIVED:", req.body);
       });
     }
 
-    // ✅ Create Telegram client
-    const client = await createClient(
-      sessionString
-    );
-
-    // ==================================================
-    // ✅ GET RA DETAILS
-    // ==================================================
-
-    const raResult = await pool.query(
-      `
-      SELECT
-        salutation,
-        first_name,
-        middle_name,
-        surname,
-        org_name,
-        sebi_reg_no,
-        mobile,
-        email,
-        additional_comments
-      FROM ra_details
-      WHERE user_id = $1
-      `,
-      [raId]
-    );
-
-    const ra = raResult.rows[0];
-    const disclaimer =
-  ra.additional_comments ||
-  "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
-
     if (!ra) {
       return res.status(400).json({
         success: false,
@@ -677,7 +677,17 @@ console.log("BODY RECEIVED:", req.body);
       });
     }
 
-    // ✅ Full Name
+    if (users.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No Telegram participants found",
+      });
+    }
+
+    const disclaimer =
+      ra.additional_comments ||
+      "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
+
     const fullName = [
       ra.salutation,
       ra.first_name,
@@ -687,11 +697,7 @@ console.log("BODY RECEIVED:", req.body);
       .filter(Boolean)
       .join(" ");
 
-    // ==================================================
-    // ✅ FINAL MESSAGE
-    // ==================================================
-
- const finalMessage = `
+    const finalMessage = `
 ${frontendMessage}
 
 DISCLAIMER CUM DISCLOSURE:
@@ -706,194 +712,108 @@ Email ID : ${ra.email || "N/A"}
 Read Full Disclaimer / Disclosure at : https://lotusfunds.com/disclaimer&disclosure
 `;
 
-    // ==================================================
-    // ✅ FETCH USERS + GROUPS + CHANNELS
-    // ==================================================
+    // ✅ Respond immediately. Frontend will not wait for Telegram sending.
+    res.status(202).json({
+      success: true,
+      message: "Telegram sending started",
+      stats: {
+        total: users.length,
+      },
+    });
 
-    const users = await pool.query(
-      `
-      SELECT
-        telegram_user_id,
-        telegram_client_name,
-        entity_type
-      FROM telegram_users
-      WHERE user_id = $1
-      `,
-      [raId]
-    );
-
-    if (users.rows.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "No Telegram participants found",
-      });
-    }
-
-    // ==================================================
-    // ✅ SEND MESSAGES
-    // ==================================================
-
-    let successCount = 0;
-
-    let failCount = 0;
-
-    const failedEntities: any[] = [];
-
-    for (const u of users.rows) {
+    // ✅ Send Telegram in background
+    setImmediate(async () => {
+      let successCount = 0;
+      let failCount = 0;
+      const failedEntities: any[] = [];
 
       try {
+        const client = await createClient(sessionString);
 
-        console.log(
-          `📨 Sending to ${u.entity_type}:`,
-          u.telegram_client_name ||
-            u.telegram_user_id
-        );
-
-        // ✅ Resolve entity
-        const entity =
-          await client.getEntity(
-            u.telegram_user_id
-          );
-
-        // ✅ Send message
-        await client.sendMessage(entity, {
-          message: finalMessage,
-        });
-
-        console.log(
-          `✅ Sent to ${u.entity_type}:`,
-          u.telegram_client_name
-        );
-
-        successCount++;
-
-        // ✅ Delay to avoid flood wait
-        await sleep(2000);
-
-      } catch (err: any) {
-
-        console.error(
-          `❌ Failed for ${u.entity_type}:`,
-          u.telegram_client_name,
-          err.message
-        );
-
-        // ==========================================
-        // ✅ FLOOD WAIT HANDLING
-        // ==========================================
-
-        if (
-          err.errorMessage?.includes(
-            "FLOOD_WAIT"
-          )
-        ) {
-
-          const seconds = parseInt(
-            err.errorMessage
-              .split("_")
-              .pop()
-          );
-
-          console.log(
-            `⏳ Flood wait ${seconds}s`
-          );
-
-          await sleep(seconds * 1000);
-
+        for (const u of users) {
           try {
-
-            const retryEntity =
-              await client.getEntity(
-                u.telegram_user_id
-              );
-
-            await client.sendMessage(
-              retryEntity,
-              {
-                message: finalMessage,
-              }
+            console.log(
+              `📨 Sending to ${u.entity_type}:`,
+              u.telegram_client_name || u.telegram_user_id
             );
 
+            const entity = await client.getEntity(u.telegram_user_id);
+
+            await client.sendMessage(entity, {
+              message: finalMessage,
+            });
+
             console.log(
-              `✅ Retry success:`,
+              `✅ Sent to ${u.entity_type}:`,
               u.telegram_client_name
             );
 
             successCount++;
 
-          } catch (retryErr: any) {
-
-            console.log(
-              `❌ Retry failed:`,
-              retryErr.message
+            await sleep(2000);
+          } catch (err: any) {
+            console.error(
+              `❌ Failed for ${u.entity_type}:`,
+              u.telegram_client_name,
+              err.message
             );
 
-            failCount++;
+            if (err.errorMessage?.includes("FLOOD_WAIT")) {
+              const seconds = parseInt(err.errorMessage.split("_").pop());
 
-            failedEntities.push({
-              entity:
-                u.telegram_client_name ||
-                u.telegram_user_id,
+              console.log(`⏳ Flood wait ${seconds}s`);
 
-              type: u.entity_type,
+              await sleep(seconds * 1000);
 
-              reason:
-                retryErr.message,
-            });
+              try {
+                const retryEntity = await client.getEntity(u.telegram_user_id);
+
+                await client.sendMessage(retryEntity, {
+                  message: finalMessage,
+                });
+
+                console.log("✅ Retry success:", u.telegram_client_name);
+
+                successCount++;
+              } catch (retryErr: any) {
+                failCount++;
+
+                failedEntities.push({
+                  entity: u.telegram_client_name || u.telegram_user_id,
+                  type: u.entity_type,
+                  reason: retryErr.message,
+                });
+              }
+            } else {
+              failCount++;
+
+              failedEntities.push({
+                entity: u.telegram_client_name || u.telegram_user_id,
+                type: u.entity_type,
+                reason: err.message,
+              });
+            }
           }
-
-        } else {
-
-          failCount++;
-
-          failedEntities.push({
-            entity:
-              u.telegram_client_name ||
-              u.telegram_user_id,
-
-            type: u.entity_type,
-
-            reason: err.message,
-          });
         }
+
+        console.log("✅ BACKGROUND TELEGRAM DONE", {
+          total: users.length,
+          sent: successCount,
+          failed: failCount,
+          failedEntities,
+        });
+      } catch (err: any) {
+        console.error("❌ BACKGROUND TELEGRAM ERROR:", err.message);
       }
-    }
-
-    // ==================================================
-    // ✅ FINAL RESPONSE
-    // ==================================================
-
-    return res.json({
-      success: true,
-
-      message:
-        "Messages processed successfully",
-
-      stats: {
-        total: users.rows.length,
-
-        sent: successCount,
-
-        failed: failCount,
-      },
-
-      failedEntities,
     });
 
+    return;
   } catch (err: any) {
-
-    console.error(
-      "SEND MESSAGE ERROR:",
-      err
-    );
+    console.error("SEND MESSAGE ERROR:", err);
 
     return res.status(500).json({
       success: false,
-
-      message:
-        err.message ||
-        "Internal server error",
+      message: err.message || "Internal server error",
     });
   }
 };

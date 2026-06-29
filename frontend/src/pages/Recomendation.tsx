@@ -366,7 +366,7 @@ Published On : ${new Date().toLocaleString("en-IN", {
   hour12: true,
 })}
 
-${finalDisplayName}
+Stock Name: ${finalDisplayName}
 
 ${form.action} ${form.exchange} ${form.callType} Expiry: ${form.expiry ? formatExpiry(form.expiry) : "N/A"}
 
@@ -509,7 +509,7 @@ Published On : ${now.toLocaleString("en-IN", {
 
 ${form.action} ${form.exchange} ${form.callType} Expiry: ${form.expiry ? formatExpiry(form.expiry) : "N/A"}
 
-${finalDisplayName}
+Stock Name: ${finalDisplayName}
 
 Call Type  :${form.tradeType} 
 
@@ -833,10 +833,17 @@ if (missingFields.length > 0) {
   return;
 }
 
-  const priceErr =
-    getPriceError("entry", form) ||
-    getPriceError("target", form) ||
-    getPriceError("stopLoss", form);
+ const priceErr =
+  getPriceError("entry", form) ||
+  getPriceError("target", form) ||
+  getPriceError("stopLoss", form) ||
+  getPriceError("entryLow", form) ||
+  getPriceError("entryUpper", form) ||
+  getPriceError("target2", form) ||
+  getPriceError("target3", form) ||
+  getPriceError("stopLoss2", form) ||
+  getPriceError("stopLoss3", form);
+
 
   if (priceErr) {
     const priceRow = document.getElementById("prices-row");
@@ -962,7 +969,8 @@ const handleInitiate = useCallback(async (item: any) => {
   })}`;
 };
 
-    const publishMessage = `
+
+   const publishMessage = `
 Published On : ${new Date().toLocaleString("en-IN", {
   day: "numeric",
   month: "long",
@@ -973,31 +981,29 @@ Published On : ${new Date().toLocaleString("en-IN", {
   hour12: true,
 })}
 
-${form.action} ${form.exchange} ${form.callType} Expiry: ${form.expiry ? formatExpiry(form.expiry) : "N/A"}
-
-${finalDisplayName}
-
-Call Type  :${form.tradeType} 
-
-Entry  : ${
-  form.rangeEnabled
-    ? `${form.entryLow} - ${form.entryUpper}`
-    : form.entry
+${item.action || "N/A"} ${item.exchange || "N/A"} ${item.call_type || "N/A"} Expiry: ${
+  item.expiry_date ? formatExpiry(item.expiry_date) : "N/A"
 }
 
-Target  : ${form.target}${
-  form.secondaryTargetEnabled
+Stock Name: ${item.name || item.symbol || "N/A"}
+
+Call Type  : ${item.trade_type || "N/A"}
+
+Entry  : ${getEntry()}
+
+Target  : ${item.targets?.[0] || "-"}${
+  item.targets?.[1] || item.targets?.[2]
     ? `
-T2  : ${form.target2}
-T3  : ${form.target3}`
+T2  : ${item.targets?.[1] || "-"}
+T3  : ${item.targets?.[2] || "-"}`
     : ""
 }
 
-SL  : ${form.stopLoss}${
-  form.stopLoss2Enabled
+SL  : ${item.stop_losses?.[0] || "-"}${
+  item.stop_losses?.[1] || item.stop_losses?.[2]
     ? `
-SL 2  : ${form.stopLoss2}
-SL 3  : ${form.stopLoss3}`
+SL 2  : ${item.stop_losses?.[1] || "-"}
+SL 3  : ${item.stop_losses?.[2] || "-"}`
     : ""
 }
 
@@ -1005,7 +1011,7 @@ Holding Period: ${item.holding_period || "N/A"}
 
 Rationale: ${item.rationale || "N/A"}
 Underlying Study: ${item.underlying_study || "N/A"}
-Remarks: ${item.research_remarks || "N/A"}
+Remarks: ${item.remarks || "N/A"}
 `.trim();
 
     console.log("TELEGRAM MESSAGE:", publishMessage);
@@ -1059,6 +1065,31 @@ if (missingFields.length > 0) {
       typeof suggestion === "object" && suggestion !== null
         ? suggestion.display_name
         : inputValue.trim();
+
+
+        const priceErr =
+  getPriceError("entry", form) ||
+  getPriceError("target", form) ||
+  getPriceError("stopLoss", form) ||
+  getPriceError("entryLow", form) ||
+  getPriceError("entryUpper", form) ||
+  getPriceError("target2", form) ||
+  getPriceError("target3", form) ||
+  getPriceError("stopLoss2", form) ||
+  getPriceError("stopLoss3", form);
+
+if (priceErr) {
+  const priceRow = document.getElementById("prices-row");
+
+  if (priceRow) {
+    priceRow.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }
+
+  return;
+}
 
     // 🔹 Base payload
     const payload = {
@@ -1189,65 +1220,106 @@ const validateAndTrack = (event: React.MouseEvent<HTMLButtonElement>) => {
 const getPriceError = (field: string, currentForm: any): string | null => {
   const action = currentForm.action;
 
-  // Group 1: Top Switched Row
-  const eLow = parseFloat(currentForm.entryLow) || 0;
-  const t2 = parseFloat(currentForm.target2) || 0;
-  const sl2 = parseFloat(currentForm.stopLoss2) || 0;
+  const entry = parseFloat(currentForm.entry) || 0;
+  const target = parseFloat(currentForm.target) || 0;
+  const stopLoss = parseFloat(currentForm.stopLoss) || 0;
 
-  // Group 2: Bottom Switched Row
-  const eUpper = parseFloat(currentForm.entryUpper) || 0;
-  const t3 = parseFloat(currentForm.target3) || 0;
-  const sl3 = parseFloat(currentForm.stopLoss3) || 0;
+  const entryLow = parseFloat(currentForm.entryLow) || 0;
+  const entryUpper = parseFloat(currentForm.entryUpper) || 0;
 
-  // --- BUY LOGIC ---
-  if (action === "BUY") {
-    // Top Row: SL2 < Lower Entry < T2
-    if (field === "entryLow") {
-      if (t2 && eLow >= t2) return "Must be < T2";
-      if (sl2 && eLow <= sl2) return "Must be > SL2";
-    }
-    if (field === "target2" && t2 <= eLow && eLow !== 0) return "T2 must be > Lower Entry";
-    if (field === "stopLoss2" && sl2 >= eLow && eLow !== 0) return "SL2 must be < Lower Entry";
+  const target2 = parseFloat(currentForm.target2) || 0;
+  const target3 = parseFloat(currentForm.target3) || 0;
 
-    // Bottom Row: SL3 < Upper Entry < T3
-    if (field === "entryUpper") {
-      if (t3 && eUpper >= t3) return "Must be < T3";
-      if (sl3 && eUpper <= sl3) return "Must be > SL3";
-    }
-    if (field === "target3" && t3 <= eUpper && eUpper !== 0) return "T3 must be > Upper Entry";
-    if (field === "stopLoss3" && sl3 >= eUpper && eUpper !== 0) return "SL3 must be < Upper Entry";
-  } 
-  
-  // --- SELL LOGIC ---
-  else {
-    // Top Row: T2 < Lower Entry < SL2
-    if (field === "entryLow") {
-      if (t2 && eLow <= t2) return "Must be > T2";
-      if (sl2 && eLow >= sl2) return "Must be < SL2";
-    }
-    if (field === "target2" && t2 >= eLow && eLow !== 0) return "T2 must be < Lower Entry";
-    if (field === "stopLoss2" && sl2 <= eLow && eLow !== 0) return "SL2 must be > Lower Entry";
+  const stopLoss2 = parseFloat(currentForm.stopLoss2) || 0;
+  const stopLoss3 = parseFloat(currentForm.stopLoss3) || 0;
 
-    // Bottom Row: T3 < Upper Entry < SL3
-    if (field === "entryUpper") {
-      if (t3 && eUpper <= t3) return "Must be > T3";
-      if (sl3 && eUpper >= sl3) return "Must be < SL3";
-    }
-    if (field === "target3" && t3 >= eUpper && eUpper !== 0) return "T3 must be < Upper Entry";
-    if (field === "stopLoss3" && sl3 <= eUpper && eUpper !== 0) return "SL3 must be > Upper Entry";
+  // RANGE: Lower Entry < Upper Entry
+  if (
+    currentForm.rangeEnabled &&
+    (field === "entryLow" || field === "entryUpper") &&
+    entryLow &&
+    entryUpper &&
+    entryLow >= entryUpper
+  ) {
+    return "Lower Entry must be less than Upper Entry";
   }
 
-  // --- MAIN ROW (Entry, Target, StopLoss) ---
-  const entry = parseFloat(currentForm.entry) || 0;
-  const t1 = parseFloat(currentForm.target) || 0;
-  const sl1 = parseFloat(currentForm.stopLoss) || 0;
-
+  // BUY LOGIC
   if (action === "BUY") {
-    if (field === "target" && t1 <= entry && entry !== 0) return "T1 must be > Entry";
-    if (field === "stopLoss" && sl1 >= entry && entry !== 0) return "SL1 must be < Entry";
-  } else {
-    if (field === "target" && t1 >= entry && entry !== 0) return "T1 must be < Entry";
-    if (field === "stopLoss" && sl1 <= entry && entry !== 0) return "SL1 must be > Entry";
+    // Entry < Target
+    if (field === "target" && entry && target && target <= entry) {
+      return "Target must be greater than Entry";
+    }
+
+    // Entry > Stop Loss
+    if (field === "stopLoss" && entry && stopLoss && stopLoss >= entry) {
+      return "Stop Loss must be less than Entry";
+    }
+
+    // Entry < Target < T2 < T3
+    if (
+      currentForm.secondaryTargetEnabled &&
+      (field === "target" || field === "target2" || field === "target3") &&
+      entry &&
+      target &&
+      target2 &&
+      target3 &&
+      !(entry < target && target < target2 && target2 < target3)
+    ) {
+      return "For BUY: Entry < Target < T2 < T3";
+    }
+
+    // Entry > SL > SL2 > SL3
+    if (
+      currentForm.stopLoss2Enabled &&
+      (field === "stopLoss" || field === "stopLoss2" || field === "stopLoss3") &&
+      entry &&
+      stopLoss &&
+      stopLoss2 &&
+      stopLoss3 &&
+      !(entry > stopLoss && stopLoss > stopLoss2 && stopLoss2 > stopLoss3)
+    ) {
+      return "For BUY: Entry > SL > SL2 > SL3";
+    }
+  }
+
+  // SELL LOGIC
+  if (action === "SELL") {
+    // Entry > Target
+    if (field === "target" && entry && target && target >= entry) {
+      return "Target must be less than Entry";
+    }
+
+    // Entry < Stop Loss
+    if (field === "stopLoss" && entry && stopLoss && stopLoss <= entry) {
+      return "Stop Loss must be greater than Entry";
+    }
+
+    // Entry > Target > T2 > T3
+    if (
+      currentForm.secondaryTargetEnabled &&
+      (field === "target" || field === "target2" || field === "target3") &&
+      entry &&
+      target &&
+      target2 &&
+      target3 &&
+      !(entry > target && target > target2 && target2 > target3)
+    ) {
+      return "For SELL: Entry > Target > T2 > T3";
+    }
+
+    // Entry < SL < SL2 < SL3
+    if (
+      currentForm.stopLoss2Enabled &&
+      (field === "stopLoss" || field === "stopLoss2" || field === "stopLoss3") &&
+      entry &&
+      stopLoss &&
+      stopLoss2 &&
+      stopLoss3 &&
+      !(entry < stopLoss && stopLoss < stopLoss2 && stopLoss2 < stopLoss3)
+    ) {
+      return "For SELL: Entry < SL < SL2 < SL3";
+    }
   }
 
   return null;
