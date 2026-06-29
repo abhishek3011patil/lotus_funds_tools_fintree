@@ -9,6 +9,7 @@ import {
   Radio,
   RadioGroup,
   Select,
+   Checkbox,
   Switch,
   TextField,
   ToggleButton,
@@ -89,7 +90,7 @@ const NewRecommendation = () => {
   }
 
   if (!form.rationale?.trim()) missing.push("Rationale");
-  if (!form.underlyingStudy?.label) missing.push("Underlying Study");
+  if (!form.underlyingStudy.length) missing.push("Underlying Study");
 
   if (form.rangeEnabled) {
     if (!form.entryLow) missing.push("Lower Entry");
@@ -159,7 +160,7 @@ const submittingRef = useRef(false);
     holdingPeriod: string;
     rationale: string;
     remark: string;
-    underlyingStudy: StudyOption | null;
+    underlyingStudy: StudyOption[];
     rangeEnabled: boolean;
     secondaryTargetEnabled: boolean;
     stopLoss2Enabled: boolean;
@@ -186,7 +187,7 @@ const submittingRef = useRef(false);
     holdingPeriod: "",
     rationale: "Overbought Condition",
     remark: "",
-    underlyingStudy: null,
+    underlyingStudy: [],
     rangeEnabled: false,
     secondaryTargetEnabled: false,
     stopLoss2Enabled: false,
@@ -314,7 +315,7 @@ const submittingRef = useRef(false);
       stop_loss_3: form.stopLoss3 || null,
       holding: form.holdingPeriod || "0",
       rationale: form.rationale,
-      underlying_study: form.underlyingStudy?.label || null,
+      underlying_study: form.underlyingStudy.map((s) => s.label).join(", ") || null,
       is_algo: false,
       has_vested_interest: false,
       research_remarks: form.remark || undefined
@@ -338,7 +339,7 @@ const submittingRef = useRef(false);
     entry_price_upper: form.entryUpper || undefined,
     holding_period: form.holdingPeriod || undefined,
     rationale: form.rationale || undefined,
-    underlying_study: form.underlyingStudy?.label || undefined,
+    underlying_study: form.underlyingStudy.map((s) => s.label).join(", ") || "N/A",
     research_remarks: form.remark || undefined,
   };
 
@@ -538,7 +539,7 @@ SL 3  : ${form.stopLoss3}`
 Holding Period: ${form.holdingPeriod || "N/A"}
 
 Rationale: ${form.rationale}
-Underlying Study: ${form.underlyingStudy?.label || "N/A"}
+Underlying Study: ${form.underlyingStudy.map((s) => s.label).join(", ") || "N/A"}
 Remarks: ${form.remark || "N/A"}
 `;
 
@@ -660,31 +661,36 @@ finally {
     return [...recent, ...base];
   }, [recentStudyOptions]);
 
-  const handleUnderlyingStudyChange = (
-    _: unknown,
-    newValue: StudyOption | null
-  ) => {
-    dispatch({ type: "SET_FIELD", field: "underlyingStudy", value: newValue });
-    if (!newValue) return;
+ const handleUnderlyingStudyChange = (
+  _: unknown,
+  newValue: StudyOption[]
+) => {
+  dispatch({
+    type: "SET_FIELD",
+    field: "underlyingStudy",
+    value: newValue,
+  });
 
-    // update "recently selected" list (max 10, most recent first)
-    setRecentStudyOptions((prev) => {
-      const existingValues = prev.map((p) => p.value);
-      const mergedValues = [
-        newValue.value,
-        ...existingValues.filter((v) => v !== newValue.value),
-      ].slice(0, 10);
+  if (!newValue.length) return;
 
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(
-          "recentUnderlyingStudies",
-          JSON.stringify(mergedValues)
-        );
-      }
+  setRecentStudyOptions((prev) => {
+    const existingValues = prev.map((p) => p.value);
 
-      return getRecentStudies(mergedValues);
-    });
-  };
+    const selectedValues = newValue.map((v) => v.value);
+
+    const mergedValues = [
+      ...selectedValues,
+      ...existingValues.filter((v) => !selectedValues.includes(v)),
+    ].slice(0, 10);
+
+    window.localStorage.setItem(
+      "recentUnderlyingStudies",
+      JSON.stringify(mergedValues)
+    );
+
+    return getRecentStudies(mergedValues);
+  });
+};
 
   useEffect(() => {
     if (!expiryDates.length) {
@@ -799,10 +805,12 @@ finally {
         stopLoss3: item.stop_losses?.[2]?.toString() || "",
         rationale: item.rationale || "",
         remark: item.research_remarks || item.remark || "",
-        underlyingStudy: item.underlying_study ? {
-          label: item.underlying_study,
-          value: item.underlying_study.toLowerCase().replace(/\s+/g, "_"),
-        } : null,
+       underlyingStudy: item.underlying_study
+  ? item.underlying_study.split(",").map((study: string) => ({
+      label: study.trim(),
+      value: study.trim().toLowerCase().replace(/\s+/g, "_"),
+    }))
+  : [],
       };
 
       dispatch({ type: "SET_FORM", payload: formUpdate });
@@ -882,10 +890,12 @@ if (missingFields.length > 0) {
           expiry: "2026-03-28",
           holdingPeriod: "30 Days",
           rationale: "Break Out Play",
-          underlyingStudy: {
-            label: "RSI + Volume Confirmation",
-            value: "rsi_volume",
-          },
+        underlyingStudy: [
+  {
+    label: "RSI + Volume Confirmation",
+    value: "rsi_volume",
+  },
+],
           rangeEnabled: true,
           secondaryTargetEnabled: true,
           stopLoss2Enabled: true,
@@ -1132,7 +1142,7 @@ if (priceErr) {
       holding_period: form.holdingPeriod || null,
 
       rationale: form.rationale,
-      underlying_study: form.underlyingStudy?.label || null,
+      underlying_study: form.underlyingStudy.map((s) => s.label).join(", ") || null,
 
       is_algo: false,
       has_vested_interest: false,
@@ -1928,54 +1938,65 @@ sx={{
           <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, mb: 0.5 }}>
             Underlying Study
           </Typography>
-
-          <Autocomplete<StudyAutocompleteOption, false, false, false>
-            size="small"
-            fullWidth
-            options={studyOptions}
-            value={
-              form.underlyingStudy
-                ? {
-                  ...form.underlyingStudy,
-                  group:
-                    UNDERLYING_STUDIES.find((g) =>
-                      g.options.some((o) => o.value === form.underlyingStudy?.value)
-                    )?.group ?? "Fundamental & General Analysis",
-                }
-                : null
-            }
-            inputValue={underlyingStudyInput}
-            onInputChange={(_, newInput) => setUnderlyingStudyInput(newInput)}
-            onChange={handleUnderlyingStudyChange}
-            getOptionLabel={(option) => option.label}
-            groupBy={(option) => option.group}
-            renderInput={(params) => (
-              <TextField
-                required
-                {...params}
-                placeholder="Select or search underlying study"
-                variant="outlined"
-              />
-            )}
-            renderGroup={(params) => (
-              <Box key={params.key}>
-                <Typography
-                  sx={{
-                    px: 1.5,
-                    pt: 1,
-                    pb: 0.25,
-                    fontSize: "0.65rem",
-                    fontWeight: 700,
-                    color: "#6b7280",
-                  }}
-                >
-                  {params.group}
-                </Typography>
-                {params.children}
-              </Box>
-            )}
-            isOptionEqualToValue={(option, value) => option.value === value.value}
-          />
+<Autocomplete<StudyAutocompleteOption, true, false, false>
+  multiple
+  disableCloseOnSelect
+  size="small"
+  fullWidth
+  options={studyOptions}
+  value={form.underlyingStudy.map((selected) => ({
+    ...selected,
+    group:
+      UNDERLYING_STUDIES.find((g) =>
+        g.options.some((o) => o.value === selected.value)
+      )?.group ?? "Fundamental & General Analysis",
+  }))}
+  inputValue={underlyingStudyInput}
+  onInputChange={(_, newInput) => setUnderlyingStudyInput(newInput)}
+  onChange={handleUnderlyingStudyChange}
+  getOptionLabel={(option) => option.label}
+  groupBy={(option) => option.group}
+  isOptionEqualToValue={(option, value) => option.value === value.value}
+  renderOption={(props, option, { selected }) => (
+    <li {...props}>
+      <Checkbox
+        size="small"
+        checked={selected}
+        sx={{ mr: 1 }}
+      />
+      {option.label}
+    </li>
+  )}
+  renderInput={(params) => (
+    <TextField
+      required
+      {...params}
+      placeholder={
+        form.underlyingStudy.length
+          ? ""
+          : "Select one or more underlying studies"
+      }
+      variant="outlined"
+    />
+  )}
+  renderGroup={(params) => (
+    <Box key={params.key}>
+      <Typography
+        sx={{
+          px: 1.5,
+          pt: 1,
+          pb: 0.25,
+          fontSize: "0.65rem",
+          fontWeight: 700,
+          color: "#6b7280",
+        }}
+      >
+        {params.group}
+      </Typography>
+      {params.children}
+    </Box>
+  )}
+/>
         </Box>
 
         {/* Remarks & Upload */}
@@ -2058,9 +2079,10 @@ sx={{
 
          <Button
   type="button"
-  disabled={isSubmitting}
+ disabled={isSubmitting || isErrataMode}
     variant="outlined"
   onClick={validateAndTrack}
+  
 >
   {isSubmitting ? "Saving Draft..." : "Track"}
 </Button>
