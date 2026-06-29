@@ -70,6 +70,45 @@ const FLAT_STUDY_OPTIONS = UNDERLYING_STUDIES.flatMap((g) =>
 
 const NewRecommendation = () => {
 
+  const getMissingFields = () => {
+  const missing: string[] = [];
+
+  if (!inputValue.trim()) missing.push("Script Name/Symbol");
+  if (!form.action) missing.push("Action");
+  if (!form.exchangeType) missing.push("Exchange Type");
+  if (!form.exchange) missing.push("Market Type");
+  if (!form.callType) missing.push("Call Type");
+  if (!form.tradeType) missing.push("Trade Type");
+
+  if (!form.entry) missing.push("Entry");
+  if (!form.target) missing.push("Target");
+  if (!form.stopLoss) missing.push("Stop Loss");
+
+  if (form.callType !== "Cash" && !form.expiry) {
+    missing.push("Expiry");
+  }
+
+  if (!form.rationale?.trim()) missing.push("Rationale");
+  if (!form.underlyingStudy?.label) missing.push("Underlying Study");
+
+  if (form.rangeEnabled) {
+    if (!form.entryLow) missing.push("Lower Entry");
+    if (!form.entryUpper) missing.push("Upper Entry");
+  }
+
+  if (form.secondaryTargetEnabled) {
+    if (!form.target2) missing.push("Target 2");
+    if (!form.target3) missing.push("Target 3");
+  }
+
+  if (form.stopLoss2Enabled) {
+    if (!form.stopLoss2) missing.push("Stop Loss 2");
+    if (!form.stopLoss3) missing.push("Stop Loss 3");
+  }
+
+  return missing;
+};
+
   console.log("RENDER");
   const [underlyingStudyInput, setUnderlyingStudyInput] = useState("");
   const [recentStudyOptions, setRecentStudyOptions] = useState<StudyOption[]>([]);
@@ -210,6 +249,8 @@ const submittingRef = useRef(false);
     return null;
   }
 };
+
+
 
   const handleSubmit = async () => {
 
@@ -774,6 +815,8 @@ finally {
   }, []);
   // Temporary
   const [wasValidated, setWasValidated] = useState(false);
+
+
 const validateAndPublish = async (
   event: React.MouseEvent<HTMLButtonElement>
 ) => {
@@ -782,6 +825,13 @@ const validateAndPublish = async (
   if (isSubmitting) return;
 
   setWasValidated(true);
+
+  const missingFields = getMissingFields();
+
+if (missingFields.length > 0) {
+  alert(`Please fill required fields:\n\n${missingFields.join(", ")}`);
+  return;
+}
 
   const priceErr =
     getPriceError("entry", form) ||
@@ -983,6 +1033,9 @@ Remarks: ${item.research_remarks || "N/A"}
   }
 }, []);
 
+
+
+
   const handleTrack = async () => {
       if (submittingRef.current) return;
 
@@ -995,6 +1048,12 @@ Remarks: ${item.research_remarks || "N/A"}
       alert("Please login again");
       return;
     }
+    const missingFields = getMissingFields();
+
+if (missingFields.length > 0) {
+  alert(`Please fill required fields:\n\n${missingFields.join(", ")}`);
+  return;
+}
 
     const finalDisplayName =
       typeof suggestion === "object" && suggestion !== null
@@ -1091,14 +1150,39 @@ Remarks: ${item.research_remarks || "N/A"}
     // 🔥 Refresh list
     
 
-  } catch (err: any) {
-    console.error("Track failed:", err?.response?.data || err);
-    alert(err?.response?.data?.message || "Track failed");
-  }finally {
+ } catch (err: any) {
+  console.error("Track failed:", err?.response?.data || err);
+
+  alert(
+    err?.response?.data?.message ||
+      err?.response?.data?.error ||
+      "Track failed"
+  );
+}finally {
     submittingRef.current = false;
     setIsSubmitting(false);
   }
   
+};
+
+const validateAndTrack = (event: React.MouseEvent<HTMLButtonElement>) => {
+  event.preventDefault();
+  setWasValidated(true);
+
+  const priceErr =
+    getPriceError("entry", form) ||
+    getPriceError("target", form) ||
+    getPriceError("stopLoss", form);
+
+  if (priceErr) {
+    const priceRow = document.getElementById("prices-row");
+    if (priceRow) {
+      priceRow.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    return;
+  }
+
+  handleTrack();
 };
 
   // Add this helper function outside or inside your component
@@ -1903,7 +1987,8 @@ sx={{
          <Button
   type="button"
   disabled={isSubmitting}
-  onClick={handleTrack}
+    variant="outlined"
+  onClick={validateAndTrack}
 >
   {isSubmitting ? "Saving Draft..." : "Track"}
 </Button>
