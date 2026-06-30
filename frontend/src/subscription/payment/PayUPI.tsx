@@ -79,7 +79,7 @@ export default function PayUPI({ open, onClose, onBack, planName, planPrice, res
                     if (verifyRes.ok) {
                         console.log("✅ Database updated successfully!");
                         // Redirect to dashboard on success
-                        window.location.href = `/set-password?token=${resetToken}`;
+                        window.location.href = `set-password?token=${resetToken}`;
                     } else {
                         const errorData = await verifyRes.json();
                         console.error("❌ DB Update Failed:", errorData.message);

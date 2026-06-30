@@ -201,7 +201,7 @@ if (existingUser.rows.length > 0) {
     await client.query("COMMIT");
 
     // ================= SEND EMAIL AGAIN =================
-   const link = `${process.env.FRONTEND_URL}/set-password?token=${token}`;
+   const link = `${process.env.FRONTEND_URL}set-password?token=${token}`;
 
     await sendApprovalMail(email, name, link);
 
@@ -334,7 +334,7 @@ if (existingUser.rows.length > 0) {
     });
 
     // ================= SEND EMAIL =================
-    const link = `${process.env.FRONTEND_URL}/set-password?token=${token}`;
+    const link = `${process.env.FRONTEND_URL}set-password?token=${token}`;
     await sendApprovalMail(email, name, link);
     
     return res.json({
@@ -615,14 +615,12 @@ export const resendPasswordLink = async (
 
     const userRes = await pool.query(
       `
-      SELECT id, name, email
+      SELECT id, name, email, token_expiry
       FROM users
       WHERE id = $1
       `,
       [userId]
     );
-
-    console.log("FOUND:", userRes.rows);
 
     if (userRes.rowCount === 0) {
       return res.status(404).json({
@@ -630,12 +628,12 @@ export const resendPasswordLink = async (
         message: "User not found",
       });
     }
-    console.log("BODY:", req.body);
-console.log("USER ID:", req.body.userId);
+
     const user = userRes.rows[0];
 
     const token = crypto.randomBytes(32).toString("hex");
-console.log("QUERYING USER:", userId);
+    const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
+
     await pool.query(
       `
       UPDATE users
@@ -645,28 +643,43 @@ console.log("QUERYING USER:", userId);
         updated_at = NOW()
       WHERE id = $3
       `,
-      [
-        token,
-        new Date(Date.now() + 60 * 60 * 1000),
+      [token, tokenExpiry, userId]
+    );
+
+    const frontendUrl = process.env.FRONTEND_URL?.endsWith("/")
+      ? process.env.FRONTEND_URL
+      : `${process.env.FRONTEND_URL}/`;
+
+    const link = `${frontendUrl}set-password?token=${token}`;
+
+    await sendApprovalMail(user.email, user.name, link);
+
+    await createAuditLog({
+      adminId: req.user?.id,
+      adminName: req.user?.name || "ADMIN",
+      adminRole: req.user?.role || "ADMIN",
+      action: "PASSWORD_LINK_RESENT",
+      module: "USER_MANAGEMENT",
+      targetEntity: user.email,
+      targetType: "USER",
+      description: "Password reset link resent by admin",
+      status: "SUCCESS",
+      ipAddress: getClientIp(req),
+      device: req.headers["user-agent"] as string,
+      oldValue: {
+        previousTokenExpiry: user.token_expiry || null,
+      },
+      newValue: {
         userId,
-      ]
-      
-    );
-
-    const link =
-      `${process.env.FRONTEND_URL}set-password?token=${token}`;
-
-    await sendApprovalMail(
-      user.email,
-      user.name,
-      link
-    );
+        email: user.email,
+        tokenExpiry,
+      },
+    });
 
     return res.status(200).json({
       success: true,
       message: "Password link sent successfully ✅",
     });
-
   } catch (error) {
     console.error("Resend Password Link Error:", error);
 
@@ -674,7 +687,6 @@ console.log("QUERYING USER:", userId);
       success: false,
       message: "Server error",
     });
-    
   }
 };
 

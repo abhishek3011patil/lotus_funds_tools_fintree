@@ -805,6 +805,24 @@ export const updateRADisclaimer = async (
       });
     }
 
+    if (!disclaimer || !disclaimer.trim()) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: "Disclaimer is required",
+      });
+    }
+
+    const oldResult = await client.query(
+      `
+      SELECT additional_comments, disclaimer_updated_at
+      FROM ra_details
+      WHERE user_id = $1
+      `,
+      [userId]
+    );
+
+    const oldDisclaimer = oldResult.rows[0]?.additional_comments || "";
+
     const versionResult = await client.query(
       `
       SELECT COALESCE(MAX(version_number), 0) + 1 AS next_version
@@ -825,7 +843,7 @@ export const updateRADisclaimer = async (
       )
       VALUES ($1, $2, $3)
       `,
-      [userId, disclaimer, nextVersion]
+      [userId, disclaimer.trim(), nextVersion]
     );
 
     const result = await client.query(
@@ -837,29 +855,33 @@ export const updateRADisclaimer = async (
       WHERE user_id = $2
       RETURNING additional_comments, disclaimer_updated_at
       `,
-      [disclaimer, userId]
+      [disclaimer.trim(), userId]
     );
+
+    await client.query("COMMIT");
 
     await createAuditLog({
       adminId: req.user?.id,
-      adminName: req.user?.name,
-      adminRole: req.user?.role,
-      action: "DISCLAIMER_CREATED",
+      adminName: req.user?.name || "RA",
+      adminRole: req.user?.role || "RESEARCH_ANALYST",
+      action: "DISCLAIMER_UPDATED",
       module: "RA_PROFILE",
       targetEntity: req.user?.name || userId,
       targetType: "DISCLAIMER",
-      description: `Disclaimer version ${nextVersion} created`,
+      description: `RA disclaimer updated. Version ${nextVersion} created.`,
       status: "SUCCESS",
       ipAddress: getClientIp(req),
       device: req.headers["user-agent"] as string,
+      oldValue: {
+        disclaimer: oldDisclaimer,
+        disclaimerUpdatedAt: oldResult.rows[0]?.disclaimer_updated_at || null,
+      },
       newValue: {
-        disclaimer,
+        disclaimer: result.rows[0]?.additional_comments,
         version: nextVersion,
         disclaimerUpdatedAt: result.rows[0]?.disclaimer_updated_at,
       },
     });
-
-    await client.query("COMMIT");
 
     return res.json({
       success: true,

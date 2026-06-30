@@ -802,6 +802,27 @@ Read Full Disclaimer / Disclosure at : https://lotusfunds.com/disclaimer&disclos
           failed: failCount,
           failedEntities,
         });
+        await createAuditLog({
+  adminId: req.user?.id,
+  adminName: fullName || req.user?.name || "RA",
+  adminRole: req.user?.role || "RESEARCH_ANALYST",
+  action: "TELEGRAM_MESSAGE_SENT",
+  module: "TELEGRAM",
+  targetEntity: fullName || raId,
+  targetType: "TELEGRAM_BROADCAST",
+  description: "Research call/message sent via Telegram",
+  status: failCount === 0 ? "SUCCESS" : "PARTIAL_SUCCESS",
+  ipAddress: getClientIp(req),
+  device: req.headers["user-agent"] as string,
+  oldValue: null,
+  newValue: {
+    totalRecipients: users.length,
+    successCount,
+    failCount,
+    failedEntities,
+    messageLength: frontendMessage.length,
+  },
+});
       } catch (err: any) {
         console.error("❌ BACKGROUND TELEGRAM ERROR:", err.message);
       }
@@ -1167,6 +1188,27 @@ export const saveParticipantRA = async (
         entityType,
       ]
     );
+    await createAuditLog({
+  adminId: req.user?.id,
+  adminName: req.user?.name || "RA",
+  adminRole: req.user?.role || "RESEARCH_ANALYST",
+  action: "PARTICIPANT_ADDED",
+  module: "TELEGRAM",
+  targetEntity: username,
+  targetType: entityType,
+  description: `${entityType} added or updated in Telegram participants`,
+  status: "SUCCESS",
+  ipAddress: getClientIp(req),
+  device: req.headers["user-agent"] as string,
+  oldValue: null,
+  newValue: {
+    participantId: result.rows[0].id,
+    telegramUserId: telegramId,
+    telegramClientName: username,
+    entityType,
+    phone,
+  },
+});
 
     return res.status(200).json({
       success: true,

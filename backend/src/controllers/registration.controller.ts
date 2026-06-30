@@ -326,6 +326,27 @@ RETURNING id;
 ]
     );
 
+    await createAuditLog({
+  adminId: req.user?.id || undefined,
+  adminName: req.user?.name || data.first_name || "RA",
+  adminRole: req.user?.role || "RESEARCH_ANALYST",
+  action: "RA_REGISTERED",
+  module: "REGISTRATION",
+  targetEntity: data.email,
+  targetType: "RA",
+  description: "RA registration submitted",
+  status: "SUCCESS",
+  ipAddress: getClientIp(req),
+  device: req.headers["user-agent"] as string,
+  oldValue: null,
+  newValue: {
+    raId: result.rows[0].id,
+    email: data.email,
+    name: `${data.first_name} ${data.surname}`,
+    sebiRegNo: data.sebi_reg_no || null,
+  },
+});
+
     return res.status(201).json({
       success: true,
       message: "RA Registration Submitted",
@@ -921,6 +942,10 @@ if (result.rows[0]?.user_id) {
   );
 }
 
+   if (result.rowCount === 0) {
+      return res.status(404).json({ message: "Broker not found" });
+    }
+
         /* ================= CREATE AUDIT LOG ================= */
 await createAuditLog({
   adminId: req.user?.id || undefined,
@@ -950,9 +975,7 @@ await createAuditLog({
   newValue: result.rows[0],
 });
 
-    if (result.rowCount === 0) {
-      return res.status(404).json({ message: "Broker not found" });
-    }
+ 
 
     res.status(200).json({
       success: true,
@@ -1107,21 +1130,44 @@ export const createRAProfileUpdateRequest = async (
       ),
     };
 
-    await pool.query(
-      `
-      INSERT INTO ra_profile_update_requests
-      (
-        ra_user_id,
-        requested_changes,
-        status
-      )
-      VALUES ($1, $2, 'PENDING')
-      `,
-      [
-        userId, // UUID value
-        JSON.stringify(requestedChanges),
-      ]
-    );
+    if (Object.keys(requestedChanges).length === 0) {
+  return res.status(400).json({
+    success: false,
+    message: "No changes submitted",
+  });
+}
+
+  const requestResult = await pool.query(
+  `
+  INSERT INTO ra_profile_update_requests
+  (
+    ra_user_id,
+    requested_changes,
+    status
+  )
+  VALUES ($1, $2, 'PENDING')
+  RETURNING id
+  `,
+  [userId, JSON.stringify(requestedChanges)]
+);
+await createAuditLog({
+  adminId: req.user?.id,
+  adminName: req.user?.name || "RA",
+  adminRole: req.user?.role || "RESEARCH_ANALYST",
+  action: "RA_PROFILE_UPDATE_REQUESTED",
+  module: "RA_PROFILE",
+  targetEntity: req.user?.name || userId,
+  targetType: "RA_PROFILE_UPDATE_REQUEST",
+  description: "RA submitted profile update request",
+  status: "SUCCESS",
+  ipAddress: getClientIp(req),
+  device: req.headers["user-agent"] as string,
+  newValue: {
+    requestId: requestResult.rows[0].id,
+    requestedFields: Object.keys(requestedChanges),
+  },
+});
+
 
     return res.status(201).json({
       success: true,
@@ -1297,6 +1343,29 @@ export const approveRAProfileUpdateRequest = async (
     );
 
     await client.query("COMMIT");
+    await createAuditLog({
+  adminId: req.user?.id,
+  adminName: req.user?.name || "ADMIN",
+  adminRole: req.user?.role || "ADMIN",
+  action: "RA_PROFILE_UPDATE_APPROVED",
+  module: "RA_PROFILE",
+  targetEntity: request.ra_user_id,
+  targetType: "RA_PROFILE_UPDATE_REQUEST",
+  description: "RA profile update request approved",
+  status: "SUCCESS",
+  ipAddress: getClientIp(req),
+  device: req.headers["user-agent"] as string,
+  oldValue: {
+    requestId: id,
+    status: "PENDING",
+  },
+  newValue: {
+    requestId: id,
+    raUserId: request.ra_user_id,
+    status: "APPROVED",
+    approvedFields: Object.keys(changes),
+  },
+});
 
     return res.status(200).json({
       success: true,
@@ -1319,17 +1388,48 @@ export const rejectRAProfileUpdateRequest = async (
     const { id } = req.params;
     const { admin_remark } = req.body;
 
-    await pool.query(
-      `
-      UPDATE ra_profile_update_requests
-      SET
-        status = 'REJECTED',
-        admin_remark = $1,
-        reviewed_at = NOW()
-      WHERE id = $2 AND status = 'PENDING'
-      `,
-      [admin_remark || null, id]
-    );
+  const result = await pool.query(
+  `
+  UPDATE ra_profile_update_requests
+  SET
+    status = 'REJECTED',
+    admin_remark = $1,
+    reviewed_at = NOW()
+  WHERE id = $2 AND status = 'PENDING'
+  RETURNING id, ra_user_id, requested_changes
+  `,
+  [admin_remark || null, id]
+);
+
+if (result.rowCount === 0) {
+  return res.status(404).json({
+    success: false,
+    message: "Pending request not found",
+  });
+}
+
+await createAuditLog({
+  adminId: req.user?.id,
+  adminName: req.user?.name || "ADMIN",
+  adminRole: req.user?.role || "ADMIN",
+  action: "RA_PROFILE_UPDATE_REJECTED",
+  module: "RA_PROFILE",
+  targetEntity: result.rows[0].ra_user_id,
+  targetType: "RA_PROFILE_UPDATE_REQUEST",
+  description: "RA profile update request rejected",
+  status: "SUCCESS",
+  reason: admin_remark || null,
+  ipAddress: getClientIp(req),
+  device: req.headers["user-agent"] as string,
+  oldValue: {
+    requestId: id,
+    requestedChanges: result.rows[0].requested_changes,
+  },
+  newValue: {
+    status: "REJECTED",
+  },
+});
+
 
     return res.status(200).json({
       success: true,
@@ -1339,6 +1439,8 @@ export const rejectRAProfileUpdateRequest = async (
     console.error("REJECT RA PROFILE REQUEST ERROR:", error);
     return res.status(500).json({ message: "Server error" });
   }
+
+  
 };
 
 

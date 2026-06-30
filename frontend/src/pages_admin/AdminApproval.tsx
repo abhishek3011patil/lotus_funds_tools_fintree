@@ -593,7 +593,7 @@ const handleSuspend = async (
           <Typography color="text.secondary">{selectedRA.phone}</Typography>
 
           <Box sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 1 }}>
-            <Button onClick={() => openFile(selectedRA.profile)}>View Profile</Button>
+            {/* <Button onClick={() => openFile(selectedRA.profile)}>View Profile</Button> */}
             <Button onClick={() => openFile(selectedRA.pan)}>View PAN</Button>
             <Button onClick={() => openFile(selectedRA.address)}>View Address</Button>
             <Button onClick={() => openFile(selectedRA.sebi)}>View SEBI</Button>
