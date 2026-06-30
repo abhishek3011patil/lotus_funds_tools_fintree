@@ -191,7 +191,7 @@ const fieldsToCompare = [
     return true;
   }
 
-  const oldValue = req[field];
+  const oldValue = req[field]; 
 
   return String(oldValue ?? "").trim() !== String(newValue ?? "").trim();
 });
