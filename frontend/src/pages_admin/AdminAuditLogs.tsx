@@ -57,76 +57,47 @@ const AdminAuditLogs: React.FC = () => {
   const [exportError, setExportError] = useState('');
   // ──────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    const fetchAuditLogs = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const API_URL = import.meta.env.VITE_API_URL;
-        const response = await axios.get(`${API_URL}/api/audit-logs`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setLogs(response.data.logs || []);
-      } catch (error) {
-        console.error("Failed to fetch audit logs:", error);
-        setLogs([]);
-      }
-    };
-    fetchAuditLogs();
-  }, []);
+ const [totalLogs, setTotalLogs] = useState(0);
 
-  const filterLogs = () => {
-    return (logs || []).filter(log => {
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const matchesSearch =
-          log.admin_name?.toLowerCase().includes(query) ||
-          log.action?.toLowerCase().includes(query) ||
-          log.module?.toLowerCase().includes(query) ||
-          log.target_entity?.toLowerCase().includes(query) ||
-          log.description?.toLowerCase().includes(query) ||
-          log.ip_address?.includes(query);
-        if (!matchesSearch) return false;
-      }
+useEffect(() => {
+  const fetchAuditLogs = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const API_URL = import.meta.env.VITE_API_URL;
 
-      if (dateFilter) {
-        const logDate = new Date(log.created_at);
-        const now = new Date();
-        switch (dateFilter) {
-          case 'today': {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            if (logDate < today) return false;
-            break;
-          }
-          case 'week': {
-            const weekAgo = new Date();
-            weekAgo.setDate(now.getDate() - 7);
-            if (logDate < weekAgo) return false;
-            break;
-          }
-          case 'month': {
-            const monthAgo = new Date();
-            monthAgo.setMonth(now.getMonth() - 1);
-            if (logDate < monthAgo) return false;
-            break;
-          }
-        }
-      }
+      const response = await axios.get(`${API_URL}/api/audit-logs`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        params: {
+  page: page + 1,
+  limit: rowsPerPage,
+  search: searchQuery,
+  date: dateFilter,
+  user: userFilter,
+  module: moduleFilter,
+  status: statusFilter,
+},
+      });
 
-      if (userFilter) {
-        if (userFilter === "admin" && log.admin_role !== "ADMIN") return false;
-        if (userFilter === "superadmin" && log.admin_role !== "SUPER_ADMIN") return false;
-      }
-
-      if (moduleFilter && log.module !== moduleFilter) return false;
-      if (statusFilter && log.status !== statusFilter) return false;
-
-      return true;
-    });
+      setLogs(response.data.logs || []);
+      setTotalLogs(response.data.total || 0);
+     
+    } catch (error) {
+      console.error("Failed to fetch audit logs:", error);
+      setLogs([]);
+      setTotalLogs(0);
+    }
   };
 
-  const filteredLogs = filterLogs();
-  const paginatedLogs = filteredLogs.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  fetchAuditLogs();
+}, [page, rowsPerPage, searchQuery, dateFilter, userFilter, moduleFilter, statusFilter]);
+
+useEffect(() => {
+  setPage(0);
+}, [searchQuery, dateFilter, userFilter, moduleFilter, statusFilter]);
+
+ 
 
   const handleChangePage = (event: unknown, newPage: number) => setPage(newPage);
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -296,19 +267,22 @@ const AdminAuditLogs: React.FC = () => {
         </Grid>
       </Paper>
 
-      <AuditLogTable logs={paginatedLogs} totalEntries={filteredLogs.length} showingEntries={paginatedLogs.length} />
+    <AuditLogTable
+  logs={logs}
+  totalEntries={totalLogs}
+  showingEntries={logs.length}
+/>
 
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
         <TablePagination
-          component="div"
-          count={filteredLogs.length}
-          page={page}
-          onPageChange={handleChangePage}
-          rowsPerPage={rowsPerPage}
-          rowsPerPageOptions={[5, 10, 25, 50]}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          labelRowsPerPage="Rows"
-        />
+  component="div"
+  count={totalLogs}
+  page={page}
+  onPageChange={handleChangePage}
+  rowsPerPage={rowsPerPage}
+  onRowsPerPageChange={handleChangeRowsPerPage}
+  rowsPerPageOptions={[5, 10, 25, 50]}
+/>
       </Box>
 
       {/* ── NEW: Date Range Export Dialog ─────────────────────────────── */}
