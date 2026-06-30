@@ -57,14 +57,17 @@ const AdminAuditLogs: React.FC = () => {
   const [exportError, setExportError] = useState('');
   // ──────────────────────────────────────────────────────────────────
 
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
  const [totalLogs, setTotalLogs] = useState(0);
 
 useEffect(() => {
   const fetchAuditLogs = async () => {
     try {
+      
       const token = localStorage.getItem("token");
       const API_URL = import.meta.env.VITE_API_URL;
-
+console.count("Fetching audit logs");
       const response = await axios.get(`${API_URL}/api/audit-logs`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -72,7 +75,7 @@ useEffect(() => {
         params: {
   page: page + 1,
   limit: rowsPerPage,
-  search: searchQuery,
+  search: debouncedSearch.trim().length >= 3 ? debouncedSearch.trim() : "",
   date: dateFilter,
   user: userFilter,
   module: moduleFilter,
@@ -91,11 +94,20 @@ useEffect(() => {
   };
 
   fetchAuditLogs();
-}, [page, rowsPerPage, searchQuery, dateFilter, userFilter, moduleFilter, statusFilter]);
+}, [page, rowsPerPage, debouncedSearch, dateFilter, userFilter, moduleFilter, statusFilter]);
 
 useEffect(() => {
   setPage(0);
-}, [searchQuery, dateFilter, userFilter, moduleFilter, statusFilter]);
+}, [dateFilter, userFilter, moduleFilter, statusFilter]);
+
+useEffect(() => {
+  const timer = setTimeout(() => {
+    setDebouncedSearch(searchQuery);
+    setPage(0);
+  }, 500);
+
+  return () => clearTimeout(timer);
+}, [searchQuery]);
 
  
 
@@ -113,7 +125,15 @@ useEffect(() => {
     setExportDialogOpen(true);
   };
   // ──────────────────────────────────────────────────────────────────
-
+const handleResetFilters = () => {
+  setSearchQuery("");
+  setDebouncedSearch("");
+  setDateFilter("");
+  setUserFilter("");
+  setModuleFilter("");
+  setStatusFilter("");
+  setPage(0);
+};
   // ── NEW: actual download logic ────────────────────────────────────
   const handleConfirmExport = () => {
     if (!exportFromDate || !exportToDate) {
@@ -252,6 +272,17 @@ useEffect(() => {
               </Select>
             </FormControl>
           </Grid>
+          <Grid item xs={6} sm={6} md={2.5}>
+  <Button
+    fullWidth
+    variant="outlined"
+    size="medium"
+    onClick={handleResetFilters}
+    sx={{ height: "100%" }}
+  >
+    Reset
+  </Button>
+</Grid>
 
           <Grid item xs={6} sm={6} md={2}>
             <Button
@@ -259,7 +290,7 @@ useEffect(() => {
               startIcon={<Download />}
               onClick={handleExport}
               fullWidth
-              sx={{ height: '48px', fontSize: '14px' }}
+             sx={{ height: "100%" }}
             >
               Download
             </Button>
