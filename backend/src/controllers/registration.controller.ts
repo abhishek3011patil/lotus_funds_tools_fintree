@@ -177,6 +177,25 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
     // ================= BOOL CONVERTER =================
     const toBool = (val: any) => val === "true" || val === true;
 
+    const requiredDeclarations = [
+  "declare_info_true",
+  "consent_verification",
+  "no_guaranteed_returns",
+  "conflict_of_interest",
+  "personal_trading",
+  "sebi_compliance",
+  "platform_policy",
+];
+
+for (const field of requiredDeclarations) {
+  if (!toBool(data[field])) {
+    return res.status(400).json({
+      success: false,
+      message: "Please accept all mandatory declarations",
+    });
+  }
+}
+
     // ================= FILE SAFETY =================
     const profileImage = files?.profile_image?.[0]?.filename ?? null;
     const panCard = files?.pan_card?.[0]?.filename ?? null;
@@ -1201,10 +1220,69 @@ export const getRAProfileUpdateRequests = async (
         r.admin_remark,
         r.created_at,
         r.reviewed_at,
+
         u.name,
-        u.email
+        u.email,
+
+        rd.salutation,
+        rd.first_name,
+        rd.middle_name,
+        rd.surname,
+        rd.org_name,
+        rd.designation,
+        rd.short_bio,
+        rd.mobile,
+        rd.telephone,
+
+        rd.address_line1,
+        rd.address_line2,
+        rd.city,
+        rd.state,
+        rd.country,
+        rd.pincode,
+
+        rd.sebi_reg_no,
+        rd.sebi_start_date,
+        rd.sebi_expiry_date,
+
+        rd.nism_reg_no,
+        rd.nism_valid_till,
+
+        rd.academic_qualification,
+        rd.professional_qualification,
+        rd.market_experience,
+        rd.expertise,
+        rd.markets,
+
+        rd.bank_name,
+        rd.account_holder,
+        rd.account_number,
+        rd.ifsc_code,
+
+        rd.pan_number,
+        rd.address_proof_type,
+
+        rd.declare_info_true,
+        rd.consent_verification,
+        rd.no_guaranteed_returns,
+        rd.conflict_of_interest,
+        rd.personal_trading,
+        rd.sebi_compliance,
+        rd.platform_policy,
+
+        rd.additional_comments,
+
+        rd.profile_image,
+        rd.pan_card,
+        rd.address_proof_document,
+        rd.sebi_certificate,
+        rd.sebi_receipt,
+        rd.nism_certificate,
+        rd.cancelled_cheque
+
       FROM ra_profile_update_requests r
       JOIN users u ON u.id = r.ra_user_id
+      JOIN ra_details rd ON rd.user_id = r.ra_user_id
       ORDER BY r.created_at DESC
     `);
 

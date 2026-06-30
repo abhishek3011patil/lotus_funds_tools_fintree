@@ -159,6 +159,14 @@ const handleSelect = (e: SelectChangeEvent) => {
       if (!formData.declare_info_true) newErrors.declare1 = true;
       if (!formData.consent_verification) newErrors.consent_verification = true;
     }
+
+    if (currentStep === 4) {
+  if (!formData.no_guaranteed_returns) newErrors.no_guaranteed_returns = true;
+  if (!formData.conflict_of_interest) newErrors.conflict_of_interest = true;
+  if (!formData.personal_trading) newErrors.personal_trading = true;
+  if (!formData.sebi_compliance) newErrors.sebi_compliance = true;
+  if (!formData.platform_policy) newErrors.platform_policy = true;
+}
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -204,7 +212,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
 });
 
     // ✅ API call
-  const token = localStorage.getItem("token");
+  //const token = localStorage.getItem("token");
 
 
   const response = await axios.post(

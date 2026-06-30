@@ -16,20 +16,77 @@ import {
 const RAProfileUpdateRequests = () => {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
 
-  const fieldsToCompare = [
+const fieldsToCompare = [
+  // Basic Information
+  "salutation",
   "first_name",
+  "middle_name",
   "surname",
+  "org_name",
+  "designation",
+  "short_bio",
+
+  // Contact
   "email",
   "mobile",
+  "telephone",
+
+  // Address
+  "address_line1",
+  "address_line2",
   "city",
   "state",
   "country",
+  "pincode",
+
+  // SEBI Details
   "sebi_reg_no",
+  "sebi_start_date",
+  "sebi_expiry_date",
+
+  // NISM Details
   "nism_reg_no",
+  "nism_valid_till",
+
+  // Qualifications
+  "academic_qualification",
+  "professional_qualification",
+  "market_experience",
+  "expertise",
+  "markets",
+
+  // Bank Details
   "bank_name",
+  "account_holder",
   "account_number",
   "ifsc_code",
+
+  // Other Details
+  "pan_number",
+  "address_proof_type",
+
+  // Declarations
+  "declare_info_true",
+  "consent_verification",
+  "no_guaranteed_returns",
+  "conflict_of_interest",
+  "personal_trading",
+  "sebi_compliance",
+  "platform_policy",
+
+  // Disclaimer
+  "additional_comments",
+
+  // Uploaded Documents
+  "profile_image",
+  "pan_card",
+  "address_proof_document",
+  "sebi_certificate",
+  "sebi_receipt",
+  "nism_certificate",
+  "cancelled_cheque",
 ];
 
   const fetchRequests = async () => {
@@ -86,6 +143,8 @@ const RAProfileUpdateRequests = () => {
     );
 
     fetchRequests();
+
+    
   };
 
   return (
@@ -121,7 +180,29 @@ const RAProfileUpdateRequests = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              requests.map((req) => (
+              requests.map((req) => {
+
+         const changedFields = fieldsToCompare.filter((field) => {
+  const newValue = req.requested_changes?.[field];
+
+  if (newValue === undefined || newValue === null) return false;
+
+  if (req.status !== "PENDING") {
+    return true;
+  }
+
+  const oldValue = req[field];
+
+  return String(oldValue ?? "").trim() !== String(newValue ?? "").trim();
+});
+                ({
+    cityFromDB: req.city,
+    cityRequested: req.requested_changes?.city,
+    requestedChanges: req.requested_changes,
+  });
+
+  return (
+   
                 <TableRow key={req.id}>
                   <TableCell>{req.name || "N/A"}</TableCell>
                   <TableCell>{req.email}</TableCell>
@@ -142,12 +223,15 @@ const RAProfileUpdateRequests = () => {
 
                  <TableCell>
   <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-    {fieldsToCompare.map((field) => {
-      const requestedValue = req.requested_changes?.[field];
-
-      if (requestedValue === undefined || requestedValue === null) {
-        return null;
-      }
+  {changedFields.length === 0 ? (
+  <Typography color="text.secondary">
+    No actual changed fields
+  </Typography>
+) : (
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+    {changedFields.map((field) => {
+      const oldValue = req[field];
+      const newValue = req.requested_changes?.[field];
 
       return (
         <Box
@@ -164,12 +248,18 @@ const RAProfileUpdateRequests = () => {
             {field.replace(/_/g, " ").toUpperCase()}
           </Typography>
 
-          <Typography fontSize={13}>
-            {String(requestedValue)}
+          <Typography color="error">
+            Old: {oldValue}
+          </Typography>
+
+          <Typography color="success.main">
+            New: {newValue}
           </Typography>
         </Box>
       );
     })}
+  </Box>
+)}
   </Box>
 </TableCell>
 
@@ -202,7 +292,8 @@ const RAProfileUpdateRequests = () => {
                     )}
                   </TableCell>
                 </TableRow>
-              ))
+
+              );})
             )}
           </TableBody>
         </Table>

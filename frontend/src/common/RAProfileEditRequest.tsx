@@ -103,18 +103,28 @@ const RAProfileEditRequest = () => {
 
   const handleSave = async () => {
     const formData = new FormData();
+Object.keys(fields).forEach((key) => {
+  const oldValue = data?.[key];
+  const newValue = fields[key];
 
-    Object.keys(fields).forEach((key) => {
-      const val = fields[key];
+  if (newValue === undefined || newValue === null) return;
 
-      if (val !== undefined && val !== null) {
-        if (BOOLEAN_FIELDS.has(key)) {
-          formData.append(key, normalizeBool(val) ? "true" : "false");
-        } else {
-          formData.append(key, String(val));
-        }
-      }
-    });
+  const oldNormalized = BOOLEAN_FIELDS.has(key)
+    ? String(normalizeBool(oldValue))
+    : String(oldValue ?? "").trim();
+
+  const newNormalized = BOOLEAN_FIELDS.has(key)
+    ? String(normalizeBool(newValue))
+    : String(newValue ?? "").trim();
+
+  if (oldNormalized === newNormalized) return;
+
+  if (BOOLEAN_FIELDS.has(key)) {
+    formData.append(key, normalizeBool(newValue) ? "true" : "false");
+  } else {
+    formData.append(key, String(newValue));
+  }
+});
 
     const fileKeys = [
       "profile_image",
@@ -135,6 +145,15 @@ const RAProfileEditRequest = () => {
     try {
       const token = localStorage.getItem("token");
 
+      console.log("ORIGINAL DATA:", data);
+console.log("EDITED FIELDS:", fields);
+
+      console.log("SENDING CHANGED FIELDS:");
+for (const pair of formData.entries()) {
+  console.log(pair[0], pair[1]);
+}
+
+
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/registration/ra/profile-update-request`,
         {
@@ -152,6 +171,8 @@ const RAProfileEditRequest = () => {
         setErrorMsg(result.message || "Request failed");
         return;
       }
+
+      
 
       setSuccessMsg("Profile update request sent to admin");
       setFiles({});
