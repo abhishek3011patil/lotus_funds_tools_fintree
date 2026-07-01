@@ -30,7 +30,10 @@ const RegistrationPage: React.FC = () => {
 const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   
+  
   const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
+  const [serverErrors, setServerErrors] = useState<{ [key: string]: string }>({});
+
   const API_URL = import.meta.env.VITE_API_URL;
 
   const [formData, setFormData] = useState({
@@ -118,11 +121,16 @@ const navigate = useNavigate();
   const professionalOptions = ["Chartered Accountant (CA)", "Company Secretary (CS)", "Cost & Management Accountant (CMA)", "FRM – Financial Risk Manager (GARP)", "NISM Series VIII – Equity Derivatives", "NISM Series XIII – Common Derivatives", "NISM Currency / Commodity Market Modules", "Other"];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target as HTMLInputElement;
-    const checked = (e.target as HTMLInputElement).checked;
-    setFormData({ ...formData, [name]: type === "checkbox" ? checked : value });
-    if (type !== "checkbox" && value.trim() !== "") setErrors(prev => ({ ...prev, [name]: false }));
-  };
+  const { name, value, type } = e.target as HTMLInputElement;
+  const checked = (e.target as HTMLInputElement).checked;
+
+  setFormData({ ...formData, [name]: type === "checkbox" ? checked : value });
+
+  if (type !== "checkbox" && value.trim() !== "") {
+    setErrors(prev => ({ ...prev, [name]: false }));
+    setServerErrors(prev => ({ ...prev, [name]: "" }));
+  }
+};
 
 const handleSelect = (e: SelectChangeEvent) => {
   const name = e.target.name as string;
@@ -227,15 +235,38 @@ Object.entries(fileMapping).forEach(([key, file]) => {
   navigate("/login");
 }
 
-  } catch (error: any) {
-    if (error.response) {
-      console.error("Backend error:", error.response.data);
-      alert(error.response.data.message);
-    } else {
-      console.error("Network error:", error);
-      alert("Network error");
+  }  catch (error: any) {
+  if (error.response) {
+    console.error("Backend error:", error.response.data);
+
+    const backendData = error.response.data;
+
+    if (backendData.field && backendData.message) {
+      setServerErrors({
+        [backendData.field]: backendData.message,
+      });
+
+      const fieldStepMap: { [key: string]: number } = {
+        mobile: 1,
+        sebi_reg_no: 2,
+        nism_reg_no: 2,
+        pan_number: 3,
+      };
+
+      if (fieldStepMap[backendData.field]) {
+        setCurrentStep(fieldStepMap[backendData.field]);
+        window.scrollTo(0, 0);
+      }
+
+      return;
     }
+
+    alert(backendData.message || "Registration failed");
+  } else {
+    console.error("Network error:", error);
+    alert("Network error");
   }
+}
 };
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -549,8 +580,12 @@ const cities = selectedState
               sx={styles.input}
               value={formData.mobile || ""}
               onChange={handleChange}
-              error={errors.mobile}
-              helperText={errors.mobile ? "Required" : ""}
+              error={!!errors.mobile || !!serverErrors.mobile}
+helperText={
+  errors.mobile
+    ? "Required"
+    : serverErrors.mobile || ""
+}
             />
           </Grid>
 
@@ -735,8 +770,12 @@ const cities = selectedState
       sx={styles.input}
       value={formData.sebi_reg_no|| ""}
       onChange={handleChange}
-      error={errors.sebi_reg_no}
-      helperText={errors.sebi_reg_no ? "Required" : ""}
+      error={!!errors.sebi_reg_no || !!serverErrors.sebi_reg_no}
+helperText={
+  errors.sebi_reg_no
+    ? "Required"
+    : serverErrors.sebi_reg_no || ""
+}
     />
   </Grid>
 
@@ -852,8 +891,12 @@ const cities = selectedState
       sx={styles.input}
       value={formData.nism_reg_no || ""}
       onChange={handleChange}
-      error={errors.nism_reg_no}
-      helperText={errors.nism_reg_no ? "Required" : ""}
+    error={!!errors.nism_reg_no || !!serverErrors.nism_reg_no}
+helperText={
+  errors.nism_reg_no
+    ? "Required"
+    : serverErrors.nism_reg_no || ""
+}
     />
   </Grid>
   
@@ -1105,8 +1148,12 @@ const cities = selectedState
           label="PAN Number"
           value={formData.pan_number || ""}
           onChange={handleChange}
-          error={errors.pan_number}
-          helperText={errors.pan_number ? "Required" : ""}
+          error={!!errors.pan_number || !!serverErrors.pan_number}
+helperText={
+  errors.pan_number
+    ? "Required"
+    : serverErrors.pan_number || ""
+}
           sx={styles.input}
         />
       </Grid>

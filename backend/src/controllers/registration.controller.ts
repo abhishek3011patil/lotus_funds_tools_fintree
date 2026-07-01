@@ -136,12 +136,391 @@ ORDER BY u.created_at DESC
 
 /* ================= REGISTER RA (FIXED) ================= */
 
+// export const registerRA = async (req: AuthRequest, res: Response) => {
+//   try {
+//     const data = req.body || {};
+//     const files = req.files as any;
+
+//     // ✅ FIX: define userId
+//     const userId = req.user?.id ?? null;
+
+//     // ================= VALIDATION =================
+//     if (!data.first_name || !data.surname) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "First name and surname are required",
+//       });
+//     }
+
+//     if (!data.email) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Email is required",
+//       });
+//     }
+
+//     data.email = data.email.trim().toLowerCase();
+//     data.mobile = data.mobile?.trim();
+// data.sebi_reg_no = data.sebi_reg_no?.trim().toUpperCase();
+// data.nism_reg_no = data.nism_reg_no?.trim().toUpperCase();
+// data.pan_number = data.pan_number?.trim().toUpperCase();
+
+//     // ================= CHECK EXISTING =================
+//     const existing = await pool.query(
+//       `SELECT id FROM ra_details WHERE email = $1`,
+//       [data.email]
+//     );
+
+//     if (existing.rowCount && existing.rowCount > 0) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "RA already registered with this email",
+//       });
+//     }
+
+//     // ================= CHECK DUPLICATES =================
+
+// // Mobile duplicate check
+// if (data.mobile) {
+//   const mobileExists = await pool.query(
+//     `
+//     SELECT 1
+//     FROM (
+//       SELECT mobile FROM ra_details WHERE mobile IS NOT NULL
+//       UNION
+//       SELECT mobile FROM broker_details WHERE mobile IS NOT NULL
+//     ) t
+//     WHERE mobile = $1
+//     LIMIT 1
+//     `,
+//     [data.mobile.trim()]
+//   );
+
+//   if ((mobileExists.rowCount ?? 0) > 0) {
+//     return res.status(400).json({
+//       success: false,
+//       field: "mobile",
+//       message: "Mobile number is already registered",
+//     });
+//   }
+// }
+
+// // SEBI duplicate check
+// if (data.sebi_reg_no) {
+//   const sebiExists = await pool.query(
+//     `
+//     SELECT 1
+//     FROM ra_details
+//     WHERE UPPER(TRIM(sebi_reg_no)) = UPPER(TRIM($1))
+//     LIMIT 1
+//     `,
+//     [data.sebi_reg_no]
+//   );
+
+//   if ((sebiExists.rowCount ?? 0) > 0) {
+//     return res.status(400).json({
+//       success: false,
+//       field: "sebi_reg_no",
+//       message: "SEBI Registration Number already exists",
+//     });
+//   }
+// }
+
+// // NISM duplicate check
+// if (data.nism_reg_no) {
+//   const nismExists = await pool.query(
+//     `
+//     SELECT 1
+//     FROM ra_details
+//     WHERE UPPER(TRIM(nism_reg_no)) = UPPER(TRIM($1))
+//     LIMIT 1
+//     `,
+//     [data.nism_reg_no]
+//   );
+
+//   if ((nismExists.rowCount ?? 0) > 0) {
+//     return res.status(400).json({
+//       success: false,
+//       field: "nism_reg_no",
+//       message: "NISM Registration Number already exists",
+//     });
+//   }
+// }
+
+// // PAN duplicate check
+// if (data.pan_number) {
+//   const panExists = await pool.query(
+//     `
+//     SELECT 1
+//     FROM ra_details
+//     WHERE UPPER(TRIM(pan_number)) = UPPER(TRIM($1))
+//     LIMIT 1
+//     `,
+//     [data.pan_number]
+//   );
+
+//   if ((panExists.rowCount ?? 0) > 0) {
+//     return res.status(400).json({
+//       success: false,
+//       field: "pan_number",
+//       message: "PAN number is already registered",
+//     });
+//   }
+// }
+
+//     // ================= BOOL CONVERTER =================
+//     const toBool = (val: any) => val === "true" || val === true;
+
+//     const requiredDeclarations = [
+//   "declare_info_true",
+//   "consent_verification",
+//   "no_guaranteed_returns",
+//   "conflict_of_interest",
+//   "personal_trading",
+//   "sebi_compliance",
+//   "platform_policy",
+// ];
+
+// for (const field of requiredDeclarations) {
+//   if (!toBool(data[field])) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Please accept all mandatory declarations",
+//     });
+//   }
+// }
+
+//     // ================= FILE SAFETY =================
+//     const profileImage = files?.profile_image?.[0]?.filename ?? null;
+//     const panCard = files?.pan_card?.[0]?.filename ?? null;
+//     const addressProof = files?.address_proof_document?.[0]?.filename ?? null;
+
+//     // ================= INSERT =================
+//     const result = await pool.query(
+//       `
+// INSERT INTO ra_details (
+//   user_id,
+
+//   -- Step 1: Personal Info
+//   salutation, first_name, middle_name, surname,
+//   org_name, designation, short_bio,
+//   email, mobile, telephone,
+//   country, state, city, pincode,
+//   address_line1, address_line2,
+//   profile_image,
+
+//   -- Step 2: Professional & SEBI
+//   sebi_reg_no, sebi_start_date, sebi_expiry_date,
+//   sebi_certificate, sebi_receipt,
+//   nism_reg_no, nism_valid_till, nism_certificate,
+//   academic_qualification, professional_qualification,
+//   market_experience, expertise, markets,
+
+//   -- Step 3: KYC & Bank
+//   bank_name, account_holder, account_number, ifsc_code,
+//   cancelled_cheque,
+//   pan_number, pan_card,
+//   address_proof_type, address_proof_document,
+//   declare_info_true, consent_verification,
+
+//   -- Step 4: Declarations
+//   no_guaranteed_returns, conflict_of_interest,
+//   personal_trading, sebi_compliance, platform_policy,
+
+//   -- Extra
+//   additional_comments
+// )
+// VALUES (
+//   $1,
+
+//   -- Step 1
+//   $2,$3,$4,$5,
+//   $6,$7,$8,
+//   $9,$10,$11,
+//   $12,$13,$14,$15,
+//   $16,$17,
+//   $18,
+
+//   -- Step 2
+//   $19,$20,$21,
+//   $22,$23,
+//   $24,$25,$26,
+//   $27,$28,
+//   $29,$30,$31,
+
+//   -- Step 3
+//   $32,$33,$34,$35,
+//   $36,
+//   $37,$38,
+//   $39,$40,
+//   $41,$42,
+
+//   -- Step 4
+//   $43,$44,
+//   $45,$46,$47,
+
+//   -- Extra
+//   $48
+// )
+// RETURNING id;
+//       `,
+//         [
+//   userId,
+
+//   // Step 1
+//   data.salutation ?? null,
+//   data.first_name,
+//   data.middle_name ?? null,
+//   data.surname,
+
+//   data.org_name ?? null,
+//   data.designation ?? null,
+//   data.short_bio ?? null,
+
+//   data.email,
+//   data.mobile ?? null,
+//   data.telephone ?? null,
+
+//   data.country ?? null,
+//   data.state ?? null,
+//   data.city ?? null,
+//   data.pincode ?? null,
+
+//   data.address_line1 ?? null,
+//   data.address_line2 ?? null,
+
+//   files?.profile_image?.[0]?.filename ?? null,
+
+//   // Step 2
+//   data.sebi_reg_no ?? null,
+//   data.sebi_start_date ?? null,
+//   data.sebi_expiry_date ?? null,
+
+//   files?.sebi_certificate?.[0]?.filename ?? null,
+//   files?.sebi_receipt?.[0]?.filename ?? null,
+
+//   data.nism_reg_no ?? null,
+//   data.nism_valid_till ?? null,
+//   files?.nism_certificate?.[0]?.filename ?? null,
+
+//   data.academic_qualification ?? null,
+//   data.professional_qualification ?? null,
+
+//   data.market_experience ?? null,
+//   data.expertise ?? null,
+//   data.markets ?? null,
+
+//   // Step 3
+//   data.bank_name ?? null,
+//   data.account_holder ?? null,
+//   data.account_number ?? null,
+//   data.ifsc_code ?? null,
+
+//   files?.cancelled_cheque?.[0]?.filename ?? null,
+
+//   data.pan_number ?? null,
+//   files?.pan_card?.[0]?.filename ?? null,
+
+//   data.address_proof_type ?? null,
+//   files?.address_proof_document?.[0]?.filename ?? null,
+
+//   toBool(data.declare_info_true),
+//   toBool(data.consent_verification),
+
+//   // Step 4
+//   toBool(data.no_guaranteed_returns),
+//   toBool(data.conflict_of_interest),
+//   toBool(data.personal_trading),
+//   toBool(data.sebi_compliance),
+//   toBool(data.platform_policy),
+
+//   // Extra
+//   data.additional_comments ?? null
+// ]
+//     );
+
+//     await createAuditLog({
+//   adminId: req.user?.id || undefined,
+//   adminName: req.user?.name || data.first_name || "RA",
+//   adminRole: req.user?.role || "RESEARCH_ANALYST",
+//   action: "RA_REGISTERED",
+//   module: "REGISTRATION",
+//   targetEntity: data.email,
+//   targetType: "RA",
+//   description: "RA registration submitted",
+//   status: "SUCCESS",
+//   ipAddress: getClientIp(req),
+//   device: req.headers["user-agent"] as string,
+//   oldValue: null,
+//   newValue: {
+//     raId: result.rows[0].id,
+//     email: data.email,
+//     name: `${data.first_name} ${data.surname}`,
+//     sebiRegNo: data.sebi_reg_no || null,
+//   },
+// });
+
+//     return res.status(201).json({
+//       success: true,
+//       message: "RA Registration Submitted",
+//       ra_id: result.rows[0].id,
+//     });
+
+//   } catch (error: unknown) {
+    
+
+//     const constraintMap: Record<string, { field: string; message: string }> = {
+//   users_email_unique: {
+//     field: "email",
+//     message: "Email is already registered.",
+//   },
+//   ra_mobile_unique: {
+//     field: "mobile",
+//     message: "Mobile number is already registered.",
+//   },
+//   ra_sebi_unique: {
+//     field: "sebi_reg_no",
+//     message: "SEBI Registration Number already exists.",
+//   },
+//   ra_nism_unique: {
+//     field: "nism_reg_no",
+//     message: "NISM Registration Number already exists.",
+//   },
+//   ra_pan_unique: {
+//     field: "pan_number",
+//     message: "PAN number is already registered.",
+//   },
+// };
+
+// if ((error as any).code === "23505") {
+//   const constraint = (error as any).constraint;
+//   const mapped = constraintMap[constraint];
+
+//   return res.status(409).json({
+//     success: false,
+//     field: mapped?.field,
+//     message: mapped?.message || "Duplicate record found.",
+//   });
+// }
+//     console.error("REGISTER RA ERROR:", error);
+
+//     const message =
+//       error instanceof Error ? error.message : String(error);
+
+//     return res.status(500).json({
+//       success: false,
+//       message: "Server error",
+//       error: message,
+//     });
+//   }
+// };
+
+
 export const registerRA = async (req: AuthRequest, res: Response) => {
   try {
     const data = req.body || {};
     const files = req.files as any;
 
-    // ✅ FIX: define userId
     const userId = req.user?.id ?? null;
 
     // ================= VALIDATION =================
@@ -155,322 +534,332 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
     if (!data.email) {
       return res.status(400).json({
         success: false,
+        field: "email",
         message: "Email is required",
       });
     }
 
     data.email = data.email.trim().toLowerCase();
     data.mobile = data.mobile?.trim();
-data.sebi_reg_no = data.sebi_reg_no?.trim().toUpperCase();
-data.nism_reg_no = data.nism_reg_no?.trim().toUpperCase();
-data.pan_number = data.pan_number?.trim().toUpperCase();
+    data.sebi_reg_no = data.sebi_reg_no?.trim().toUpperCase();
+    data.nism_reg_no = data.nism_reg_no?.trim().toUpperCase();
+    data.pan_number = data.pan_number?.trim().toUpperCase();
 
-    // ================= CHECK EXISTING =================
+    // ================= CHECK EXISTING EMAIL =================
     const existing = await pool.query(
-      `SELECT id FROM ra_details WHERE email = $1`,
+      `SELECT id FROM ra_details WHERE email = $1 LIMIT 1`,
       [data.email]
     );
 
-    if (existing.rowCount && existing.rowCount > 0) {
-      return res.status(400).json({
+    if ((existing.rowCount ?? 0) > 0) {
+      return res.status(409).json({
         success: false,
+        field: "email",
         message: "RA already registered with this email",
       });
     }
 
     // ================= CHECK DUPLICATES =================
 
-// Mobile duplicate check
-if (data.mobile) {
-  const mobileExists = await pool.query(
-    `
-    SELECT 1
-    FROM (
-      SELECT mobile FROM ra_details WHERE mobile IS NOT NULL
-      UNION
-      SELECT mobile FROM broker_details WHERE mobile IS NOT NULL
-    ) t
-    WHERE mobile = $1
-    LIMIT 1
-    `,
-    [data.mobile.trim()]
-  );
+    if (data.mobile) {
+      const mobileExists = await pool.query(
+        `
+        SELECT 1
+        FROM (
+          SELECT mobile FROM ra_details WHERE mobile IS NOT NULL
+          UNION
+          SELECT mobile FROM broker_details WHERE mobile IS NOT NULL
+        ) t
+        WHERE TRIM(mobile) = TRIM($1)
+        LIMIT 1
+        `,
+        [data.mobile]
+      );
 
-  if ((mobileExists.rowCount ?? 0) > 0) {
-    return res.status(400).json({
-      success: false,
-      field: "mobile",
-      message: "Mobile number is already registered",
-    });
-  }
-}
+      if ((mobileExists.rowCount ?? 0) > 0) {
+        return res.status(409).json({
+          success: false,
+          field: "mobile",
+          message: "Mobile number is already registered",
+        });
+      }
+    }
 
-// SEBI duplicate check
-if (data.sebi_reg_no) {
-  const sebiExists = await pool.query(
-    `
-    SELECT 1
-    FROM ra_details
-    WHERE UPPER(TRIM(sebi_reg_no)) = UPPER(TRIM($1))
-    LIMIT 1
-    `,
-    [data.sebi_reg_no]
-  );
+    if (data.sebi_reg_no) {
+      const sebiExists = await pool.query(
+        `
+        SELECT 1
+        FROM ra_details
+        WHERE UPPER(TRIM(sebi_reg_no)) = UPPER(TRIM($1))
+        LIMIT 1
+        `,
+        [data.sebi_reg_no]
+      );
 
-  if ((sebiExists.rowCount ?? 0) > 0) {
-    return res.status(400).json({
-      success: false,
-      field: "sebi_reg_no",
-      message: "SEBI Registration Number already exists",
-    });
-  }
-}
+      if ((sebiExists.rowCount ?? 0) > 0) {
+        return res.status(409).json({
+          success: false,
+          field: "sebi_reg_no",
+          message: "SEBI Registration Number already exists",
+        });
+      }
+    }
 
-// NISM duplicate check
-if (data.nism_reg_no) {
-  const nismExists = await pool.query(
-    `
-    SELECT 1
-    FROM ra_details
-    WHERE UPPER(TRIM(nism_reg_no)) = UPPER(TRIM($1))
-    LIMIT 1
-    `,
-    [data.nism_reg_no]
-  );
+    if (data.nism_reg_no) {
+      const nismExists = await pool.query(
+        `
+        SELECT 1
+        FROM ra_details
+        WHERE UPPER(TRIM(nism_reg_no)) = UPPER(TRIM($1))
+        LIMIT 1
+        `,
+        [data.nism_reg_no]
+      );
 
-  if ((nismExists.rowCount ?? 0) > 0) {
-    return res.status(400).json({
-      success: false,
-      field: "nism_reg_no",
-      message: "NISM Registration Number already exists",
-    });
-  }
-}
+      if ((nismExists.rowCount ?? 0) > 0) {
+        return res.status(409).json({
+          success: false,
+          field: "nism_reg_no",
+          message: "NISM Registration Number already exists",
+        });
+      }
+    }
 
-// PAN duplicate check
-if (data.pan_number) {
-  const panExists = await pool.query(
-    `
-    SELECT 1
-    FROM ra_details
-    WHERE UPPER(TRIM(pan_number)) = UPPER(TRIM($1))
-    LIMIT 1
-    `,
-    [data.pan_number]
-  );
+    if (data.pan_number) {
+      const panExists = await pool.query(
+        `
+        SELECT 1
+        FROM ra_details
+        WHERE UPPER(TRIM(pan_number)) = UPPER(TRIM($1))
+        LIMIT 1
+        `,
+        [data.pan_number]
+      );
 
-  if ((panExists.rowCount ?? 0) > 0) {
-    return res.status(400).json({
-      success: false,
-      field: "pan_number",
-      message: "PAN number is already registered",
-    });
-  }
-}
+      if ((panExists.rowCount ?? 0) > 0) {
+        return res.status(409).json({
+          success: false,
+          field: "pan_number",
+          message: "PAN number is already registered",
+        });
+      }
+    }
 
     // ================= BOOL CONVERTER =================
     const toBool = (val: any) => val === "true" || val === true;
 
     const requiredDeclarations = [
-  "declare_info_true",
-  "consent_verification",
-  "no_guaranteed_returns",
-  "conflict_of_interest",
-  "personal_trading",
-  "sebi_compliance",
-  "platform_policy",
-];
+      "declare_info_true",
+      "consent_verification",
+      "no_guaranteed_returns",
+      "conflict_of_interest",
+      "personal_trading",
+      "sebi_compliance",
+      "platform_policy",
+    ];
 
-for (const field of requiredDeclarations) {
-  if (!toBool(data[field])) {
-    return res.status(400).json({
-      success: false,
-      message: "Please accept all mandatory declarations",
-    });
-  }
-}
-
-    // ================= FILE SAFETY =================
-    const profileImage = files?.profile_image?.[0]?.filename ?? null;
-    const panCard = files?.pan_card?.[0]?.filename ?? null;
-    const addressProof = files?.address_proof_document?.[0]?.filename ?? null;
+    for (const field of requiredDeclarations) {
+      if (!toBool(data[field])) {
+        return res.status(400).json({
+          success: false,
+          message: "Please accept all mandatory declarations",
+        });
+      }
+    }
 
     // ================= INSERT =================
     const result = await pool.query(
       `
-INSERT INTO ra_details (
-  user_id,
+      INSERT INTO ra_details (
+        user_id,
 
-  -- Step 1: Personal Info
-  salutation, first_name, middle_name, surname,
-  org_name, designation, short_bio,
-  email, mobile, telephone,
-  country, state, city, pincode,
-  address_line1, address_line2,
-  profile_image,
+        salutation, first_name, middle_name, surname,
+        org_name, designation, short_bio,
+        email, mobile, telephone,
+        country, state, city, pincode,
+        address_line1, address_line2,
+        profile_image,
 
-  -- Step 2: Professional & SEBI
-  sebi_reg_no, sebi_start_date, sebi_expiry_date,
-  sebi_certificate, sebi_receipt,
-  nism_reg_no, nism_valid_till, nism_certificate,
-  academic_qualification, professional_qualification,
-  market_experience, expertise, markets,
+        sebi_reg_no, sebi_start_date, sebi_expiry_date,
+        sebi_certificate, sebi_receipt,
+        nism_reg_no, nism_valid_till, nism_certificate,
+        academic_qualification, professional_qualification,
+        market_experience, expertise, markets,
 
-  -- Step 3: KYC & Bank
-  bank_name, account_holder, account_number, ifsc_code,
-  cancelled_cheque,
-  pan_number, pan_card,
-  address_proof_type, address_proof_document,
-  declare_info_true, consent_verification,
+        bank_name, account_holder, account_number, ifsc_code,
+        cancelled_cheque,
+        pan_number, pan_card,
+        address_proof_type, address_proof_document,
+        declare_info_true, consent_verification,
 
-  -- Step 4: Declarations
-  no_guaranteed_returns, conflict_of_interest,
-  personal_trading, sebi_compliance, platform_policy,
+        no_guaranteed_returns, conflict_of_interest,
+        personal_trading, sebi_compliance, platform_policy,
 
-  -- Extra
-  additional_comments
-)
-VALUES (
-  $1,
+        additional_comments
+      )
+      VALUES (
+        $1,
 
-  -- Step 1
-  $2,$3,$4,$5,
-  $6,$7,$8,
-  $9,$10,$11,
-  $12,$13,$14,$15,
-  $16,$17,
-  $18,
+        $2,$3,$4,$5,
+        $6,$7,$8,
+        $9,$10,$11,
+        $12,$13,$14,$15,
+        $16,$17,
+        $18,
 
-  -- Step 2
-  $19,$20,$21,
-  $22,$23,
-  $24,$25,$26,
-  $27,$28,
-  $29,$30,$31,
+        $19,$20,$21,
+        $22,$23,
+        $24,$25,$26,
+        $27,$28,
+        $29,$30,$31,
 
-  -- Step 3
-  $32,$33,$34,$35,
-  $36,
-  $37,$38,
-  $39,$40,
-  $41,$42,
+        $32,$33,$34,$35,
+        $36,
+        $37,$38,
+        $39,$40,
+        $41,$42,
 
-  -- Step 4
-  $43,$44,
-  $45,$46,$47,
+        $43,$44,
+        $45,$46,$47,
 
-  -- Extra
-  $48
-)
-RETURNING id;
+        $48
+      )
+      RETURNING id;
       `,
-        [
-  userId,
+      [
+        userId,
 
-  // Step 1
-  data.salutation ?? null,
-  data.first_name,
-  data.middle_name ?? null,
-  data.surname,
+        data.salutation ?? null,
+        data.first_name,
+        data.middle_name ?? null,
+        data.surname,
 
-  data.org_name ?? null,
-  data.designation ?? null,
-  data.short_bio ?? null,
+        data.org_name ?? null,
+        data.designation ?? null,
+        data.short_bio ?? null,
 
-  data.email,
-  data.mobile ?? null,
-  data.telephone ?? null,
+        data.email,
+        data.mobile ?? null,
+        data.telephone ?? null,
 
-  data.country ?? null,
-  data.state ?? null,
-  data.city ?? null,
-  data.pincode ?? null,
+        data.country ?? null,
+        data.state ?? null,
+        data.city ?? null,
+        data.pincode ?? null,
 
-  data.address_line1 ?? null,
-  data.address_line2 ?? null,
+        data.address_line1 ?? null,
+        data.address_line2 ?? null,
 
-  files?.profile_image?.[0]?.filename ?? null,
+        files?.profile_image?.[0]?.filename ?? null,
 
-  // Step 2
-  data.sebi_reg_no ?? null,
-  data.sebi_start_date ?? null,
-  data.sebi_expiry_date ?? null,
+        data.sebi_reg_no ?? null,
+        data.sebi_start_date ?? null,
+        data.sebi_expiry_date ?? null,
 
-  files?.sebi_certificate?.[0]?.filename ?? null,
-  files?.sebi_receipt?.[0]?.filename ?? null,
+        files?.sebi_certificate?.[0]?.filename ?? null,
+        files?.sebi_receipt?.[0]?.filename ?? null,
 
-  data.nism_reg_no ?? null,
-  data.nism_valid_till ?? null,
-  files?.nism_certificate?.[0]?.filename ?? null,
+        data.nism_reg_no ?? null,
+        data.nism_valid_till ?? null,
+        files?.nism_certificate?.[0]?.filename ?? null,
 
-  data.academic_qualification ?? null,
-  data.professional_qualification ?? null,
+        data.academic_qualification ?? null,
+        data.professional_qualification ?? null,
 
-  data.market_experience ?? null,
-  data.expertise ?? null,
-  data.markets ?? null,
+        data.market_experience ?? null,
+        data.expertise ?? null,
+        data.markets ?? null,
 
-  // Step 3
-  data.bank_name ?? null,
-  data.account_holder ?? null,
-  data.account_number ?? null,
-  data.ifsc_code ?? null,
+        data.bank_name ?? null,
+        data.account_holder ?? null,
+        data.account_number ?? null,
+        data.ifsc_code ?? null,
 
-  files?.cancelled_cheque?.[0]?.filename ?? null,
+        files?.cancelled_cheque?.[0]?.filename ?? null,
 
-  data.pan_number ?? null,
-  files?.pan_card?.[0]?.filename ?? null,
+        data.pan_number ?? null,
+        files?.pan_card?.[0]?.filename ?? null,
 
-  data.address_proof_type ?? null,
-  files?.address_proof_document?.[0]?.filename ?? null,
+        data.address_proof_type ?? null,
+        files?.address_proof_document?.[0]?.filename ?? null,
 
-  toBool(data.declare_info_true),
-  toBool(data.consent_verification),
+        toBool(data.declare_info_true),
+        toBool(data.consent_verification),
 
-  // Step 4
-  toBool(data.no_guaranteed_returns),
-  toBool(data.conflict_of_interest),
-  toBool(data.personal_trading),
-  toBool(data.sebi_compliance),
-  toBool(data.platform_policy),
+        toBool(data.no_guaranteed_returns),
+        toBool(data.conflict_of_interest),
+        toBool(data.personal_trading),
+        toBool(data.sebi_compliance),
+        toBool(data.platform_policy),
 
-  // Extra
-  data.additional_comments ?? null
-]
+        data.additional_comments ?? null,
+      ]
     );
 
     await createAuditLog({
-  adminId: req.user?.id || undefined,
-  adminName: req.user?.name || data.first_name || "RA",
-  adminRole: req.user?.role || "RESEARCH_ANALYST",
-  action: "RA_REGISTERED",
-  module: "REGISTRATION",
-  targetEntity: data.email,
-  targetType: "RA",
-  description: "RA registration submitted",
-  status: "SUCCESS",
-  ipAddress: getClientIp(req),
-  device: req.headers["user-agent"] as string,
-  oldValue: null,
-  newValue: {
-    raId: result.rows[0].id,
-    email: data.email,
-    name: `${data.first_name} ${data.surname}`,
-    sebiRegNo: data.sebi_reg_no || null,
-  },
-});
+      adminId: req.user?.id || undefined,
+      adminName: req.user?.name || data.first_name || "RA",
+      adminRole: req.user?.role || "RESEARCH_ANALYST",
+      action: "RA_REGISTERED",
+      module: "REGISTRATION",
+      targetEntity: data.email,
+      targetType: "RA",
+      description: "RA registration submitted",
+      status: "SUCCESS",
+      ipAddress: getClientIp(req),
+      device: req.headers["user-agent"] as string,
+      oldValue: null,
+      newValue: {
+        raId: result.rows[0].id,
+        email: data.email,
+        name: `${data.first_name} ${data.surname}`,
+        sebiRegNo: data.sebi_reg_no || null,
+      },
+    });
 
     return res.status(201).json({
       success: true,
       message: "RA Registration Submitted",
       ra_id: result.rows[0].id,
     });
-
   } catch (error: unknown) {
+    const constraintMap: Record<string, { field: string; message: string }> = {
+      ra_email_unique: {
+        field: "email",
+        message: "RA already registered with this email.",
+      },
+      ra_mobile_unique: {
+        field: "mobile",
+        message: "Mobile number is already registered.",
+      },
+      ra_sebi_unique: {
+        field: "sebi_reg_no",
+        message: "SEBI Registration Number already exists.",
+      },
+      ra_nism_unique: {
+        field: "nism_reg_no",
+        message: "NISM Registration Number already exists.",
+      },
+      ra_pan_unique: {
+        field: "pan_number",
+        message: "PAN number is already registered.",
+      },
+    };
+
+    if ((error as any).code === "23505") {
+      const constraint = (error as any).constraint;
+      const mapped = constraintMap[constraint];
+
+      return res.status(409).json({
+        success: false,
+        field: mapped?.field,
+        message: mapped?.message || "Duplicate record found.",
+      });
+    }
+
     console.error("REGISTER RA ERROR:", error);
 
-    const message =
-      error instanceof Error ? error.message : String(error);
+    const message = error instanceof Error ? error.message : String(error);
 
     return res.status(500).json({
       success: false,
@@ -479,6 +868,8 @@ RETURNING id;
     });
   }
 };
+
+
 /* ================= APPROVE REGISTRATION ================= */
 
 export const approveRegistration = async (req: Request, res: Response) => {
