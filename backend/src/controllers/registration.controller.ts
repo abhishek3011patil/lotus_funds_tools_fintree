@@ -160,6 +160,10 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
     }
 
     data.email = data.email.trim().toLowerCase();
+    data.mobile = data.mobile?.trim();
+data.sebi_reg_no = data.sebi_reg_no?.trim().toUpperCase();
+data.nism_reg_no = data.nism_reg_no?.trim().toUpperCase();
+data.pan_number = data.pan_number?.trim().toUpperCase();
 
     // ================= CHECK EXISTING =================
     const existing = await pool.query(
@@ -173,6 +177,96 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
         message: "RA already registered with this email",
       });
     }
+
+    // ================= CHECK DUPLICATES =================
+
+// Mobile duplicate check
+if (data.mobile) {
+  const mobileExists = await pool.query(
+    `
+    SELECT 1
+    FROM (
+      SELECT mobile FROM ra_details WHERE mobile IS NOT NULL
+      UNION
+      SELECT mobile FROM broker_details WHERE mobile IS NOT NULL
+    ) t
+    WHERE mobile = $1
+    LIMIT 1
+    `,
+    [data.mobile.trim()]
+  );
+
+  if ((mobileExists.rowCount ?? 0) > 0) {
+    return res.status(400).json({
+      success: false,
+      field: "mobile",
+      message: "Mobile number is already registered",
+    });
+  }
+}
+
+// SEBI duplicate check
+if (data.sebi_reg_no) {
+  const sebiExists = await pool.query(
+    `
+    SELECT 1
+    FROM ra_details
+    WHERE UPPER(TRIM(sebi_reg_no)) = UPPER(TRIM($1))
+    LIMIT 1
+    `,
+    [data.sebi_reg_no]
+  );
+
+  if ((sebiExists.rowCount ?? 0) > 0) {
+    return res.status(400).json({
+      success: false,
+      field: "sebi_reg_no",
+      message: "SEBI Registration Number already exists",
+    });
+  }
+}
+
+// NISM duplicate check
+if (data.nism_reg_no) {
+  const nismExists = await pool.query(
+    `
+    SELECT 1
+    FROM ra_details
+    WHERE UPPER(TRIM(nism_reg_no)) = UPPER(TRIM($1))
+    LIMIT 1
+    `,
+    [data.nism_reg_no]
+  );
+
+  if ((nismExists.rowCount ?? 0) > 0) {
+    return res.status(400).json({
+      success: false,
+      field: "nism_reg_no",
+      message: "NISM Registration Number already exists",
+    });
+  }
+}
+
+// PAN duplicate check
+if (data.pan_number) {
+  const panExists = await pool.query(
+    `
+    SELECT 1
+    FROM ra_details
+    WHERE UPPER(TRIM(pan_number)) = UPPER(TRIM($1))
+    LIMIT 1
+    `,
+    [data.pan_number]
+  );
+
+  if ((panExists.rowCount ?? 0) > 0) {
+    return res.status(400).json({
+      success: false,
+      field: "pan_number",
+      message: "PAN number is already registered",
+    });
+  }
+}
 
     // ================= BOOL CONVERTER =================
     const toBool = (val: any) => val === "true" || val === true;
