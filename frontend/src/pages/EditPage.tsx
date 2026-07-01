@@ -52,6 +52,7 @@ const EditPage = () => {
   const [files, setFiles] = useState<Record<string, File>>({});
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [serverErrors, setServerErrors] = useState<{ [key: string]: string }>({});
 
   // Normalise any truthy representation coming from the DB / FormData round-trip
   const normalizeBool = (val: any): boolean =>
@@ -154,12 +155,26 @@ const EditPage = () => {
 
       const result = await res.json();
 
-      if (!res.ok) {
-        setErrorMsg(result.message || "Update failed");
-        return;
-      }
+ if (!res.ok) {
+  if (res.status === 409 && result.field) {
+    setServerErrors((prev) => ({
+      ...prev,
+      [result.field]: result.message,
+    }));
 
+    setSuccessMsg("");      // Clear any previous success message
+    setErrorMsg(result.message);
+
+    return;
+  }
+
+  setSuccessMsg("");
+  setErrorMsg(result.message || "Update failed");
+  return;
+}
       setSuccessMsg("Updated successfully!");
+      setServerErrors({});
+setErrorMsg("");
       // Re-fetch so View buttons and displayed filenames are current
       await fetchData();
       setFiles({});
@@ -177,11 +192,16 @@ const EditPage = () => {
       ...prev,
       [name]: inputType === "checkbox" ? checked : value,
     }));
+    setServerErrors((prev) => ({
+  ...prev,
+  [name]: "",
+}));
   };
 
-  const handleCheckbox = (name: string, checked: boolean) => {
-    setFields((prev) => ({ ...prev, [name]: checked }));
-  };
+ const handleCheckbox = (name: string, checked: boolean) => {
+  setFields((prev) => ({ ...prev, [name]: checked }));
+  setServerErrors((prev) => ({ ...prev, [name]: "" }));
+};
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -414,6 +434,8 @@ const EditPage = () => {
                     name={field}
                     value={fields[field] ?? ""}
                     onChange={handleChange}
+                    error={!!serverErrors[field]}
+  helperText={serverErrors[field] || ""}
                   />
                 </Grid>
               ))}
@@ -435,6 +457,8 @@ const EditPage = () => {
                     name={field}
                     value={fields[field] ?? ""}
                     onChange={handleChange}
+                    error={!!serverErrors[field]}
+                    helperText={serverErrors[field] || ""}
                   />
                 </Grid>
               ))}
@@ -456,6 +480,8 @@ const EditPage = () => {
                     name={field}
                     value={fields[field] ?? ""}
                     onChange={handleChange}
+                    error={!!serverErrors[field]}
+                    helperText={serverErrors[field] || ""}
                   />
                 </Grid>
               ))}
@@ -478,6 +504,8 @@ const EditPage = () => {
                       name={field}
                       value={fields[field] ?? ""}
                       onChange={handleChange}
+                      error={!!serverErrors[field]}
+                      helperText={serverErrors[field] || ""}
                     />
                   </Grid>
                 ))}
@@ -501,6 +529,8 @@ const EditPage = () => {
                       name={field}
                       value={fields[field] ?? ""}
                       onChange={handleChange}
+                  error={!!serverErrors[field]}
+  helperText={serverErrors[field] || ""}
                     />
                   </Grid>
                 ))}
@@ -524,6 +554,8 @@ const EditPage = () => {
                       name={field}
                       value={fields[field] ?? ""}
                       onChange={handleChange}
+                      error={!!serverErrors[field]}
+                      helperText={serverErrors[field] || ""}
                     />
                   </Grid>
                 ))}
@@ -547,6 +579,8 @@ const EditPage = () => {
                       name={field}
                       value={fields[field] ?? ""}
                       onChange={handleChange}
+                        error={!!serverErrors[field]}
+  helperText={serverErrors[field] || ""}
                     />
                   </Grid>
                 ))}
@@ -595,6 +629,8 @@ const EditPage = () => {
                       name={field}
                       value={fields[field] ?? ""}
                       onChange={handleChange}
+                      error={!!serverErrors[field]}
+  helperText={serverErrors[field] || ""}  
                     />
                   </Grid>
                 ))}
@@ -618,6 +654,8 @@ const EditPage = () => {
                       name={field}
                       value={fields[field] ?? ""}
                       onChange={handleChange}
+                      error={!!serverErrors[field]}
+  helperText={serverErrors[field] || ""}
                     />
                   </Grid>
                 ))}
@@ -681,6 +719,7 @@ const EditPage = () => {
                     value={fields.additional_comments ?? ""}
                     onChange={handleChange}
                     placeholder="Enter Research Analyst Disclaimer"
+                  
                   />
                 </Grid>
               </Grid>
@@ -741,7 +780,7 @@ const EditPage = () => {
               gap: 2,
             }}
           >
-            <Typography>Status: {fields.status ?? "Pending"}</Typography>
+            
             <Button variant="contained" color="primary" onClick={handleSave}>
               Save Changes
             </Button>

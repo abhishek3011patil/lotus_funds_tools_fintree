@@ -8,6 +8,88 @@ import { v4 as uuidv4 } from "uuid";
 import { createAuditLog } from "../utils/auditLogger";
 
 
+
+const normalizeRAUpdateData = (data: any) => {
+  if (data.email) data.email = data.email.trim().toLowerCase();
+  if (data.mobile) data.mobile = data.mobile.trim();
+  if (data.sebi_reg_no) data.sebi_reg_no = data.sebi_reg_no.trim().toUpperCase();
+  if (data.nism_reg_no) data.nism_reg_no = data.nism_reg_no.trim().toUpperCase();
+  if (data.pan_number) data.pan_number = data.pan_number.trim().toUpperCase();
+};
+
+const checkRADuplicatesForUpdate = async (
+  data: any,
+  currentRAId: string
+) => {
+  if (data.email) {
+    const r = await pool.query(
+      `SELECT 1 FROM ra_details WHERE email = $1 AND id <> $2 LIMIT 1`,
+      [data.email, currentRAId]
+    );
+    if ((r.rowCount ?? 0) > 0) {
+      return { field: "email", message: "Email is already registered." };
+    }
+  }
+
+  if (data.mobile) {
+  const r = await pool.query(
+    `
+    SELECT 1
+    FROM ra_details
+    WHERE TRIM(mobile) = TRIM($1)
+      AND id <> $2
+    LIMIT 1
+    `,
+    [data.mobile, currentRAId]
+
+
+  );
+
+ 
+  
+
+  if ((r.rowCount ?? 0) > 0) {
+    return {
+      field: "mobile",
+      message: "Mobile number is already registered.",
+    };
+  }
+}
+
+  if (data.sebi_reg_no) {
+    const r = await pool.query(
+      `SELECT 1 FROM ra_details WHERE UPPER(TRIM(sebi_reg_no)) = UPPER(TRIM($1)) AND id <> $2 LIMIT 1`,
+      [data.sebi_reg_no, currentRAId]
+    );
+    if ((r.rowCount ?? 0) > 0) {
+      return { field: "sebi_reg_no", message: "SEBI Registration Number already exists." };
+    }
+  }
+
+  if (data.nism_reg_no) {
+    const r = await pool.query(
+      `SELECT 1 FROM ra_details WHERE UPPER(TRIM(nism_reg_no)) = UPPER(TRIM($1)) AND id <> $2 LIMIT 1`,
+      [data.nism_reg_no, currentRAId]
+    );
+    if ((r.rowCount ?? 0) > 0) {
+      return { field: "nism_reg_no", message: "NISM Registration Number already exists." };
+    }
+  }
+
+  if (data.pan_number) {
+    const r = await pool.query(
+      `SELECT 1 FROM ra_details WHERE UPPER(TRIM(pan_number)) = UPPER(TRIM($1)) AND id <> $2 LIMIT 1`,
+      [data.pan_number, currentRAId]
+    );
+    if ((r.rowCount ?? 0) > 0) {
+      return { field: "pan_number", message: "PAN number is already registered." };
+    }
+  }
+
+  return null;
+};
+
+
 /* ================= GET CLIENT IP ================= */
 
 const getClientIp = (req: Request) => {
@@ -1146,15 +1228,44 @@ export const getBrokerById = async (req: Request, res: Response) => {
 export const updateRARegistration = async (req: AuthRequest, res: Response) => {
   
   try {
-    console.log(req.files);
-    const { id } = req.params;
+    //console.log(req.files);
+    const idParam = req.params.id;
+
+if (!idParam) {
+  return res.status(400).json({
+    success: false,
+    message: "Invalid RA ID",
+  });
+}
+
+const id = String(idParam);
     const data = req.body || {};
     const files = req.files as any;
+    normalizeRAUpdateData(data);
 
     const oldData = await pool.query(
   `SELECT * FROM ra_details WHERE id = $1`,
   [id]
 );
+
+    if (oldData.rowCount === 0) {
+  return res.status(404).json({
+    success: false,
+    message: "RA not found",
+  });
+}
+
+const duplicate = await checkRADuplicatesForUpdate(data, id);
+
+
+
+if (duplicate) {
+  return res.status(409).json({
+    success: false,
+    field: duplicate.field,
+    message: duplicate.message,
+  });
+}
 
    const allowedFields = [
   "salutation",
@@ -1231,6 +1342,14 @@ Object.entries(fileMap).forEach(([field, value]) => {
   }
 });
 
+if (updates.length === 0) {
+  return res.status(400).json({
+    success: false,
+    message: "No changes submitted",
+  });
+}
+
+
 values.push(id);
 
 const result = await pool.query(
@@ -1245,17 +1364,14 @@ const result = await pool.query(
 
     // ================= UPDATE LOGIN EMAIL =================
 
-if (result.rows[0]?.user_id) {
+if (result.rows[0]?.user_id && data.email) {
   await pool.query(
     `
     UPDATE users
     SET email = $1
     WHERE id = $2
     `,
-    [
-      data.email.trim().toLowerCase(),
-      result.rows[0].user_id,
-    ]
+    [data.email, result.rows[0].user_id]
   );
 }
 
@@ -1292,10 +1408,47 @@ if (result.rows[0]?.user_id) {
       data: result.rows[0],
     });
 
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: "Server error" });
+  } catch (error: any) {
+  console.error("UPDATE RA ERROR:", error);
+
+  const constraintMap: Record<string, { field: string; message: string }> = {
+    ra_email_unique: {
+      field: "email",
+      message: "Email is already registered.",
+    },
+    ra_mobile_unique: {
+      field: "mobile",
+      message: "Mobile number is already registered.",
+    },
+    ra_sebi_unique: {
+      field: "sebi_reg_no",
+      message: "SEBI Registration Number already exists.",
+    },
+    ra_nism_unique: {
+      field: "nism_reg_no",
+      message: "NISM Registration Number already exists.",
+    },
+    ra_pan_unique: {
+      field: "pan_number",
+      message: "PAN number is already registered.",
+    },
+  };
+
+  if (error.code === "23505") {
+    const mapped = constraintMap[error.constraint];
+
+    return res.status(409).json({
+      success: false,
+      field: mapped?.field,
+      message: mapped?.message || "Duplicate record found.",
+    });
   }
+
+  return res.status(500).json({
+    success: false,
+    message: "Server error",
+  });
+}
 };
 
 /* ================= UPDATE Broker REGISTRATION ================= */
@@ -1487,10 +1640,47 @@ await createAuditLog({
       data: result.rows[0],
     });
 
-  } catch (error) {
-    console.error("Update Broker Error:", error);
-    res.status(500).json({ message: "Server error" });
+  }  catch (error: any) {
+  console.error("UPDATE RA ERROR:", error);
+
+  const constraintMap: Record<string, { field: string; message: string }> = {
+    ra_email_unique: {
+      field: "email",
+      message: "Email is already registered.",
+    },
+    ra_mobile_unique: {
+      field: "mobile",
+      message: "Mobile number is already registered.",
+    },
+    ra_sebi_unique: {
+      field: "sebi_reg_no",
+      message: "SEBI Registration Number already exists.",
+    },
+    ra_nism_unique: {
+      field: "nism_reg_no",
+      message: "NISM Registration Number already exists.",
+    },
+    ra_pan_unique: {
+      field: "pan_number",
+      message: "PAN number is already registered.",
+    },
+  };
+
+  if (error.code === "23505") {
+    const mapped = constraintMap[error.constraint];
+
+    return res.status(409).json({
+      success: false,
+      field: mapped?.field,
+      message: mapped?.message || "Duplicate record found.",
+    });
   }
+
+  return res.status(500).json({
+    success: false,
+    message: "Server error",
+  });
+}
 };
 
 export const changeRAUserPassword = async (req: AuthRequest, res: Response) => {
@@ -1602,6 +1792,7 @@ export const createRAProfileUpdateRequest = async (
 
     const data = req.body || {};
     const files = req.files as any;
+    normalizeRAUpdateData(data);
 
     if (!userId) {
       return res.status(401).json({
@@ -1609,6 +1800,31 @@ export const createRAProfileUpdateRequest = async (
         message: "Unauthorized",
       });
     }
+
+    const raResult = await pool.query(
+  `SELECT id FROM ra_details WHERE user_id = $1`,
+  [userId]
+);
+
+if (raResult.rowCount === 0) {
+  return res.status(404).json({
+    success: false,
+    message: "RA profile not found",
+  });
+}
+
+const currentRAId = raResult.rows[0].id;
+
+const duplicate = await checkRADuplicatesForUpdate(data, currentRAId);
+
+if (duplicate) {
+  return res.status(409).json({
+    success: false,
+    field: duplicate.field,
+    message: duplicate.message,
+  });
+}
+    
 
     const fileMap = {
       profile_image: files?.profile_image?.[0]?.filename,
@@ -1678,7 +1894,7 @@ await createAuditLog({
       message:
         "Profile update request submitted successfully",
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error(
       "CREATE RA PROFILE UPDATE REQUEST ERROR:",
       error
@@ -1810,7 +2026,36 @@ export const approveRAProfileUpdateRequest = async (
     }
 
     const request = requestRes.rows[0];
+    
     const changes = request.requested_changes;
+    normalizeRAUpdateData(changes);
+
+const raResult = await client.query(
+  `SELECT id FROM ra_details WHERE user_id = $1`,
+  [request.ra_user_id]
+);
+
+if (raResult.rowCount === 0) {
+  await client.query("ROLLBACK");
+  return res.status(404).json({
+    success: false,
+    message: "RA profile not found",
+  });
+}
+
+const duplicate = await checkRADuplicatesForUpdate(
+  changes,
+  raResult.rows[0].id
+);
+
+if (duplicate) {
+  await client.query("ROLLBACK");
+  return res.status(409).json({
+    success: false,
+    field: duplicate.field,
+    message: duplicate.message,
+  });
+}
 
     const allowedFields = [
       "salutation",
@@ -1934,10 +2179,48 @@ export const approveRAProfileUpdateRequest = async (
       success: true,
       message: "RA profile update request approved",
     });
-  } catch (error) {
+  }     catch (error: any) {
     await client.query("ROLLBACK");
+
     console.error("APPROVE RA PROFILE REQUEST ERROR:", error);
-    return res.status(500).json({ message: "Server error" });
+
+    const constraintMap: Record<string, { field: string; message: string }> = {
+      ra_email_unique: {
+        field: "email",
+        message: "Email is already registered.",
+      },
+      ra_mobile_unique: {
+        field: "mobile",
+        message: "Mobile number is already registered.",
+      },
+      ra_sebi_unique: {
+        field: "sebi_reg_no",
+        message: "SEBI Registration Number already exists.",
+      },
+      ra_nism_unique: {
+        field: "nism_reg_no",
+        message: "NISM Registration Number already exists.",
+      },
+      ra_pan_unique: {
+        field: "pan_number",
+        message: "PAN number is already registered.",
+      },
+    };
+
+    if (error.code === "23505") {
+      const mapped = constraintMap[error.constraint];
+
+      return res.status(409).json({
+        success: false,
+        field: mapped?.field,
+        message: mapped?.message || "Duplicate record found.",
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   } finally {
     client.release();
   }
