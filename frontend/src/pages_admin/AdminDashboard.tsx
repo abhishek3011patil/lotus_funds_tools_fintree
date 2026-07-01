@@ -114,6 +114,7 @@ const [participant, setParticipant] = useState<Participant | null>(null);
     }
 
     const data = await response.json();
+    console.log("ACTIVE USERS API:", data);
 
     if (!Array.isArray(data)) {
       console.error("Expected array but got:", data);
@@ -150,7 +151,7 @@ const [participant, setParticipant] = useState<Participant | null>(null);
       raStatus: item.ra_status,
       rejectionReason: item.rejection_reason || "",
       suspendReason: item.suspended_reason || "",
-      pending_requests: item.pending_requests || 0,
+      pending_requests: Number(item.pending_requests ?? 0),
       "age/time": "Just now",
     }));
 
@@ -682,19 +683,17 @@ const handleResendPasswordLink = async (userId: string) => {
                 
                 <TableCell>{row["age/time"]}</TableCell>
                 <TableCell>
-  {row.pending_requests > 0 ? (
-   <Button
-  size="small"
-  color="warning"
-  variant="contained"
-  onClick={() =>
-    navigate(
-      `/admin/ra-profile-update-requests?userId=${row.userId}`
-    )
-  }
->
-  {row.pending_requests}
-</Button>
+  {Number(row.pending_requests) > 0 ? (
+    <Button
+      size="small"
+      color="warning"
+      variant="contained"
+      onClick={() =>
+        navigate(`/admin/ra-profile-update-requests?userId=${row.userId}`)
+      }
+    >
+      {Number(row.pending_requests)}
+    </Button>
   ) : (
     "-"
   )}
@@ -759,6 +758,21 @@ const handleResendPasswordLink = async (userId: string) => {
             bgcolor: "rgba(0,0,0,0.4)",
             zIndex: 1199,
           }}
+        />
+      )}
+
+       {pageCount > 1 && (
+        <Pagination
+          sx={{ alignSelf: "center", mt: 2 }}
+          count={pageCount}
+          page={page}
+          onChange={(_, value) => setPage(value)}
+          renderItem={(item) => (
+            <PaginationItem
+              slots={{ previous: ArrowBackIcon, next: ArrowForwardIcon }}
+              {...item}
+            />
+          )}
         />
       )}
 
@@ -1185,20 +1199,7 @@ const handleResendPasswordLink = async (userId: string) => {
       )}
 
       {/* PAGINATION */}
-      {pageCount > 1 && (
-        <Pagination
-          sx={{ alignSelf: "center", mt: 2 }}
-          count={pageCount}
-          page={page}
-          onChange={(_, value) => setPage(value)}
-          renderItem={(item) => (
-            <PaginationItem
-              slots={{ previous: ArrowBackIcon, next: ArrowForwardIcon }}
-              {...item}
-            />
-          )}
-        />
-      )}
+     
 
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
   <DialogTitle>
