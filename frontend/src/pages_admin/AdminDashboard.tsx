@@ -155,7 +155,11 @@ const [participant, setParticipant] = useState<Participant | null>(null);
       "age/time": "Just now",
     }));
 
-    setRows(formatted);
+    const sortedFormatted = formatted.sort((a, b) => {
+  return Number(b.pending_requests || 0) - Number(a.pending_requests || 0);
+});
+
+setRows(sortedFormatted);
 
   } catch (error) {
     console.error(

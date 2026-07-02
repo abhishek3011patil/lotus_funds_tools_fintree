@@ -1,5 +1,7 @@
 import express, { Request, Response } from "express";
-import multer from "multer";
+
+import { upload } from "../middlewares/upload"
+
 import { authenticate } from "../middlewares/auth.middleware";
 import { requireAdmin } from "../middlewares/admin.middleware";
 import { changeRAUserPassword, getMyRAProfile } from "../controllers/registration.controller";
@@ -36,39 +38,7 @@ const router = express.Router();
 
 // console.log("Registration route loaded");
 
-/* ================= MULTER CONFIG ================= */
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/");
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname);
-  },
-});
-
-const allowedMimeTypes = [
-  "application/pdf",
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-];
-
-const upload = multer({
-  storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5 MB
-  },
-  fileFilter: (_req, file, cb) => {
-    if (!allowedMimeTypes.includes(file.mimetype)) {
-      return cb(
-        new Error("Only PDF, JPG, JPEG and PNG files are allowed")
-      );
-    }
-
-    cb(null, true);
-  },
-});
 
 /* ================= RA REGISTRATION (Admin Only) ================= */
 const registrationLimiter = rateLimit({

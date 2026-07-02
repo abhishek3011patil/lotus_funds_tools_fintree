@@ -21,6 +21,7 @@ import axios from "axios";
 import type { SelectChangeEvent } from "@mui/material";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import RARegistrationDevTools from "../dev/RARegistrationDevTools";
 
 import { State, City } from "country-state-city";
 import { useNavigate } from "react-router-dom";
@@ -35,6 +36,8 @@ const navigate = useNavigate();
   const [serverErrors, setServerErrors] = useState<{ [key: string]: string }>({});
 
   const API_URL = import.meta.env.VITE_API_URL;
+
+
 
   const [formData, setFormData] = useState({
   salutation: "",
@@ -91,6 +94,11 @@ const navigate = useNavigate();
 
   additional_comments: ""
 });
+
+
+
+
+ // end testing 
 
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [profileFileName, setProfileFileName] = useState("No file chosen");
@@ -424,9 +432,23 @@ const cities = selectedState
 
 
   return (
+
+   
     <Box sx={styles.container}>
       <Paper sx={styles.paper} elevation={0}>
         <Box sx={styles.stepperBox}>
+
+          {/* testing */}
+            
+{/* {import.meta.env.DEV && (
+  <RARegistrationDevTools
+    setForm={setFormData}
+    setStep={setCurrentStep}
+    finalStep={7}
+  />
+)} */}
+    {/* testing */}
+
           <Box sx={currentStep > 1 ? styles.stepDone : styles.stepActive}>
             {currentStep > 1 ? <CheckCircleIcon sx={{ fontSize: { xs: 22, md: 40 } }} />: <Box sx={{ border: '2px solid rgba(255,255,255,0.4)', borderRadius: '50%', width: 35, height: 35, display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 800 }}>01</Box>}
             <Box><Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1 }}>Personal info</Typography><Typography variant="caption" sx={{ fontSize: '0.9rem' }}>General Details</Typography></Box>

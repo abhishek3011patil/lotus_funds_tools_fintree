@@ -12,6 +12,7 @@ import adminRoutes from "./routes/admin.routes";
 import telegramRoutes from "./routes/telegram.routes";
 import auditRoutes from "./routes/audit.routes";
 import paymentRoutes from "./routes/payment.routes";
+import multer from "multer";
 
 const app = express();
 
@@ -69,6 +70,51 @@ app.use("/api/audit-logs", auditRoutes);
 
 app.get("/check", (_req, res) => {
   res.send("APP WORKING");
+});
+
+
+app.use((err: any, _req: any, res: any, _next: any) => {
+  console.error("UPLOAD ERROR:", err);
+
+  if (err.code === "LIMIT_UNEXPECTED_FILE") {
+  return res.status(400).json({
+    success: false,
+    message: `Unexpected file field: ${err.field}`,
+  });
+}
+
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({
+        success: false,
+        message: "File size must be less than 5 MB.",
+      });
+    }
+
+    if (err.code === "LIMIT_FILE_COUNT") {
+      return res.status(400).json({
+        success: false,
+        message: "Too many files uploaded.",
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+
+  if (err.message?.includes("Invalid file type")) {
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+
+  return res.status(500).json({
+    success: false,
+    message: "Something went wrong while uploading files.",
+  });
 });
 
 export default app;
