@@ -663,6 +663,7 @@ const handleResendPasswordLink = async (userId: string) => {
           <TableHead sx={{ backgroundColor: "#f6f6f6" }}>
             <TableRow>
               <TableCell>Name</TableCell>
+              <TableCell>Phone</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Age / Time</TableCell>
               <TableCell>Requests</TableCell>
@@ -675,6 +676,8 @@ const handleResendPasswordLink = async (userId: string) => {
             {paginatedRows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>{row.name}</TableCell>
+
+                <TableCell>{row.phone}</TableCell>
 
                 <TableCell>
                   <Chip
@@ -793,10 +796,11 @@ const handleResendPasswordLink = async (userId: string) => {
       <TableHead sx={{ backgroundColor: "#f6f6f6" }}>
         <TableRow>
           <TableCell>Name</TableCell>
+          <TableCell>Phone</TableCell>
           <TableCell>Status</TableCell>
           <TableCell>Age / Time</TableCell>
           <TableCell>Suspend Reason</TableCell>
-          <TableCell align="right">Action</TableCell>
+          <TableCell >Action</TableCell>
           
         </TableRow>
       </TableHead>
@@ -807,7 +811,7 @@ const handleResendPasswordLink = async (userId: string) => {
           <TableRow key={row.id}>
 
             <TableCell>{row.name}</TableCell>
-
+            <TableCell>{row.phone}</TableCell>
             <TableCell>
               <Chip
                 size="small"
@@ -816,11 +820,13 @@ const handleResendPasswordLink = async (userId: string) => {
               />
             </TableCell>
 
-            <TableCell>{row["age/time"]}</TableCell>
+            
+<TableCell>{row["age/time"]}</TableCell>
+          
               <TableCell>
                 {row.suspendReason || "-"}
               </TableCell>
-            <TableCell align="right">
+            <TableCell >
               <Button
                 size="small"
                 variant="outlined"
