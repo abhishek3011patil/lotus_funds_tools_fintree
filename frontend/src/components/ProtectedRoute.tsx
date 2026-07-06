@@ -1,4 +1,4 @@
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { JSX, useEffect, useState } from "react";
 import axios from "axios";
 import LoadingPage from "../common/LoadingPage";
@@ -9,20 +9,15 @@ interface Props {
 }
 
 const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
-  const [status, setStatus] = useState<"loading" | "unauth" | "forbidden" | "allowed">("loading");
-  const location = useLocation();
-
-  const publicRoutes = ["/set-password"];
-
-  if (publicRoutes.some((route) => location.pathname.startsWith(route))) {
-    return children;
-  }
+  const [status, setStatus] = useState<
+    "loading" | "unauth" | "forbidden" | "allowed"
+  >("loading");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      setStatus("unauth"); // ❌ not logged in
+      setStatus("unauth");
       return;
     }
 
@@ -34,16 +29,27 @@ const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
         const userRole = res.data.role;
 
         if (allowedRoles && !allowedRoles.includes(userRole)) {
-          setStatus("forbidden"); // ❌ wrong role
+          setStatus("forbidden");
         } else {
-          setStatus("allowed"); // ✅ correct
+          setStatus("allowed");
         }
       })
-      .catch(() => {
-        localStorage.clear();
-        setStatus("unauth");
-      });
-  }, []);
+      .catch((error) => {
+  const statusCode = error?.response?.status;
+  const message = error?.response?.data?.message;
+
+  // ✅ Only logout when backend actually says unauthorized
+  if (statusCode === 401) {
+    localStorage.clear();
+    setStatus("unauth");
+    return;
+  }
+
+  // ✅ Do NOT logout on CORS/network/dev tunnel error
+  console.error("Auth check failed, but not logging out:", message || error.message);
+  setStatus("allowed");
+});
+  }, [allowedRoles]);
 
   if (status === "loading") {
     return (
@@ -60,7 +66,7 @@ const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
   }
 
   if (status === "forbidden") {
-    return <Navigate to="/" replace />; // ✅ redirect to dashboard
+    return <Navigate to="/" replace />;
   }
 
   return children;

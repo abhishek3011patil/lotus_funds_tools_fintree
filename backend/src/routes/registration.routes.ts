@@ -1,9 +1,11 @@
 import express, { Request, Response } from "express";
-import multer from "multer";
+
+import { upload } from "../middlewares/upload"
+
 import { authenticate } from "../middlewares/auth.middleware";
 import { requireAdmin } from "../middlewares/admin.middleware";
-import { changeRAUserPassword } from "../controllers/registration.controller";
-
+import { changeRAUserPassword, getMyRAProfile } from "../controllers/registration.controller";
+import { createRAProfileUpdateRequest } from "../controllers/registration.controller";
 import {
   registerRA,
   getAllRegistrations,
@@ -15,36 +17,42 @@ import {
   getAllRegistrationsActiveUsers,
   updateBroker,
 } from "../controllers/registration.controller";
+import { getRADisclaimer, updateRADisclaimer } from "../controllers/researchCalls.controller";
+
+import {
+  getRAProfileUpdateRequests,
+  approveRAProfileUpdateRequest,
+  rejectRAProfileUpdateRequest,
+} from "../controllers/registration.controller";
+import rateLimit from "express-rate-limit";
 
 
 const router = express.Router();
 
-console.log("🔥 registration.routes.ts LOADED");
+// console.log("🔥 registration.routes.ts LOADED");
 
-router.use((req, res, next) => {
-  console.log("📍 REG ROUTER HIT:", req.method, req.url);
-  next();
-});
+// router.use((req, res, next) => {
+//   console.log("📍 REG ROUTER HIT:", req.method, req.url);
+//   next();
+// });
 
-console.log("Registration route loaded");
+// console.log("Registration route loaded");
 
-/* ================= MULTER CONFIG ================= */
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/");
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname);
-  },
-});
-
-const upload = multer({ storage });
 
 /* ================= RA REGISTRATION (Admin Only) ================= */
+const registrationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: {
+    success: false,
+    message: "Too many registration attempts. Please try again later.",
+  },
+});
 
 router.post(
   "/register-ra",
+  registrationLimiter,
   upload.fields([
     { name: "profile_image", maxCount: 1 },
     { name: "pan_card", maxCount: 1 },
@@ -99,6 +107,17 @@ router.put("/reject/:type/:id", authenticate, requireAdmin, rejectUser);
 router.get("/ra/:id", authenticate, requireAdmin, getRegistrationById);
 router.get("/broker/:id", authenticate, requireAdmin, getBrokerById);
 
+router.get(
+  "/research/disclaimer",
+  authenticate,
+  getRADisclaimer
+);
+
+router.put(
+  "/research/disclaimer",
+  authenticate,
+  updateRADisclaimer
+);
 /* ================= TEST ROUTE ================= */
 
 router.get("/test", (req: Request, res: Response) => {
@@ -111,4 +130,43 @@ router.post(
   authenticate,
   changeRAUserPassword
 );
+
+router.post(
+  "/ra/profile-update-request",
+  authenticate,
+  upload.fields([
+    { name: "profile_image", maxCount: 1 },
+    { name: "pan_card", maxCount: 1 },
+    { name: "address_proof_document", maxCount: 1 },
+    { name: "sebi_certificate", maxCount: 1 },
+    { name: "sebi_receipt", maxCount: 1 },
+    { name: "nism_certificate", maxCount: 1 },
+    { name: "cancelled_cheque", maxCount: 1 },
+  ]),
+  createRAProfileUpdateRequest
+);
+
+
+router.get(
+  "/ra-profile-update-requests",
+  authenticate,
+  requireAdmin,
+  getRAProfileUpdateRequests
+);
+
+router.put(
+  "/ra-profile-update-requests/:id/approve",
+  authenticate,
+  requireAdmin,
+  approveRAProfileUpdateRequest
+);
+
+router.put(
+  "/ra-profile-update-requests/:id/reject",
+  authenticate,
+  requireAdmin,
+  rejectRAProfileUpdateRequest
+);
+router.get("/profile", authenticate, getMyRAProfile);
+
 export default router;

@@ -9,6 +9,7 @@ import {
   Radio,
   RadioGroup,
   Select,
+   Checkbox,
   Switch,
   TextField,
   ToggleButton,
@@ -67,7 +68,47 @@ const FLAT_STUDY_OPTIONS = UNDERLYING_STUDIES.flatMap((g) =>
 );
 
 
+
 const NewRecommendation = () => {
+
+  const getMissingFields = () => {
+  const missing: string[] = [];
+
+  if (!inputValue.trim()) missing.push("Script Name/Symbol");
+  if (!form.action) missing.push("Action");
+  if (!form.exchangeType) missing.push("Exchange Type");
+  if (!form.exchange) missing.push("Market Type");
+  if (!form.callType) missing.push("Call Type");
+  if (!form.tradeType) missing.push("Trade Type");
+
+  if (!form.entry) missing.push("Entry");
+  if (!form.target) missing.push("Target");
+  if (!form.stopLoss) missing.push("Stop Loss");
+
+  if (form.callType !== "Cash" && !form.expiry) {
+    missing.push("Expiry");
+  }
+
+  if (!form.rationale?.trim()) missing.push("Rationale");
+  if (!form.underlyingStudy.length) missing.push("Underlying Study");
+
+  if (form.rangeEnabled) {
+    if (!form.entryLow) missing.push("Lower Entry");
+    if (!form.entryUpper) missing.push("Upper Entry");
+  }
+
+  if (form.secondaryTargetEnabled) {
+    if (!form.target2) missing.push("Target 2");
+    if (!form.target3) missing.push("Target 3");
+  }
+
+  if (form.stopLoss2Enabled) {
+    if (!form.stopLoss2) missing.push("Stop Loss 2");
+    if (!form.stopLoss3) missing.push("Stop Loss 3");
+  }
+
+  return missing;
+};
 
   console.log("RENDER");
   const [underlyingStudyInput, setUnderlyingStudyInput] = useState("");
@@ -78,7 +119,9 @@ const NewRecommendation = () => {
   const [isErrataMode, setIsErrataMode] = useState(false);
   const [errataSourceId, setErrataSourceId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+const [isSubmitting, setIsSubmitting] = useState(false);
 
+const submittingRef = useRef(false);
 
   const transparentInputSx = {
     backgroundColor: "transparent",
@@ -94,6 +137,7 @@ const NewRecommendation = () => {
     console.log("Selected file:", file.name);
   }
 };
+
 
   type RecommendationForm = {
     exchangeType: "NSE" | "BSE";
@@ -116,7 +160,7 @@ const NewRecommendation = () => {
     holdingPeriod: string;
     rationale: string;
     remark: string;
-    underlyingStudy: StudyOption | null;
+    underlyingStudy: StudyOption[];
     rangeEnabled: boolean;
     secondaryTargetEnabled: boolean;
     stopLoss2Enabled: boolean;
@@ -143,7 +187,7 @@ const NewRecommendation = () => {
     holdingPeriod: "",
     rationale: "Overbought Condition",
     remark: "",
-    underlyingStudy: null,
+    underlyingStudy: [],
     rangeEnabled: false,
     secondaryTargetEnabled: false,
     stopLoss2Enabled: false,
@@ -178,13 +222,22 @@ const NewRecommendation = () => {
 
   const panelBg = form.action === "BUY" ? "#eef9ee" : "#fee2e2";
   const panelBorder = form.action === "BUY" ? "#7ac77a" : SELL_COLOR;
+  
 
-  const resetForm = () => {
-    dispatch({ type: "RESET" });
-    setIsErrataMode(false);
-    setErrataSourceId(null);
-    setDirectValue("");
-  };
+ const resetForm = () => {
+  dispatch({ type: "RESET" });
+
+  setIsErrataMode(false);
+  setErrataSourceId(null);
+  setDirectValue("");
+
+  // Reset uploaded media
+  setSelectedFile(null);
+
+  if (fileInputRef.current) {
+    fileInputRef.current.value = "";
+  }
+};
 
   const getRAIdFromToken = () => {
   try {
@@ -198,8 +251,17 @@ const NewRecommendation = () => {
   }
 };
 
+
+
   const handleSubmit = async () => {
+
+      if (submittingRef.current) return;
+
+  submittingRef.current = true;
+  setIsSubmitting(true);
   try {
+    
+    
     const token = localStorage.getItem("token");
 
     if (!token) {
@@ -212,6 +274,25 @@ const NewRecommendation = () => {
       suggestion.toLowerCase().startsWith(inputValue.toLowerCase())
         ? suggestion
         : inputValue;
+
+         const formatExpiry = (date: string) => {
+  const d = new Date(date);
+
+  const day = d.getDate();
+  const suffix =
+    day % 10 === 1 && day !== 11
+      ? "st"
+      : day % 10 === 2 && day !== 12
+      ? "nd"
+      : day % 10 === 3 && day !== 13
+      ? "rd"
+      : "th";
+
+  return `${day}${suffix} ${d.toLocaleString("en-IN", {
+    month: "long",
+    year: "numeric",
+  })}`;
+};
 
     // 🔹 Base payload (same as before)
     const payload = {
@@ -234,7 +315,7 @@ const NewRecommendation = () => {
       stop_loss_3: form.stopLoss3 || null,
       holding: form.holdingPeriod || "0",
       rationale: form.rationale,
-      underlying_study: form.underlyingStudy?.label || null,
+      underlying_study: form.underlyingStudy.map((s) => s.label).join(", ") || null,
       is_algo: false,
       has_vested_interest: false,
       research_remarks: form.remark || undefined
@@ -245,36 +326,117 @@ const NewRecommendation = () => {
     // =========================================================
     // ✅ ERRATA FLOW (NO FILE HERE)
     // =========================================================
-    if (isErrataMode && errataSourceId) {
-      const updates = {
-        entry_price: form.entry || undefined,
-        target_price: form.target || undefined,
-        stop_loss: form.stopLoss || undefined,
-        target_price_2: form.target2 || undefined,
-        target_price_3: form.target3 || undefined,
-        stop_loss_2: form.stopLoss2 || undefined,
-        stop_loss_3: form.stopLoss3 || undefined,
-        entry_price_low: form.entryLow || undefined,
-        entry_price_upper: form.entryUpper || undefined,
-        holding_period: form.holdingPeriod || undefined,
-        rationale: form.rationale || undefined,
-        underlying_study: form.underlyingStudy?.label || undefined,
-        research_remarks: form.remark || undefined,
-      };
+   if (isErrataMode && errataSourceId) {
+  const updates = {
+    entry_price: form.entry || undefined,
+    target_price: form.target || undefined,
+    stop_loss: form.stopLoss || undefined,
+    target_price_2: form.target2 || undefined,
+    target_price_3: form.target3 || undefined,
+    stop_loss_2: form.stopLoss2 || undefined,
+    stop_loss_3: form.stopLoss3 || undefined,
+    entry_price_low: form.entryLow || undefined,
+    entry_price_upper: form.entryUpper || undefined,
+    holding_period: form.holdingPeriod || undefined,
+    rationale: form.rationale || undefined,
+    underlying_study: form.underlyingStudy.map((s) => s.label).join(", ") || "N/A",
+    research_remarks: form.remark || undefined,
+  };
 
-      res = await axios.post(
-        import.meta.env.VITE_API_URL + "/api/research/calls/errata",
-        {
-          call_id: errataSourceId,
-          updates,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      alert("Errata Created ✅");
+  res = await axios.post(
+    import.meta.env.VITE_API_URL + "/api/research/calls/errata",
+    {
+      call_id: errataSourceId,
+      updates,
+    },
+    {
+      headers: { Authorization: `Bearer ${token}` },
     }
+  );
+
+  const errataMessage = `
+ERRATA / CORRECTION
+
+Published On : ${new Date().toLocaleString("en-IN", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: true,
+})}
+
+Stock Name: ${finalDisplayName}
+
+${form.action} ${form.exchange} ${form.callType} Expiry: ${form.expiry ? formatExpiry(form.expiry) : "N/A"}
+
+Call Type  :${form.tradeType} 
+
+Entry  : ${
+  form.rangeEnabled
+    ? `${form.entryLow} - ${form.entryUpper}`
+    : form.entry
+}
+
+Target  : ${form.target}${
+  form.secondaryTargetEnabled
+    ? `
+T2  : ${form.target2}
+T3  : ${form.target3}`
+    : ""
+}
+
+SL  : ${form.stopLoss}${
+  form.stopLoss2Enabled
+    ? `
+SL 2  : ${form.stopLoss2}
+SL 3  : ${form.stopLoss3}`
+    : ""
+}
+
+Reason:
+${form.remark || "Correction issued by Research Analyst"}
+`.trim();
+
+  console.log("ERRATA TELEGRAM MESSAGE:", errataMessage);
+
+  const telegramStatus = await axios.get(
+  `${import.meta.env.VITE_API_URL}/api/telegram/status`,
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
+
+if (!telegramStatus.data.connected) {
+  alert("Errata created, but Telegram is not connected");
+  await fetchRecommendations();
+  resetForm();
+  return;
+}
+ console.log("ERRATA TELEGRAM V2");
+  await axios.post(
+    `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
+    {
+      message: errataMessage,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  alert("Errata Created ✅");
+
+await fetchRecommendations();
+resetForm();
+
+return;
+}
 
     // =========================================================
     // ✅ NORMAL CREATE (WITH FILE)
@@ -305,7 +467,7 @@ const NewRecommendation = () => {
         }
       );
 
-      alert("Research Call Created ✅");
+     
 
       // =========================================================
       // ✅ TELEGRAM SEND (UNCHANGED)
@@ -323,49 +485,65 @@ try {
   );
 
   // ❌ IF NOT CONNECTED
-  if (!telegramStatus.data.connected) {
-    console.log("⚠️ Telegram not connected");
-    return;
-  }
+ if (!telegramStatus.data.connected) {
+  alert("Research call created, but Telegram is not connected");
+  await fetchRecommendations();
+  resetForm();
+  return;
+}
 
-  const now = new Date();
+ 
 
-  const message = `
-Date & Time : ${now.toLocaleString()}
+ const now = new Date();
 
-*${form.action}* *${finalDisplayName}*
-Call Type : ${form.exchange} ${form.callType} ${form.tradeType}
 
-${
+const message = `
+Published On : ${now.toLocaleString("en-IN", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: true,
+})}
+
+${form.action} ${form.exchange} ${form.callType} Expiry: ${form.expiry ? formatExpiry(form.expiry) : "N/A"}
+
+Stock Name: ${finalDisplayName}
+
+Call Type  :${form.tradeType} 
+
+Entry  : ${
   form.rangeEnabled
-    ? `Entry: ${form.entryLow} - ${form.entryUpper}`
-    : `Entry: ${form.entry}`
+    ? `${form.entryLow} - ${form.entryUpper}`
+    : form.entry
 }
 
-Target: ${form.target}
-
-${
+Target  : ${form.target}${
   form.secondaryTargetEnabled
-    ? `Target 2: ${form.target2}
-Target 3: ${form.target3}`
+    ? `
+T2  : ${form.target2}
+T3  : ${form.target3}`
     : ""
 }
 
-SL: ${form.stopLoss}
-
-${
+SL  : ${form.stopLoss}${
   form.stopLoss2Enabled
-    ? `SL 2: ${form.stopLoss2}
-SL 3: ${form.stopLoss3}`
+    ? `
+SL 2  : ${form.stopLoss2}
+SL 3  : ${form.stopLoss3}`
     : ""
 }
 
-Expiry: ${form.expiry || "N/A"}
 Holding Period: ${form.holdingPeriod || "N/A"}
 
 Rationale: ${form.rationale}
-Underlying Study: ${form.underlyingStudy?.label || "N/A"}
+Underlying Study: ${form.underlyingStudy.map((s) => s.label).join(", ") || "N/A"}
+Remarks: ${form.remark || "N/A"}
 `;
+
+
 
   await axios.post(
     `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
@@ -390,13 +568,19 @@ Underlying Study: ${form.underlyingStudy?.label || "N/A"}
     // =========================================================
     // ✅ REFRESH + RESET
     // =========================================================
+    
     await fetchRecommendations();
     resetForm();
+     alert("Research Call Created ✅");
 
   } catch (err: any) {
     console.error(err);
     alert(err?.response?.data?.message || "Error submitting call");
   }
+finally {
+  submittingRef.current = false;
+  setIsSubmitting(false);
+}
 };
 
   const handleToggle = useCallback(
@@ -477,31 +661,36 @@ Underlying Study: ${form.underlyingStudy?.label || "N/A"}
     return [...recent, ...base];
   }, [recentStudyOptions]);
 
-  const handleUnderlyingStudyChange = (
-    _: unknown,
-    newValue: StudyOption | null
-  ) => {
-    dispatch({ type: "SET_FIELD", field: "underlyingStudy", value: newValue });
-    if (!newValue) return;
+ const handleUnderlyingStudyChange = (
+  _: unknown,
+  newValue: StudyOption[]
+) => {
+  dispatch({
+    type: "SET_FIELD",
+    field: "underlyingStudy",
+    value: newValue,
+  });
 
-    // update "recently selected" list (max 10, most recent first)
-    setRecentStudyOptions((prev) => {
-      const existingValues = prev.map((p) => p.value);
-      const mergedValues = [
-        newValue.value,
-        ...existingValues.filter((v) => v !== newValue.value),
-      ].slice(0, 10);
+  if (!newValue.length) return;
 
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(
-          "recentUnderlyingStudies",
-          JSON.stringify(mergedValues)
-        );
-      }
+  setRecentStudyOptions((prev) => {
+    const existingValues = prev.map((p) => p.value);
 
-      return getRecentStudies(mergedValues);
-    });
-  };
+    const selectedValues = newValue.map((v) => v.value);
+
+    const mergedValues = [
+      ...selectedValues,
+      ...existingValues.filter((v) => !selectedValues.includes(v)),
+    ].slice(0, 10);
+
+    window.localStorage.setItem(
+      "recentUnderlyingStudies",
+      JSON.stringify(mergedValues)
+    );
+
+    return getRecentStudies(mergedValues);
+  });
+};
 
   useEffect(() => {
     if (!expiryDates.length) {
@@ -616,10 +805,12 @@ Underlying Study: ${form.underlyingStudy?.label || "N/A"}
         stopLoss3: item.stop_losses?.[2]?.toString() || "",
         rationale: item.rationale || "",
         remark: item.research_remarks || item.remark || "",
-        underlyingStudy: item.underlying_study ? {
-          label: item.underlying_study,
-          value: item.underlying_study.toLowerCase().replace(/\s+/g, "_"),
-        } : null,
+       underlyingStudy: item.underlying_study
+  ? item.underlying_study.split(",").map((study: string) => ({
+      label: study.trim(),
+      value: study.trim().toLowerCase().replace(/\s+/g, "_"),
+    }))
+  : [],
       };
 
       dispatch({ type: "SET_FORM", payload: formUpdate });
@@ -632,24 +823,46 @@ Underlying Study: ${form.underlyingStudy?.label || "N/A"}
   }, []);
   // Temporary
   const [wasValidated, setWasValidated] = useState(false);
-  const validateAndPublish = (event: React.MouseEvent<HTMLButtonElement>) => {
+
+
+const validateAndPublish = async (
+  event: React.MouseEvent<HTMLButtonElement>
+) => {
   event.preventDefault();
+
+  if (isSubmitting) return;
+
   setWasValidated(true);
 
-  const priceErr = getPriceError("entry", form) || 
-                   getPriceError("target", form) || 
-                   getPriceError("stopLoss", form);
-  if (!priceErr) {
-    console.log("✅ Price logic passed, submitting...");
-    handleSubmit(); 
-    setWasValidated(false);
-  } else {
-    console.log("❌ Price logic failed");
+  const missingFields = getMissingFields();
+
+if (missingFields.length > 0) {
+  alert(`Please fill required fields:\n\n${missingFields.join(", ")}`);
+  return;
+}
+
+ const priceErr =
+  getPriceError("entry", form) ||
+  getPriceError("target", form) ||
+  getPriceError("stopLoss", form) ||
+  getPriceError("entryLow", form) ||
+  getPriceError("entryUpper", form) ||
+  getPriceError("target2", form) ||
+  getPriceError("target3", form) ||
+  getPriceError("stopLoss2", form) ||
+  getPriceError("stopLoss3", form);
+
+
+  if (priceErr) {
     const priceRow = document.getElementById("prices-row");
     if (priceRow) {
       priceRow.scrollIntoView({ behavior: "smooth", block: "center" });
     }
+    return;
   }
+
+  await handleSubmit();
+  setWasValidated(false);
 };
 
 
@@ -677,10 +890,12 @@ Underlying Study: ${form.underlyingStudy?.label || "N/A"}
           expiry: "2026-03-28",
           holdingPeriod: "30 Days",
           rationale: "Break Out Play",
-          underlyingStudy: {
-            label: "RSI + Volume Confirmation",
-            value: "rsi_volume",
-          },
+        underlyingStudy: [
+  {
+    label: "RSI + Volume Confirmation",
+    value: "rsi_volume",
+  },
+],
           rangeEnabled: true,
           secondaryTargetEnabled: true,
           stopLoss2Enabled: true,
@@ -698,7 +913,11 @@ const handleInitiate = useCallback(async (item: any) => {
   try {
     const token = localStorage.getItem("token");
 
-    // ✅ FIRST CHECK TELEGRAM STATUS
+    if (!token) {
+      alert("Please login again");
+      return;
+    }
+
     const telegramStatus = await axios.get(
       `${import.meta.env.VITE_API_URL}/api/telegram/status`,
       {
@@ -708,13 +927,11 @@ const handleInitiate = useCallback(async (item: any) => {
       }
     );
 
-    // ❌ BLOCK PUBLISH
     if (!telegramStatus.data.connected) {
       alert("Please connect Telegram first");
       return;
     }
 
-    // ✅ ONLY AFTER TELEGRAM CONNECTED
     await axios.patch(
       `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/publish`,
       {},
@@ -725,7 +942,6 @@ const handleInitiate = useCallback(async (item: any) => {
       }
     );
 
-    // ✅ UPDATE UI
     setRecommendations((prev) =>
       prev.map((rec) =>
         rec.id === item.id
@@ -734,13 +950,86 @@ const handleInitiate = useCallback(async (item: any) => {
       )
     );
 
-    // ✅ SEND TELEGRAM MESSAGE
+    const getEntry = () => {
+      if (!item.entry) return "-";
+
+      if (item.entry.low && item.entry.high) {
+        return `${item.entry.low} - ${item.entry.high}`;
+      }
+
+      return item.entry.ideal || "-";
+    };
+
+     const formatExpiry = (date: string) => {
+  const d = new Date(date);
+
+  const day = d.getDate();
+  const suffix =
+    day % 10 === 1 && day !== 11
+      ? "st"
+      : day % 10 === 2 && day !== 12
+      ? "nd"
+      : day % 10 === 3 && day !== 13
+      ? "rd"
+      : "th";
+
+  return `${day}${suffix} ${d.toLocaleString("en-IN", {
+    month: "long",
+    year: "numeric",
+  })}`;
+};
+
+
+   const publishMessage = `
+Published On : ${new Date().toLocaleString("en-IN", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: true,
+})}
+
+${item.action || "N/A"} ${item.exchange || "N/A"} ${item.call_type || "N/A"} Expiry: ${
+  item.expiry_date ? formatExpiry(item.expiry_date) : "N/A"
+}
+
+Stock Name: ${item.name || item.symbol || "N/A"}
+
+Call Type  : ${item.trade_type || "N/A"}
+
+Entry  : ${getEntry()}
+
+Target  : ${item.targets?.[0] || "-"}${
+  item.targets?.[1] || item.targets?.[2]
+    ? `
+T2  : ${item.targets?.[1] || "-"}
+T3  : ${item.targets?.[2] || "-"}`
+    : ""
+}
+
+SL  : ${item.stop_losses?.[0] || "-"}${
+  item.stop_losses?.[1] || item.stop_losses?.[2]
+    ? `
+SL 2  : ${item.stop_losses?.[1] || "-"}
+SL 3  : ${item.stop_losses?.[2] || "-"}`
+    : ""
+}
+
+Holding Period: ${item.holding_period || "N/A"}
+
+Rationale: ${item.rationale || "N/A"}
+Underlying Study: ${item.underlying_study || "N/A"}
+Remarks: ${item.remarks || "N/A"}
+`.trim();
+
+    console.log("TELEGRAM MESSAGE:", publishMessage);
+
     await axios.post(
       `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
       {
-        ra_user_id: item.ra_user_id || item.user_id,
-        action: item.action,
-        symbol: item.display_name || item.symbol,
+        message: publishMessage,
       },
       {
         headers: {
@@ -749,6 +1038,7 @@ const handleInitiate = useCallback(async (item: any) => {
       }
     );
 
+    alert("Call initiated successfully ✅");
   } catch (err: any) {
     console.error(err);
 
@@ -759,7 +1049,14 @@ const handleInitiate = useCallback(async (item: any) => {
   }
 }, []);
 
+
+
+
   const handleTrack = async () => {
+      if (submittingRef.current) return;
+
+  submittingRef.current = true;
+  setIsSubmitting(true);
   try {
     const token = localStorage.getItem("token");
 
@@ -767,11 +1064,42 @@ const handleInitiate = useCallback(async (item: any) => {
       alert("Please login again");
       return;
     }
+    const missingFields = getMissingFields();
+
+if (missingFields.length > 0) {
+  alert(`Please fill required fields:\n\n${missingFields.join(", ")}`);
+  return;
+}
 
     const finalDisplayName =
       typeof suggestion === "object" && suggestion !== null
         ? suggestion.display_name
         : inputValue.trim();
+
+
+        const priceErr =
+  getPriceError("entry", form) ||
+  getPriceError("target", form) ||
+  getPriceError("stopLoss", form) ||
+  getPriceError("entryLow", form) ||
+  getPriceError("entryUpper", form) ||
+  getPriceError("target2", form) ||
+  getPriceError("target3", form) ||
+  getPriceError("stopLoss2", form) ||
+  getPriceError("stopLoss3", form);
+
+if (priceErr) {
+  const priceRow = document.getElementById("prices-row");
+
+  if (priceRow) {
+    priceRow.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }
+
+  return;
+}
 
     // 🔹 Base payload
     const payload = {
@@ -814,7 +1142,7 @@ const handleInitiate = useCallback(async (item: any) => {
       holding_period: form.holdingPeriod || null,
 
       rationale: form.rationale,
-      underlying_study: form.underlyingStudy?.label || null,
+      underlying_study: form.underlyingStudy.map((s) => s.label).join(", ") || null,
 
       is_algo: false,
       has_vested_interest: false,
@@ -853,84 +1181,155 @@ const handleInitiate = useCallback(async (item: any) => {
         },
       }
     );
+    await fetchRecommendations();
+
+    // Optional reset
+     resetForm();
 
     alert("Draft Saved ✅");
 
     // 🔥 Refresh list
-    await fetchRecommendations();
+    
 
-    // Optional reset
-    // resetForm();
+ } catch (err: any) {
+  console.error("Track failed:", err?.response?.data || err);
 
-  } catch (err: any) {
-    console.error("Track failed:", err?.response?.data || err);
-    alert(err?.response?.data?.message || "Track failed");
+  alert(
+    err?.response?.data?.message ||
+      err?.response?.data?.error ||
+      "Track failed"
+  );
+}finally {
+    submittingRef.current = false;
+    setIsSubmitting(false);
   }
+  
+};
+
+const validateAndTrack = (event: React.MouseEvent<HTMLButtonElement>) => {
+  event.preventDefault();
+  setWasValidated(true);
+
+  const priceErr =
+    getPriceError("entry", form) ||
+    getPriceError("target", form) ||
+    getPriceError("stopLoss", form);
+
+  if (priceErr) {
+    const priceRow = document.getElementById("prices-row");
+    if (priceRow) {
+      priceRow.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    return;
+  }
+
+  handleTrack();
 };
 
   // Add this helper function outside or inside your component
 const getPriceError = (field: string, currentForm: any): string | null => {
   const action = currentForm.action;
 
-  // Group 1: Top Switched Row
-  const eLow = parseFloat(currentForm.entryLow) || 0;
-  const t2 = parseFloat(currentForm.target2) || 0;
-  const sl2 = parseFloat(currentForm.stopLoss2) || 0;
+  const entry = parseFloat(currentForm.entry) || 0;
+  const target = parseFloat(currentForm.target) || 0;
+  const stopLoss = parseFloat(currentForm.stopLoss) || 0;
 
-  // Group 2: Bottom Switched Row
-  const eUpper = parseFloat(currentForm.entryUpper) || 0;
-  const t3 = parseFloat(currentForm.target3) || 0;
-  const sl3 = parseFloat(currentForm.stopLoss3) || 0;
+  const entryLow = parseFloat(currentForm.entryLow) || 0;
+  const entryUpper = parseFloat(currentForm.entryUpper) || 0;
 
-  // --- BUY LOGIC ---
-  if (action === "BUY") {
-    // Top Row: SL2 < Lower Entry < T2
-    if (field === "entryLow") {
-      if (t2 && eLow >= t2) return "Must be < T2";
-      if (sl2 && eLow <= sl2) return "Must be > SL2";
-    }
-    if (field === "target2" && t2 <= eLow && eLow !== 0) return "T2 must be > Lower Entry";
-    if (field === "stopLoss2" && sl2 >= eLow && eLow !== 0) return "SL2 must be < Lower Entry";
+  const target2 = parseFloat(currentForm.target2) || 0;
+  const target3 = parseFloat(currentForm.target3) || 0;
 
-    // Bottom Row: SL3 < Upper Entry < T3
-    if (field === "entryUpper") {
-      if (t3 && eUpper >= t3) return "Must be < T3";
-      if (sl3 && eUpper <= sl3) return "Must be > SL3";
-    }
-    if (field === "target3" && t3 <= eUpper && eUpper !== 0) return "T3 must be > Upper Entry";
-    if (field === "stopLoss3" && sl3 >= eUpper && eUpper !== 0) return "SL3 must be < Upper Entry";
-  } 
-  
-  // --- SELL LOGIC ---
-  else {
-    // Top Row: T2 < Lower Entry < SL2
-    if (field === "entryLow") {
-      if (t2 && eLow <= t2) return "Must be > T2";
-      if (sl2 && eLow >= sl2) return "Must be < SL2";
-    }
-    if (field === "target2" && t2 >= eLow && eLow !== 0) return "T2 must be < Lower Entry";
-    if (field === "stopLoss2" && sl2 <= eLow && eLow !== 0) return "SL2 must be > Lower Entry";
+  const stopLoss2 = parseFloat(currentForm.stopLoss2) || 0;
+  const stopLoss3 = parseFloat(currentForm.stopLoss3) || 0;
 
-    // Bottom Row: T3 < Upper Entry < SL3
-    if (field === "entryUpper") {
-      if (t3 && eUpper <= t3) return "Must be > T3";
-      if (sl3 && eUpper >= sl3) return "Must be < SL3";
-    }
-    if (field === "target3" && t3 >= eUpper && eUpper !== 0) return "T3 must be < Upper Entry";
-    if (field === "stopLoss3" && sl3 <= eUpper && eUpper !== 0) return "SL3 must be > Upper Entry";
+  // RANGE: Lower Entry < Upper Entry
+  if (
+    currentForm.rangeEnabled &&
+    (field === "entryLow" || field === "entryUpper") &&
+    entryLow &&
+    entryUpper &&
+    entryLow >= entryUpper
+  ) {
+    return "Lower Entry must be less than Upper Entry";
   }
 
-  // --- MAIN ROW (Entry, Target, StopLoss) ---
-  const entry = parseFloat(currentForm.entry) || 0;
-  const t1 = parseFloat(currentForm.target) || 0;
-  const sl1 = parseFloat(currentForm.stopLoss) || 0;
-
+  // BUY LOGIC
   if (action === "BUY") {
-    if (field === "target" && t1 <= entry && entry !== 0) return "T1 must be > Entry";
-    if (field === "stopLoss" && sl1 >= entry && entry !== 0) return "SL1 must be < Entry";
-  } else {
-    if (field === "target" && t1 >= entry && entry !== 0) return "T1 must be < Entry";
-    if (field === "stopLoss" && sl1 <= entry && entry !== 0) return "SL1 must be > Entry";
+    // Entry < Target
+    if (field === "target" && entry && target && target <= entry) {
+      return "Target must be greater than Entry";
+    }
+
+    // Entry > Stop Loss
+    if (field === "stopLoss" && entry && stopLoss && stopLoss >= entry) {
+      return "Stop Loss must be less than Entry";
+    }
+
+    // Entry < Target < T2 < T3
+    if (
+      currentForm.secondaryTargetEnabled &&
+      (field === "target" || field === "target2" || field === "target3") &&
+      entry &&
+      target &&
+      target2 &&
+      target3 &&
+      !(entry < target && target < target2 && target2 < target3)
+    ) {
+      return "For BUY: Entry < Target < T2 < T3";
+    }
+
+    // Entry > SL > SL2 > SL3
+    if (
+      currentForm.stopLoss2Enabled &&
+      (field === "stopLoss" || field === "stopLoss2" || field === "stopLoss3") &&
+      entry &&
+      stopLoss &&
+      stopLoss2 &&
+      stopLoss3 &&
+      !(entry > stopLoss && stopLoss > stopLoss2 && stopLoss2 > stopLoss3)
+    ) {
+      return "For BUY: Entry > SL > SL2 > SL3";
+    }
+  }
+
+  // SELL LOGIC
+  if (action === "SELL") {
+    // Entry > Target
+    if (field === "target" && entry && target && target >= entry) {
+      return "Target must be less than Entry";
+    }
+
+    // Entry < Stop Loss
+    if (field === "stopLoss" && entry && stopLoss && stopLoss <= entry) {
+      return "Stop Loss must be greater than Entry";
+    }
+
+    // Entry > Target > T2 > T3
+    if (
+      currentForm.secondaryTargetEnabled &&
+      (field === "target" || field === "target2" || field === "target3") &&
+      entry &&
+      target &&
+      target2 &&
+      target3 &&
+      !(entry > target && target > target2 && target2 > target3)
+    ) {
+      return "For SELL: Entry > Target > T2 > T3";
+    }
+
+    // Entry < SL < SL2 < SL3
+    if (
+      currentForm.stopLoss2Enabled &&
+      (field === "stopLoss" || field === "stopLoss2" || field === "stopLoss3") &&
+      entry &&
+      stopLoss &&
+      stopLoss2 &&
+      stopLoss3 &&
+      !(entry < stopLoss && stopLoss < stopLoss2 && stopLoss2 < stopLoss3)
+    ) {
+      return "For SELL: Entry < SL < SL2 < SL3";
+    }
   }
 
   return null;
@@ -1539,54 +1938,65 @@ sx={{
           <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, mb: 0.5 }}>
             Underlying Study
           </Typography>
-
-          <Autocomplete<StudyAutocompleteOption, false, false, false>
-            size="small"
-            fullWidth
-            options={studyOptions}
-            value={
-              form.underlyingStudy
-                ? {
-                  ...form.underlyingStudy,
-                  group:
-                    UNDERLYING_STUDIES.find((g) =>
-                      g.options.some((o) => o.value === form.underlyingStudy?.value)
-                    )?.group ?? "Fundamental & General Analysis",
-                }
-                : null
-            }
-            inputValue={underlyingStudyInput}
-            onInputChange={(_, newInput) => setUnderlyingStudyInput(newInput)}
-            onChange={handleUnderlyingStudyChange}
-            getOptionLabel={(option) => option.label}
-            groupBy={(option) => option.group}
-            renderInput={(params) => (
-              <TextField
-                required
-                {...params}
-                placeholder="Select or search underlying study"
-                variant="outlined"
-              />
-            )}
-            renderGroup={(params) => (
-              <Box key={params.key}>
-                <Typography
-                  sx={{
-                    px: 1.5,
-                    pt: 1,
-                    pb: 0.25,
-                    fontSize: "0.65rem",
-                    fontWeight: 700,
-                    color: "#6b7280",
-                  }}
-                >
-                  {params.group}
-                </Typography>
-                {params.children}
-              </Box>
-            )}
-            isOptionEqualToValue={(option, value) => option.value === value.value}
-          />
+<Autocomplete<StudyAutocompleteOption, true, false, false>
+  multiple
+  disableCloseOnSelect
+  size="small"
+  fullWidth
+  options={studyOptions}
+  value={form.underlyingStudy.map((selected) => ({
+    ...selected,
+    group:
+      UNDERLYING_STUDIES.find((g) =>
+        g.options.some((o) => o.value === selected.value)
+      )?.group ?? "Fundamental & General Analysis",
+  }))}
+  inputValue={underlyingStudyInput}
+  onInputChange={(_, newInput) => setUnderlyingStudyInput(newInput)}
+  onChange={handleUnderlyingStudyChange}
+  getOptionLabel={(option) => option.label}
+  groupBy={(option) => option.group}
+  isOptionEqualToValue={(option, value) => option.value === value.value}
+  renderOption={(props, option, { selected }) => (
+    <li {...props}>
+      <Checkbox
+        size="small"
+        checked={selected}
+        sx={{ mr: 1 }}
+      />
+      {option.label}
+    </li>
+  )}
+  renderInput={(params) => (
+    <TextField
+      required
+      {...params}
+      placeholder={
+        form.underlyingStudy.length
+          ? ""
+          : "Select one or more underlying studies"
+      }
+      variant="outlined"
+    />
+  )}
+  renderGroup={(params) => (
+    <Box key={params.key}>
+      <Typography
+        sx={{
+          px: 1.5,
+          pt: 1,
+          pb: 0.25,
+          fontSize: "0.65rem",
+          fontWeight: 700,
+          color: "#6b7280",
+        }}
+      >
+        {params.group}
+      </Typography>
+      {params.children}
+    </Box>
+  )}
+/>
         </Box>
 
         {/* Remarks & Upload */}
@@ -1651,20 +2061,44 @@ sx={{
             justifyContent: "flex-start", // change to "space-between" if needed
           }}
         >
-          <Button
+   <Button
+  type="button"
+  disabled={isSubmitting}
   variant="contained"
-  onClick={validateAndPublish} // Hits validation first
+  onClick={validateAndPublish}
   sx={{ fontWeight: 700, px: 4 }}
 >
-  {isErrataMode ? "Create Errata" : "Publish Call"}
+  {isSubmitting
+    ? isErrataMode
+      ? "Creating Errata..."
+      : "Publishing..."
+    : isErrataMode
+      ? "Create Errata"
+      : "Publish Call"}
 </Button>
 
-          <Button
-            variant="outlined"
-            onClick={handleTrack}   // <-- create this function
-          >
-            Track
-          </Button>
+         <Button
+  type="button"
+ disabled={isSubmitting || isErrataMode}
+    variant="outlined"
+  onClick={validateAndTrack}
+  
+>
+  {isSubmitting ? "Saving Draft..." : "Track"}
+</Button>
+
+
+ <Button
+  type="button"
+  variant="outlined"
+  disabled={isSubmitting}
+  onClick={resetForm}
+>
+  Reset
+</Button>
+
+
+
         </Box>
 
       </Paper>

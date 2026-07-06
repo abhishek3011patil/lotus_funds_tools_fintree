@@ -2,6 +2,33 @@ import { Response } from "express";
 import { pool } from "../db";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { Router } from "express";
+import { createAuditLog } from "../utils/auditLogger";
+
+const getClientIp = (req: any): string => {
+  let ip =
+    req.headers?.["x-forwarded-for"] ||
+    req.socket?.remoteAddress ||
+    req.ip ||
+    "Unknown";
+
+  if (Array.isArray(ip)) {
+    ip = ip[0];
+  }
+
+  if (typeof ip === "string" && ip.includes(",")) {
+    ip = ip.split(",")[0].trim();
+  }
+
+  if (ip === "::1") {
+    ip = "127.0.0.1";
+  }
+
+  if (typeof ip === "string" && ip.startsWith("::ffff:")) {
+    ip = ip.replace("::ffff:", "");
+  }
+
+  return String(ip);
+};
 
 /* =========================================================
    CREATE RESEARCH CALL  (POST /api/research/calls)
@@ -39,6 +66,21 @@ export const createResearchCall = async (req: AuthRequest, res: Response) => {
       research_remarks
     } = req.body;
 
+    const disclaimerResult = await pool.query(
+  `
+  SELECT additional_comments, disclaimer_updated_at
+  FROM ra_details
+  WHERE user_id = $1
+  `,
+  [req.user!.id]
+);
+
+const disclaimerSnapshot =
+  disclaimerResult.rows[0]?.additional_comments || null;
+
+const disclaimerSnapshotAt =
+  disclaimerResult.rows[0]?.disclaimer_updated_at || null;
+
     const query = `
       INSERT INTO research_calls (
         ra_user_id,
@@ -65,15 +107,17 @@ export const createResearchCall = async (req: AuthRequest, res: Response) => {
         underlying_study,
         is_algo,
         has_vested_interest,
-        research_remarks,
-        file_url   -- 👈 ADD COLUMN IN DB
+       research_remarks,
+file_url,
+disclaimer_snapshot,
+disclaimer_snapshot_at
       )
       VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
         $11,$12,$13,$14,$15,$16,$17,$18,$19,
-        $20,$21,$22,$23,$24,$25,$26
+        $20,$21,$22,$23,$24,$25,$26,$27,$28
       )
-      RETURNING id, created_at;
+      RETURNING *;
     `;
 
     const values = [
@@ -102,10 +146,29 @@ export const createResearchCall = async (req: AuthRequest, res: Response) => {
       is_algo,
       has_vested_interest,
       research_remarks,
-      filePath  // 👈 save file path
+filePath,
+disclaimerSnapshot,
+disclaimerSnapshotAt  
     ];
 
     const { rows } = await pool.query(query, values);
+    await createAuditLog({
+  adminId: req.user?.id,
+  adminName: req.user?.name,
+  adminRole: req.user?.role,
+  action: status === "DRAFT" ? "CALL_DRAFT_CREATED" : "CALL_CREATED",
+  module: "RESEARCH_CALL",
+  targetEntity: rows[0].symbol,
+  targetType: "CALL",
+  description:
+    status === "DRAFT"
+      ? `Draft research call created: ${rows[0].symbol}`
+      : `Research call created: ${rows[0].symbol}`,
+  status: "SUCCESS",
+  ipAddress: getClientIp(req),
+  device: req.headers["user-agent"] as string,
+  newValue: rows[0],
+});
 
     return res.status(201).json({
       message: "Research call created successfully",
@@ -125,9 +188,13 @@ export const createResearchCall = async (req: AuthRequest, res: Response) => {
    CREATE RESEARCH CALL  (POST /api/research/performance)
    ========================================================= */
 export const getResearchPerformance = async (req: AuthRequest, res: Response) => {
-    try {
+  try {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
+    const search = (req.query.search as string) || "";
 
-        const query = `
+    const query = `
       SELECT
         rc.created_at AS date_time,
         rc.action,
@@ -138,6 +205,7 @@ export const getResearchPerformance = async (req: AuthRequest, res: Response) =>
         rc.symbol,
         rc.expiry_date AS expiry,
         rc.entry_price AS entry,
+        rc.version_type,
         '--' AS exit,
         rc.status,
         NULL AS profit_loss,
@@ -145,17 +213,26 @@ export const getResearchPerformance = async (req: AuthRequest, res: Response) =>
       FROM research_calls rc
       JOIN users u ON u.id = rc.ra_user_id
       WHERE rc.is_latest = true
+      AND (
+        rc.display_name ILIKE $3 OR
+        rc.symbol ILIKE $3 OR
+        u.name ILIKE $3
+      )
       ORDER BY rc.created_at DESC
+      LIMIT $1 OFFSET $2
     `;
 
-        const { rows } = await pool.query(query);
+    const { rows } = await pool.query(query, [
+      limit,
+      offset,
+      `%${search}%`,
+    ]);
 
-        res.json(rows);
-
-    } catch (err) {
-        console.error("PERFORMANCE API ERROR:", err);
-        res.status(500).json({ message: "Server error" });
-    }
+    res.json(rows);
+  } catch (err) {
+    console.error("PERFORMANCE API ERROR:", err);
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
 /* =========================================================
@@ -180,55 +257,56 @@ export const getResearchCalls = async (req: AuthRequest, res: Response) => {
         const { rows } = await pool.query(query, [req.user.id]);
 
         const formatted = rows.map((row) => ({
-            id: row.id,
-            status: row.status,
-            created_at: row.created_at,
+    id: row.id,
+    status: row.status,
+    created_at: row.created_at,
 
-            exchange: row.exchange_type,
-            instrument: row.market_type,
+    is_latest: row.is_latest,
+    version_type: row.version_type,
+    parent_call_id: row.parent_call_id,
+    file_url: row.file_url,
 
+    exchange: row.exchange_type,
+    instrument: row.market_type,
 
-            version_type: row.version_type,
-            parent_call_id: row.parent_call_id,
+    symbol: row.symbol,
+    name: row.display_name,
+    
+    action: row.action,
+    call_type: row.call_type,
+    trade_type: row.trade_type,
 
-            symbol: row.symbol,
-            name: row.display_name,
+    expiry_date: row.expiry_date,
 
-            action: row.action,
-            call_type: row.call_type,
-            trade_type: row.trade_type,
+    entry: {
+        low: row.entry_price_low,
+        ideal: row.entry_price,
+        high: row.entry_price_upper,
+    },
 
-            expiry_date: row.expiry_date,
+    targets: [
+        row.target_price,
+        row.target_price_2,
+        row.target_price_3,
+    ].filter(Boolean),
 
-            entry: {
-                low: row.entry_price_low,
-                ideal: row.entry_price,
-                high: row.entry_price_upper,
-            },
+    stop_losses: [
+        row.stop_loss,
+        row.stop_loss_2,
+        row.stop_loss_3,
+    ].filter(Boolean),
 
-            targets: [
-                row.target_price,
-                row.target_price_2,
-                row.target_price_3,
-            ].filter(Boolean),
+    holding_period: row.holding_period,
+    rationale: row.rationale,
+    underlying_study: row.underlying_study,
 
-            stop_losses: [
-                row.stop_loss,
-                row.stop_loss_2,
-                row.stop_loss_3,
-            ].filter(Boolean),
+    flags: {
+        algo: row.is_algo,
+        vested_interest: row.has_vested_interest,
+    },
 
-            holding_period: row.holding_period,
-            rationale: row.rationale,
-            underlying_study: row.underlying_study,
-
-            flags: {
-                algo: row.is_algo,
-                vested_interest: row.has_vested_interest,
-            },
-
-            remarks: row.research_remarks,
-        }));
+    remarks: row.research_remarks,
+}));
 
         return res.json(formatted);
     } catch (err) {
@@ -341,149 +419,254 @@ export const getPublishedCalls = async (_req: AuthRequest, res: Response) => {
 
 
 export const createErrata = async (
-
-    req: AuthRequest,
-    res: Response
+  req: AuthRequest,
+  res: Response
 ) => {
-    const client = await pool.connect();
+  const client = await pool.connect();
 
-    try {
-        await client.query("BEGIN");
+  try {
+    await client.query("BEGIN");
 
-        const { call_id, updates } = req.body;
-        const userId = req.user?.id;
+    const { call_id, updates } = req.body;
+    const userId = req.user?.id;
 
-        // 1️⃣ Get existing call
-        const callResult = await client.query(
-            `SELECT * FROM research_calls
-       WHERE id = $1 AND ra_user_id = $2`,
-            [call_id, userId]
-        );
+    // =========================================================
+    // 1️⃣ GET EXISTING CALL
+    // =========================================================
+    const callResult = await client.query(
+      `
+      SELECT *
+      FROM research_calls
+      WHERE id = $1
+      AND ra_user_id = $2
+      `,
+      [call_id, userId]
+    );
 
-        if (callResult.rowCount === 0) {
-            await client.query("ROLLBACK");
-            return res.status(404).json({ message: "Call not found" });
-        }
+    if (callResult.rowCount === 0) {
+      await client.query("ROLLBACK");
 
-        const existingCall = callResult.rows[0];
-
-        if (existingCall.status !== "PUBLISHED") {
-            await client.query("ROLLBACK");
-            return res.status(400).json({
-                message: "Only published calls can be modified",
-            });
-        }
-
-        if (existingCall.status === "CLOSED") {
-            await client.query("ROLLBACK");
-            return res.status(400).json({
-                message: "Cannot create errata for closed call",
-            });
-        }
-
-        // 2️⃣ Determine ROOT call
-        const rootId = existingCall.parent_call_id
-            ? existingCall.parent_call_id
-            : existingCall.id;
-
-            
-
-        // 3️⃣ Mark all previous versions as not latest
-        await client.query(
-            `UPDATE research_calls
-       SET is_latest = false
-       WHERE id = $1 OR parent_call_id = $1`,
-            [rootId]
-        );
-
-        // 4️⃣ Insert new errata version
-        const insertResult = await client.query(
-            `INSERT INTO research_calls (
-        ra_user_id,
-        status,
-        exchange_type,
-        market_type,
-        symbol,
-        display_name,
-        action,
-        call_type,
-        trade_type,
-        expiry_date,
-        entry_price,
-        entry_price_upper,
-        target_price,
-        target_price_2,
-        target_price_3,
-        stop_loss,
-        stop_loss_2,
-        stop_loss_3,
-        holding_period,
-        rationale,
-        underlying_study,
-        is_algo,
-        has_vested_interest,
-        research_remarks,
-        entry_price_low,
-        parent_call_id,
-        version_type,
-        is_latest
-      )
-      VALUES (
-        $1, 'PUBLISHED',
-        $2,$3,$4,$5,$6,$7,$8,$9,
-        $10,$11,$12,$13,$14,
-        $15,$16,$17,$18,$19,$20,
-        $21,$22,$23,$24,
-        $25,'ERRATA',true
-      )
-      RETURNING *`,
-            [
-                userId,
-                existingCall.exchange_type,
-                existingCall.market_type,
-                existingCall.symbol,
-                existingCall.display_name,
-                existingCall.action,
-                existingCall.call_type,
-                existingCall.trade_type,
-                existingCall.expiry_date,
-                updates.entry_price ?? existingCall.entry_price,
-                updates.entry_price_upper ?? existingCall.entry_price_upper,
-                updates.target_price ?? existingCall.target_price,
-                updates.target_price_2 ?? existingCall.target_price_2,
-                updates.target_price_3 ?? existingCall.target_price_3,
-                updates.stop_loss ?? existingCall.stop_loss,
-                updates.stop_loss_2 ?? existingCall.stop_loss_2,
-                updates.stop_loss_3 ?? existingCall.stop_loss_3,
-                updates.holding_period ?? existingCall.holding_period,
-                updates.rationale ?? existingCall.rationale,
-                updates.underlying_study ?? existingCall.underlying_study,
-                existingCall.is_algo,
-                existingCall.has_vested_interest,
-                updates.research_remarks ?? existingCall.research_remarks,
-                updates.entry_price_low ?? existingCall.entry_price_low,
-                rootId
-            ]
-        );
-
-        await client.query("COMMIT");
-
-        return res.status(201).json({
-            message: "Errata created successfully",
-            data: insertResult.rows[0],
-        });
-
-    } catch (error) {
-        await client.query("ROLLBACK");
-        console.error("Errata Error:", error);
-        return res.status(500).json({
-            message: "Internal server error",
-        });
-    } finally {
-        client.release();
+      return res.status(404).json({
+        message: "Call not found",
+      });
     }
 
+    const existingCall = callResult.rows[0];
 
+    // =========================================================
+    // 2️⃣ VALIDATE STATUS
+    // =========================================================
+    if (
+      !["PUBLISHED", "ERRATA"].includes(existingCall.status)
+    ) {
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        message:
+          "Only published or errata calls can be modified",
+      });
+    }
+
+    if (existingCall.status === "CLOSED") {
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        message:
+          "Cannot create errata for closed call",
+      });
+    }
+
+    // =========================================================
+    // 3️⃣ DETERMINE ROOT CALL
+    // =========================================================
+    const rootId = existingCall.parent_call_id
+      ? existingCall.parent_call_id
+      : existingCall.id;
+
+    // =========================================================
+    // 4️⃣ MARK OLD VERSIONS AS NOT LATEST
+    // =========================================================
+    await client.query(
+      `
+      UPDATE research_calls
+      SET is_latest = false
+      WHERE id = $1
+      OR parent_call_id = $1
+      `,
+      [rootId]
+    );
+
+    // =========================================================
+    // 5️⃣ CREATE NEW ERRATA VERSION
+    // =========================================================
+    const insertResult = await client.query(
+  `
+  INSERT INTO research_calls (
+    ra_user_id,
+    status,
+    version_type,
+
+    exchange_type,
+    market_type,
+
+    symbol,
+    display_name,
+
+    action,
+    call_type,
+    trade_type,
+
+    expiry_date,
+
+    entry_price,
+    entry_price_low,
+    entry_price_upper,
+
+    target_price,
+    target_price_2,
+    target_price_3,
+
+    stop_loss,
+    stop_loss_2,
+    stop_loss_3,
+
+    holding_period,
+
+    rationale,
+    underlying_study,
+
+    is_algo,
+    has_vested_interest,
+
+    research_remarks,
+
+    parent_call_id,
+    is_latest
+  )
+  VALUES (
+    $1,
+    $2,
+    $3,
+
+    $4,
+    $5,
+
+    $6,
+    $7,
+
+    $8,
+    $9,
+    $10,
+
+    $11,
+
+    $12,
+    $13,
+    $14,
+
+    $15,
+    $16,
+    $17,
+
+    $18,
+    $19,
+    $20,
+
+    $21,
+
+    $22,
+    $23,
+
+    $24,
+    $25,
+
+    $26,
+
+    $27,
+    $28
+  )
+  RETURNING *
+  `,
+  [
+    userId,
+    "PUBLISHED",
+    "ERRATA",
+
+    existingCall.exchange_type,
+    existingCall.market_type,
+
+    existingCall.symbol,
+    existingCall.display_name,
+
+    updates.action ?? existingCall.action,
+    updates.call_type ?? existingCall.call_type,
+    updates.trade_type ?? existingCall.trade_type,
+
+    existingCall.expiry_date,
+
+    updates.entry_price ?? existingCall.entry_price,
+    updates.entry_price_low ?? existingCall.entry_price_low,
+    updates.entry_price_upper ?? existingCall.entry_price_upper,
+
+    updates.target_price ?? existingCall.target_price,
+    updates.target_price_2 ?? existingCall.target_price_2,
+    updates.target_price_3 ?? existingCall.target_price_3,
+
+    updates.stop_loss ?? existingCall.stop_loss,
+    updates.stop_loss_2 ?? existingCall.stop_loss_2,
+    updates.stop_loss_3 ?? existingCall.stop_loss_3,
+
+    updates.holding_period ?? existingCall.holding_period,
+
+    updates.rationale ?? existingCall.rationale,
+    updates.underlying_study ?? existingCall.underlying_study,
+
+    existingCall.is_algo,
+    existingCall.has_vested_interest,
+
+    updates.research_remarks ??
+      existingCall.research_remarks,
+
+    rootId,
+    true
+  ]
+);
+
+    await client.query("COMMIT");
+
+    await createAuditLog({
+  adminId: req.user?.id,
+  adminName: req.user?.name,
+  adminRole: req.user?.role,
+  action: "ERRATA_CREATED",
+  module: "RESEARCH_CALL",
+  targetEntity: insertResult.rows[0].symbol,
+  targetType: "CALL",
+  description: `Errata created for research call: ${insertResult.rows[0].symbol}`,
+  status: "SUCCESS",
+  ipAddress: getClientIp(req),
+  device: req.headers["user-agent"] as string,
+  oldValue: existingCall,
+  newValue: insertResult.rows[0],
+});
+
+    return res.status(201).json({
+      message: "Errata created successfully",
+      data: insertResult.rows[0],
+    });
+
+  } catch (error) {
+    await client.query("ROLLBACK");
+
+    console.error("ERRATA ERROR:", error);
+
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+
+  } finally {
+    client.release();
+  }
 };
 
 /* =========================================================
@@ -492,9 +675,10 @@ export const createErrata = async (
 
 
 export const publishDraftCall = async (req: AuthRequest, res: Response) => {
-    try {
-        const { id } = req.params;
-         const userResult = await pool.query(
+  try {
+    const { id } = req.params;
+
+    const userResult = await pool.query(
       `
       SELECT telegram_session
       FROM users
@@ -504,42 +688,216 @@ export const publishDraftCall = async (req: AuthRequest, res: Response) => {
     );
 
     const telegramSession = userResult.rows[0]?.telegram_session;
-    console.log("TELEGRAM SESSION:", telegramSession);
 
-if (
-  !telegramSession ||
-  telegramSession === "null" ||
-  telegramSession.trim() === ""
-) {
-  return res.status(400).json({
-    message: "Telegram is not connected. Please connect Telegram first."
-  });
-}
-
-
-        const result = await pool.query(
-            `UPDATE research_calls
-       SET status = 'PUBLISHED'
-       WHERE id = $1
-       AND status = 'DRAFT'
-       AND ra_user_id = $2
-       RETURNING id`,
-            [id, req.user!.id]
-        );
-
-        if (result.rowCount === 0) {
-            return res.status(400).json({
-                message: "Cannot publish this call"
-            });
-        }
-
-        return res.json({
-            message: "Call published successfully"
-        });
-
-    } catch (err) {
-        console.error("PUBLISH ERROR:", err);
-        return res.status(500).json({ message: "Server error" });
+    if (
+      !telegramSession ||
+      telegramSession === "null" ||
+      telegramSession.trim() === ""
+    ) {
+      return res.status(400).json({
+        message: "Telegram is not connected. Please connect Telegram first.",
+      });
     }
+
+    const result = await pool.query(
+      `
+      UPDATE research_calls
+      SET status = 'PUBLISHED'
+      WHERE id = $1
+      AND status = 'DRAFT'
+      AND ra_user_id = $2
+      RETURNING *
+      `,
+      [id, req.user!.id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(400).json({
+        message: "Cannot publish this call",
+      });
+    }
+
+    await createAuditLog({
+      adminId: req.user?.id,
+      adminName: req.user?.name,
+      adminRole: req.user?.role,
+      action: "DRAFT_PUBLISHED",
+      module: "RESEARCH_CALL",
+      targetEntity: result.rows[0].symbol,
+      targetType: "CALL",
+      description: `Draft research call published: ${result.rows[0].symbol}`,
+      status: "SUCCESS",
+      ipAddress: getClientIp(req),
+      device: req.headers["user-agent"] as string,
+      oldValue: { status: "DRAFT" },
+      newValue: result.rows[0],
+    });
+
+    return res.json({
+      message: "Call published successfully",
+    });
+  } catch (err) {
+    console.error("PUBLISH ERROR:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
 };
 
+
+
+    // =========================================================
+    // 1️⃣ change disclaimer 
+    // =========================================================
+
+
+
+export const getRADisclaimer = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        message: "Unauthorized user",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT additional_comments
+      FROM ra_details
+      WHERE user_id = $1
+      `,
+      [userId]
+    );
+
+    return res.json({
+      success: true,
+      disclaimer:
+        result.rows[0]?.additional_comments || "",
+    });
+  } catch (error) {
+    console.error("GET DISCLAIMER ERROR:", error);
+
+    return res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+export const updateRADisclaimer = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const userId = req.user?.id;
+    const { disclaimer } = req.body;
+
+    if (!userId) {
+      await client.query("ROLLBACK");
+      return res.status(401).json({
+        message: "Unauthorized user",
+      });
+    }
+
+    if (!disclaimer || !disclaimer.trim()) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        message: "Disclaimer is required",
+      });
+    }
+
+    const oldResult = await client.query(
+      `
+      SELECT additional_comments, disclaimer_updated_at
+      FROM ra_details
+      WHERE user_id = $1
+      `,
+      [userId]
+    );
+
+    const oldDisclaimer = oldResult.rows[0]?.additional_comments || "";
+
+    const versionResult = await client.query(
+      `
+      SELECT COALESCE(MAX(version_number), 0) + 1 AS next_version
+      FROM disclaimer_history
+      WHERE ra_user_id = $1
+      `,
+      [userId]
+    );
+
+    const nextVersion = Number(versionResult.rows[0].next_version);
+
+    await client.query(
+      `
+      INSERT INTO disclaimer_history (
+        ra_user_id,
+        disclaimer_text,
+        version_number
+      )
+      VALUES ($1, $2, $3)
+      `,
+      [userId, disclaimer.trim(), nextVersion]
+    );
+
+    const result = await client.query(
+      `
+      UPDATE ra_details
+      SET
+        additional_comments = $1,
+        disclaimer_updated_at = NOW()
+      WHERE user_id = $2
+      RETURNING additional_comments, disclaimer_updated_at
+      `,
+      [disclaimer.trim(), userId]
+    );
+
+    await client.query("COMMIT");
+
+    await createAuditLog({
+      adminId: req.user?.id,
+      adminName: req.user?.name || "RA",
+      adminRole: req.user?.role || "RESEARCH_ANALYST",
+      action: "DISCLAIMER_UPDATED",
+      module: "RA_PROFILE",
+      targetEntity: req.user?.name || userId,
+      targetType: "DISCLAIMER",
+      description: `RA disclaimer updated. Version ${nextVersion} created.`,
+      status: "SUCCESS",
+      ipAddress: getClientIp(req),
+      device: req.headers["user-agent"] as string,
+      oldValue: {
+        disclaimer: oldDisclaimer,
+        disclaimerUpdatedAt: oldResult.rows[0]?.disclaimer_updated_at || null,
+      },
+      newValue: {
+        disclaimer: result.rows[0]?.additional_comments,
+        version: nextVersion,
+        disclaimerUpdatedAt: result.rows[0]?.disclaimer_updated_at,
+      },
+    });
+
+    return res.json({
+      success: true,
+      disclaimer: result.rows[0]?.additional_comments || "",
+      disclaimerUpdatedAt: result.rows[0]?.disclaimer_updated_at || null,
+      version: nextVersion,
+      message: "Disclaimer updated successfully",
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("UPDATE DISCLAIMER ERROR:", error);
+
+    return res.status(500).json({
+      message: "Server error",
+    });
+  } finally {
+    client.release();
+  }
+};

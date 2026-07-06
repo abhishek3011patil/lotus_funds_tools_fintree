@@ -16,8 +16,18 @@ import {
   Stack,
   Snackbar,
   Alert,
+  Dialog,
+DialogTitle,
+DialogContent,
+DialogActions,
 } from "@mui/material";
 import LoadingPage from "../../common/LoadingPage";
+
+
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import dayjs, { Dayjs } from "dayjs";
 
 import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
@@ -43,6 +53,8 @@ interface HistoryRecord {
   createdBy?: string;
   created_by?: string;
   username?: string;
+  version_type?: string;
+
 }
 
 interface ApiHistoryRecord {
@@ -59,6 +71,8 @@ interface ApiHistoryRecord {
   status?: string;
   profit_loss?: number | null;
   researcher_name?: string;
+  expiry_date?: string | null;
+  version_type?: string;
 }
 
 // Added Prop Interface
@@ -85,9 +99,10 @@ export default function RecommendationHistory({
     category: row.category || "-",
     instrument: row.instrument || "-",
     symbol: row.symbol || "-",
-    expiry: row.expiry ?? null,
+    expiry: row.expiry || row.expiry_date || null,
     entry: row.entry ?? "-",
     exit: row.exit ?? "-",
+      version_type: row.version_type,
     status: row.status || "-",
     profitLoss: Number(row.profit_loss ?? 0),
     researcher_name: row.researcher_name,
@@ -107,14 +122,21 @@ export default function RecommendationHistory({
   const [categoryFilter, setCategoryFilter] = useState("All");
 
   // Pagination
-  const [page, setPage] = useState(1);
-  const rowsPerPage = 10;
+const [page, setPage] = useState(1);
+const rowsPerPage = 10;
+  
+
+
+const [dateFieldFilter, setDateFieldFilter] = useState<"published" | "expiry">("published");
+const [customFromDate, setCustomFromDate] = useState<Dayjs | null>(null);
+const [customToDate, setCustomToDate] = useState<Dayjs | null>(null);
+const [customDateOpen, setCustomDateOpen] = useState(false);
 
   // Fetch data
   useEffect(() => {
     const fetchHistory = async () => {
       let localHistory: HistoryRecord[] = [];
-
+      
       try {
         const stored = window.localStorage.getItem(CLIENT_HISTORY_STORAGE_KEY);
         const parsed = stored ? JSON.parse(stored) : [];
@@ -130,11 +152,14 @@ export default function RecommendationHistory({
           throw new Error("No auth token found");
         }
 
-        const res = await fetch(import.meta.env.VITE_API_URL + "/api/research/performance", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+     const res = await fetch(
+  `${import.meta.env.VITE_API_URL}/api/research/performance?page=${page}&limit=10&search=${searchQuery}`,
+  {
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("token")}`,
+    },
+  }
+);
 
         if (!res.ok) {
           throw new Error(`Performance API failed with status ${res.status}`);
@@ -164,7 +189,11 @@ export default function RecommendationHistory({
     };
 
     fetchHistory();
-  }, []);
+  }, [page, searchQuery]);
+
+  useEffect(() => {
+  setPage(1);
+}, [searchQuery]);
 
   useEffect(() => {
     if (!enableAddNotification) return;
@@ -218,15 +247,7 @@ export default function RecommendationHistory({
     let result = [...data];
 
     // --- GLOBAL SEARCH LOGIC ---
-    if (searchQuery.trim() !== "") {
-      const lowerQuery = searchQuery.toLowerCase();
-      result = result.filter((item) => {
-        // This converts every value in the row to a string and checks for a match
-        return Object.values(item).some((value) => 
-          String(value).toLowerCase().includes(lowerQuery)
-        );
-      });
-    }
+
 
     // --- CONDITION FOR DASHBOARD ---
     if (statusFilter !== "All") {
@@ -255,40 +276,67 @@ export default function RecommendationHistory({
         outcomeFilter === "Profit" ? item.profitLoss > 0 : item.profitLoss < 0
       );
     }
-    if (dateFilter !== "All") {
-      const now = new Date();
-      result = result.filter((item) => {
-        const itemDate = new Date(item.dateTime);
-        if (dateFilter === "Today") {
-          return itemDate.toDateString() === now.toDateString();
-        }
-        if (dateFilter === "Last 7 Days") {
-          const sevenDaysAgo = new Date();
-          sevenDaysAgo.setDate(now.getDate() - 7);
-          return itemDate >= sevenDaysAgo;
-        }
-        return true;
-      });
+   if (dateFilter !== "All") {
+  const today = dayjs().format("YYYY-MM-DD");
+
+  result = result.filter((item) => {
+    const rawDate =
+      dateFieldFilter === "expiry" ? item.expiry : item.dateTime;
+
+    if (!rawDate) return false;
+
+    const itemDate = dayjs(rawDate).format("YYYY-MM-DD");
+
+    if (dateFilter === "Today") {
+      return itemDate === today;
     }
 
+    if (dateFilter === "Last 7 Days") {
+      const sevenDaysAgo = dayjs().subtract(7, "day").format("YYYY-MM-DD");
+      return itemDate >= sevenDaysAgo && itemDate <= today;
+    }
+
+    if (dateFilter === "Custom") {
+      if (!customFromDate || !customToDate) return true;
+
+      const fromDate = customFromDate.format("YYYY-MM-DD");
+      const toDate = customToDate.format("YYYY-MM-DD");
+
+      return itemDate >= fromDate && itemDate <= toDate;
+    }
+
+    return true;
+  });
+}
+
     return result;
-  }, [data, searchQuery, statusFilter, typesOfCall, categoryFilter, actionFilter, outcomeFilter, dateFilter]);
+  }, [data,
+  statusFilter,
+  typesOfCall,
+  categoryFilter,
+  actionFilter,
+  outcomeFilter,
+  dateFilter,
+  dateFieldFilter,
+  customFromDate,
+  customToDate,]);
 
-  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+ const totalPages = filteredData.length === rowsPerPage ? page + 1 : page;
 
-  const paginatedData = filteredData.slice(
-    (page - 1) * rowsPerPage,
-    page * rowsPerPage
-  );
+const paginatedData = filteredData;
 
-  const handleReset = () => {
-    setDateFilter("All");
-    settypesOfCall("All");
-    setActionFilter("All");
-    setOutcomeFilter("All");
-    setCategoryFilter("All");
-    setPage(1);
-  };
+const handleReset = () => {
+  setDateFilter("All");
+  setDateFieldFilter("published");
+  setCustomFromDate(null);
+  setCustomToDate(null);
+  setCustomDateOpen(false);
+  settypesOfCall("All");
+  setActionFilter("All");
+  setOutcomeFilter("All");
+  setCategoryFilter("All");
+  setPage(1);
+};
 
   const formatDateTime = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -425,7 +473,7 @@ justifyContent: { xs: "center", md: "flex-start" },
   }}
 >
       {[
-        { value: dateFilter, setter: setDateFilter, label: "Date", options: ["Today", "Last 7 Days"] },
+      { value: dateFilter, setter: setDateFilter, label: "Date", options: ["Today", "Last 7 Days", "Custom"] },
         { value: typesOfCall, setter: settypesOfCall, label: "Type of Calls", options: ["cash", "futures", "options call", "options put"] },
         { value: actionFilter, setter: setActionFilter, label: "Action", options: ["BUY", "SELL"] },
         { value: outcomeFilter, setter: setOutcomeFilter, label: "Outcome", options: ["Profit", "Loss"] },
@@ -442,7 +490,21 @@ justifyContent: { xs: "center", md: "flex-start" },
         >
           <Select
             value={f.value}
-            onChange={(e) => { f.setter(e.target.value); setPage(1); }}
+             onOpen={() => {
+    if (f.label === "Date" && f.value === "Custom") {
+      setCustomDateOpen(true);
+    }
+  }}
+  onChange={(e) => {
+    const value = e.target.value;
+
+    f.setter(value);
+    setPage(1);
+
+    if (f.label === "Date" && value === "Custom") {
+      setCustomDateOpen(true);
+    }
+  }}
             displayEmpty
             size="small"
             sx={{
@@ -459,6 +521,7 @@ justifyContent: { xs: "center", md: "flex-start" },
         </Box>
       ))}
     </Box>
+ 
 
     {/* Reset Button */}
     <Button
@@ -561,33 +624,67 @@ justifyContent: { xs: "center", md: "flex-start" },
                         {row.symbol}
                       </Typography>
                     </TableCell>
-                    <TableCell sx={historyBodyStyle}>{row.expiry || "-"}</TableCell>
+                    {/* <TableCell sx={historyBodyStyle}>{row.expiry || "-"}</TableCell> */}
+                    <TableCell sx={historyBodyStyle}> {row.expiry ? new Date(row.expiry).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", }) : "-"} </TableCell>
+                    
                     <TableCell sx={historyBodyStyle}>{row.entry}</TableCell>
                     <TableCell sx={historyBodyStyle}>{row.exit}</TableCell>
                     <TableCell sx={historyBodyStyle}>
   <Box
     sx={{
-      display: "inline-block",
-      px: 1.5,
-      py: 0.5,
-      borderRadius: "4px",
-      fontSize: "0.75rem",
-      fontWeight: 700,
-      textTransform: "capitalize",
-      // THE CONDITION:
-      backgroundColor: 
-        row.status.toLowerCase() === "active" ? "#DCFCE7" : // Light Green
-        row.status.toLowerCase() === "published" ? "#DCFCE7" : // Light Green
-        row.status.toLowerCase() === "closed" ? "#FEF9C3" : // Light Yellow
-        "#F3F4F6", // Default Gray
-      color: 
-        row.status.toLowerCase() === "active" ? "#166534" : // Dark Green
-        row.status.toLowerCase() === "published" ? "#166534" : // Dark Green
-        row.status.toLowerCase() === "closed" ? "#854D0E" : // Dark Yellow/Brown
-        "#374151", // Default Dark Gray
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 0.5,
+      flexWrap: "wrap",
     }}
   >
-    {row.status}
+    <Box
+      sx={{
+        display: "inline-block",
+        px: 1.5,
+        py: 0.5,
+        borderRadius: "4px",
+        fontSize: "0.75rem",
+        fontWeight: 700,
+        textTransform: "capitalize",
+        backgroundColor:
+          row.status.toLowerCase() === "active"
+            ? "#DCFCE7"
+            : row.status.toLowerCase() === "published"
+            ? "#DCFCE7"
+            : row.status.toLowerCase() === "closed"
+            ? "#FEF9C3"
+            : "#F3F4F6",
+        color:
+          row.status.toLowerCase() === "active"
+            ? "#166534"
+            : row.status.toLowerCase() === "published"
+            ? "#166534"
+            : row.status.toLowerCase() === "closed"
+            ? "#854D0E"
+            : "#374151",
+      }}
+    >
+      {row.status}
+    </Box>
+
+ {row.version_type?.toUpperCase() === "ERRATA" && (
+  <Box
+    sx={{
+      display: "inline-block",
+      px: 1,
+      py: 0.5,
+      borderRadius: "4px",
+      fontSize: "0.7rem",
+      fontWeight: 700,
+      backgroundColor: "#f4d9a3",
+      color: "#ea0909",
+    }}
+  >
+    ERRATA
+  </Box>
+)}
   </Box>
 </TableCell>
                     <TableCell align="right" sx={historyBodyStyle}>
@@ -621,10 +718,9 @@ justifyContent: { xs: "center", md: "flex-start" },
           alignItems="center"
           sx={{ p: 2, borderTop: "1px solid #F0F0F0", gap: 2 }}
         >
-          <Typography fontSize="0.75rem" color="text.secondary">
-            Showing {filteredData.length > 0 ? (page - 1) * rowsPerPage + 1 : 0}-{Math.min(page * rowsPerPage, filteredData.length)} of {filteredData.length.toString().padStart(2, "0")}
-          </Typography>
-
+       <Typography fontSize="0.75rem" color="text.secondary">
+  Page {page} • {filteredData.length} records
+</Typography>
           <Stack direction="row" spacing={1}>
             <IconButton
               size="small"
@@ -646,7 +742,88 @@ justifyContent: { xs: "center", md: "flex-start" },
           </Stack>
         </Box>
       </Paper>
+<Dialog
+  open={customDateOpen}
+  onClose={() => setCustomDateOpen(false)}
+  maxWidth="xs"
+  fullWidth
+>
+  <DialogTitle>Custom Date Filter</DialogTitle>
 
+  <DialogContent>
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+        <Select
+          value={dateFieldFilter}
+          onChange={(e) =>
+            setDateFieldFilter(e.target.value as "published" | "expiry")
+          }
+          size="small"
+          fullWidth
+        >
+          <MenuItem value="published">Published Date</MenuItem>
+          <MenuItem value="expiry">Expiry Date</MenuItem>
+        </Select>
+
+        <DatePicker
+          label="From Date"
+          value={customFromDate}
+          onChange={(newValue) => setCustomFromDate(newValue)}
+          format="DD/MM/YYYY"
+          slotProps={{
+            textField: {
+              size: "small",
+              fullWidth: true,
+            },
+          }}
+        />
+
+        <DatePicker
+          label="To Date"
+          value={customToDate}
+          onChange={(newValue) => setCustomToDate(newValue)}
+          format="DD/MM/YYYY"
+          minDate={customFromDate || undefined}
+          slotProps={{
+            textField: {
+              size: "small",
+              fullWidth: true,
+            },
+          }}
+        />
+      </Box>
+    </LocalizationProvider>
+  </DialogContent>
+
+  <DialogActions>
+    <Button
+      onClick={() => {
+        setDateFilter("All");
+        setCustomFromDate(null);
+        setCustomToDate(null);
+        setCustomDateOpen(false);
+      }}
+    >
+      Clear
+    </Button>
+
+    <Button onClick={() => setCustomDateOpen(false)}>
+      Cancel
+    </Button>
+
+    <Button
+      variant="contained"
+      onClick={() => {
+        setDateFilter("Custom");
+        setPage(1);
+        setCustomDateOpen(false);
+      }}
+      disabled={!customFromDate || !customToDate}
+    >
+      Apply
+    </Button>
+  </DialogActions>
+</Dialog>
       <Snackbar
         open={notificationOpen}
         autoHideDuration={4000}

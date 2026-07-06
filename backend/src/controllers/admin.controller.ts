@@ -201,7 +201,7 @@ if (existingUser.rows.length > 0) {
     await client.query("COMMIT");
 
     // ================= SEND EMAIL AGAIN =================
-    const link = `${process.env.FRONTEND_URL}/subscription?token=${token}`;
+   const link = `${process.env.FRONTEND_URL}set-password?token=${token}`;
 
     await sendApprovalMail(email, name, link);
 
@@ -334,7 +334,7 @@ if (existingUser.rows.length > 0) {
     });
 
     // ================= SEND EMAIL =================
-    const link = `${process.env.FRONTEND_URL}/subscription?token=${token}`;
+    const link = `${process.env.FRONTEND_URL}set-password?token=${token}`;
     await sendApprovalMail(email, name, link);
     
     return res.json({
@@ -510,5 +510,228 @@ if (user.role === "BROKER") {
 
   } finally {
     client.release();
+  }
+};
+
+
+export const activateRA = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const { id } = req.params;
+
+    const oldData = await pool.query(
+      `
+      SELECT *
+      FROM users
+      WHERE id = $1
+      `,
+      [id]
+    );
+    const currentUser = oldData.rows[0];
+
+if (!currentUser) {
+  return res.status(404).json({
+    success: false,
+    message: "User not found",
+  });
+}
+
+if (currentUser.status === "active") {
+  return res.status(400).json({
+    success: false,
+    message: "User is already active",
+  });
+}
+
+    const result = await pool.query(
+      `
+      UPDATE users
+      SET
+        status = 'active',
+        is_active = true,
+        suspended_at = NULL,
+        suspended_reason = NULL
+      WHERE id = $1
+      RETURNING *
+      `,
+      [id]
+    );
+
+    await pool.query(
+      `
+     UPDATE ra_details
+  SET status = 'approved'
+  WHERE user_id = $1
+      `,
+      [id]
+    );
+
+    await createAuditLog({
+      adminName: req.user?.name || "ADMIN",
+      adminId: req.user?.id,
+      adminRole: req.user?.role || "ADMIN",
+
+      action: "ACTIVATE",
+      module: "RA",
+
+      targetEntity: result.rows[0].email,
+      targetType: "RA",
+
+      description: "RA account activated",
+
+      status: "SUCCESS",
+
+      ipAddress: getClientIp(req),
+      device: req.headers["user-agent"],
+
+      oldValue: oldData.rows[0],
+      newValue: result.rows[0],
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "RA activated successfully",
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
+export const resendPasswordLink = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const { userId } = req.body;
+
+    const userRes = await pool.query(
+      `
+      SELECT id, name, email, token_expiry
+      FROM users
+      WHERE id = $1
+      `,
+      [userId]
+    );
+
+    if (userRes.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    const user = userRes.rows[0];
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
+
+    await pool.query(
+      `
+      UPDATE users
+      SET
+        reset_token = $1,
+        token_expiry = $2,
+        updated_at = NOW()
+      WHERE id = $3
+      `,
+      [token, tokenExpiry, userId]
+    );
+
+    const frontendUrl = process.env.FRONTEND_URL?.endsWith("/")
+      ? process.env.FRONTEND_URL
+      : `${process.env.FRONTEND_URL}/`;
+
+    const link = `${frontendUrl}set-password?token=${token}`;
+
+    await sendApprovalMail(user.email, user.name, link);
+
+    await createAuditLog({
+      adminId: req.user?.id,
+      adminName: req.user?.name || "ADMIN",
+      adminRole: req.user?.role || "ADMIN",
+      action: "PASSWORD_LINK_RESENT",
+      module: "USER_MANAGEMENT",
+      targetEntity: user.email,
+      targetType: "USER",
+      description: "Password reset link resent by admin",
+      status: "SUCCESS",
+      ipAddress: getClientIp(req),
+      device: req.headers["user-agent"] as string,
+      oldValue: {
+        previousTokenExpiry: user.token_expiry || null,
+      },
+      newValue: {
+        userId,
+        email: user.email,
+        tokenExpiry,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Password link sent successfully ✅",
+    });
+  } catch (error) {
+    console.error("Resend Password Link Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
+export const getDisclaimerHistoryByRA = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const { userId } = req.params;
+
+    const result = await pool.query(
+      `
+      SELECT
+        dh.id,
+        dh.version_number,
+        dh.disclaimer_text,
+        dh.created_at,
+        u.name,
+        u.username,
+        u.email
+      FROM disclaimer_history dh
+      JOIN users u ON u.id = dh.ra_user_id
+      WHERE dh.ra_user_id = $1
+      ORDER BY dh.version_number DESC
+      `,
+      [userId]
+    );
+
+    return res.json({
+      success: true,
+      ra: result.rows[0]
+        ? {
+            name: result.rows[0].name,
+            username: result.rows[0].username,
+            email: result.rows[0].email,
+          }
+        : null,
+      history: result.rows,
+    });
+  } catch (error) {
+    console.error("GET DISCLAIMER HISTORY ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
