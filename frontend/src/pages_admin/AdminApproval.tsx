@@ -593,14 +593,13 @@ const handleSuspend = async (
           <Typography color="text.secondary">{selectedRA.phone}</Typography>
 
           <Box sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 1 }}>
-            {/* <Button onClick={() => openFile(selectedRA.profile)}>View Profile</Button> */}
-            <Button onClick={() => openFile(selectedRA.pan)}>View PAN</Button>
-            <Button onClick={() => openFile(selectedRA.address)}>View Address</Button>
-            <Button onClick={() => openFile(selectedRA.sebi)}>View SEBI</Button>
-            <Button onClick={() => openFile(selectedRA.sebi_receipt)}>View SEBI Receipt</Button>
-            <Button onClick={() => openFile(selectedRA.nism)}>View NISM</Button>
-            <Button onClick={() => openFile(selectedRA.cheque)}>View Cheque</Button>
-          </Box>
+  <Button 
+    variant="outlined" 
+    onClick={() => handleEdit(selectedRA.id, "RA")}
+  >
+    View Profile
+  </Button>
+</Box>
 
 
        <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
@@ -644,7 +643,7 @@ const handleSuspend = async (
               fullWidth
               onClick={() => handleEdit(selectedRA.id, "RA")}
             >
-              Edit
+              View Profile
             </Button>
 
           </Box>
@@ -784,147 +783,112 @@ const handleSuspend = async (
   <Box
     onClick={() => setSelectedBroker(null)}
     sx={{
-      display: { xs: "block", sm: "none" },
+      display: { xs: "block", sm: "none" }, // Shows only on mobile screen widths
       position: "fixed",
       inset: 0,
-      bgcolor: "rgba(0,0,0,0.4)",
-      zIndex: 1199,
+      backgroundColor: "rgba(0, 0, 0, 0.4)", // Restored back to a dim overlay background
+      zIndex: 1199,                          // Sits right below the main panel card layer
     }}
   />
 )}
 
-      {/* BROKER SIDE PANEL */}
-      {selectedBroker && (
-        <Paper
-          elevation={4}
-          sx={{
-  position: "fixed",
-  zIndex: 1200,
-  right: { xs: 0, sm: 20 },
-  top: { xs: "auto", sm: 120 },
-  bottom: { xs: 0, sm: "auto" },
-  left: { xs: 0, sm: "auto" },
-  width: { xs: "100%", sm: 330 },
-  p: 3,
-  borderRadius: { xs: "16px 16px 0 0", sm: 2 },
-  maxHeight: { xs: "80vh", sm: "calc(100vh - 140px)" },
-  overflowY: "auto",
-          }}
-        >
-          <Button
-            size="small"
-            onClick={() => setSelectedBroker(null)}
-            sx={{ position: "absolute", right: 10, top: 10 }}
-          >
-            X
-          </Button>
-
-          <Typography fontWeight={600}>Broker Verification</Typography>
-          <Typography sx={{ mt: 1 }}>{selectedBroker.name}</Typography>
-
-          <Box sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 1 }}>
-            {/* Standard Single Files */}
-            {selectedBroker.sebi_certificate && (
-              <Button onClick={() => openFile(selectedBroker.sebi_certificate)}>View SEBI Certificate</Button>
-            )}
-
-            {selectedBroker.appointment_letter && (
-              <Button onClick={() => openFile(selectedBroker.appointment_letter)}>View Appointment Letter</Button>
-            )}
-
-            {selectedBroker.networth_certificate && (
-              <Button onClick={() => openFile(selectedBroker.networth_certificate)}>View Networth Certificate</Button>
-            )}
-
-            {selectedBroker.financial_statements && (
-              <Button onClick={() => openFile(selectedBroker.financial_statements)}>View Financial Statements</Button>
-            )}
-
-            {selectedBroker.ca_certificate && (
-              <Button onClick={() => openFile(selectedBroker.ca_certificate)}>View CA Certificate</Button>
-            )}
-
-            {selectedBroker.pan && (
-              <Button onClick={() => openFile(selectedBroker.pan)}>View Company PAN</Button>
-            )}
-      
-            {/* Multiple Files: Exchange Certificates */}
-            {selectedBroker.exchange_certificates &&
-              selectedBroker.exchange_certificates.map((file: string, index: number) => (
-                <Button key={index} onClick={() => openFile(file)}>
-                  View Exchange Cert {index + 1}
-                </Button>
-              ))}
-          </Box>
-
-          {selectedBroker.status.toLowerCase() !== "approved" && (
-  <TextField
-    fullWidth
-    multiline
-    rows={2}
-    placeholder="Rejection Reason"
-    value={rejectReason}
-    onChange={(e) => setRejectReason(e.target.value)}
-    sx={{ mt: 2 }}
-  />
-)}
-{selectedBroker.status.toLowerCase() === "approved" && (
-  <TextField
-    fullWidth
-    multiline
-    rows={2}
-    placeholder="Suspend Reason"
-    value={suspendReason}
-    onChange={(e) => setSuspendReason(e.target.value)}
-    sx={{ mt: 2 }}
-  />
-)}
-
-          <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
-            
-            <Button
-              variant="contained"
-              color="success"
-              fullWidth
-             disabled={
-  selectedBroker.status.toLowerCase() === "approved" &&
-  selectedBroker.status.toLowerCase() !== "suspended"
-}
-              onClick={() => {
-                setSelectedId(selectedBroker.id);
-                setConfirmType("approve");
-                setConfirmOpen(true);
-              }}
-            >
-              Approve
-            </Button>
-           {selectedBroker.status.toLowerCase() !== "approved" && (
-  <Button
-    variant="contained"
-    color="error"
-    fullWidth
-    onClick={() => {
-      setSelectedId(selectedBroker.id);
-      setConfirmType("reject");
-      setConfirmOpen(true);
+{/* BROKER SIDE PANEL */}
+{selectedBroker && (
+  <Paper
+    elevation={4}
+    sx={{
+      position: "fixed",
+      zIndex: 1200,
+      right: { xs: 0, sm: 24 },              // Clean right edge margin alignment
+      top: { xs: "auto", sm: "15%" },         // Keeps panel pinned accurately relative to screen viewport height
+      bottom: { xs: 0, sm: "auto" },
+      left: { xs: 0, sm: "auto" },
+      width: { xs: "100%", sm: 330 },
+      p: 3,
+      backgroundColor: "white",
+      borderRadius: { xs: "16px 16px 0 0", sm: 2 },
+      maxHeight: { xs: "80vh", sm: "calc(100vh - 140px)" },
+      overflowY: "auto",
     }}
   >
-    Reject
-  </Button>
-)}
+    <Button
+      size="small"
+      onClick={() => setSelectedBroker(null)}
+      sx={{ position: "absolute", right: 10, top: 10 }}
+    >
+      X
+    </Button>
 
+    <Typography fontWeight={600}>Broker Verification</Typography>
+    <Typography sx={{ mt: 1 }}>{selectedBroker.name}</Typography>
 
+    <Box sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 1 }}>
+      <Button 
+        variant="outlined" 
+        onClick={() => handleEdit(selectedBroker.id, "BROKER")}
+      >
+        View Profile
+      </Button>
+    </Box>
 
-            <Button
-              variant="contained"
-              color="warning"
-              fullWidth
-              onClick={() => handleEdit(selectedBroker.id, "BROKER")}
-            > Edit </Button>
+    {String(selectedBroker.status).toLowerCase().includes("approved") ? null : (
+      <TextField
+        fullWidth
+        multiline
+        rows={2}
+        placeholder="Rejection Reason"
+        value={rejectReason}
+        onChange={(e) => setRejectReason(e.target.value)}
+        sx={{ mt: 2 }}
+      />
+    )}
 
-          </Box>
-        </Paper>
+    <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
+      
+      <Button
+        variant="contained"
+        color="success"
+        fullWidth
+        disabled={
+          selectedBroker.status.toLowerCase() === "approved" &&
+          selectedBroker.status.toLowerCase() !== "suspended"
+        }
+        onClick={() => {
+          setSelectedId(selectedBroker.id);
+          setConfirmType("approve");
+          setConfirmOpen(true);
+        }}
+      >
+        Approve
+      </Button>
+      
+      {selectedBroker.status.toLowerCase() !== "approved" && (
+        <Button
+          variant="contained"
+          color="error"
+          fullWidth
+          onClick={() => {
+            setSelectedId(selectedBroker.id);
+            setConfirmType("reject");
+            setConfirmOpen(true);
+          }}
+        >
+          Reject
+        </Button>
       )}
+
+      <Button
+        variant="contained"
+        color="warning"
+        fullWidth
+        onClick={() => handleEdit(selectedBroker.id, "BROKER")}
+      > 
+        View Profile 
+      </Button>
+
+    </Box>
+  </Paper>
+)}
     </Box>
   );
 };

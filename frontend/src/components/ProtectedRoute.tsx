@@ -26,14 +26,17 @@ const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
-        const userRole = res.data.role;
+  console.log("ME API RESPONSE:", res.data);
 
-        if (allowedRoles && !allowedRoles.includes(userRole)) {
-          setStatus("forbidden");
-        } else {
-          setStatus("allowed");
-        }
-      })
+  const userRole = res.data.role;
+  console.log("USER ROLE:", userRole);
+
+  if (allowedRoles && !allowedRoles.includes(userRole)) {
+    setStatus("forbidden");
+  } else {
+    setStatus("allowed");
+  }
+})
       .catch((error) => {
   const statusCode = error?.response?.status;
   const message = error?.response?.data?.message;
