@@ -636,16 +636,6 @@ const handleSuspend = async (
   </Button>
 )}
 
-
-            <Button
-              variant="contained"
-              color="warning"
-              fullWidth
-              onClick={() => handleEdit(selectedRA.id, "RA")}
-            >
-              View Profile
-            </Button>
-
           </Box>
 
         </Paper>
@@ -876,15 +866,6 @@ const handleSuspend = async (
           Reject
         </Button>
       )}
-
-      <Button
-        variant="contained"
-        color="warning"
-        fullWidth
-        onClick={() => handleEdit(selectedBroker.id, "BROKER")}
-      > 
-        View Profile 
-      </Button>
 
     </Box>
   </Paper>
