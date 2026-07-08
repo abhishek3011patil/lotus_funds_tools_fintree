@@ -135,67 +135,90 @@ const handleResetFilters = () => {
   setPage(0);
 };
   // ── NEW: actual download logic ────────────────────────────────────
-  const handleConfirmExport = () => {
-    if (!exportFromDate || !exportToDate) {
-      setExportError('Please select both From and To dates.');
-      return;
-    }
+ const handleConfirmExport = async () => {
+  if (!exportFromDate || !exportToDate) {
+    setExportError("Please select both From and To dates.");
+    return;
+  }
 
-    const from = new Date(exportFromDate);
-    const to = new Date(exportToDate);
-    to.setHours(23, 59, 59, 999); // include the full "to" day
+  if (new Date(exportFromDate) > new Date(exportToDate)) {
+    setExportError('"From" date cannot be after "To" date.');
+    return;
+  }
 
-    if (from > to) {
-      setExportError('"From" date cannot be after "To" date.');
-      return;
-    }
+  try {
+    const token = localStorage.getItem("token");
+    const API_URL = import.meta.env.VITE_API_URL;
 
-    // Filter logs within the selected date range
-    const exportData = logs.filter(log => {
-      const logDate = new Date(log.created_at);
-      return logDate >= from && logDate <= to;
+    const response = await axios.get(`${API_URL}/api/audit-logs/export`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      params: {
+        fromDate: exportFromDate,
+        toDate: exportToDate,
+        search: debouncedSearch.trim().length >= 3 ? debouncedSearch.trim() : "",
+        user: userFilter,
+        module: moduleFilter,
+        status: statusFilter,
+      },
     });
 
+    const exportData = response.data.logs || [];
+
     if (exportData.length === 0) {
-      setExportError('No logs found for the selected date range.');
+      setExportError("No logs found for the selected date range.");
       return;
     }
 
-    // Build rows for the spreadsheet
-    const worksheetData = exportData.map(log => ({
-      'Log ID': log.log_id || '',
-      'Timestamp': log.created_at ? new Date(log.created_at).toLocaleString() : '',
-      'Admin Name': log.admin_name || '',
-      'Admin Role': log.admin_role || '',
-      'Action': log.action || '',
-      'Module': log.module || '',
-      'Target Entity': log.target_entity || '',
-      'Target Type': log.target_type || '',
-      'Description': log.description || '',
-      'Status': log.status || '',
-      'Reason': log.reason || '',
-      'IP Address': log.ip_address || '',
-      'Device': log.device || '',
-      'Old Value': log.old_value ? (typeof log.old_value === 'string' ? log.old_value : JSON.stringify(log.old_value)) : '',
-      'New Value': log.new_value ? (typeof log.new_value === 'string' ? log.new_value : JSON.stringify(log.new_value)) : '',
+    const worksheetData = exportData.map((log: AuditLog) => ({
+      "Log ID": log.log_id || "",
+      "Timestamp": log.created_at
+        ? new Date(log.created_at).toLocaleString()
+        : "",
+      "Admin Name": log.admin_name || "",
+      "Admin Role": log.admin_role || "",
+      "Action": log.action || "",
+      "Module": log.module || "",
+      "Target Entity": log.target_entity || "",
+      "Target Type": log.target_type || "",
+      "Description": log.description || "",
+      "Status": log.status || "",
+      "Reason": log.reason || "",
+      "IP Address": log.ip_address || "",
+      "Device": log.device || "",
+      "Old Value": log.old_value
+        ? typeof log.old_value === "string"
+          ? log.old_value
+          : JSON.stringify(log.old_value)
+        : "",
+      "New Value": log.new_value
+        ? typeof log.new_value === "string"
+          ? log.new_value
+          : JSON.stringify(log.new_value)
+        : "",
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(worksheetData);
 
-    // Auto-size columns
-    const colWidths = Object.keys(worksheetData[0]).map(key => ({
-      wch: Math.max(key.length, 15),
+    worksheet["!cols"] = Object.keys(worksheetData[0]).map((key) => ({
+      wch: Math.max(key.length, 18),
     }));
-    worksheet['!cols'] = colWidths;
 
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Audit Logs');
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Audit Logs");
 
-    const fileName = `audit_logs_${exportFromDate}_to_${exportToDate}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
+    XLSX.writeFile(
+      workbook,
+      `audit_logs_${exportFromDate}_to_${exportToDate}.xlsx`
+    );
 
     setExportDialogOpen(false);
-  };
+  } catch (error) {
+    console.error("Export failed:", error);
+    setExportError("Failed to export audit logs.");
+  }
+};
   // ──────────────────────────────────────────────────────────────────
 
   return (
