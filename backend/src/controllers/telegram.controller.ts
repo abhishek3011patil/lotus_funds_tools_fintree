@@ -709,8 +709,10 @@ SEBI Registration No: ${ra.sebi_reg_no || "N/A"}
 Contact No: ${ra.mobile || "N/A"}
 Email ID : ${ra.email || "N/A"}
 
-Read Full Disclaimer / Disclosure at : https://lotusfunds.com/disclaimer&disclosure
 `;
+
+// Read Full Disclaimer / Disclosure at : https://lotusfunds.com/disclaimer&disclosure
+
 
     // ✅ Respond immediately. Frontend will not wait for Telegram sending.
     res.status(202).json({
