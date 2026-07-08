@@ -10,6 +10,7 @@ import {
   getTelegramStatus,
   getMyParticipants,
   saveParticipantRA,
+  uploadExcelParticipants
 } from "../controllers/telegram.controller";
 import {
   authenticate,
@@ -39,6 +40,12 @@ router.post(
   "/add-participant",
   authenticate,
   saveParticipantRA
+);
+
+router.post(
+   "/upload-excel",
+   authenticate,
+   uploadExcelParticipants
 );
 
 // ✅ STATUS ROUTE

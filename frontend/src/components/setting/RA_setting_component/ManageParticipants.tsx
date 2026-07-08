@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import {
   Box,
@@ -19,6 +19,8 @@ import {
 
 import SearchIcon from "@mui/icons-material/Search";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import * as XLSX from "xlsx";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 
 interface Participant {
   id: string;
@@ -35,6 +37,7 @@ const ManageParticipants: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [page, setPage] = useState(1);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const rowsPerPage = 5;
 
@@ -121,6 +124,74 @@ const ManageParticipants: React.FC = () => {
     fetchParticipants();
   }, []);
 
+  const handleExcelUpload = async (
+  e: React.ChangeEvent<HTMLInputElement>
+) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const data = await file.arrayBuffer();
+
+    const workbook = XLSX.read(data, {
+      type: "array",
+    });
+
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+    const participants = XLSX.utils.sheet_to_json(sheet);
+
+    const token = localStorage.getItem("token");
+
+    const res = await axios.post(
+  `${import.meta.env.VITE_API_URL}/api/telegram/upload-excel`,
+  {
+    participants,
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
+
+const result = res.data;
+
+// Refresh list
+await fetchParticipants();
+
+let message = "";
+
+// Successfully added count
+if (result.successCount !== undefined) {
+  message += `✅ Added: ${result.successCount}\n`;
+}
+
+// Failed count
+if (result.failedCount !== undefined) {
+  message += `❌ Failed: ${result.failedCount}\n`;
+}
+
+// Show failed participants
+if (Array.isArray(result.failedParticipants) && result.failedParticipants.length) {
+  message += "\nFailed Participants:\n";
+
+  result.failedParticipants.forEach((p: any) => {
+    message += `• ${p.telegram_client_name || p.username || "Unknown"} - ${
+      p.reason || "Unknown error"
+    }\n`;
+  });
+}
+
+alert(message || "Upload completed");
+  } catch (err: any) {
+    console.error(err);
+    alert(err?.response?.data?.message || "Upload failed");
+  }
+
+  e.target.value = "";
+};
+
   const filteredParticipants = participants.filter((participant) => {
     const query = searchQuery.toLowerCase();
 
@@ -147,6 +218,8 @@ const ManageParticipants: React.FC = () => {
   useEffect(() => {
     setPage(1);
   }, [searchQuery]);
+
+
 
   return (
     <Box sx={{ mt: 4, width: "100%" }}>
@@ -180,6 +253,22 @@ const ManageParticipants: React.FC = () => {
           >
             {saving ? "Adding..." : "Add"}
           </Button>
+           <Button
+    variant="outlined"
+    startIcon={<UploadFileIcon />}
+    onClick={() => fileInputRef.current?.click()}
+    sx={{ whiteSpace: "nowrap" }}
+  >
+    Add Excel
+  </Button>
+
+  <input
+    ref={fileInputRef}
+    type="file"
+    accept=".xlsx,.xls"
+    hidden
+    onChange={handleExcelUpload}
+  />
         </Box>
       </Paper>
 
