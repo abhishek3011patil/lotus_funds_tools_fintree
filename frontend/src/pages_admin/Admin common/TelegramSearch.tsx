@@ -9,8 +9,9 @@ import {
   Typography,
 } from "@mui/material";
 import { Send as SendIcon } from "@mui/icons-material";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import axios from "axios";
+import * as XLSX from "xlsx";
 
 type TelegramSearchProps = {
   raId?: string; // ✅ optional now
@@ -24,6 +25,8 @@ export const TelegramSearch = ({ raId, onSaved }: TelegramSearchProps) => {
   const [loading, setLoading] = useState(false);
   const [phoneError, setPhoneError] = useState("");
   const [entityType, setEntityType] = useState("USER");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   console.log("raId prop =", raId);
 console.trace("TelegramSearch rendered from");
 
@@ -105,6 +108,85 @@ console.trace("TelegramSearch rendered from");
   } finally {
     setLoading(false);
   }
+};
+
+const handleExcelUpload = (
+  e: React.ChangeEvent<HTMLInputElement>
+) => {
+  const file = e.target.files?.[0];
+
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = async (event) => {
+    try {
+      const data = new Uint8Array(
+        event.target?.result as ArrayBuffer
+      );
+
+      const workbook = XLSX.read(data, {
+        type: "array",
+      });
+
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+      const rows = XLSX.utils.sheet_to_json(sheet);
+
+     const token = localStorage.getItem("token");
+
+const res = await axios.post(
+  `${import.meta.env.VITE_API_URL}/api/telegram/upload-excel`,
+  {
+    participants: rows,
+    user_id: raId || null,
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
+
+const { summary, results } = res.data;
+
+const failed = results.filter(
+  (x: any) => x.status === "failed"
+);
+
+let message =
+  `Uploaded Successfully\n\nSuccess : ${summary.success}\nFailed : ${summary.failed}`;
+
+if (failed.length) {
+  message += "\n\nFailed Participants:\n";
+
+  failed.forEach((x: any) => {
+    message += `• ${x.participant}\n`;
+  });
+}
+
+alert(message);
+
+onSaved?.();
+
+    } catch (err: any) {
+  console.error(err);
+
+  if (axios.isAxiosError(err)) {
+    console.log(err.response?.data);
+
+    alert(
+      err.response?.data?.message ||
+      JSON.stringify(err.response?.data) ||
+      "Upload failed"
+    );
+  } else {
+    alert("Upload failed");
+  }
+}
+  };
+
+  reader.readAsArrayBuffer(file);
 };
 
   return (
@@ -214,24 +296,46 @@ console.trace("TelegramSearch rendered from");
 )}
 
           {/* Save Button */}
-          <Box sx={{ gridColumn: "1 / -1", mt: 1 }}>
-            <Button
-              variant="contained"
-              size="large"
-              startIcon={<SendIcon />}
-              onClick={handleSave}
-              disabled={loading}
-              sx={{
-                backgroundColor: "#22C55E",
-                "&:hover": { backgroundColor: "#1a9d4b" },
-                textTransform: "none",
-                px: 4,
-                fontWeight: "600",
-                fontSize: 15,
-              }}
-            >
-              {loading ? "Saving..." : "Save Details"}
-            </Button>
+          <Box   sx={{
+    gridColumn: "1 / -1",
+    mt: 1,
+    display: "flex",
+    gap: 2,
+  }}
+>
+  <Button
+    variant="contained"
+    size="large"
+    startIcon={<SendIcon />}
+    onClick={handleSave}
+    disabled={loading}
+    sx={{
+      backgroundColor: "#22C55E",
+      "&:hover": { backgroundColor: "#1a9d4b" },
+      textTransform: "none",
+      px: 4,
+      fontWeight: "600",
+      fontSize: 15,
+    }}
+  >
+    {loading ? "Saving..." : "Save Details"}
+  </Button>
+
+  <Button
+    variant="outlined"
+    size="large"
+    onClick={() => fileInputRef.current?.click()}
+  >
+    Add Excel
+  </Button>
+
+  <input
+    ref={fileInputRef}
+    type="file"
+    hidden
+    accept=".xlsx,.xls"
+    onChange={handleExcelUpload}
+  />
           </Box>
         </Box>
       </Paper>

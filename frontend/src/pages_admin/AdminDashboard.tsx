@@ -273,8 +273,6 @@ const filteredRows = approvedRows.filter((row) => {
   const filteredSuspendedRows = suspendedRows.filter((row) => {
   const query = searchQuery.toLowerCase();
 
-  
-
   return (
     row.name.toLowerCase().includes(query) ||
     row.phone.includes(query)
@@ -446,7 +444,7 @@ setParticipantUsername("");
   setParticipant(null);
 
   if (selectedRA) {
-    await fetchParticipants(selectedRA.id);
+   await fetchParticipants(selectedRA.userId || selectedRA.id); 
   }
 };
 
@@ -697,7 +695,6 @@ const handleResendPasswordLink = async (userId: string) => {
           <TableHead sx={{ backgroundColor: "#f6f6f6" }}>
             <TableRow>
               <TableCell>Name</TableCell>
-              <TableCell>Phone</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Age / Time</TableCell>
               <TableCell>Requests</TableCell>
@@ -710,8 +707,6 @@ const handleResendPasswordLink = async (userId: string) => {
             {paginatedRows.map((row) => (
               <TableRow key={row.id}>
                 <TableCell>{row.name}</TableCell>
-
-                <TableCell>{row.phone}</TableCell>
 
                 <TableCell>
                   <Chip
@@ -830,11 +825,10 @@ const handleResendPasswordLink = async (userId: string) => {
       <TableHead sx={{ backgroundColor: "#f6f6f6" }}>
         <TableRow>
           <TableCell>Name</TableCell>
-          <TableCell>Phone</TableCell>
           <TableCell>Status</TableCell>
           <TableCell>Age / Time</TableCell>
           <TableCell>Suspend Reason</TableCell>
-          <TableCell >Action</TableCell>
+          <TableCell align="right">Action</TableCell>
           
         </TableRow>
       </TableHead>
@@ -845,7 +839,7 @@ const handleResendPasswordLink = async (userId: string) => {
           <TableRow key={row.id}>
 
             <TableCell>{row.name}</TableCell>
-            <TableCell>{row.phone}</TableCell>
+
             <TableCell>
               <Chip
                 size="small"
@@ -854,13 +848,11 @@ const handleResendPasswordLink = async (userId: string) => {
               />
             </TableCell>
 
-            
-<TableCell>{row["age/time"]}</TableCell>
-          
+            <TableCell>{row["age/time"]}</TableCell>
               <TableCell>
                 {row.suspendReason || "-"}
               </TableCell>
-            <TableCell >
+            <TableCell align="right">
               <Button
                 size="small"
                 variant="outlined"
@@ -1206,11 +1198,11 @@ const handleResendPasswordLink = async (userId: string) => {
 
   {selectedRA && (
     <TelegramSearch
-      raId={selectedRA.userId}   // ✅ correct
-      onSaved={() => {
-        fetchParticipants(selectedRA.id); // ✅ refresh correctly
-      }}
-    />
+  raId={selectedRA.userId}
+  onSaved={async () => {
+    await fetchParticipants(selectedRA.userId!);
+  }}
+/>
   )}
 </Box>
 
