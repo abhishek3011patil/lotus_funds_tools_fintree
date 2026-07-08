@@ -9,6 +9,8 @@ import ClientLayout from "../components/layout_client/AppLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import LoadingPage from "../common/LoadingPage";
 import AdminAuditLogs from "../pages_admin/AdminAuditLogs";
+import { TelegramNotificationProvider } from "./hooks/useTelegramNotification";
+
 
 
 // --- Lazy: Auth & Public ---

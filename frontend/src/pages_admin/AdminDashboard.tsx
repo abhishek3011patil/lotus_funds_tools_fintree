@@ -21,6 +21,7 @@ import { useNavigate } from "react-router-dom";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogActions from "@mui/material/DialogActions";
+import {ToggleButton, ToggleButtonGroup} from "@mui/material";
 
 import TelegramSearch from "./Admin common/TelegramSearch";
 
@@ -56,13 +57,16 @@ const AdminDashboard = () => {
   const [rows, setRows] = useState<AdminRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [filterTab, setFilterTab] = useState<"all" | "approved" | "requests">("all");
 
   const [selectedRA, setSelectedRA] = useState<AdminRow | null>(null);
   const [panelMode, setPanelMode] = useState<"ra" | "participant">("ra");
   const [suspendReason, setSuspendReason] = useState("");
+  const [suspendedPage, setSuspendedPage] = useState(1);
   const [confirmOpen, setConfirmOpen] = useState(false);
 const [confirmType, setConfirmType] = useState<"RA" | "BROKER" | null>(null);
 const [confirmId, setConfirmId] = useState<string | null>(null);
+
 
   type Participant = {
   id: string;
@@ -213,6 +217,7 @@ useEffect(() => {
 
   useEffect(() => {
     setPage(1);
+    setSuspendedPage(1);
   }, [searchQuery]);
 
   /* ================= STATUS COLOR ================= */
@@ -241,14 +246,23 @@ const suspendedRows = rows.filter(
     (row.raStatus || "").toLowerCase() === "suspended"
 );
 
-  const filteredRows = approvedRows.filter((row) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      row.name.toLowerCase().includes(query) ||
-      row.phone.includes(query) ||
-      (row.telegram?.toLowerCase().includes(query) ?? false)
-    );
-  });
+const filteredRows = approvedRows.filter((row) => {
+  const query = searchQuery.toLowerCase().trim();
+
+  // 1. Partial/Full Keyword Search Overrides
+  if (query && "approved".startsWith(query)) return true;
+  if (query && "requests".startsWith(query)) return Number(row.pending_requests) > 0;
+
+  // 2. Toggle Tab Filter
+  if (filterTab === "requests" && Number(row.pending_requests) <= 0) return false;
+
+  // 3. Text Search (Name, Phone, Telegram)
+  return (
+    row.name.toLowerCase().includes(query) ||
+    row.phone.includes(query) ||
+    (row.telegram?.toLowerCase().includes(query) ?? false)
+  );
+});
 
   const pageCount = Math.ceil(filteredRows.length / ITEMS_PER_PAGE);
   const paginatedRows = filteredRows.slice(
@@ -258,6 +272,8 @@ const suspendedRows = rows.filter(
 
   const filteredSuspendedRows = suspendedRows.filter((row) => {
   const query = searchQuery.toLowerCase();
+
+  
 
   return (
     row.name.toLowerCase().includes(query) ||
@@ -270,8 +286,8 @@ const suspendedPageCount = Math.ceil(
 );
 
 const paginatedSuspendedRows = filteredSuspendedRows.slice(
-  (page - 1) * ITEMS_PER_PAGE,
-  page * ITEMS_PER_PAGE
+  (suspendedPage - 1) * ITEMS_PER_PAGE,
+  suspendedPage * ITEMS_PER_PAGE
 );
 
   /* ================= FILE VIEW ================= */
@@ -657,6 +673,24 @@ const handleResendPasswordLink = async (userId: string) => {
         }}
       />
 
+      {/* 👇 ADD THIS FILTER TOGGLE BUTTON GROUP HERE */}
+    <ToggleButtonGroup
+      value={filterTab}
+      exclusive
+      onChange={(_, newTab) => {
+        if (newTab !== null) {
+          setFilterTab(newTab);
+          setPage(1); // Reset pagination back to page 1 on filter change
+        }
+      }}
+      size="small"
+      sx={{ alignSelf: "flex-start" }}
+    >
+      <ToggleButton value="all" sx={{ px: 3 }}>ALL</ToggleButton>
+      <ToggleButton value="approved" sx={{ px: 3 }}>APPROVED</ToggleButton>
+      <ToggleButton value="requests" sx={{ px: 3 }}>REQUESTS</ToggleButton>
+    </ToggleButtonGroup>
+
       {/* TABLE */}
       <TableContainer component={Paper} variant="outlined">
         <Table size="small">
@@ -854,6 +888,18 @@ const handleResendPasswordLink = async (userId: string) => {
 
     </Table>
   </TableContainer>
+  <Pagination
+    sx={{ mx: "auto", display: "flex", justifyContent: "center", mt: 2 }}
+    count={suspendedPageCount || 1}
+    page={suspendedPage}
+    onChange={(_, value) => setSuspendedPage(value)}
+    renderItem={(item) => (
+      <PaginationItem
+        slots={{ previous: ArrowBackIcon, next: ArrowForwardIcon }}
+        {...item}
+      />
+    )}
+  />
 </Box>
 
       {/* SIDE PANEL */}
