@@ -9,6 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { Send as SendIcon } from "@mui/icons-material";
+import DownloadIcon from "@mui/icons-material/Download";
 import { useState, useRef } from "react";
 import axios from "axios";
 import * as XLSX from "xlsx";
@@ -110,83 +111,96 @@ console.trace("TelegramSearch rendered from");
   }
 };
 
-const handleExcelUpload = (
+const handleExcelUpload = async (
   e: React.ChangeEvent<HTMLInputElement>
 ) => {
   const file = e.target.files?.[0];
 
   if (!file) return;
 
-  const reader = new FileReader();
+  try {
+    const token = localStorage.getItem("token");
 
-  reader.onload = async (event) => {
-    try {
-      const data = new Uint8Array(
-        event.target?.result as ArrayBuffer
-      );
+    const formData = new FormData();
+    formData.append("file", file);
 
-      const workbook = XLSX.read(data, {
-        type: "array",
-      });
+    if (raId) {
+      formData.append("user_id", raId);
+    }
 
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const res = await axios.post(
+      `${import.meta.env.VITE_API_URL}/api/telegram/upload-excel`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
 
-      const rows = XLSX.utils.sheet_to_json(sheet);
-
-     const token = localStorage.getItem("token");
-
-const res = await axios.post(
-  `${import.meta.env.VITE_API_URL}/api/telegram/upload-excel`,
-  {
-    participants: rows,
-    user_id: raId || null,
-  },
-  {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  }
-);
-
-const { summary, results } = res.data;
+    const { summary, results } = res.data;
 
 const failed = results.filter(
   (x: any) => x.status === "failed"
 );
 
 let message =
-  `Uploaded Successfully\n\nSuccess : ${summary.success}\nFailed : ${summary.failed}`;
+`Success : ${summary.success}
+Failed : ${summary.failed}`;
 
 if (failed.length) {
-  message += "\n\nFailed Participants:\n";
 
-  failed.forEach((x: any) => {
-    message += `• ${x.participant}\n`;
-  });
+   message += "\n\nFailed:\n";
+
+   failed.forEach((f:any)=>{
+
+      message += `${f.participant} : ${f.error}\n`;
+
+   });
+
 }
 
 alert(message);
 
 onSaved?.();
 
-    } catch (err: any) {
-  console.error(err);
-
-  if (axios.isAxiosError(err)) {
-    console.log(err.response?.data);
+    onSaved?.();
+  } catch (err: any) {
+    console.error(err);
 
     alert(
-      err.response?.data?.message ||
-      JSON.stringify(err.response?.data) ||
-      "Upload failed"
+      err.response?.data?.message || "Upload failed"
     );
-  } else {
-    alert("Upload failed");
   }
-}
-  };
+};
 
-  reader.readAsArrayBuffer(file);
+const downloadTemplate = async () => {
+  const token = localStorage.getItem("token");
+
+  const response = await axios.get(
+    `${import.meta.env.VITE_API_URL}/api/telegram/download-template`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      responseType: "blob",
+    }
+  );
+
+  const url = window.URL.createObjectURL(
+    new Blob([response.data])
+  );
+
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = "Telegram_Template.xlsx";
+
+  document.body.appendChild(link);
+  link.click();
+
+  link.remove();
 };
 
   return (
@@ -328,6 +342,15 @@ onSaved?.();
   >
     Add Excel
   </Button>
+
+  <Button
+  variant="outlined"
+  size="large"
+  startIcon={<DownloadIcon />}
+  onClick={downloadTemplate}
+>
+  Template
+</Button>
 
   <input
     ref={fileInputRef}

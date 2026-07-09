@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import {
   Box,
@@ -37,6 +37,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import EditIcon from "@mui/icons-material/Edit";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+
 
 // ─────────────────────────────────────────────
 // Qonto-style Stepper connector & icon
@@ -257,6 +258,84 @@ const [s4Err, setS4Err] = useState<Record<string, boolean>>({});
   });
   const [s5Err, setS5Err] = useState<Record<string, boolean>>({});
 
+  // ============================
+// Restore saved form
+// ============================
+// ============================
+// Prevent saving before restore
+// ============================
+const restored = useRef(false);
+
+// Restore once
+useEffect(() => {
+  const savedForm = localStorage.getItem("brokerRegistrationForm");
+  const savedStep = localStorage.getItem("brokerRegistrationStep");
+
+  if (savedForm) {
+    try {
+      const parsed = JSON.parse(savedForm);
+
+      setS1(parsed.s1 || {
+        legalName: "",
+        tradeName: "",
+        entityType: "",
+        incDay: "",
+        incMonthYear: "",
+        pan: "",
+        cin: "",
+        gstin: "",
+        registeredAddress: "",
+        correspondenceAddress: "",
+        sameAsRegistered: true,
+        email: "",
+        mobile: "",
+        website: "",
+      });
+
+      setS2(parsed.s2 || s2);
+      setS3(parsed.s3 || s3);
+      setS4(parsed.s4 || s4);
+      setDeclarations(parsed.declarations || declarations);
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+  if (savedStep) {
+    setActiveStep(Number(savedStep));
+  }
+
+  restored.current = true;
+}, []);
+
+
+// Save automatically
+useEffect(() => {
+  if (!restored.current) return;
+
+  localStorage.setItem(
+    "brokerRegistrationForm",
+    JSON.stringify({
+      s1,
+      s2,
+      s3,
+      s4,
+      declarations,
+    })
+  );
+}, [s1, s2, s3, s4, declarations]);
+
+
+// Save step
+useEffect(() => {
+  if (!restored.current) return;
+
+  localStorage.setItem(
+    "brokerRegistrationStep",
+    activeStep.toString()
+  );
+}, [activeStep]);
+
   // ────────────────────────────────────────────
   // Validation per step
   // ────────────────────────────────────────────
@@ -290,7 +369,7 @@ const [s4Err, setS4Err] = useState<Record<string, boolean>>({});
     if (!s3.coName.trim()) errs.coName = true;
     if (!s3.coDesignation) errs.coDesignation = true;
     if (!s3.coPan.trim()) errs.coPan = true;
-    if (!s3.coMobile.trim()) errs.coMobile = true;
+    if (!s3.coMobile || s3.coMobile.length !== 10) {errs.coMobile = true;}
     if (!appointmentFile) errs.appointmentFile = true;
     if (!s3.netWorth.trim()) errs.netWorth = true;
     if (!s3.auditorName.trim()) errs.auditorName = true;
@@ -423,7 +502,9 @@ const [s4Err, setS4Err] = useState<Record<string, boolean>>({});
   }
 );
 
-    alert("Broker Registered Successfully");
+localStorage.removeItem("brokerRegistrationForm");
+localStorage.removeItem("brokerRegistrationStep");    
+alert("Broker Registered Successfully");
   } catch (err: any) {
     console.error(err);
 
@@ -802,11 +883,42 @@ const handleBack = () => {
               {s3Err.coPan && errMsg()}
             </Grid>
             <Grid item xs={12} sm={6}>
-              {label("Mobile Number", true)}
-              <TextField fullWidth placeholder="Enter Mobile" sx={s3Err.coMobile ? inputSxErr : inputSx}
-                value={s3.coMobile} onChange={(e) => setS3({ ...s3, coMobile: e.target.value })} />
-              {s3Err.coMobile && errMsg()}
-            </Grid>
+  {label("Mobile Number", true)}
+
+  <TextField
+    fullWidth
+    placeholder="Enter Mobile"
+    sx={s3Err.coMobile ? inputSxErr : inputSx}
+    value={s3.coMobile}
+    onChange={(e) => {
+      const value = e.target.value.replace(/\D/g, "");
+
+      if (value.length <= 10) {
+        setS3({
+          ...s3,
+          coMobile: value,
+        });
+      }
+    }}
+    inputProps={{
+      maxLength: 10,
+      inputMode: "numeric",
+    }}
+    InputProps={{
+      startAdornment: (
+        <InputAdornment position="start">
+          +91
+        </InputAdornment>
+      ),
+    }}
+    error={s3Err.coMobile}
+    helperText={
+      s3Err.coMobile
+        ? "Mobile number is required"
+        : "Enter 10 digit mobile number"
+    }
+  />
+</Grid>
             <Grid item xs={12} sm={6}>
   <FileUploadBox
   fieldLabel="Upload Appointment Letter (PDF)"
@@ -1110,7 +1222,37 @@ const renderStep4 = () => {
       <Box sx={{ display: "flex", justifyContent: "flex-end", px: { xs: 2, md: 4 }, py: 1, bgcolor: "white", borderBottom: "1px solid #E2E8F0" }}>
         <Stack direction="row" spacing={1} alignItems="center">
           <Button startIcon={<HelpOutlineIcon sx={{ fontSize: 18 }} />} sx={{ color: "#64748B", textTransform: "none", fontWeight: 500 }}>Help</Button>
-          <Button variant="contained" sx={{ bgcolor: "#2563EB", textTransform: "none", boxShadow: "none", borderRadius: "6px", px: 3 }}>Save Draft</Button>
+          <Button
+  variant="contained"
+  onClick={() => {
+    localStorage.setItem(
+      "brokerRegistrationForm",
+      JSON.stringify({
+        s1,
+        s2,
+        s3,
+        s4,
+        declarations,
+      })
+    );
+
+    localStorage.setItem(
+      "brokerRegistrationStep",
+      activeStep.toString()
+    );
+
+    alert("Draft Saved");
+  }}
+  sx={{
+    bgcolor: "#2563EB",
+    textTransform: "none",
+    boxShadow: "none",
+    borderRadius: "6px",
+    px: 3,
+  }}
+>
+  Save Draft
+</Button>
           <Button sx={{ color: "#64748B", textTransform: "none", fontWeight: 500 }}>Exit Registration</Button>
         </Stack>
       </Box>
