@@ -49,7 +49,7 @@ type AdminRow = {
   status: "Pending" | "Approved" | "Rejected" | "Suspended"| string;
   rejectionReason?: string;
 
-  "age/time": string;
+  created_at: string;
 };
 
 const ITEMS_PER_PAGE = 10;
@@ -98,6 +98,7 @@ const AdminApproval = () => {
         }
 
         const data = await response.json();
+        console.log("RA Data fetched:", data);
 
         if (!Array.isArray(data)) {
           console.error("Expected array but got:", data);
@@ -111,6 +112,7 @@ user_id: item.user_id ? String(item.user_id) : "",
 
   name: `${item.first_name || ""} ${item.surname || ""}`.trim(),
   phone: item.mobile || "",
+  created_at: item.created_at || "",
 
   profile: item.profile_image || null,
   pan: item.pan_card || null,
@@ -170,7 +172,7 @@ user_id: item.user_id ? String(item.user_id) : "",
 
   name: item.legal_name || "N/A",
   phone: item.mobile || "",
-
+  created_at: item.created_at || "",
   sebi_certificate: item.sebi_certificate || null,
   exchange_certificates: item.exchange_certificates || [],
   appointment_letter: item.appointment_letter || null,
@@ -512,7 +514,18 @@ const handleSuspend = async (
                   />
                 </TableCell>
 
-                <TableCell>{row["age/time"]}</TableCell>
+                <TableCell>
+                  {row.created_at
+                    ? new Date(row.created_at).toLocaleString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      })
+                    : "-"}
+                    </TableCell>
 
                 <TableCell align="right">
                   <Button

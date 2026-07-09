@@ -133,6 +133,7 @@ export const getAllRegistrations = async (req: Request, res: Response) => {
         sebi_certificate,
         sebi_receipt,
         nism_certificate,
+        created_at,
         cancelled_cheque,
         status,
         rejection_reason,
@@ -170,6 +171,7 @@ SELECT
   u.role,
   u.status AS user_status,
   u.suspended_reason,
+  u.created_at,
 
   rd.id AS ra_id,
   rd.first_name,

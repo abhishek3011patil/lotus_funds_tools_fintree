@@ -39,6 +39,7 @@ type AdminRow = {
   sebi_receipt?: string;
   nism?: string;
   cheque?: string;
+  created_at: string;
 
   telegram?: string;
   telegram_id?: string;
@@ -138,6 +139,7 @@ const [participant, setParticipant] = useState<Participant | null>(null);
         "N/A",
 
       phone: item.mobile || "",
+      created_at: item.created_at || "",
 
       profile: item.profile_image,
       pan: item.pan_card,
@@ -722,7 +724,18 @@ const handleResendPasswordLink = async (userId: string) => {
                 </TableCell>
 
                 
-                <TableCell>{row["age/time"]}</TableCell>
+                <TableCell>
+  {row.created_at
+    ? new Date(row.created_at).toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      })
+    : "-"}
+</TableCell>
                 <TableCell>
   {Number(row.pending_requests) > 0 ? (
     <Button
