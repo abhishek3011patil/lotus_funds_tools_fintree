@@ -172,6 +172,7 @@ SELECT
   u.status AS user_status,
   u.suspended_reason,
   u.created_at,
+  u.suspended_at,
 
   rd.id AS ra_id,
   rd.first_name,

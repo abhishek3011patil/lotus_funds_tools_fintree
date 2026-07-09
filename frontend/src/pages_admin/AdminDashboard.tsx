@@ -49,6 +49,7 @@ type AdminRow = {
  suspendReason?: string;
   "age/time": string;
   pending_requests: number;
+  suspended_at?: string;
 };
 
 const ITEMS_PER_PAGE = 10;
@@ -157,6 +158,7 @@ const [participant, setParticipant] = useState<Participant | null>(null);
       raStatus: item.ra_status,
       rejectionReason: item.rejection_reason || "",
       suspendReason: item.suspended_reason || "",
+      suspended_at: item.suspended_at || "",
       pending_requests: Number(item.pending_requests ?? 0),
       "age/time": "Just now",
     }));
@@ -839,7 +841,7 @@ const handleResendPasswordLink = async (userId: string) => {
         <TableRow>
           <TableCell>Name</TableCell>
           <TableCell>Status</TableCell>
-          <TableCell>Age / Time</TableCell>
+          <TableCell>Suspended From</TableCell>
           <TableCell>Suspend Reason</TableCell>
           <TableCell align="right">Action</TableCell>
           
@@ -861,7 +863,18 @@ const handleResendPasswordLink = async (userId: string) => {
               />
             </TableCell>
 
-            <TableCell>{row["age/time"]}</TableCell>
+             <TableCell>
+                             {row.suspended_at
+                               ? new Date(row.suspended_at).toLocaleString("en-IN", {
+                                   day: "2-digit",
+                                   month: "short",
+                                   year: "numeric",
+                                   hour: "2-digit",
+                                   minute: "2-digit",
+                                   hour12: true,
+                                 })
+                               : "-"}
+                               </TableCell>
               <TableCell>
                 {row.suspendReason || "-"}
               </TableCell>
