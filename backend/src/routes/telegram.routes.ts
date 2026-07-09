@@ -10,12 +10,15 @@ import {
   getTelegramStatus,
   getMyParticipants,
   saveParticipantRA,
+  uploadExcelParticipants,
+  downloadTelegramTemplate
 } from "../controllers/telegram.controller";
 import {
   authenticate,
   AuthRequest,
 } from "../middlewares/auth.middleware";
 import { getParticipantsByRA } from "../controllers/telegram.controller";
+import { upload } from "../middlewares/upload";
 import { pool } from "../db";
 
 const router = express.Router();
@@ -39,6 +42,23 @@ router.post(
   "/add-participant",
   authenticate,
   saveParticipantRA
+);
+
+router.post(
+  "/upload-excel",
+  authenticate,
+  upload.single("file"),
+  uploadExcelParticipants
+);
+
+router.get(
+  "/download-template",
+  authenticate,
+  (req, res, next) => {
+    console.log("DOWNLOAD TEMPLATE ROUTE HIT");
+    next();
+  },
+  downloadTelegramTemplate
 );
 
 // ✅ STATUS ROUTE

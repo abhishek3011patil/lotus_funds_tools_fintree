@@ -6,6 +6,10 @@ import { createClient } from "../utils/telegramClientFactory";
 import { otpStore } from "../utils/telegramStore";
 import { Api } from "telegram";
 import { createAuditLog } from "../utils/auditLogger";
+import fs from "fs";
+import * as XLSX from "xlsx";
+import path from "path";
+
 
 /* ================= GET CLIENT IP ================= */
 
@@ -58,6 +62,17 @@ const getClientIp = (req: Request) => {
 //     return { success: false, error: err.message };
 //   }
 // }
+interface ExcelParticipant {
+  Username?: string;
+  username?: string;
+  Phone?: string;
+  phone?: string;
+  "Telegram Username"?: string;
+  "Phone Number"?: string;
+  "User ID"?: string;
+  user_id?: string;
+  telegram_user_id?: string;
+}
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
@@ -135,8 +150,8 @@ export const saveTelegramUser = async (
       [user_id]
     );
 
-    const sessionString =
-      sessionResult.rows[0]?.telegram_session;
+    const sessionString = sessionResult.rows[0]?.telegram_session;
+    console.log("SESSION =", sessionString);
 
     // ✅ Default values
     let resolvedTelegramId =
@@ -1291,4 +1306,349 @@ export const getMyParticipants = async (
         "Failed to fetch participants",
     });
   }
+};
+
+export const uploadExcelParticipants = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const loggedInUserId = req.user?.id;
+    const role = req.user?.role;
+
+    if (!loggedInUserId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const user_id = req.body.user_id;
+
+if (!req.file) {
+  return res.status(400).json({
+    success: false,
+    message: "Excel file is required",
+  });
+}
+
+const workbook = XLSX.readFile(req.file.path);
+
+const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+const participants = XLSX.utils.sheet_to_json<ExcelParticipant>(sheet);
+
+if (!participants.length) {
+  return res.status(400).json({
+    success: false,
+    message: "Excel is empty",
+  });
+}
+
+    if (!Array.isArray(participants) || participants.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Participants array is required.",
+      });
+    }
+
+    // ============================================
+    // Decide whose Telegram session to use
+    // ============================================
+
+    let targetUserId = loggedInUserId;
+
+    if (role === "ADMIN") {
+      if (!user_id) {
+        return res.status(400).json({
+          success: false,
+          message: "RA ID is required.",
+        });
+      }
+
+      targetUserId = user_id;
+    }
+
+    console.log("Logged In :", loggedInUserId);
+    console.log("Target RA :", targetUserId);
+
+    // ============================================
+    // Get RA Telegram Session
+    // ============================================
+
+    const sessionResult = await pool.query(
+      `
+      SELECT telegram_session
+      FROM users
+      WHERE id=$1
+      `,
+      [targetUserId]
+    );
+
+    const sessionString = sessionResult.rows[0]?.telegram_session;
+
+    if (!sessionString) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Selected Research Analyst has not connected Telegram.",
+      });
+    }
+
+    const client = await createClient(sessionString);
+
+    const results: any[] = [];
+
+    // ============================================
+    // Process every Excel row
+    // ============================================
+
+    for (let i = 0; i < participants.length; i++) {
+      const row = participants[i];
+
+      try {
+        console.log("Processing row", i + 1, row);
+
+        let username =
+          row.Username ||
+          row.username ||
+          row["Telegram Username"] ||
+          "";
+
+        let phone =
+          row.Phone ||
+          row.phone ||
+          row["Phone Number"] ||
+          "";
+
+        let telegramId =
+          row["User ID"] ||
+          row.user_id ||
+          row.telegram_user_id ||
+          "";
+
+        username = String(username).trim();
+        phone = String(phone).trim();
+        telegramId = String(telegramId).trim();
+
+        if (username.startsWith("@")) {
+          username = username.substring(1);
+        }
+
+        if (!username && !phone && !telegramId) {
+          results.push({
+            row: i + 2,
+            status: "failed",
+            error: "Username/Phone/User ID missing",
+          });
+          continue;
+        }
+
+        // Lookup preference:
+        // username -> phone -> id
+
+        let lookupValue = "";
+
+        if (username) lookupValue = username;
+        else if (phone) lookupValue = phone;
+        else lookupValue = telegramId;
+
+        console.log("Lookup :", lookupValue);
+
+        let entity: any = null;
+
+try {
+    if (username) {
+        entity = await client.getEntity(username);
+    }
+} catch {}
+
+if (!entity) {
+    try {
+        if (phone) {
+            entity = await client.getEntity(phone);
+        }
+    } catch {}
+}
+
+if (!entity) {
+    try {
+        if (telegramId) {
+            entity = await client.getEntity(telegramId);
+        }
+    } catch {}
+}
+
+if (!entity) {
+    results.push({
+        row: i + 2,
+        status: "failed",
+        participant:
+            username || phone || telegramId,
+        error:
+            "Telegram user not found.",
+    });
+
+    continue;
+}
+
+        let entityType = "USER";
+
+        if (entity.className === "Channel") {
+          entityType = entity.broadcast ? "CHANNEL" : "GROUP";
+        }
+
+        if (entity.className === "Chat") {
+          entityType = "GROUP";
+        }
+
+        let finalTelegramId = "";
+
+        if (
+          entityType === "GROUP" ||
+          entityType === "CHANNEL"
+        ) {
+          finalTelegramId = "-100" + entity.id;
+        } else {
+          finalTelegramId = entity.id.toString();
+        }
+
+        const finalUsername = entity.username
+          ? "@" + entity.username
+          : username
+          ? "@" + username
+          : "";
+
+        let finalPhone = null;
+
+        if (entityType === "USER") {
+          finalPhone = entity.phone || phone || null;
+
+          if (
+            finalPhone &&
+            !finalPhone.startsWith("+")
+          ) {
+            finalPhone = "+" + finalPhone;
+          }
+        }
+
+        const db = await pool.query(
+          `
+          INSERT INTO telegram_users
+          (
+            telegram_user_id,
+            telegram_client_name,
+            phone_number,
+            user_id,
+            entity_type
+          )
+
+          VALUES($1,$2,$3,$4,$5)
+
+          ON CONFLICT
+          (
+            telegram_user_id,
+            user_id
+          )
+
+          DO UPDATE SET
+
+          telegram_client_name=EXCLUDED.telegram_client_name,
+          phone_number=EXCLUDED.phone_number,
+          entity_type=EXCLUDED.entity_type
+
+          RETURNING *;
+          `,
+          [
+            finalTelegramId,
+            finalUsername,
+            finalPhone,
+            targetUserId,
+            entityType,
+          ]
+        );
+
+        results.push({
+          row: i + 2,
+          status: "success",
+          username: finalUsername,
+          data: db.rows[0],
+        });
+      } catch (err: any) {
+        console.error("ROW ERROR", err);
+
+        results.push({
+          row: i + 2,
+          status: "failed",
+          error: err.message,
+        });
+      }
+    }
+
+    const success = results.filter(
+      (x) => x.status === "success"
+    ).length;
+
+    const failed = results.filter(
+      (x) => x.status === "failed"
+    ).length;
+
+    await createAuditLog({
+      adminId: req.user?.id,
+      adminName: req.user?.name || "ADMIN",
+      adminRole: req.user?.role || "ADMIN",
+      action: "EXCEL_UPLOAD",
+      module: "TELEGRAM",
+      targetEntity: `${participants.length} Participants`,
+      targetType: "EXCEL_IMPORT",
+      description: "Excel upload completed",
+      status: "SUCCESS",
+      ipAddress: getClientIp(req),
+      device: req.headers["user-agent"] as string,
+      newValue: {
+        total: participants.length,
+        success,
+        failed,
+      },
+    });
+
+    return res.json({
+      success: true,
+      summary: {
+        total: participants.length,
+        success,
+        failed,
+      },
+      results,
+    });
+  } catch (err: any) {
+    console.error("UPLOAD ERROR", err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+export const downloadTelegramTemplate = (
+  req: Request,
+  res: Response
+) => {
+  const filePath = path.join(
+    process.cwd(),
+    "uploads",
+    "Telegram_sheets.xlsx"
+  );
+
+  console.log("FILE PATH =", filePath);
+  console.log("EXISTS =", fs.existsSync(filePath));
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({
+      message: "Template not found",
+    });
+  }
+
+  res.download(filePath, "Telegram_Template.xlsx");
 };

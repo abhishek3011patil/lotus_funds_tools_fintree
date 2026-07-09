@@ -9,8 +9,10 @@ import {
   Typography,
 } from "@mui/material";
 import { Send as SendIcon } from "@mui/icons-material";
-import { useState } from "react";
+import DownloadIcon from "@mui/icons-material/Download";
+import { useState, useRef } from "react";
 import axios from "axios";
+import * as XLSX from "xlsx";
 
 type TelegramSearchProps = {
   raId?: string; // ✅ optional now
@@ -24,6 +26,8 @@ export const TelegramSearch = ({ raId, onSaved }: TelegramSearchProps) => {
   const [loading, setLoading] = useState(false);
   const [phoneError, setPhoneError] = useState("");
   const [entityType, setEntityType] = useState("USER");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   console.log("raId prop =", raId);
 console.trace("TelegramSearch rendered from");
 
@@ -105,6 +109,98 @@ console.trace("TelegramSearch rendered from");
   } finally {
     setLoading(false);
   }
+};
+
+const handleExcelUpload = async (
+  e: React.ChangeEvent<HTMLInputElement>
+) => {
+  const file = e.target.files?.[0];
+
+  if (!file) return;
+
+  try {
+    const token = localStorage.getItem("token");
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    if (raId) {
+      formData.append("user_id", raId);
+    }
+
+    const res = await axios.post(
+      `${import.meta.env.VITE_API_URL}/api/telegram/upload-excel`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+
+    const { summary, results } = res.data;
+
+const failed = results.filter(
+  (x: any) => x.status === "failed"
+);
+
+let message =
+`Success : ${summary.success}
+Failed : ${summary.failed}`;
+
+if (failed.length) {
+
+   message += "\n\nFailed:\n";
+
+   failed.forEach((f:any)=>{
+
+      message += `${f.participant} : ${f.error}\n`;
+
+   });
+
+}
+
+alert(message);
+
+onSaved?.();
+
+    onSaved?.();
+  } catch (err: any) {
+    console.error(err);
+
+    alert(
+      err.response?.data?.message || "Upload failed"
+    );
+  }
+};
+
+const downloadTemplate = async () => {
+  const token = localStorage.getItem("token");
+
+  const response = await axios.get(
+    `${import.meta.env.VITE_API_URL}/api/telegram/download-template`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      responseType: "blob",
+    }
+  );
+
+  const url = window.URL.createObjectURL(
+    new Blob([response.data])
+  );
+
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = "Telegram_Template.xlsx";
+
+  document.body.appendChild(link);
+  link.click();
+
+  link.remove();
 };
 
   return (
@@ -214,24 +310,55 @@ console.trace("TelegramSearch rendered from");
 )}
 
           {/* Save Button */}
-          <Box sx={{ gridColumn: "1 / -1", mt: 1 }}>
-            <Button
-              variant="contained"
-              size="large"
-              startIcon={<SendIcon />}
-              onClick={handleSave}
-              disabled={loading}
-              sx={{
-                backgroundColor: "#22C55E",
-                "&:hover": { backgroundColor: "#1a9d4b" },
-                textTransform: "none",
-                px: 4,
-                fontWeight: "600",
-                fontSize: 15,
-              }}
-            >
-              {loading ? "Saving..." : "Save Details"}
-            </Button>
+          <Box   sx={{
+    gridColumn: "1 / -1",
+    mt: 1,
+    display: "flex",
+    gap: 2,
+  }}
+>
+  <Button
+    variant="contained"
+    size="large"
+    startIcon={<SendIcon />}
+    onClick={handleSave}
+    disabled={loading}
+    sx={{
+      backgroundColor: "#22C55E",
+      "&:hover": { backgroundColor: "#1a9d4b" },
+      textTransform: "none",
+      px: 4,
+      fontWeight: "600",
+      fontSize: 15,
+    }}
+  >
+    {loading ? "Saving..." : "Save Details"}
+  </Button>
+
+  <Button
+    variant="outlined"
+    size="large"
+    onClick={() => fileInputRef.current?.click()}
+  >
+    Add Excel
+  </Button>
+
+  <Button
+  variant="outlined"
+  size="large"
+  startIcon={<DownloadIcon />}
+  onClick={downloadTemplate}
+>
+  Template
+</Button>
+
+  <input
+    ref={fileInputRef}
+    type="file"
+    hidden
+    accept=".xlsx,.xls"
+    onChange={handleExcelUpload}
+  />
           </Box>
         </Box>
       </Paper>
