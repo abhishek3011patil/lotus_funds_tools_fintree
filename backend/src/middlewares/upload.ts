@@ -17,9 +17,13 @@ const allowedMimeTypes = [
   "image/jpg",
   "image/png",
   "image/webp",
+
+   // Excel
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ];
 
-const allowedExtensions = [".pdf", ".jpg", ".jpeg", ".png", ".webp"];
+const allowedExtensions = [".pdf", ".jpg", ".jpeg", ".png", ".webp", ".xls", ".xlsx",];
 
 // ✅ storage config
 const storage = multer.diskStorage({

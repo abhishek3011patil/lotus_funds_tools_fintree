@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -22,6 +22,7 @@ import type { SelectChangeEvent } from "@mui/material";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import RARegistrationDevTools from "../dev/RARegistrationDevTools";
+import InputAdornment from "@mui/material/InputAdornment";
 
 import { State, City } from "country-state-city";
 import { useNavigate } from "react-router-dom";
@@ -121,6 +122,43 @@ const navigate = useNavigate();
     addressProofDoc: null
   });
 
+const [isLoaded, setIsLoaded] = useState(false);
+
+useEffect(() => {
+  const savedForm = localStorage.getItem("raRegistrationForm");
+  const savedStep = localStorage.getItem("raRegistrationStep");
+
+  if (savedForm) {
+    const parsedData = JSON.parse(savedForm);
+
+    setFormData((prev) => ({
+      ...prev,
+      ...parsedData,
+    }));
+  }
+
+  if (savedStep) {
+    setCurrentStep(parseInt(savedStep, 10));
+  }
+
+  setIsLoaded(true);
+}, []);
+
+useEffect(() => {
+  if (!isLoaded) return;
+
+  console.log("Saving Form:", formData);
+  localStorage.setItem("raRegistrationForm", JSON.stringify(formData));
+}, [formData, isLoaded]);
+
+useEffect(() => {
+  if (!isLoaded) return;
+
+  localStorage.setItem(
+    "raRegistrationStep",
+    currentStep.toString()
+  );
+}, [currentStep, isLoaded]);
   // Data Lists
   const bankOptions = ["AU Small Finance Bank", "Axis Bank", "Bank of Baroda", "Bank of India", "Bank of Maharashtra", "Canara Bank", "Central Bank of India", "Citibank", "DBS Bank India", "Equitas Small Finance Bank", "Federal Bank", "HDFC Bank", "HSBC", "ICICI Bank", "IDFC First Bank", "Indian Bank", "Indian Overseas Bank", "IndusInd Bank", "Kotak Mahindra Bank", "Punjab & Sind Bank", "Punjab National Bank (PNB)", "RBL Bank", "South Indian Bank", "Standard Chartered", "State Bank of India (SBI)", "UCO Bank", "Ujjivan Small Finance Bank", "Union Bank of India", "Yes Bank"];
 
@@ -170,6 +208,16 @@ const handleSelect = (e: SelectChangeEvent) => {
       const val = formData[field as keyof typeof formData];
       if (!val || (typeof val === 'string' && val.trim() === "")) newErrors[field] = true;
     });
+
+    if (currentStep === 1) {
+  if (formData.mobile.length !== 10) {
+    newErrors.mobile = true;
+  }
+
+  if (formData.pincode.length !== 6) {
+    newErrors.pincode = true;
+  }
+}
 
     if (currentStep === 3) {
       if (!formData.declare_info_true) newErrors.declare1 = true;
@@ -239,6 +287,9 @@ Object.entries(fileMapping).forEach(([key, file]) => {
 );
 
     if (response.data.success) {
+  localStorage.removeItem("raRegistrationForm");
+  localStorage.removeItem("raRegistrationStep");
+
   alert("✅ Registration submitted successfully!");
   navigate("/login");
 }
@@ -594,34 +645,79 @@ const cities = selectedState
             />
           </Grid>
 
-          <Grid size={{ xs: 12, md: 4 }}>
-            <TextField
-              fullWidth
-              name="mobile"
-              label="Mobile"
-              sx={styles.input}
-              value={formData.mobile || ""}
-              onChange={handleChange}
-              error={!!errors.mobile || !!serverErrors.mobile}
-helperText={
-  errors.mobile
-    ? "Required"
-    : serverErrors.mobile || ""
-}
-            />
+<Grid size={{ xs: 12, md: 4 }}>
+  <TextField
+    required
+    fullWidth
+    name="mobile"
+    label="Mobile"
+    sx={styles.input} 
+    value={formData.mobile}
+    onChange={(e) => {
+      // Strips out any non-numeric characters automatically
+      const value = e.target.value.replace(/\D/g, "");
+
+      if (value.length <= 10) {
+        setFormData({
+          ...formData,
+          mobile: value,
+        });
+      }
+    }}
+    error={!!errors.mobile}
+    helperText={
+      errors.mobile
+        ? "Mobile number is required"
+        : "Enter 10 digit mobile number"
+    }
+    inputProps={{
+      maxLength: 10,
+      inputMode: "numeric",
+    }}
+    InputProps={{
+
+      startAdornment:
+        formData.mobile || 
+        (typeof document !== "undefined" && document.activeElement === document.getElementsByName("mobile")[0]) ? (
+          <InputAdornment position="start" sx={{ marginRight: 1 }}>
+            +91
+          </InputAdornment>
+        ) : null,
+    }}
+    onFocus={() => setFormData((prev) => ({ ...prev }))}
+    onBlur={() => setFormData((prev) => ({ ...prev }))}
+  />
+
           </Grid>
 
           <Grid size={{ xs: 12, md: 4 }}>
             <TextField
-              fullWidth
-              name="telephone"
-              label="Telephone"
-              sx={styles.input}
-              value={formData.telephone || ""}
-              onChange={handleChange}
-              error={errors.telephone}
-              helperText={errors.telephone ? "Required" : ""}
-            />
+    required
+    fullWidth
+    name="telephone"
+    label="Telephone"
+    value={formData.telephone}
+    onChange={(e) => {
+        const value = e.target.value.replace(/\D/g, "");
+
+        if (value.length <= 11) {
+            setFormData({
+                ...formData,
+                telephone: value,
+            });
+        }
+    }}
+    inputProps={{
+        inputMode: "numeric",
+        maxLength: 11,
+    }}
+    error={errors.telephone}
+    helperText={
+        errors.telephone
+            ? "Telephone is required"
+            : ""
+    }
+/>
           </Grid>
         </Grid>
 
@@ -683,15 +779,26 @@ helperText={
 
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <TextField
-              fullWidth
-              name="pincode"
-              label="Pincode"
-              sx={styles.input}
-              value={formData.pincode || ""}
-              onChange={handleChange}
-              error={errors.pincode}
-              helperText={errors.pincode ? "Required" : ""}
-            />
+  fullWidth
+  name="pincode"
+  label="Pincode"
+  sx={styles.input}
+  value={formData.pincode || ""}
+  error={errors.pincode}
+  helperText={errors.pincode ? "Required" : ""}
+  inputProps={{
+    maxLength: 6,
+    inputMode: "numeric",
+  }}
+  onChange={(e) => {
+    const value = e.target.value.replace(/\D/g, "");
+
+    setFormData({
+      ...formData,
+      pincode: value,
+    });
+  }}
+/>
           </Grid>
 
           <Grid size={{ xs: 6 }}>

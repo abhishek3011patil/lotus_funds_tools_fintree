@@ -6,6 +6,10 @@ import { createClient } from "../utils/telegramClientFactory";
 import { otpStore } from "../utils/telegramStore";
 import { Api } from "telegram";
 import { createAuditLog } from "../utils/auditLogger";
+import fs from "fs";
+import * as XLSX from "xlsx";
+import path from "path";
+
 
 /* ================= GET CLIENT IP ================= */
 
@@ -58,6 +62,17 @@ const getClientIp = (req: Request) => {
 //     return { success: false, error: err.message };
 //   }
 // }
+interface ExcelParticipant {
+  Username?: string;
+  username?: string;
+  Phone?: string;
+  phone?: string;
+  "Telegram Username"?: string;
+  "Phone Number"?: string;
+  "User ID"?: string;
+  user_id?: string;
+  telegram_user_id?: string;
+}
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
@@ -1292,6 +1307,7 @@ export const getMyParticipants = async (
     });
   }
 };
+
 export const uploadExcelParticipants = async (
   req: AuthRequest,
   res: Response
@@ -1307,7 +1323,27 @@ export const uploadExcelParticipants = async (
       });
     }
 
-    const { participants, user_id } = req.body;
+    const user_id = req.body.user_id;
+
+if (!req.file) {
+  return res.status(400).json({
+    success: false,
+    message: "Excel file is required",
+  });
+}
+
+const workbook = XLSX.readFile(req.file.path);
+
+const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+const participants = XLSX.utils.sheet_to_json<ExcelParticipant>(sheet);
+
+if (!participants.length) {
+  return res.status(400).json({
+    success: false,
+    message: "Excel is empty",
+  });
+}
 
     if (!Array.isArray(participants) || participants.length === 0) {
       return res.status(400).json({
@@ -1593,4 +1629,26 @@ if (!entity) {
       message: err.message,
     });
   }
+};
+
+export const downloadTelegramTemplate = (
+  req: Request,
+  res: Response
+) => {
+  const filePath = path.join(
+    process.cwd(),
+    "uploads",
+    "Telegram_sheets.xlsx"
+  );
+
+  console.log("FILE PATH =", filePath);
+  console.log("EXISTS =", fs.existsSync(filePath));
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({
+      message: "Template not found",
+    });
+  }
+
+  res.download(filePath, "Telegram_Template.xlsx");
 };
