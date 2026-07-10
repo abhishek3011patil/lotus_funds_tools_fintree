@@ -77,6 +77,7 @@ const navigate = useNavigate();
   markets: "",
 
   bank_name: "",
+  bank_branch: "",
   account_holder: "",
   account_number: "",
   ifsc_code: "",
@@ -123,6 +124,7 @@ const navigate = useNavigate();
   });
 
 const [isLoaded, setIsLoaded] = useState(false);
+const [ifscMessage, setIfscMessage] = useState("");
 
 useEffect(() => {
   const savedForm = localStorage.getItem("raRegistrationForm");
@@ -371,6 +373,59 @@ Object.entries(fileMapping).forEach(([key, file]) => {
       border: "1px solid #C4C4C4", textTransform: "none", borderRadius: 2, fontSize: '0.9rem', fontWeight: 600, px: 2, py: 1
     };
   };
+
+const handleIFSCChange = async (
+  e: React.ChangeEvent<HTMLInputElement>
+) => {
+  const value = e.target.value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "") // Allow only letters & numbers
+    .slice(0, 11); // Max 11 characters
+
+  // Update IFSC
+  setFormData(prev => ({
+    ...prev,
+    ifsc_code: value,
+  }));
+
+  // Clear previous message while typing
+  setIfscMessage("");
+
+  // If IFSC is incomplete, clear bank name and don't call API
+  if (value.length !== 11) {
+    setFormData(prev => ({
+      ...prev,
+      bank_name: "",
+      bank_branch: ""
+    }));
+    return;
+  }
+
+  try {
+    const res = await axios.get(
+      `${API_URL}/api/registration/ifsc/${value}`
+    );
+
+    setFormData(prev => ({
+      ...prev,
+      bank_name: res.data.data.BANK,
+      bank_branch: res.data.data.BRANCH
+    }));
+
+    setIfscMessage("");
+  } catch (error: any) {
+    setFormData(prev => ({
+      ...prev,
+      bank_name: "",
+      bank_branch: ""
+    }));
+
+   setIfscMessage(
+  error?.response?.data?.message ||
+    "Bank/Branch couldn't be detected automatically. Please enter them manually."
+);
+  }
+};
 
 const styles = {
   container: {
@@ -1179,6 +1234,19 @@ helperText={
   />
 </Grid>
 
+<Grid size={{ xs: 12, sm: 6, md: 4 }}>
+  <TextField
+    fullWidth
+    name="bank_branch"
+    label="Bank Branch"
+    value={formData.bank_branch || ""}
+    sx={styles.input}
+    InputProps={{
+      readOnly: true,
+    }}
+  />
+</Grid>
+
       {/* ACCOUNT HOLDER */}
 <Grid size={{ xs: 12, sm: 6, md: 4 }}>
         <TextField
@@ -1211,15 +1279,19 @@ helperText={
      
 <Grid size={{ xs: 12, sm: 6, md: 4 }}>
         <TextField
-          fullWidth
-          name="ifsc_code"
-          label="IFSC Code"
-          value={formData.ifsc_code || ""}
-          onChange={handleChange}
-          error={errors.ifsc_code}
-          helperText={errors.ifsc_code ? "Required" : ""}
-          sx={styles.input}
-        />
+  fullWidth
+  name="ifsc_code"
+  label="IFSC Code"
+  value={formData.ifsc_code}
+  onChange={handleIFSCChange}
+  error={errors.ifsc_code}
+  helperText={
+    errors.ifsc_code
+      ? "Required"
+      : ifscMessage
+  }
+  sx={styles.input}
+/>
       </Grid>
 
       {/* CANCELLED CHEQUE */}
