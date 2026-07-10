@@ -16,6 +16,7 @@ import {
   updateRARegistration,
   getAllRegistrationsActiveUsers,
   updateBroker,
+  getBankFromIFSC
 } from "../controllers/registration.controller";
 import { getRADisclaimer, updateRADisclaimer } from "../controllers/researchCalls.controller";
 
@@ -168,5 +169,6 @@ router.put(
   rejectRAProfileUpdateRequest
 );
 router.get("/profile", authenticate, getMyRAProfile);
+router.get("/ifsc/:ifsc", getBankFromIFSC);
 
 export default router;
