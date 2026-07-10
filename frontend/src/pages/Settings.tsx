@@ -1,6 +1,6 @@
 import ChangePassword from "../common/ChangePassword";
 import TelegramConnection from "../pages/common/TelegramConnection";
-import AddParticipant from "./common/RAProfileEditRequest";
+import AddParticipant from "../common/RAProfileEditRequest";
 
 import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";

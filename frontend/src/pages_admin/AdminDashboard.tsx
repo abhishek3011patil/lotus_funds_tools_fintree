@@ -69,6 +69,66 @@ const AdminDashboard = () => {
 const [confirmType, setConfirmType] = useState<"RA" | "BROKER" | null>(null);
 const [confirmId, setConfirmId] = useState<string | null>(null);
 
+// const phones = [
+//   "919773665373",
+//   "919820017751",
+//   "919594427176"
+// ];
+
+// const sendTestWhatsApp = async () => {
+//   try {
+//     const message = `📈 LOTUS FUNDS – RESEARCH ALERT
+
+// 🟢 BUY: TCS
+
+// Entry Price: ₹3,450
+// Target Price: ₹3,600
+// Stop Loss: ₹3,380
+
+// Time Horizon: Short Term
+// Risk Level: Medium
+
+// Research Analyst: Abhishek Patil
+// SEBI Registration No.: INHXXXXXXXXX
+
+// Underlying Study:
+// RSI and Volume Breakout
+
+// Disclaimer:
+// Investments in securities are subject to market risks. Please read all related documents carefully before investing.
+
+// Powered by Lotus Funds`;
+
+//     const res = await fetch(
+//       `${import.meta.env.VITE_API_URL}/api/whatsapp/test`,
+//       {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${localStorage.getItem("token")}`,
+//         },
+//         body: JSON.stringify({
+//           phones,
+//           message,
+//         }),
+//       }
+//     );
+
+//     const data = await res.json();
+//     console.log("WHATSAPP RESPONSE:", data);
+
+//     if (!res.ok) {
+//       alert(data.message || "Failed to send WhatsApp message");
+//       return;
+//     }
+
+//     alert("WhatsApp call message sent!");
+//   } catch (error) {
+//     console.error("WhatsApp frontend error:", error);
+//     alert("Unable to connect to the server");
+//   }
+// };
+
 
   type Participant = {
   id: string;
@@ -178,7 +238,7 @@ setRows(sortedFormatted);
 };
 
 const handleActivate = async (
-  userId: number
+  userId: string
 ) => {
   try {
     const token = localStorage.getItem("token");
@@ -657,7 +717,13 @@ const handleResendPasswordLink = async (userId: string) => {
 
 
   return (
+
+    
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+
+      <Button variant="contained" onClick={sendTestWhatsApp}>
+  Test WhatsApp
+</Button>
         
       {/* SEARCH */}
       <TextField

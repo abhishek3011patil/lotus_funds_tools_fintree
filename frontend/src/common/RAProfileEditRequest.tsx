@@ -4,7 +4,6 @@ import {
   Button,
   Typography,
   TextField,
-  Grid,
   Paper,
   Divider,
   Snackbar,
@@ -12,6 +11,7 @@ import {
   Checkbox,
   FormControlLabel,
 } from "@mui/material";
+import Grid from "@mui/material/GridLegacy";
 
 type Registration = {
   [key: string]: any;

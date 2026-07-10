@@ -197,8 +197,7 @@ const {
 const [isPublishing, setIsPublishing] = useState(false);
   const DATA_SOURCE = "/data.json";
 
-  useEffect(() => {
-    const fetchRecommendations = async () => {
+  const fetchRecommendations = async () => {
       try {
         setLoading(true);
         const response = await fetch(DATA_SOURCE);
@@ -211,6 +210,8 @@ const [isPublishing, setIsPublishing] = useState(false);
         setLoading(false);
       }
     };
+
+  useEffect(() => {
     fetchRecommendations();
   }, []);
 
@@ -347,7 +348,13 @@ Rationale: ${rationale}
 
     alert("Call sent to your clients ✅");
 
-    resetForm();
+    setEntry("");
+    setTarget("");
+    setStopLoss("");
+    setRationale("Overbought Condition");
+    setTradeType("Intraday");
+    setRadioValue("");
+    setUnderlyingStudyValue(null);
     await fetchRecommendations();
   } catch (error: any) {
     console.error("❌ Publish error:", error);
