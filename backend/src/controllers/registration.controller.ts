@@ -6,6 +6,7 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import { createAuditLog } from "../utils/auditLogger";
+import axios from "axios";
 
 
 
@@ -771,7 +772,7 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
         academic_qualification, professional_qualification,
         market_experience, expertise, markets,
 
-        bank_name, account_holder, account_number, ifsc_code,
+        bank_name,bank_branch, account_holder, account_number, ifsc_code,
         cancelled_cheque,
         pan_number, pan_card,
         address_proof_type, address_proof_document,
@@ -798,16 +799,14 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
         $27,$28,
         $29,$30,$31,
 
-        $32,$33,$34,$35,
-        $36,
-        $37,$38,
-        $39,$40,
-        $41,$42,
-
-        $43,$44,
-        $45,$46,$47,
-
-        $48
+        $32,$33,$34,$35,$36,
+        $37,
+        $38,$39,
+        $40,$41,
+        $42,$43,
+        $44,$45,
+        $46,$47,$48,$49,
+        $50
       )
       RETURNING id;
       `,
@@ -856,6 +855,7 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
         data.markets ?? null,
 
         data.bank_name ?? null,
+        data.bank_branch ?? null,
         data.account_holder ?? null,
         data.account_number ?? null,
         data.ifsc_code ?? null,
@@ -2288,8 +2288,39 @@ await createAuditLog({
     console.error("REJECT RA PROFILE REQUEST ERROR:", error);
     return res.status(500).json({ message: "Server error" });
   }
-
-  
 };
 
+export const getBankFromIFSC = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { ifsc } = req.params;
 
+    const response = await axios.get(
+      `https://ifsc.razorpay.com/${ifsc}`
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: response.data,
+    });
+
+  } catch (err: any) {
+
+    // Razorpay returns 404 if IFSC is not found
+    if (err.response?.status === 404) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Bank / Branch couldn't be detected automatically. Please enter them manually.",
+      });
+    }
+
+    // Any other error
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch bank details. Please try again later.",
+    });
+  }
+};
