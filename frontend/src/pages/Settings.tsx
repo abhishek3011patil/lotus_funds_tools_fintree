@@ -12,6 +12,7 @@ import { useTelegramNotification } from "../hooks/useTelegramNotification";
 import Button from "@mui/material/Button";
 import RASettingsDisclaimer from "../common/RASettingsDisclaimer";
 import RemoveParticipant from "../components/setting/RA_setting_component/ManageParticipants";
+import WhatsAppParticipants from "../components/setting/WhatsAppParticipants";
 
 import { useNavigate } from "react-router-dom";
 
@@ -109,6 +110,19 @@ const Settings = () => {
         <AddParticipant />
       </div> */}
 
+
+     
+
+<div
+  style={{
+    marginTop: "30px",
+    width: "100%",
+    maxWidth: "1000px",
+  }}
+>
+  <WhatsAppParticipants />
+</div>
+
       <div
   style={{
     marginBottom: "30px",
@@ -117,6 +131,10 @@ const Settings = () => {
   }}
 >
   <RemoveParticipant />
+</div>
+
+ <div style={{ width: "100%", maxWidth: "1000px" }}>
+  <TelegramConnection />
 </div>
 
       <div style={{ width: "100%", maxWidth: "1000px" }}>

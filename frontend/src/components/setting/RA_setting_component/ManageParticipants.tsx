@@ -21,6 +21,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import * as XLSX from "xlsx";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import TelegramIcon from "@mui/icons-material/Telegram";
 
 interface Participant {
   id: string;
@@ -223,8 +224,9 @@ alert(message || "Upload completed");
 
   return (
     <Box sx={{ mt: 4, width: "100%" }}>
+
       <Typography fontWeight={700} sx={{ fontSize: 18, mb: 2 }}>
-        Manage Telegram Participants
+       <TelegramIcon color="primary" sx={{ fontSize: 32 }} /> Manage Telegram Participants
       </Typography>
 
       <Paper sx={{ p: 2, mb: 3 }}>
