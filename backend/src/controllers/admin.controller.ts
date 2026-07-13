@@ -400,7 +400,7 @@ export const suspendUser = async (
       [userId]
     );
 
-    console.log("FOUND USER:", userRes.rows);
+    //console.log("FOUND USER:", userRes.rows);
 
     if (userRes.rows.length === 0) {
 

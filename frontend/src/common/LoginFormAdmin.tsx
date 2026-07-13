@@ -57,7 +57,7 @@ const LoginFormAdmin: React.FC = () => {
       const { token, role, username } = res.data;
 
 
-      console.log("LOGIN RESPONSE:", res.data);
+      //console.log("LOGIN RESPONSE:", res.data);
 
       localStorage.setItem("token", token);
 
@@ -74,7 +74,7 @@ localStorage.setItem("username", res.data.username);
 localStorage.setItem("role", role);
 
       // Redirect based on role
-      if (role === "ADMIN") navigate("/admin");
+      if (role === "ADMIN" || role === "SUPERADMIN") navigate("/admin");
       if (role === "EMPLOYEE") navigate("/automation");
 
 

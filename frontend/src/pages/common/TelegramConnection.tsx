@@ -62,20 +62,20 @@ const TelegramConnection = () => {
         checkTelegram();
     }, []);
 
-    return (
-        <Box sx={{ mt: 4, width: "100%" }}>
-            <Paper
-                sx={{
-                    p: 3,
-                    border: "1px solid #E9E9EE",
-                    borderRadius: 2,
-                    boxShadow: "none",
-                    width: "100%",
+ return (
+        <Box sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 3 }}>
+            <Typography 
+                variant="h6" 
+                sx={{ 
+                    fontSize: "20px", 
+                    fontWeight: 600, 
+                    color: "#1a1a1a", 
+                    fontFamily: "sans-serif",
+                    mb: -1 
                 }}
             >
-                <Typography variant="h6" fontWeight={700} sx={{ fontSize: 20, mb: 2 }}>
-                    Connect Telegram
-                </Typography>
+                Connect Telegram
+            </Typography>
 
                 {/* ERROR */}
                 {error && (
@@ -267,7 +267,6 @@ const TelegramConnection = () => {
                         </Button>
                     </Stack>
                 )}
-            </Paper>
         </Box>
     );
 };

@@ -180,7 +180,7 @@ const [participant, setParticipant] = useState<Participant | null>(null);
     }
 
     const data = await response.json();
-    console.log("ACTIVE USERS API:", data);
+    //console.log("ACTIVE USERS API:", data);
 
     if (!Array.isArray(data)) {
       console.error("Expected array but got:", data);
@@ -664,8 +664,8 @@ const handleSuspend = async (userId: string) => {
 
     const result = await response.json();
 
-console.log("STATUS:", response.status);
-console.log("RESULT:", result);
+//console.log("STATUS:", response.status);
+//console.log("RESULT:", result);
 
     if (!response.ok) {
       alert(result.message || "Failed to suspend user");

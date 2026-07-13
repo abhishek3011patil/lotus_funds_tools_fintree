@@ -133,7 +133,7 @@ export default function PaymentMethod({
                 }}
             >
                 <Box sx={{ px: 3, py: 2, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <Typography sx={{ fontSize: "30px", fontWeight: 500, color: "#5f6368" }}>FintreePay</Typography>
+                    <Typography sx={{ fontSize: "30px", fontWeight: 500, color: "#5f6368" }}>TarkashhPay</Typography>
                     <IconButton size="small" onClick={handleClose}>
                         <CloseIcon sx={{ color: "#5f6368", fontSize: 28 }} />
                     </IconButton>

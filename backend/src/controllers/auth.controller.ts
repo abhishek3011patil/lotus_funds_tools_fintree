@@ -121,7 +121,7 @@ export const login = async (req: Request, res: Response) => {
     let user;
 
     /* ================= ADMIN LOGIN (STRICT) ================= */
-    if (loginId === "admin") {
+    if (loginId === "admin" || loginId === "superadmin") {
       const adminRes = await pool.query(
         `SELECT id, username, password_hash, role 
          FROM company_users 
@@ -185,7 +185,7 @@ if (user.status.toLowerCase() !== "active") {
 
    if (
   user.role === "ADMIN" ||
-  user.role === "SUPER_ADMIN" ||
+  user.role === "SUPERADMIN" ||
   user.role === "EMPLOYEE"
 ) {
   await createAuditLog({
@@ -241,7 +241,7 @@ export const logout = async (
     // ONLY ADMINS
     if (
       req.user?.role === "ADMIN" ||
-      req.user?.role === "SUPER_ADMIN" ||
+      req.user?.role === "SUPERADMIN" ||
       req.user?.role === "EMPLOYEE"
     ) {
 

@@ -85,19 +85,19 @@ const handleConfirm = async () => {
     }
 };
     return (
-  <Box sx={{ mt: 4, width: "100%" }}>
-    <Paper
-      sx={{
-        p: 3,
-        border: "1px solid #E9E9EE",
-        borderRadius: 2,
-        boxShadow: "none",
-        width: "100%",
+  <Box sx={{ width: "100%" }}>
+     <Typography 
+      variant="h6" 
+      sx={{ 
+        fontSize: "20px", 
+        fontWeight: 600, 
+        color: "#1a1a1a", 
+        fontFamily: "sans-serif",
+        mb: 3 
       }}
     >
-      <Typography variant="h6" fontWeight={700} sx={{ fontSize: 17  , mb: 2 }}>
-        Change Password
-      </Typography>
+      Change Password
+    </Typography>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
@@ -169,7 +169,7 @@ const handleConfirm = async () => {
           {loading ? <CircularProgress size={24} /> : "Confirm"}
         </Button>
       </Box>
-    </Paper>
+    
   </Box>
 );
 };
