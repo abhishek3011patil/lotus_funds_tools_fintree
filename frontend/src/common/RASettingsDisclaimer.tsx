@@ -53,11 +53,19 @@ const saveDisclaimer = async () => {
 };
 
   return (
-    <Card>
-      <CardContent>
-        <Typography variant="h6" gutterBottom>
-          Research Analyst Disclaimer
-        </Typography>
+   <div style={{ width: "100%" }}>
+    <Typography 
+      variant="h6" 
+      sx={{ 
+        fontSize: "20px", 
+        fontWeight: 600, 
+        color: "#1a1a1a", 
+        fontFamily: "sans-serif",
+        mb: 3 
+      }}
+    >
+      Research Analyst Disclaimer
+    </Typography>
 
         <TextField
           fullWidth
@@ -81,8 +89,7 @@ const saveDisclaimer = async () => {
             {success}
           </Alert>
         )}
-      </CardContent>
-    </Card>
+     </div>
   );
 };
 

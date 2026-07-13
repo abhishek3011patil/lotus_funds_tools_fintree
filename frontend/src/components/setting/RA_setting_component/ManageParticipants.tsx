@@ -221,58 +221,77 @@ alert(message || "Upload completed");
 
 
 
-  return (
-    <Box sx={{ mt: 4, width: "100%" }}>
-      <Typography fontWeight={700} sx={{ fontSize: 18, mb: 2 }}>
+return (
+    <Box sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 4 }}>
+      <Typography 
+        variant="h6" 
+        sx={{ 
+          fontSize: "20px", 
+          fontWeight: 600, 
+          color: "#1a1a1a", 
+          fontFamily: "sans-serif",
+          mb: -1 
+        }}
+      >
         Manage Telegram Participants
       </Typography>
 
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography fontWeight={700} sx={{ mb: 1, fontSize: 16 }}>
-          Add New Participant
-        </Typography>
+      {/* Section 1: Add New Participant */}
+  
+<Box sx={{ 
+  width: "100%", 
+  p: 3, 
+  border: "1px solid #E9E9EE", 
+  borderRadius: 2, 
+  backgroundColor: "#fafafa" 
+}}>
+  <Typography fontWeight={700} sx={{ mb: 0.5, fontSize: 16 }}>
+    Add New Participant
+  </Typography>
 
-        <Typography color="text.secondary" sx={{ mb: 1, fontSize: 14 }}>
-          Enter Telegram username, group username, or channel username.
-        </Typography>
+  <Typography color="text.secondary" sx={{ mb: 2, fontSize: 14 }}>
+    Enter Telegram username, group username, or channel username.
+  </Typography>
 
-        <Box sx={{ display: "flex", gap: 1 }}>
-          <TextField
-            fullWidth
-            size="small"
-            placeholder="@username / group / channel"
-            value={telegramUsername}
-            onChange={(e) => setTelegramUsername(e.target.value)}
-          />
+  <Box sx={{ display: "flex", gap: 1, maxWidth: { xs: "100%", md: "75%" } }}>
+    <TextField
+      fullWidth
+      size="small"
+      placeholder="@username / group / channel"
+      value={telegramUsername}
+      onChange={(e) => setTelegramUsername(e.target.value)}
+    />
 
-          <Button
-            variant="contained"
-            onClick={handleAddParticipant}
-            disabled={saving}
-            sx={{ whiteSpace: "nowrap" }}
-          >
-            {saving ? "Adding..." : "Add"}
-          </Button>
-           <Button
-    variant="outlined"
-    startIcon={<UploadFileIcon />}
-    onClick={() => fileInputRef.current?.click()}
-    sx={{ whiteSpace: "nowrap" }}
-  >
-    Add Excel
-  </Button>
+    <Button
+      variant="contained"
+      onClick={handleAddParticipant}
+      disabled={saving}
+      sx={{ whiteSpace: "nowrap", textTransform: "none", px: 3 }}
+    >
+      {saving ? "Adding..." : "Add"}
+    </Button>
 
-  <input
-    ref={fileInputRef}
-    type="file"
-    accept=".xlsx,.xls"
-    hidden
-    onChange={handleExcelUpload}
-  />
-        </Box>
-      </Paper>
+    <Button
+      variant="outlined"
+      startIcon={<UploadFileIcon />}
+      onClick={() => fileInputRef.current?.click()}
+      sx={{ whiteSpace: "nowrap", textTransform: "none" }}
+    >
+      Add Excel
+    </Button>
 
-      <Paper sx={{ p: 2 }}>
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept=".xlsx,.xls"
+      hidden
+      onChange={handleExcelUpload}
+    />
+  </Box>
+</Box>
+
+      {/* Section 2: Participants List */}
+      <Box sx={{ width: "100%" }}>
         <Typography fontWeight={700} sx={{ mb: 0.5, fontSize: 16 }}>
           Participants
         </Typography>
@@ -298,25 +317,25 @@ alert(message || "Upload completed");
         />
 
         {loading ? (
-          <Typography>Loading...</Typography>
+          <Typography sx={{ mt: 2, fontSize: 14, color: "text.secondary" }}>Loading...</Typography>
         ) : (
           <>
-            <TableContainer component={Paper} sx={{ overflowX: "auto" }}>
+            <TableContainer component={Paper} sx={{ overflowX: "auto", boxShadow: "none", border: "1px solid #E9E9EE" }}>
               <Table size="small" sx={{ minWidth: 650 }}>
-                <TableHead>
+                <TableHead sx={{ backgroundColor: "#f9f9fb" }}>
                   <TableRow>
-                    <TableCell>Type</TableCell>
-                    <TableCell>Phone</TableCell>
-                    <TableCell>Username / Name</TableCell>
-                    <TableCell>Telegram ID</TableCell>
-                    <TableCell align="right">Action</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Username / Name</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Telegram ID</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600 }}>Action</TableCell>
                   </TableRow>
                 </TableHead>
 
                 <TableBody>
                   {paginatedParticipants.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} align="center">
+                      <TableCell colSpan={5} align="center" sx={{ py: 3, color: "text.secondary" }}>
                         No participants found
                       </TableCell>
                     </TableRow>
@@ -325,7 +344,7 @@ alert(message || "Upload completed");
                       const type = participant.entity_type || "USER";
 
                       return (
-                        <TableRow key={participant.id}>
+                        <TableRow key={participant.id} sx={{ "&:last-child cell, &:last-child th": { border: 0 } }}>
                           <TableCell>
                             <Chip
                               size="small"
@@ -343,6 +362,7 @@ alert(message || "Upload completed");
                                   ? "secondary"
                                   : "default"
                               }
+                              sx={{ fontWeight: 500 }}
                             />
                           </TableCell>
 
@@ -367,6 +387,7 @@ alert(message || "Upload completed");
                               size="small"
                               startIcon={<DeleteOutlineIcon />}
                               onClick={() => handleDelete(participant.id)}
+                              sx={{ textTransform: "none" }}
                             >
                               Remove
                             </Button>
@@ -380,18 +401,19 @@ alert(message || "Upload completed");
             </TableContainer>
 
             {pageCount > 1 && (
-              <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+              <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
                 <Pagination
                   count={pageCount}
                   page={page}
                   onChange={(_, value) => setPage(value)}
                   color="primary"
+                  size="small"
                 />
               </Box>
             )}
           </>
         )}
-      </Paper>
+      </Box>
     </Box>
   );
 };
