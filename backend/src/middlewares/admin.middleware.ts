@@ -13,9 +13,12 @@ export const requireAdmin = (
     }
 
     // 2️⃣ Check role
-    if (req.user.role !== "ADMIN") {
-      return res.status(403).json({ message: "Admin access only" });
-    }
+if (!req.user?.role || !["ADMIN", "SUPERADMIN"].includes(req.user.role)) {
+  return res.status(403).json({
+    success: false,
+    message: "Access denied",
+  });
+}
 
     // 3️⃣ Allow request
     next();

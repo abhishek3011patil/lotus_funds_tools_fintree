@@ -160,7 +160,7 @@ const AppRoutes = () => {
         <Route
           path="/morning-report-builder"
           element={
-            <ProtectedRoute allowedRoles={["EMPLOYEE", "ADMIN"]}>
+            <ProtectedRoute allowedRoles={["EMPLOYEE", "ADMIN","SUPERADMIN"]}>
               <MorningReportBuilder />
             </ProtectedRoute>
           }
@@ -168,7 +168,7 @@ const AppRoutes = () => {
         <Route
           path="/morning-report-view"
           element={
-            <ProtectedRoute allowedRoles={["EMPLOYEE", "ADMIN"]}>
+            <ProtectedRoute allowedRoles={["EMPLOYEE", "ADMIN","SUPERADMIN"]}>
               <MorningReport />
             </ProtectedRoute>
           }
@@ -176,7 +176,7 @@ const AppRoutes = () => {
         <Route
           path="/logo-theme"
           element={
-            <ProtectedRoute allowedRoles={["EMPLOYEE", "ADMIN"]}>
+            <ProtectedRoute allowedRoles={["EMPLOYEE", "ADMIN","SUPERADMIN"]}>
               <Logotheme />
             </ProtectedRoute>
           }
@@ -184,7 +184,7 @@ const AppRoutes = () => {
         <Route
           path="/email-generator"
           element={
-            <ProtectedRoute allowedRoles={["EMPLOYEE", "ADMIN"]}>
+            <ProtectedRoute allowedRoles={["EMPLOYEE", "ADMIN","SUPERADMIN"]}>
               <Generator />
             </ProtectedRoute>
           }
@@ -194,7 +194,7 @@ const AppRoutes = () => {
         <Route
           path="/automation"
           element={
-            <ProtectedRoute allowedRoles={["EMPLOYEE", "ADMIN"]}>
+            <ProtectedRoute allowedRoles={["EMPLOYEE", "ADMIN","SUPERADMIN"]}>
               <AutomationLayout />
             </ProtectedRoute>
           }
@@ -212,7 +212,7 @@ const AppRoutes = () => {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute allowedRoles={["ADMIN"]}>
+            <ProtectedRoute allowedRoles={["ADMIN","SUPERADMIN"]}>
               <AdminLayout />
             </ProtectedRoute>
           }

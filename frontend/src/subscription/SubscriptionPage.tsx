@@ -26,7 +26,7 @@ const plans: PlanConfig[] = [
   {
     planName: "Free of Charge",
     description:
-      "Get started with essential tools and features to explore Fintree's capabilities at no cost.",
+      "Get started with essential tools and features to explore Tarkashh's capabilities at no cost.",
     monthlyPrice: "₹0/mo",
     annualPrice: "₹0/yr",
     ctaText: "Get Started Free",
@@ -38,7 +38,7 @@ const plans: PlanConfig[] = [
 
     featuredBenefits: [
       {
-        text: "Access to Fintree Basic",
+        text: "Access to Tarkashh Basic",
         subText: "Get access to basic financial tools and analysis features",
         isHighlight: true,
       },
@@ -48,7 +48,7 @@ const plans: PlanConfig[] = [
       },
       {
         text: "Community support",
-        subText: "Get help from the Fintree community forums",
+        subText: "Get help from the Tarkashh community forums",
       },
     ],
     additionalBenefits: [
@@ -62,7 +62,7 @@ const plans: PlanConfig[] = [
       },
       {
         text: "200 monthly API credits",
-        subText: "API credits for accessing Fintree data services",
+        subText: "API credits for accessing Tarkashh data services",
       },
       {
         text: "Standard reports",
@@ -75,7 +75,7 @@ const plans: PlanConfig[] = [
     ],
   },
   {
-    planName: "Fintree Plus",
+    planName: "Tarkashh Plus",
     description:
       "Get more access to new and powerful features to boost your productivity and financial creativity.",
     monthlyPrice: "₹199/mo",
@@ -84,14 +84,14 @@ const plans: PlanConfig[] = [
     annualOriginalPrice: "₹4,788",
     monthlySubText: "for 6 months, ₹399/mo after",
     annualSubText: "Save 58% compared to monthly pricing",
-    ctaText: "Get Fintree Plus",
+    ctaText: "Get Tarkashh Plus",
     ctaColor: "#1a73e8",
     ctaTextColor: "#fff",
     featuredBenefits: [
       {
-        text: "More access to Fintree 3 Pro",
+        text: "More access to Tarkashh 3 Pro",
         subText:
-          "Get more access to our most intelligent financial model Fintree 3 Pro",
+          "Get more access to our most intelligent financial model Tarkashh 3 Pro",
         isHighlight: true,
       },
       {
@@ -117,20 +117,20 @@ const plans: PlanConfig[] = [
       {
         text: "1,000 monthly API credits",
         subText:
-          "API credits to increase access to next-level Fintree features",
+          "API credits to increase access to next-level Tarkashh features",
       },
       {
-        text: "Fintree Search",
-        subText: "Higher access to the Fintree 3 Pro model and more",
+        text: "Tarkashh Search",
+        subText: "Higher access to the Tarkashh 3 Pro model and more",
       },
       {
-        text: "Fintree Insights",
+        text: "Tarkashh Insights",
         subText:
           "More access to our research partner with audio and video overviews",
       },
       {
-        text: "Fintree in Email, Docs & more",
-        subText: "Access Fintree directly in your workflow apps",
+        text: "Tarkashh in Email, Docs & more",
+        subText: "Access Tarkashh directly in your workflow apps",
       },
       {
         text: "Storage",
@@ -139,31 +139,31 @@ const plans: PlanConfig[] = [
     ],
   },
   {
-    planName: "Fintree Pro",
+    planName: "Tarkashh Pro",
     description:
-      "Unlock the highest levels of access to the best of Fintree and exclusive premium features.",
+      "Unlock the highest levels of access to the best of Tarkashh and exclusive premium features.",
     monthlyPrice: "₹24,500/mo",
     annualPrice: "₹2,45,000/yr",
     annualSubText: "Save 17% compared to monthly pricing",
-    ctaText: "Get Fintree Pro",
+    ctaText: "Get Tarkashh Pro",
     ctaColor: "#1a73e8",
     featuredBenefits: [
       {
-        text: "Highest access to Fintree 3 Pro",
+        text: "Highest access to Tarkashh 3 Pro",
         subText:
-          "Get the highest access to our most intelligent model Fintree 3 Pro",
+          "Get the highest access to our most intelligent model Tarkashh 3 Pro",
         isHighlight: true,
       },
       {
         text: "Highest limits to premium features",
         subText:
-          "Get the highest limits to advanced analytics, real-time alerts, Fintree Pro, and deep research",
+          "Get the highest limits to advanced analytics, real-time alerts, Tarkashh Pro, and deep research",
         isHighlight: true,
       },
       {
         text: "Earliest access to new innovations",
         subText:
-          "Unlock access to exclusive beta features and Fintree Agent",
+          "Unlock access to exclusive beta features and Tarkashh Agent",
         isHighlight: true,
       },
     ],
@@ -179,34 +179,34 @@ const plans: PlanConfig[] = [
       {
         text: "25,000 monthly API credits",
         subText:
-          "API credits to unlock maximum access to all Fintree features",
+          "API credits to unlock maximum access to all Tarkashh features",
       },
       {
-        text: "Fintree Search",
-        subText: "Get the highest access to the Fintree 3 Pro model and more",
+        text: "Tarkashh Search",
+        subText: "Get the highest access to the Tarkashh 3 Pro model and more",
       },
       {
-        text: "Fintree Insights",
+        text: "Tarkashh Insights",
         subText:
           "Highest access to our research partner with audio and video overviews",
       },
       {
-        text: "Fintree in Email, Docs, Vids & more",
-        subText: "Highest access to Fintree directly in your workflow apps",
+        text: "Tarkashh in Email, Docs, Vids & more",
+        subText: "Highest access to Tarkashh directly in your workflow apps",
       },
       {
-        text: "Fintree Premium individual plan",
-        subText: "Fintree ad-free, offline, in the background",
+        text: "Tarkashh Premium individual plan",
+        subText: "Tarkashh ad-free, offline, in the background",
       },
       {
-        text: "Fintree Developer Programme premium",
+        text: "Tarkashh Developer Programme premium",
         subText:
           "Build, learn and grow faster as a developer with the highest limits",
       },
       {
-        text: "Fintree Studio",
+        text: "Tarkashh Studio",
         subText:
-          "Get the highest limits to prototype, experiment, and build with our Fintree 3.1 Pro models",
+          "Get the highest limits to prototype, experiment, and build with our Tarkashh 3.1 Pro models",
       },
       {
         text: "Storage",
@@ -313,7 +313,7 @@ const SubscriptionPage: React.FC = () => {
             fontSize: { xs: "1.5rem", md: "2rem" },
           }}
         >
-          Get more out of Fintree
+          Get more out of Tarkashh
         </Typography>
         <Typography
           variant="body2"
@@ -440,7 +440,7 @@ const SubscriptionPage: React.FC = () => {
               "&:hover": { textDecoration: "underline" },
             }}
           >
-            Fintree benefits
+            Tarkashh benefits
           </Typography>
           .
         </Typography>

@@ -50,7 +50,7 @@ export const getAuditLogs = async (req: Request, res: Response) => {
     }
 
     if (user === "superadmin") {
-      where.push(`admin_role = 'SUPER_ADMIN'`);
+      where.push(`admin_role = 'SUPERADMIN'`);
     }
 
     if (date === "today") {

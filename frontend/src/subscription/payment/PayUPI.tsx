@@ -56,7 +56,7 @@ export default function PayUPI({ open, onClose, onBack, planName, planPrice, res
             key: order.key_id, // Key sent from backend
             amount: order.amount,
             currency: "INR",
-            name: "Fintree",
+            name: "Tarkashh",
             description: `Payment for ${planName}`,
             order_id: order.id,
             handler: async function (response: any) {
@@ -122,13 +122,13 @@ export default function PayUPI({ open, onClose, onBack, planName, planPrice, res
             <Dialog open={open} onClose={handleClose} PaperProps={{ sx: { width: 438, borderRadius: "16px" } }}>
                 <Box>
                     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 2.5, py: 2 }}>
-                        <Typography fontWeight={600}>Fintree Pay</Typography>
+                        <Typography fontWeight={600}>Tarkashh Pay</Typography>
                         <IconButton size="small" onClick={handleClose}>✕</IconButton>
                     </Stack>
 
                     <Box sx={{ px: 2.5, pb: 2 }}>
                         <Typography fontWeight={600}>{planName}</Typography>
-                        <Typography fontSize={13} color="#5f6368">Fintree One</Typography>
+                        <Typography fontSize={13} color="#5f6368">Tarkashh One</Typography>
                         <Stack direction="row" justifyContent="space-between" mt={2}>
                             <Typography fontSize={14}>Total Due</Typography>
                             <Typography fontSize={14} fontWeight={600}>{planPrice}</Typography>

@@ -90,7 +90,7 @@ export default function PayCard({ open, onClose, onBack, planName, planPrice, re
                 key: order.key_id,
                 amount: order.amount,
                 currency: "INR",
-                name: "Fintree",
+                name: "Tarkashh",
                 order_id: order.id,
                 // Prefill helps the user so they don't type twice
                 prefill: {

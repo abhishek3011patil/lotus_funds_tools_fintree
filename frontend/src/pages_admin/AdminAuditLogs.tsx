@@ -67,7 +67,7 @@ useEffect(() => {
       
       const token = localStorage.getItem("token");
       const API_URL = import.meta.env.VITE_API_URL;
-console.count("Fetching audit logs");
+//console.count("Fetching audit logs");
       const response = await axios.get(`${API_URL}/api/audit-logs`, {
         headers: {
           Authorization: `Bearer ${token}`,

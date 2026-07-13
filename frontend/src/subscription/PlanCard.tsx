@@ -209,7 +209,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
           letterSpacing: "0.5px",
         }}
       >
-        Featured Fintree benefits
+        Featured Tarkashh benefits
       </Typography>
 
       <Box sx={{ mb: 2 }}>

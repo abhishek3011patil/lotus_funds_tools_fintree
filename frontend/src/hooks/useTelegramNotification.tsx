@@ -50,7 +50,7 @@ export const TelegramNotificationProvider = ({
 
       const data = await res.json();
 
-      console.log("TELEGRAM STATUS:", data);
+      //console.log("TELEGRAM STATUS:", data);
 
       setTelegramDisconnected(!data.connected);
 

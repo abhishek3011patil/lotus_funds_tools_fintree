@@ -38,7 +38,7 @@ function App() {
       // no expiry stored
       if (!expiry) return;
 
-      console.log("CHECKING EXPIRY:", expiry);
+      //console.log("CHECKING EXPIRY:", expiry);
 
       // token expired
       if (Date.now() > Number(expiry)) {
