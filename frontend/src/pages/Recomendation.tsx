@@ -294,34 +294,93 @@ const submittingRef = useRef(false);
   })}`;
 };
 
-    // 🔹 Base payload (same as before)
-    const payload = {
-        status: "PUBLISHED",
-      exchange_type: form.exchangeType,
-      market_type: form.exchange,
-      symbol: "SYM",
-      display_name: finalDisplayName,
-      action: form.action,
-      call_type: form.callType,
-      trade_type: form.tradeType,
-      expiry_date: form.expiry || null,
-      entry_price: form.entry || null,
-      entry_price_low: form.entryLow || null,
-      entry_price_upper: form.entryUpper || null,
-      target_price: form.target || null,
-      target_price_2: form.target2 || null,
-      target_price_3: form.target3 || null,
-      stop_loss: form.stopLoss || null,
-      stop_loss_2: form.stopLoss2 || null,
-      stop_loss_3: form.stopLoss3 || null,
-      holding: form.holdingPeriod || null,
-      rationale: form.rationale,
-      underlying_study: form.underlyingStudy.map((s) => s.label).join(", ") || null,
-      is_algo: false,
-      has_vested_interest: false,
-      research_remarks: form.remark || undefined
-    };
+const now = new Date();
 
+const publishMessage = `
+Published On : ${now.toLocaleString("en-IN", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: true,
+})}
+
+${form.action} ${form.exchange} ${form.callType} Expiry: ${
+  form.expiry ? formatExpiry(form.expiry) : "N/A"
+}
+
+Stock Name: ${finalDisplayName}
+
+Call Type  :${form.tradeType}
+
+Entry  : ${
+  form.rangeEnabled
+    ? `${form.entryLow} - ${form.entryUpper}`
+    : form.entry
+}
+
+Target  : ${form.target}${
+  form.secondaryTargetEnabled
+    ? `
+T2  : ${form.target2}
+T3  : ${form.target3}`
+    : ""
+}
+
+SL  : ${form.stopLoss}${
+  form.stopLoss2Enabled
+    ? `
+SL 2  : ${form.stopLoss2}
+SL 3  : ${form.stopLoss3}`
+    : ""
+}
+
+Holding Period: ${form.holdingPeriod || "N/A"}
+
+Rationale: ${form.rationale}
+Underlying Study: ${
+  form.underlyingStudy.map((s) => s.label).join(", ") || "N/A"
+}
+Remarks: ${form.remark || "N/A"}
+`.trim();
+
+
+
+    // 🔹 Base payload (same as before)
+ const payload = {
+  status: "PUBLISHED",
+  message_text: publishMessage,
+
+  exchange_type: form.exchangeType,
+  market_type: form.exchange,
+  symbol: "SYM",
+  display_name: finalDisplayName,
+  action: form.action,
+  call_type: form.callType,
+  trade_type: form.tradeType,
+  expiry_date: form.expiry || null,
+  entry_price: form.entry || null,
+  entry_price_low: form.entryLow || null,
+  entry_price_upper: form.entryUpper || null,
+  target_price: form.target || null,
+  target_price_2: form.target2 || null,
+  target_price_3: form.target3 || null,
+  stop_loss: form.stopLoss || null,
+  stop_loss_2: form.stopLoss2 || null,
+  stop_loss_3: form.stopLoss3 || null,
+
+  // Fix this field name:
+  holding_period: form.holdingPeriod || null,
+
+  rationale: form.rationale,
+  underlying_study:
+    form.underlyingStudy.map((s) => s.label).join(", ") || null,
+  is_algo: false,
+  has_vested_interest: false,
+  research_remarks: form.remark || undefined,
+};
     let res;
 
     // =========================================================
@@ -343,17 +402,6 @@ const submittingRef = useRef(false);
     underlying_study: form.underlyingStudy.map((s) => s.label).join(", ") || "N/A",
     research_remarks: form.remark || undefined,
   };
-
-  res = await axios.post(
-    import.meta.env.VITE_API_URL + "/api/research/calls/errata",
-    {
-      call_id: errataSourceId,
-      updates,
-    },
-    {
-      headers: { Authorization: `Bearer ${token}` },
-    }
-  );
 
   const errataMessage = `
 ERRATA / CORRECTION
@@ -399,6 +447,20 @@ SL 3  : ${form.stopLoss3}`
 Reason:
 ${form.remark || "Correction issued by Research Analyst"}
 `.trim();
+
+  res = await axios.post(
+    import.meta.env.VITE_API_URL + "/api/research/calls/errata",
+    {
+      call_id: errataSourceId,
+      updates,
+         message_text: errataMessage,
+    },
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+
+  
 
   console.log("ERRATA TELEGRAM MESSAGE:", errataMessage);
 
@@ -548,7 +610,9 @@ Remarks: ${form.remark || "N/A"}
 
   await axios.post(
     `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
-    { message },
+   {
+    message: publishMessage,
+  },
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -933,25 +997,9 @@ const handleInitiate = useCallback(async (item: any) => {
       return;
     }
 
-    await axios.patch(
-      `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/publish`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
 
-    setRecommendations((prev) =>
-      prev.map((rec) =>
-        rec.id === item.id
-          ? { ...rec, status: "PUBLISHED" }
-          : rec
-      )
-    );
 
-    const getEntry = () => {
+      const getEntry = () => {
       if (!item.entry) return "-";
 
       if (item.entry.low && item.entry.high) {
@@ -1025,6 +1073,30 @@ Underlying Study: ${item.underlying_study || "N/A"}
 Remarks: ${item.remarks || "N/A"}
 `.trim();
 
+
+
+   await axios.patch(
+  `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/publish`,
+  {
+    message_text: publishMessage,
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
+
+    setRecommendations((prev) =>
+      prev.map((rec) =>
+        rec.id === item.id
+          ? { ...rec, status: "PUBLISHED" }
+          : rec
+      )
+    );
+
+  
+
     console.log("TELEGRAM MESSAGE:", publishMessage);
 
     await axios.post(
@@ -1052,8 +1124,7 @@ Remarks: ${item.remarks || "N/A"}
 
 
 
-
-  const handleTrack = async () => {
+const handleTrack = async () => {
       if (submittingRef.current) return;
 
   submittingRef.current = true;
@@ -1207,6 +1278,7 @@ if (priceErr) {
   }
   
 };
+ 
 
 const validateAndTrack = (event: React.MouseEvent<HTMLButtonElement>) => {
   event.preventDefault();

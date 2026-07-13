@@ -33,6 +33,7 @@ type WhatsAppJob = {
     | "RESEARCH_CALL_PUBLISHED"
     | "RESEARCH_CALL_ERRATA";
   status: string;
+  message: string;
   attempts: number;
 };
 
@@ -323,30 +324,11 @@ const processWhatsAppJob = async (): Promise<void> => {
       );
     }
 
-    const call = await getResearchCall(
-      job.research_call_id
-    );
+  const message = String(job.message || "").trim();
 
-    let message: string;
-
-    if (job.event_type === "RESEARCH_CALL_ERRATA") {
-      if (!job.original_call_id) {
-        throw new Error(
-          "Original call ID is missing for Errata job"
-        );
-      }
-
-      const originalCall = await getResearchCall(
-        job.original_call_id
-      );
-
-      message = buildErrataMessage(
-        call,
-        originalCall
-      );
-    } else {
-      message = buildPublishedMessage(call);
-    }
+if (!message) {
+  throw new Error("WhatsApp job message is empty");
+}
 
     console.log("WHATSAPP SEND ATTEMPT:", {
       jobId: job.id,

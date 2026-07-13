@@ -34,14 +34,17 @@ const getClientIp = (req: any): string => {
 /* =========================================================
    CREATE RESEARCH CALL  (POST /api/research/calls)
    ========================================================= */
-export const createResearchCall = async (req: AuthRequest, res: Response) => {
+export const createResearchCall = async (
+  req: AuthRequest,
+  res: Response
+) => {
   try {
-    const file = req.file; // 👈 multer adds this
-
+    const file = req.file;
     const filePath = file ? file.path : null;
 
     const {
       status = "PUBLISHED",
+      message_text,
       exchange_type,
       market_type,
       symbol,
@@ -64,29 +67,30 @@ export const createResearchCall = async (req: AuthRequest, res: Response) => {
       underlying_study,
       is_algo,
       has_vested_interest,
-      research_remarks
+      research_remarks,
     } = req.body;
 
- const normalizedStatus =
+    const normalizedStatus =
       String(status).toUpperCase() === "DRAFT"
         ? "DRAFT"
         : "PUBLISHED";
-    
 
     const disclaimerResult = await pool.query(
-  `
-  SELECT additional_comments, disclaimer_updated_at
-  FROM ra_details
-  WHERE user_id = $1
-  `,
-  [req.user!.id]
-);
+      `
+        SELECT
+          additional_comments,
+          disclaimer_updated_at
+        FROM ra_details
+        WHERE user_id = $1
+      `,
+      [req.user!.id]
+    );
 
-const disclaimerSnapshot =
-  disclaimerResult.rows[0]?.additional_comments || null;
+    const disclaimerSnapshot =
+      disclaimerResult.rows[0]?.additional_comments || null;
 
-const disclaimerSnapshotAt =
-  disclaimerResult.rows[0]?.disclaimer_updated_at || null;
+    const disclaimerSnapshotAt =
+      disclaimerResult.rows[0]?.disclaimer_updated_at || null;
 
     const query = `
       INSERT INTO research_calls (
@@ -114,10 +118,10 @@ const disclaimerSnapshotAt =
         underlying_study,
         is_algo,
         has_vested_interest,
-       research_remarks,
-file_url,
-disclaimer_snapshot,
-disclaimer_snapshot_at
+        research_remarks,
+        file_url,
+        disclaimer_snapshot,
+        disclaimer_snapshot_at
       )
       VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
@@ -129,7 +133,7 @@ disclaimer_snapshot_at
 
     const values = [
       req.user!.id,
-      status,
+      normalizedStatus,
       exchange_type,
       market_type,
       symbol,
@@ -137,75 +141,98 @@ disclaimer_snapshot_at
       action,
       call_type,
       trade_type,
-      expiry_date,
-      entry_price,
-      entry_price_low,
-      entry_price_upper,
-      target_price,
-      target_price_2,
-      target_price_3,
-      stop_loss,
-      stop_loss_2,
-      stop_loss_3,
-      holding_period,
-      rationale,
-      underlying_study,
-      is_algo,
-      has_vested_interest,
-      research_remarks,
-filePath,
-disclaimerSnapshot,
-disclaimerSnapshotAt  
+      expiry_date || null,
+      entry_price || null,
+      entry_price_low || null,
+      entry_price_upper || null,
+      target_price || null,
+      target_price_2 || null,
+      target_price_3 || null,
+      stop_loss || null,
+      stop_loss_2 || null,
+      stop_loss_3 || null,
+      holding_period || null,
+      rationale || null,
+      underlying_study || null,
+      is_algo === true || is_algo === "true",
+      has_vested_interest === true ||
+        has_vested_interest === "true",
+      research_remarks || null,
+      filePath,
+      disclaimerSnapshot,
+      disclaimerSnapshotAt,
     ];
 
     const { rows } = await pool.query(query, values);
     const createdCall = rows[0];
-
-
     
 
-if (String(createdCall.status).toUpperCase() === "PUBLISHED") {
-  try {
-    await queueWhatsAppResearchCall({
-      researchCallId: createdCall.id,
-      raUserId: req.user!.id,
-      eventType: "RESEARCH_CALL_PUBLISHED",
-    });
-  } catch (queueError) {
-    console.error("WHATSAPP QUEUE ERROR:", queueError);
-  }
-}
+    if (
+      String(createdCall.status).toUpperCase() ===
+      "PUBLISHED"
+    ) {
+      const whatsappMessage = String(
+        message_text || ""
+      ).trim();
+
+      if (!whatsappMessage) {
+        console.warn(
+          "WHATSAPP MESSAGE NOT QUEUED: message_text is empty",
+          createdCall.id
+        );
+      } else {
+        try {
+          await queueWhatsAppResearchCall({
+            researchCallId: createdCall.id,
+            raUserId: req.user!.id,
+            eventType: "RESEARCH_CALL_PUBLISHED",
+            message: whatsappMessage,
+          });
+        } catch (queueError) {
+          console.error(
+            "WHATSAPP QUEUE ERROR:",
+            queueError
+          );
+        }
+      }
+    }
+
     await createAuditLog({
-  adminId: req.user?.id,
-  adminName: req.user?.name,
-  adminRole: req.user?.role,
-  action: status === "DRAFT" ? "CALL_DRAFT_CREATED" : "CALL_CREATED",
-  module: "RESEARCH_CALL",
-  targetEntity: rows[0].symbol,
-  targetType: "CALL",
-  description:
-    status === "DRAFT"
-      ? `Draft research call created: ${rows[0].symbol}`
-      : `Research call created: ${rows[0].symbol}`,
-  status: "SUCCESS",
-  ipAddress: getClientIp(req),
-  device: req.headers["user-agent"] as string,
-  newValue: rows[0],
-});
+      adminId: req.user?.id,
+      adminName: req.user?.name,
+      adminRole: req.user?.role,
+      action:
+        createdCall.status === "DRAFT"
+          ? "CALL_DRAFT_CREATED"
+          : "CALL_CREATED",
+      module: "RESEARCH_CALL",
+      targetEntity: createdCall.symbol,
+      targetType: "CALL",
+      description:
+        createdCall.status === "DRAFT"
+          ? `Draft research call created: ${createdCall.symbol}`
+          : `Research call created: ${createdCall.symbol}`,
+      status: "SUCCESS",
+      ipAddress: getClientIp(req),
+      device: req.headers["user-agent"] as string,
+      newValue: createdCall,
+    });
 
     return res.status(201).json({
-  message:
-    createdCall.status === "PUBLISHED"
-      ? "Research call published and WhatsApp delivery queued"
-      : "Research call saved as draft",
-  id: createdCall.id,
-  created_at: createdCall.created_at,
-  file: filePath,
+      message:
+        createdCall.status === "PUBLISHED"
+          ? "Research call published and WhatsApp delivery queued"
+          : "Research call saved as draft",
+      id: createdCall.id,
+      created_at: createdCall.created_at,
+      file: filePath,
     });
-
   } catch (err) {
     console.error("CREATE CALL ERROR:", err);
-    return res.status(500).json({ message: "Server error" });
+
+    return res.status(500).json({
+      message: "Server error",
+    });
   }
 };
 
@@ -453,7 +480,7 @@ export const createErrata = async (
   try {
     await client.query("BEGIN");
 
-    const { call_id, updates } = req.body;
+    const { call_id, updates, message_text } = req.body;
     const userId = req.user?.id;
 
     // =========================================================
@@ -469,7 +496,7 @@ export const createErrata = async (
       [call_id, userId]
     );
 
-    if (callResult.rowCount === 0) {
+     if ((callResult.rowCount ?? 0) === 0) {
       await client.query("ROLLBACK");
 
       return res.status(404).json({
@@ -658,6 +685,25 @@ export const createErrata = async (
   ]
 );
 
+const errataCall = insertResult.rows[0];
+const whatsappMessage = String(message_text || "").trim();
+
+if (whatsappMessage) {
+  await queueWhatsAppResearchCall({
+    researchCallId: errataCall.id,
+    originalCallId: rootId,
+    raUserId: req.user!.id,
+    eventType: "RESEARCH_CALL_ERRATA",
+    message: whatsappMessage,
+    client,
+  });
+} else {
+  console.warn(
+    "ERRATA WHATSAPP NOT QUEUED: message_text is empty",
+    errataCall.id
+  );
+}
+
     await client.query("COMMIT");
 
     await createAuditLog({
@@ -737,7 +783,7 @@ export const publishDraftCall = async (req: AuthRequest, res: Response) => {
       [id, req.user!.id]
     );
 
-    if (result.rowCount === 0) {
+   if ((result.rowCount ?? 0) === 0) {
       return res.status(400).json({
         message: "Cannot publish this call",
       });

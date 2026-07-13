@@ -1,4 +1,5 @@
 import { pool } from "../db";
+import type { PoolClient } from "pg";
 
 type QueueWhatsAppResearchCallInput = {
   researchCallId: string;
@@ -6,20 +7,25 @@ type QueueWhatsAppResearchCallInput = {
   eventType:
     | "RESEARCH_CALL_PUBLISHED"
     | "RESEARCH_CALL_ERRATA";
+  message: string;
   originalCallId?: string | null;
+  client?: PoolClient;
 };
 
 export const queueWhatsAppResearchCall = async ({
   researchCallId,
   raUserId,
   eventType,
+  message,
   originalCallId = null,
+  client,
 }: QueueWhatsAppResearchCallInput) => {
-  const participantsResult = await pool.query(
+  const db = client ?? pool;
+
+  const participantsResult = await db.query(
     `
       SELECT
         id,
-        participant_name,
         phone_number
       FROM whatsapp_participants
       WHERE ra_user_id = $1
@@ -29,7 +35,7 @@ export const queueWhatsAppResearchCall = async ({
     [raUserId]
   );
 
-  if (participantsResult.rowCount === 0) {
+  if ((participantsResult.rowCount ?? 0) === 0) {
     console.log(
       `No active WhatsApp participants found for RA: ${raUserId}`
     );
@@ -40,7 +46,7 @@ export const queueWhatsAppResearchCall = async ({
   }
 
   for (const participant of participantsResult.rows) {
-    await pool.query(
+    await db.query(
       `
         INSERT INTO whatsapp_message_jobs (
           research_call_id,
@@ -49,6 +55,7 @@ export const queueWhatsAppResearchCall = async ({
           participant_id,
           phone_number,
           event_type,
+          message,
           status,
           attempts,
           error_message,
@@ -56,12 +63,7 @@ export const queueWhatsAppResearchCall = async ({
           updated_at
         )
         VALUES (
-          $1,
-          $2,
-          $3,
-          $4,
-          $5,
-          $6,
+          $1,$2,$3,$4,$5,$6,$7,
           'PENDING',
           0,
           NULL,
@@ -76,11 +78,12 @@ export const queueWhatsAppResearchCall = async ({
         participant.id,
         participant.phone_number,
         eventType,
+        message,
       ]
     );
   }
 
   return {
-    queued: participantsResult.rowCount,
+    queued: participantsResult.rowCount ?? 0,
   };
 };
