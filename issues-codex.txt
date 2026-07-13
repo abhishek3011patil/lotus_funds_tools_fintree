@@ -1,0 +1,23 @@
+Guest/platform client layer is incomplete
+   Frontend has /client/*, but DB role constraint does not support CLIENT, and public/guest educational content is not implemented.
+
+
+Build failure blocks production. Also there are hardcoded/demo texts, test routes, alerts, console logs, placeholder static JSON performance pages, and mixed API paths.
+
+
+Performance tracking is incomplete
+API currently returns placeholders like exit -- and profit_loss = NULL. Errata latest version exists, but full P/L calculation, frozen performance on suspension, and SEBI-compliant performance visibility are not complete.
+
+
+
+Notifications are incomplete
+Telegram exists, but no centralized notification system, in-platform notifications, email alerts, subscription expiry reminders, content updates, or announcement workflow.
+
+
+Frontend production readiness is not done
+   Build failure blocks production. Also there are hardcoded/demo texts, test routes, alerts, console logs, placeholder static JSON performance pages, and mixed API paths.
+
+
+
+   
+

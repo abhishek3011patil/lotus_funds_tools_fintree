@@ -1071,10 +1071,11 @@ if (missingFields.length > 0) {
   return;
 }
 
-    const finalDisplayName =
-      typeof suggestion === "object" && suggestion !== null
-        ? suggestion.display_name
-        : inputValue.trim();
+    const finalDisplayName = (
+      typeof suggestion === "string"
+        ? suggestion
+        : (suggestion as any)?.display_name ?? inputValue
+    ).trim();
 
 
         const priceErr =

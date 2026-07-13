@@ -13,25 +13,12 @@ import telegramRoutes from "./routes/telegram.routes";
 import auditRoutes from "./routes/audit.routes";
 import paymentRoutes from "./routes/payment.routes";
 import multer from "multer";
+import whatsappRoutes from "./routes/whatsapp.routes";
 
 const app = express();
 
 app.set("trust proxy", 1);
 
-app.use(helmet());
-
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message: "Too many requests. Please try again later.",
-  },
-});
-
-app.use(limiter);
 
 const allowedOrigins = [
   process.env.FRONTEND_URL,
@@ -54,6 +41,22 @@ app.use(
   })
 );
 
+app.use(helmet());
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many requests. Please try again later.",
+  },
+});
+
+app.use(limiter);
+
+
 app.use(express.json({ limit: "1mb" }));
 
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
@@ -71,6 +74,11 @@ app.use("/api/audit-logs", auditRoutes);
 app.get("/check", (_req, res) => {
   res.send("APP WORKING");
 });
+
+
+
+app.use("/api/whatsapp", whatsappRoutes);
+
 
 
 app.use((err: any, _req: any, res: any, _next: any) => {

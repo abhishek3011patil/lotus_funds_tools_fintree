@@ -1,12 +1,12 @@
 import { useEffect, useState, ChangeEvent } from "react";
 import { useParams } from "react-router-dom";
 import { Checkbox, FormControlLabel } from "@mui/material";
+import Grid from "@mui/material/GridLegacy";
 import {
   Box,
   Button,
   Typography,
   TextField,
-  Grid,
   Paper,
   Divider,
   Snackbar,

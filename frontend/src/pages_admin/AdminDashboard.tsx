@@ -39,6 +39,7 @@ type AdminRow = {
   sebi_receipt?: string;
   nism?: string;
   cheque?: string;
+  created_at: string;
 
   telegram?: string;
   telegram_id?: string;
@@ -48,6 +49,7 @@ type AdminRow = {
  suspendReason?: string;
   "age/time": string;
   pending_requests: number;
+  suspended_at?: string;
 };
 
 const ITEMS_PER_PAGE = 10;
@@ -66,6 +68,66 @@ const AdminDashboard = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
 const [confirmType, setConfirmType] = useState<"RA" | "BROKER" | null>(null);
 const [confirmId, setConfirmId] = useState<string | null>(null);
+
+// const phones = [
+//   "919773665373",
+//   "919820017751",
+//   "919594427176"
+// ];
+
+// const sendTestWhatsApp = async () => {
+//   try {
+//     const message = `📈 LOTUS FUNDS – RESEARCH ALERT
+
+// 🟢 BUY: TCS
+
+// Entry Price: ₹3,450
+// Target Price: ₹3,600
+// Stop Loss: ₹3,380
+
+// Time Horizon: Short Term
+// Risk Level: Medium
+
+// Research Analyst: Abhishek Patil
+// SEBI Registration No.: INHXXXXXXXXX
+
+// Underlying Study:
+// RSI and Volume Breakout
+
+// Disclaimer:
+// Investments in securities are subject to market risks. Please read all related documents carefully before investing.
+
+// Powered by Lotus Funds`;
+
+//     const res = await fetch(
+//       `${import.meta.env.VITE_API_URL}/api/whatsapp/test`,
+//       {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//           Authorization: `Bearer ${localStorage.getItem("token")}`,
+//         },
+//         body: JSON.stringify({
+//           phones,
+//           message,
+//         }),
+//       }
+//     );
+
+//     const data = await res.json();
+//     console.log("WHATSAPP RESPONSE:", data);
+
+//     if (!res.ok) {
+//       alert(data.message || "Failed to send WhatsApp message");
+//       return;
+//     }
+
+//     alert("WhatsApp call message sent!");
+//   } catch (error) {
+//     console.error("WhatsApp frontend error:", error);
+//     alert("Unable to connect to the server");
+//   }
+// };
 
 
   type Participant = {
@@ -138,6 +200,7 @@ const [participant, setParticipant] = useState<Participant | null>(null);
         "N/A",
 
       phone: item.mobile || "",
+      created_at: item.created_at || "",
 
       profile: item.profile_image,
       pan: item.pan_card,
@@ -155,6 +218,7 @@ const [participant, setParticipant] = useState<Participant | null>(null);
       raStatus: item.ra_status,
       rejectionReason: item.rejection_reason || "",
       suspendReason: item.suspended_reason || "",
+      suspended_at: item.suspended_at || "",
       pending_requests: Number(item.pending_requests ?? 0),
       "age/time": "Just now",
     }));
@@ -174,7 +238,7 @@ setRows(sortedFormatted);
 };
 
 const handleActivate = async (
-  userId: number
+  userId: string
 ) => {
   try {
     const token = localStorage.getItem("token");
@@ -653,7 +717,13 @@ const handleResendPasswordLink = async (userId: string) => {
 
 
   return (
+
+    
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+
+      <Button variant="contained" onClick={sendTestWhatsApp}>
+  Test WhatsApp
+</Button>
         
       {/* SEARCH */}
       <TextField
@@ -717,7 +787,18 @@ const handleResendPasswordLink = async (userId: string) => {
                 </TableCell>
 
                 
-                <TableCell>{row["age/time"]}</TableCell>
+                <TableCell>
+  {row.created_at
+    ? new Date(row.created_at).toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      })
+    : "-"}
+</TableCell>
                 <TableCell>
   {Number(row.pending_requests) > 0 ? (
     <Button
@@ -826,7 +907,7 @@ const handleResendPasswordLink = async (userId: string) => {
         <TableRow>
           <TableCell>Name</TableCell>
           <TableCell>Status</TableCell>
-          <TableCell>Age / Time</TableCell>
+          <TableCell>Suspended From</TableCell>
           <TableCell>Suspend Reason</TableCell>
           <TableCell align="right">Action</TableCell>
           
@@ -848,7 +929,18 @@ const handleResendPasswordLink = async (userId: string) => {
               />
             </TableCell>
 
-            <TableCell>{row["age/time"]}</TableCell>
+             <TableCell>
+                             {row.suspended_at
+                               ? new Date(row.suspended_at).toLocaleString("en-IN", {
+                                   day: "2-digit",
+                                   month: "short",
+                                   year: "numeric",
+                                   hour: "2-digit",
+                                   minute: "2-digit",
+                                   hour12: true,
+                                 })
+                               : "-"}
+                               </TableCell>
               <TableCell>
                 {row.suspendReason || "-"}
               </TableCell>

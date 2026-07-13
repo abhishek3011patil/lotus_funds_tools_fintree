@@ -1,6 +1,6 @@
 import ChangePassword from "../common/ChangePassword";
 import TelegramConnection from "../pages/common/TelegramConnection";
-import AddParticipant from "./common/RAProfileEditRequest";
+import AddParticipant from "../common/RAProfileEditRequest";
 
 import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
@@ -12,6 +12,7 @@ import { useTelegramNotification } from "../hooks/useTelegramNotification";
 import Button from "@mui/material/Button";
 import RASettingsDisclaimer from "../common/RASettingsDisclaimer";
 import RemoveParticipant from "../components/setting/RA_setting_component/ManageParticipants";
+import WhatsAppParticipants from "../components/setting/WhatsAppParticipants";
 
 import { useNavigate } from "react-router-dom";
 

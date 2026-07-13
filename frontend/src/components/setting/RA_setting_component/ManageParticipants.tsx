@@ -21,6 +21,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import * as XLSX from "xlsx";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import TelegramIcon from "@mui/icons-material/Telegram";
 
 interface Participant {
   id: string;
