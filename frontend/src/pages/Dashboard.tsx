@@ -51,7 +51,7 @@ const Dashboard = () => {
       >
         <Box>
           <Typography variant="h5" fontWeight={700}>
-            Welcome to Fintree
+            Welcome to Tarkashh
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             This is your dashboard.

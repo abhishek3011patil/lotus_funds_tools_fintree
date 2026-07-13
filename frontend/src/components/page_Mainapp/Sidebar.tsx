@@ -92,7 +92,7 @@ const handleLogout = async () => {
 
   const content = (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      {/* Mobile header row: Fintree + Close */}
+      {/* Mobile header row: Tarkashh + Close */}
       <Box
         sx={{
           display: { xs: "flex", sm: "none" },
@@ -112,7 +112,7 @@ const handleLogout = async () => {
             display: "block",
           }}
         >
-          Fintree
+          Tarkashh
         </Typography>
         <IconButton
           onClick={onClose}
@@ -128,7 +128,7 @@ const handleLogout = async () => {
         </IconButton>
       </Box>
 
-      {/* Desktop Fintree header aligned with header bar */}
+      {/* Desktop Tarkashh header aligned with header bar */}
       <List
         sx={{
           display: { xs: "none", sm: "block" },
@@ -152,7 +152,7 @@ const handleLogout = async () => {
           onClick={onClose}
         >
           <Typography sx={{ fontWeight: 600, fontSize: 18, lineHeight: 1 }}>
-            Fintree
+            Tarkashh
           </Typography>
         </ListItemButton>
       </List>
