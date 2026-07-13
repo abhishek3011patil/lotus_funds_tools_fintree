@@ -3,6 +3,7 @@ import { pool } from "../db";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { Router } from "express";
 import { createAuditLog } from "../utils/auditLogger";
+import { queueWhatsAppResearchCall } from "../services/deliveryQueue.service";
 
 const getClientIp = (req: any): string => {
   let ip =
@@ -65,6 +66,12 @@ export const createResearchCall = async (req: AuthRequest, res: Response) => {
       has_vested_interest,
       research_remarks
     } = req.body;
+
+ const normalizedStatus =
+      String(status).toUpperCase() === "DRAFT"
+        ? "DRAFT"
+        : "PUBLISHED";
+    
 
     const disclaimerResult = await pool.query(
   `
@@ -152,6 +159,22 @@ disclaimerSnapshotAt
     ];
 
     const { rows } = await pool.query(query, values);
+    const createdCall = rows[0];
+
+
+    
+
+if (String(createdCall.status).toUpperCase() === "PUBLISHED") {
+  try {
+    await queueWhatsAppResearchCall({
+      researchCallId: createdCall.id,
+      raUserId: req.user!.id,
+      eventType: "RESEARCH_CALL_PUBLISHED",
+    });
+  } catch (queueError) {
+    console.error("WHATSAPP QUEUE ERROR:", queueError);
+  }
+}
     await createAuditLog({
   adminId: req.user?.id,
   adminName: req.user?.name,
@@ -171,10 +194,13 @@ disclaimerSnapshotAt
 });
 
     return res.status(201).json({
-      message: "Research call created successfully",
-      id: rows[0].id,
-      created_at: rows[0].created_at,
-      file: filePath
+  message:
+    createdCall.status === "PUBLISHED"
+      ? "Research call published and WhatsApp delivery queued"
+      : "Research call saved as draft",
+  id: createdCall.id,
+  created_at: createdCall.created_at,
+  file: filePath,
     });
 
   } catch (err) {

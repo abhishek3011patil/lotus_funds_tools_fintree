@@ -296,6 +296,7 @@ const submittingRef = useRef(false);
 
     // 🔹 Base payload (same as before)
     const payload = {
+        status: "PUBLISHED",
       exchange_type: form.exchangeType,
       market_type: form.exchange,
       symbol: "SYM",
@@ -313,7 +314,7 @@ const submittingRef = useRef(false);
       stop_loss: form.stopLoss || null,
       stop_loss_2: form.stopLoss2 || null,
       stop_loss_3: form.stopLoss3 || null,
-      holding: form.holdingPeriod || "0",
+      holding: form.holdingPeriod || null,
       rationale: form.rationale,
       underlying_study: form.underlyingStudy.map((s) => s.label).join(", ") || null,
       is_algo: false,
