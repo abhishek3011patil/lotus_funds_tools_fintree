@@ -746,9 +746,31 @@ if (whatsappMessage) {
    ========================================================= */
 
 
-export const publishDraftCall = async (req: AuthRequest, res: Response) => {
+export const publishDraftCall = async (
+  req: AuthRequest,
+  res: Response
+) => {
   try {
     const { id } = req.params;
+    const raUserId = req.user?.id;
+
+    const messageText = String(
+      req.body?.message_text || ""
+    ).trim();
+
+    if (!raUserId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (!messageText) {
+      return res.status(400).json({
+        success: false,
+        message: "Message text is required",
+      });
+    }
 
     const userResult = await pool.query(
       `
@@ -756,10 +778,11 @@ export const publishDraftCall = async (req: AuthRequest, res: Response) => {
       FROM users
       WHERE id = $1
       `,
-      [req.user!.id]
+      [raUserId]
     );
 
-    const telegramSession = userResult.rows[0]?.telegram_session;
+    const telegramSession =
+      userResult.rows[0]?.telegram_session;
 
     if (
       !telegramSession ||
@@ -767,7 +790,9 @@ export const publishDraftCall = async (req: AuthRequest, res: Response) => {
       telegramSession.trim() === ""
     ) {
       return res.status(400).json({
-        message: "Telegram is not connected. Please connect Telegram first.",
+        success: false,
+        message:
+          "Telegram is not connected. Please connect Telegram first.",
       });
     }
 
@@ -776,16 +801,39 @@ export const publishDraftCall = async (req: AuthRequest, res: Response) => {
       UPDATE research_calls
       SET status = 'PUBLISHED'
       WHERE id = $1
-      AND status = 'DRAFT'
-      AND ra_user_id = $2
+        AND status = 'DRAFT'
+        AND ra_user_id = $2
       RETURNING *
       `,
-      [id, req.user!.id]
+      [id, raUserId]
     );
 
-   if ((result.rowCount ?? 0) === 0) {
+    if ((result.rowCount ?? 0) === 0) {
       return res.status(400).json({
+        success: false,
         message: "Cannot publish this call",
+      });
+    }
+
+    const publishedCall = result.rows[0];
+
+    try {
+      await queueWhatsAppResearchCall({
+        researchCallId: publishedCall.id,
+        raUserId,
+        eventType: "RESEARCH_CALL_PUBLISHED",
+        message: messageText,
+      });
+
+      console.log("WHATSAPP PUBLISH QUEUED:", {
+        researchCallId: publishedCall.id,
+        raUserId,
+      });
+    } catch (queueError: any) {
+      console.error("WHATSAPP PUBLISH QUEUE ERROR:", {
+        message: queueError?.message,
+        code: queueError?.code,
+        detail: queueError?.detail,
       });
     }
 
@@ -795,25 +843,36 @@ export const publishDraftCall = async (req: AuthRequest, res: Response) => {
       adminRole: req.user?.role,
       action: "DRAFT_PUBLISHED",
       module: "RESEARCH_CALL",
-      targetEntity: result.rows[0].symbol,
+      targetEntity: publishedCall.symbol,
       targetType: "CALL",
-      description: `Draft research call published: ${result.rows[0].symbol}`,
+      description: `Draft research call published: ${publishedCall.symbol}`,
       status: "SUCCESS",
       ipAddress: getClientIp(req),
       device: req.headers["user-agent"] as string,
       oldValue: { status: "DRAFT" },
-      newValue: result.rows[0],
+      newValue: publishedCall,
     });
 
-    return res.json({
-      message: "Call published successfully",
+    return res.status(200).json({
+      success: true,
+      message:
+        "Call published and WhatsApp delivery queued",
+      data: publishedCall,
     });
-  } catch (err) {
-    console.error("PUBLISH ERROR:", err);
-    return res.status(500).json({ message: "Server error" });
+  } catch (err: any) {
+    console.error("PUBLISH ERROR:", {
+      message: err?.message,
+      code: err?.code,
+      detail: err?.detail,
+      stack: err?.stack,
+    });
+
+    return res.status(500).json({
+      success: false,
+      message: err?.message || "Server error",
+    });
   }
 };
-
 
 
     // =========================================================
