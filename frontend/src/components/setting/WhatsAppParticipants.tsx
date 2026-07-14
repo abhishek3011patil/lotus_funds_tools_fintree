@@ -372,16 +372,16 @@ const WhatsAppParticipants = ({
         </Alert>
       )}
 
-      {/* Section 1: Add New Participant Form */}
+{/* Section 1: Add New Participant Form */}
 <Box 
   sx={{ 
     width: "100%", 
     mb: 4, 
     mt: 2,
-    backgroundColor: "#F8F9FA", // Light card gray background
-    border: "1px solid #E9EAEB", // Fine, subtle layout outline
-    borderRadius: "16px", // Smooth rounded corners
-    p: 3, // Interior padding
+    backgroundColor: "#F8F9FA", 
+    border: "1px solid #E9EAEB", 
+    borderRadius: "16px", 
+    p: 3, 
   }}
 >
   <Typography sx={{ mb: 0.5, fontSize: "15px", fontWeight: 600, color: "#1a1a1a" }}>
@@ -393,59 +393,89 @@ const WhatsAppParticipants = ({
   </Typography>
 
   <Stack spacing={1}>
-
-<Box 
-  sx={{ 
-    width: "100%", 
-    display: "flex", 
-    gap: 1.5, 
-    flexDirection: { xs: "column", sm: "row" },
-    mt: { xs: 1, md: 0 }
-  }}
->
-  <Button
-    variant="contained"
-    onClick={handleSave}
-    disabled={!formIsValid || saving}
-    sx={{
-      whiteSpace: "nowrap",
-      height: 40,
-      px: 3,
-      width: { xs: "100%", sm: "auto" },
-      textTransform: "none",
-      fontWeight: 500,
-      boxShadow: "none",
-      minWidth: editingParticipant ? 145 : 110,
-      backgroundColor: "#1D4ED8",
-      "&:hover": {
-        backgroundColor: "#1E40AF",
-        boxShadow: "none",
-      },
-      "&.Mui-disabled": {
-        backgroundColor: "rgba(0, 0, 0, 0.12)",
-      }
-    }}
-  >
-    {saving ? "Saving..." : editingParticipant ? "Update" : "Add"}
-  </Button>
-
-  {editingParticipant && (
-    <Button
-      variant="outlined"
-      onClick={resetForm}
-      disabled={saving}
+    {/* Combined single row for fields and buttons */}
+    <Box 
       sx={{ 
-        whiteSpace: "nowrap", 
-        height: 40, 
-        width: { xs: "100%", sm: "auto" },
-        textTransform: "none", 
-        fontWeight: 500 
+        display: "flex", 
+        gap: 2, 
+        flexDirection: { xs: "column", md: "row" },
+        alignItems: { xs: "stretch", md: "flex-start" },
+        mb: 1
       }}
     >
-      Cancel
-    </Button>
-  )}
-</Box>
+      <TextField
+        fullWidth
+        size="small"
+        label="Participant Name"
+        placeholder="e.g. John Doe"
+        value={form.participantName}
+        onChange={(e) => setForm(prev => ({ ...prev, participantName: e.target.value }))}
+      />
+      <TextField
+        fullWidth
+        size="small"
+        label="WhatsApp Number"
+        placeholder="e.g. 919876543210"
+        value={form.phoneNumber}
+        onChange={(e) => setForm(prev => ({ ...prev, phoneNumber: e.target.value }))}
+      />
+
+      {/* Buttons container is now a sibling inside the horizontal flexbox */}
+      <Box 
+        sx={{ 
+          display: "flex", 
+          gap: 1.5, 
+          flexDirection: { xs: "column", sm: "row" },
+          // Perfect alignment alignment offset for small-sized textfields with labels
+          mt: { md: "4px" }, 
+          width: { xs: "100%", md: "auto" }
+        }}
+      >
+        <Button
+          variant="contained"
+          onClick={handleSave}
+          disabled={!formIsValid || saving}
+          sx={{
+            whiteSpace: "nowrap",
+            height: 40,
+            px: 3,
+            width: { xs: "100%", sm: "auto" },
+            textTransform: "none",
+            fontWeight: 500,
+            boxShadow: "none",
+            minWidth: editingParticipant ? 145 : 110,
+            backgroundColor: "#1D4ED8",
+            "&:hover": {
+              backgroundColor: "#1E40AF",
+              boxShadow: "none",
+              },
+            "&.Mui-disabled": {
+              backgroundColor: "rgba(0, 0, 0, 0.12)",
+            }
+          }}
+        >
+          {saving ? "Saving..." : editingParticipant ? "Update" : "Add"}
+        </Button>
+
+        {editingParticipant && (
+          <Button
+            variant="outlined"
+            onClick={resetForm}
+            disabled={saving}
+            sx={{ 
+              whiteSpace: "nowrap", 
+              height: 40, 
+              width: { xs: "100%", sm: "auto" },
+              textTransform: "none", 
+              fontWeight: 500 
+            }}
+          >
+            Cancel
+          </Button>
+        )}
+      </Box>
+    </Box>
+
     {!editingParticipant && (
       <FormControlLabel
         control={
