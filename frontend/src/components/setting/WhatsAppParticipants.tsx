@@ -345,9 +345,17 @@ const WhatsAppParticipants = ({
 
   return (
     <Box sx={{ mt: 4, width: "100%" }}>
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-        <WhatsAppIcon color="success" />
-        <Typography fontWeight={700} sx={{ fontSize: 18 }}>
+    <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: -1 }}>
+        <WhatsAppIcon color="success" sx={{ fontSize: 24 }} />
+        <Typography 
+          variant="h6" 
+          sx={{ 
+            fontSize: "20px", 
+            fontWeight: 600, 
+            color: "#1a1a1a", 
+            fontFamily: "sans-serif"
+          }}
+        >
           {title}
         </Typography>
       </Stack>
@@ -364,101 +372,102 @@ const WhatsAppParticipants = ({
         </Alert>
       )}
 
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography fontWeight={700} sx={{ mb: 1, fontSize: 16 }}>
-          {editingParticipant ? "Edit Participant" : "Add New Participant"}
-        </Typography>
+      {/* Section 1: Add New Participant Form */}
+<Box 
+  sx={{ 
+    width: "100%", 
+    mb: 4, 
+    mt: 2,
+    backgroundColor: "#F8F9FA", // Light card gray background
+    border: "1px solid #E9EAEB", // Fine, subtle layout outline
+    borderRadius: "16px", // Smooth rounded corners
+    p: 3, // Interior padding
+  }}
+>
+  <Typography sx={{ mb: 0.5, fontSize: "15px", fontWeight: 600, color: "#1a1a1a" }}>
+    {editingParticipant ? "Edit Participant" : "Add New Participant"}
+  </Typography>
 
-        <Typography color="text.secondary" sx={{ mb: 2, fontSize: 14 }}>
-          Enter the participant name and WhatsApp number with country code.
-        </Typography>
+  <Typography color="text.secondary" sx={{ mb: 2.5, fontSize: "14px" }}>
+    Enter the participant name and WhatsApp number with country code.
+  </Typography>
 
-        <Stack spacing={2}>
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: { xs: "column", md: "row" },
-              gap: 1,
-            }}
-          >
-            <TextField
-              fullWidth
-              size="small"
-              label="Participant Name"
-              placeholder="Enter participant name"
-              value={form.participantName}
-              onChange={(event) =>
-                setForm((previous) => ({
-                  ...previous,
-                  participantName: event.target.value,
-                }))
-              }
-              inputProps={{ maxLength: 150 }}
-            />
+  <Stack spacing={1}>
 
-            <TextField
-              fullWidth
-              size="small"
-              label="WhatsApp Number"
-              placeholder="919773665373"
-              value={form.phoneNumber}
-              onChange={(event) =>
-                setForm((previous) => ({
-                  ...previous,
-                  phoneNumber: event.target.value,
-                }))
-              }
-              helperText="Country code required. Do not use spaces or the + symbol."
-              inputProps={{ inputMode: "numeric", maxLength: 15 }}
-            />
+<Box 
+  sx={{ 
+    width: "100%", 
+    display: "flex", 
+    gap: 1.5, 
+    flexDirection: { xs: "column", sm: "row" },
+    mt: { xs: 1, md: 0 }
+  }}
+>
+  <Button
+    variant="contained"
+    onClick={handleSave}
+    disabled={!formIsValid || saving}
+    sx={{
+      whiteSpace: "nowrap",
+      height: 40,
+      px: 3,
+      width: { xs: "100%", sm: "auto" },
+      textTransform: "none",
+      fontWeight: 500,
+      boxShadow: "none",
+      minWidth: editingParticipant ? 145 : 110,
+      backgroundColor: "#1D4ED8",
+      "&:hover": {
+        backgroundColor: "#1E40AF",
+        boxShadow: "none",
+      },
+      "&.Mui-disabled": {
+        backgroundColor: "rgba(0, 0, 0, 0.12)",
+      }
+    }}
+  >
+    {saving ? "Saving..." : editingParticipant ? "Update" : "Add"}
+  </Button>
 
-            <Button
-              variant="contained"
-              color="success"
-              onClick={handleSave}
-              disabled={!formIsValid || saving}
-              sx={{
-                whiteSpace: "nowrap",
-                height: 40,
-                minWidth: editingParticipant ? 145 : 110,
-              }}
-            >
-              {saving ? "Saving..." : editingParticipant ? "Update" : "Add"}
-            </Button>
+  {editingParticipant && (
+    <Button
+      variant="outlined"
+      onClick={resetForm}
+      disabled={saving}
+      sx={{ 
+        whiteSpace: "nowrap", 
+        height: 40, 
+        width: { xs: "100%", sm: "auto" },
+        textTransform: "none", 
+        fontWeight: 500 
+      }}
+    >
+      Cancel
+    </Button>
+  )}
+</Box>
+    {!editingParticipant && (
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={form.consentConfirmed}
+            onChange={(event) =>
+              setForm((previous) => ({
+                ...previous,
+                consentConfirmed: event.target.checked,
+              }))
+            }
+          />
+        }
+        label="I confirm that the recipient has consented to receive WhatsApp messages."
+        sx={{ mt: 1, "& .MuiFormControlLabel-label": { fontSize: "14px" } }}
+      />
+    )}
+  </Stack>
+</Box>
 
-            {editingParticipant && (
-              <Button
-                variant="outlined"
-                onClick={resetForm}
-                disabled={saving}
-                sx={{ whiteSpace: "nowrap", height: 40 }}
-              >
-                Cancel
-              </Button>
-            )}
-          </Box>
-
-          {!editingParticipant && (
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={form.consentConfirmed}
-                  onChange={(event) =>
-                    setForm((previous) => ({
-                      ...previous,
-                      consentConfirmed: event.target.checked,
-                    }))
-                  }
-                />
-              }
-              label="I confirm that the recipient has consented to receive WhatsApp messages."
-            />
-          )}
-        </Stack>
-      </Paper>
-
-      <Paper sx={{ p: 2 }}>
-        <Typography fontWeight={700} sx={{ mb: 0.5, fontSize: 16 }}>
+     <Box sx={{ width: "100%", pt: 2, borderTop: "1px solid #E9E9EE" }}>
+        <Typography sx={{ mb: 0.5, fontSize: "15px", fontWeight: 600, color: "#1a1a1a" }}>
           Participants
         </Typography>
 
@@ -488,7 +497,7 @@ const WhatsAppParticipants = ({
           </Box>
         ) : (
           <>
-            <TableContainer sx={{ overflowX: "auto" }}>
+           <TableContainer sx={{ overflowX: "auto", width: "100%", mb: 1 }}>
               <Table size="small" sx={{ minWidth: 780 }}>
                 <TableHead>
                   <TableRow>
@@ -617,7 +626,7 @@ const WhatsAppParticipants = ({
             )}
           </>
         )}
-      </Paper>
+      </Box>
 
       <Dialog
         open={Boolean(deleteTarget)}
