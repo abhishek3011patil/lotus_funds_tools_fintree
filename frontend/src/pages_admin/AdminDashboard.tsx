@@ -721,10 +721,7 @@ const handleResendPasswordLink = async (userId: string) => {
     
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
 
-      <Button variant="contained" onClick={sendTestWhatsApp}>
-  Test WhatsApp
-</Button>
-        
+     
       {/* SEARCH */}
       <TextField
         placeholder="Search by name or mobile"
