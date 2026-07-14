@@ -62,7 +62,7 @@ const AdminDashboard = () => {
   const [filterTab, setFilterTab] = useState<"all" | "approved" | "requests">("all");
 
   const [selectedRA, setSelectedRA] = useState<AdminRow | null>(null);
-  const [panelMode, setPanelMode] = useState<"ra" | "participant">("ra");
+  const [panelMode, setPanelMode] = useState<"ra" | "participant" | "whatsapp">("ra");
   const [suspendReason, setSuspendReason] = useState("");
   const [suspendedPage, setSuspendedPage] = useState(1);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -441,6 +441,17 @@ setParticipantUsername("");
     fetchParticipants(row.userId || row.id);
   };
 
+
+  const handleViewWhatsAppParticipant = (row: AdminRow) => {
+  setPanelMode("whatsapp");
+  setSelectedRA(row);
+  setParticipant(null);
+  // Optional: If you have a separate API for WhatsApp participants, fetch it here
+  // fetchWhatsAppParticipants(row.userId || row.id);
+};
+
+  
+
   const handleUpdateParticipant = async () => {
   if (!participant?.id) return;
 
@@ -713,9 +724,6 @@ const handleResendPasswordLink = async (userId: string) => {
   }
 };
 
-
-
-
   return (
 
     
@@ -767,6 +775,7 @@ const handleResendPasswordLink = async (userId: string) => {
               <TableCell>Requests</TableCell>
                <TableCell align="right">Action</TableCell> 
               <TableCell>Telegram</TableCell>
+              <TableCell>WhatsApp</TableCell>
             </TableRow>
           </TableHead>
 
@@ -840,13 +849,32 @@ const handleResendPasswordLink = async (userId: string) => {
                   >
                     <Button
                       size="small"
-                      variant="outlined"
+                      variant="contained"
+                      color="primary"
                       onClick={() => handleViewParticipant(row)}
                     >
                       View Participant
                     </Button>
                   </Box>
                 </TableCell>
+
+                {/* 👇 ADD THIS NEW WHATSAPP CELL */}
+<TableCell>
+  <Button
+    size="small"
+    variant="contained"
+    onClick={() => handleViewWhatsAppParticipant(row)}
+    sx={{
+      backgroundColor: "#25D366", // WhatsApp Green
+      color: "#fff",
+      "&:hover": { backgroundColor: "#128C7E" }
+    }}
+  >
+    View Participant
+  </Button>
+</TableCell>
+
+                
               </TableRow>
             ))}
 
