@@ -999,112 +999,451 @@ if (missingFields.length > 0) {
 
 
   //instiate
-const handleInitiate = useCallback(async (item: any) => {
-  try {
-    const token = localStorage.getItem("token");
+// const handleInitiate = useCallback(async (item: any) => {
+//   try {
+//     const token = localStorage.getItem("token");
 
-    if (!token) {
-      alert("Please login again");
-      return;
-    }
+//     if (!token) {
+//       alert("Please login again");
+//       return;
+//     }
 
-    const telegramStatus = await axios.get(
-      `${import.meta.env.VITE_API_URL}/api/telegram/status`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+//     const telegramStatus = await axios.get(
+//       `${import.meta.env.VITE_API_URL}/api/telegram/status`,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${token}`,
+//         },
+//       }
+//     );
+
+//     if (!telegramStatus.data.connected) {
+//       alert("Please connect Telegram first");
+//       return;
+//     }
+
+
+
+//       const getEntry = () => {
+//       if (!item.entry) return "-";
+
+//       if (item.entry.low && item.entry.high) {
+//         return `${item.entry.low} - ${item.entry.high}`;
+//       }
+
+//       return item.entry.ideal || "-";
+//     };
+
+//      const formatExpiry = (date: string) => {
+//   const d = new Date(date);
+
+//   const day = d.getDate();
+//   const suffix =
+//     day % 10 === 1 && day !== 11
+//       ? "st"
+//       : day % 10 === 2 && day !== 12
+//       ? "nd"
+//       : day % 10 === 3 && day !== 13
+//       ? "rd"
+//       : "th";
+
+//   return `${day}${suffix} ${d.toLocaleString("en-IN", {
+//     month: "long",
+//     year: "numeric",
+//   })}`;
+// };
+
+
+
+// const raFullName = [
+//   raDetails?.salutation,
+//   raDetails?.first_name,
+//   raDetails?.middle_name,
+//   raDetails?.surname,
+// ]
+//   .filter(Boolean)
+//   .join(" ");
+
+// const disclaimer =
+//   raDetails?.additional_comments ||
+//   "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
+
+
+//    const publishMessage = `
+// Published On : ${new Date().toLocaleString("en-IN", {
+//   day: "numeric",
+//   month: "long",
+//   year: "numeric",
+//   hour: "numeric",
+//   minute: "2-digit",
+//   second: "2-digit",
+//   hour12: true,
+// })}
+
+// ${item.action || "N/A"} ${item.exchange || "N/A"} ${item.call_type || "N/A"} Expiry: ${
+//   item.expiry_date ? formatExpiry(item.expiry_date) : "N/A"
+// }
+
+// Stock Name: ${item.name || item.symbol || "N/A"}
+
+// Call Type  : ${item.trade_type || "N/A"}
+
+// Entry  : ${getEntry()}
+
+// Target  : ${item.targets?.[0] || "-"}${
+//   item.targets?.[1] || item.targets?.[2]
+//     ? `
+// T2  : ${item.targets?.[1] || "-"}
+// T3  : ${item.targets?.[2] || "-"}`
+//     : ""
+// }
+
+// SL  : ${item.stop_losses?.[0] || "-"}${
+//   item.stop_losses?.[1] || item.stop_losses?.[2]
+//     ? `
+// SL 2  : ${item.stop_losses?.[1] || "-"}
+// SL 3  : ${item.stop_losses?.[2] || "-"}`
+//     : ""
+// }
+
+// Holding Period: ${item.holding_period || "N/A"}
+
+// Rationale: ${item.rationale || "N/A"}
+// Underlying Study: ${item.underlying_study || "N/A"}
+// Remarks: ${item.remarks || "N/A"}
+
+// DISCLAIMER CUM DISCLOSURE:
+
+// ${disclaimer}
+
+// Research Analyst: ${raFullName || "N/A"} (${raDetails?.org_name || "N/A"})
+// SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
+// Contact No: ${raDetails?.mobile || "N/A"}
+// Email ID: ${raDetails?.email || "N/A"}
+
+// Read Full Disclaimer / Disclosure at:
+// https://lotusfunds.com/disclaimer&disclosure
+// `.trim();
+
+
+
+//    await axios.patch(
+//   `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/publish`,
+//   {
+//     message_text: publishMessage,
+//   },
+//   {
+//     headers: {
+//       Authorization: `Bearer ${token}`,
+//     },
+//   }
+// );
+
+//     setRecommendations((prev) =>
+//       prev.map((rec) =>
+//         rec.id === item.id
+//           ? { ...rec, status: "PUBLISHED" }
+//           : rec
+//       )
+//     );
+
+  
+
+//     console.log("TELEGRAM MESSAGE:", publishMessage);
+
+    
+
+//     await axios.post(
+//       `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
+//       {
+//         message: publishMessage,
+//       },
+//       {
+//         headers: {
+//           Authorization: `Bearer ${token}`,
+//         },
+//       }
+//     );
+
+//     alert("Call initiated successfully ✅");
+//   } catch (err: any) {
+//     console.error(err);
+
+//     alert(
+//       err?.response?.data?.message ||
+//       "Something went wrong"
+//     );
+//   }
+// }, [raDetails]);
+
+
+
+// const handleTrack = async () => {
+//       if (submittingRef.current) return;
+
+//   submittingRef.current = true;
+//   setIsSubmitting(true);
+//   try {
+//     const token = localStorage.getItem("token");
+
+//     if (!token) {
+//       alert("Please login again");
+//       return;
+//     }
+//     const missingFields = getMissingFields();
+
+// if (missingFields.length > 0) {
+//   alert(`Please fill required fields:\n\n${missingFields.join(", ")}`);
+//   return;
+// }
+
+//     const finalDisplayName = (
+//       typeof suggestion === "string"
+//         ? suggestion
+//         : (suggestion as any)?.display_name ?? inputValue
+//     ).trim();
+
+
+//         const priceErr =
+//   getPriceError("entry", form) ||
+//   getPriceError("target", form) ||
+//   getPriceError("stopLoss", form) ||
+//   getPriceError("entryLow", form) ||
+//   getPriceError("entryUpper", form) ||
+//   getPriceError("target2", form) ||
+//   getPriceError("target3", form) ||
+//   getPriceError("stopLoss2", form) ||
+//   getPriceError("stopLoss3", form);
+
+// if (priceErr) {
+//   const priceRow = document.getElementById("prices-row");
+
+//   if (priceRow) {
+//     priceRow.scrollIntoView({
+//       behavior: "smooth",
+//       block: "center",
+//     });
+//   }
+
+//   return;
+// }
+
+//     // 🔹 Base payload
+//     const payload = {
+//       status: "DRAFT",
+
+//       exchange_type: form.exchangeType,
+//       market_type: form.exchange,
+//       symbol: form.symbol || finalDisplayName,
+//       display_name: finalDisplayName,
+
+//       action: form.action,
+//       call_type: form.callType,
+//       trade_type: form.tradeType,
+//       expiry_date: form.expiry || null,
+
+//       // 🔹 Entry
+//       entry_price: form.entry || null,
+//       entry_price_low: form.rangeEnabled ? form.entryLow || null : null,
+//       entry_price_upper: form.rangeEnabled ? form.entryUpper || null : null,
+
+//       // 🔹 Targets
+//       target_price: form.target || null,
+//       target_price_2: form.secondaryTargetEnabled
+//         ? form.target2 || null
+//         : null,
+//       target_price_3: form.secondaryTargetEnabled
+//         ? form.target3 || null
+//         : null,
+
+//       // 🔹 Stop Loss
+//       stop_loss: form.stopLoss || null,
+//       stop_loss_2: form.stopLoss2Enabled
+//         ? form.stopLoss2 || null
+//         : null,
+//       stop_loss_3: form.stopLoss2Enabled
+//         ? form.stopLoss3 || null
+//         : null,
+
+//       // ⚠️ FIXED KEY
+//       holding_period: form.holdingPeriod || null,
+
+//       rationale: form.rationale,
+//       underlying_study: form.underlyingStudy.map((s) => s.label).join(", ") || null,
+
+//       is_algo: false,
+//       has_vested_interest: false,
+//       research_remarks: form.remark || null,
+//     };
+
+//     // =========================================================
+//     // ✅ CONVERT TO FORMDATA
+//     // =========================================================
+//     const formData = new FormData();
+
+//     // 🔹 attach file if exists
+//     if (selectedFile) {
+//       formData.append("file", selectedFile);
+//     }
+
+//     // 🔹 append all fields
+//     Object.entries(payload).forEach(([key, value]) => {
+//       if (value !== null && value !== undefined) {
+//         formData.append(key, value as any);
+//       }
+//     });
+
+//     console.log("TRACK FORM DATA READY");
+
+//     // =========================================================
+//     // ✅ API CALL
+//     // =========================================================
+//     await axios.post(
+//       `${import.meta.env.VITE_API_URL}/api/research/calls`,
+//       formData,
+//       {
+//         headers: {
+//           Authorization: `Bearer ${token}`,
+//           "Content-Type": "multipart/form-data",
+//         },
+//       }
+//     );
+//     await fetchRecommendations();
+
+//     // Optional reset
+//      resetForm();
+
+//     alert("Draft Saved ✅");
+
+//     // 🔥 Refresh list
+    
+
+//  } catch (err: any) {
+//   console.error("Track failed:", err?.response?.data || err);
+
+//   alert(
+//     err?.response?.data?.message ||
+//       err?.response?.data?.error ||
+//       "Track failed"
+//   );
+// }finally {
+//     submittingRef.current = false;
+//     setIsSubmitting(false);
+//   }
+  
+// };
+
+const handleInitiate = useCallback(
+  async (item: any) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        alert("Please login again");
+        return;
       }
-    );
 
-    if (!telegramStatus.data.connected) {
-      alert("Please connect Telegram first");
-      return;
-    }
+      if (!raDetails) {
+        alert("RA message profile is not loaded");
+        return;
+      }
 
+      const telegramStatus = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/telegram/status`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
+      if (!telegramStatus.data.connected) {
+        alert("Please connect Telegram first");
+        return;
+      }
 
       const getEntry = () => {
-      if (!item.entry) return "-";
+        if (!item.entry) return "-";
 
-      if (item.entry.low && item.entry.high) {
-        return `${item.entry.low} - ${item.entry.high}`;
-      }
+        if (item.entry.low && item.entry.high) {
+          return `${item.entry.low} - ${item.entry.high}`;
+        }
 
-      return item.entry.ideal || "-";
-    };
+        return item.entry.ideal || "-";
+      };
 
-     const formatExpiry = (date: string) => {
-  const d = new Date(date);
+      const formatExpiry = (date: string) => {
+        const d = new Date(date);
+        const day = d.getDate();
 
-  const day = d.getDate();
-  const suffix =
-    day % 10 === 1 && day !== 11
-      ? "st"
-      : day % 10 === 2 && day !== 12
-      ? "nd"
-      : day % 10 === 3 && day !== 13
-      ? "rd"
-      : "th";
+        const suffix =
+          day % 10 === 1 && day !== 11
+            ? "st"
+            : day % 10 === 2 && day !== 12
+            ? "nd"
+            : day % 10 === 3 && day !== 13
+            ? "rd"
+            : "th";
 
-  return `${day}${suffix} ${d.toLocaleString("en-IN", {
-    month: "long",
-    year: "numeric",
-  })}`;
-};
+        return `${day}${suffix} ${d.toLocaleString("en-IN", {
+          month: "long",
+          year: "numeric",
+        })}`;
+      };
 
+      const raFullName = [
+        raDetails.salutation,
+        raDetails.first_name,
+        raDetails.middle_name,
+        raDetails.surname,
+      ]
+        .filter(Boolean)
+        .join(" ");
 
+      const disclaimer =
+        raDetails.additional_comments ||
+        "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
 
-const raFullName = [
-  raDetails?.salutation,
-  raDetails?.first_name,
-  raDetails?.middle_name,
-  raDetails?.surname,
-]
-  .filter(Boolean)
-  .join(" ");
-
-const disclaimer =
-  raDetails?.additional_comments ||
-  "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
-
-
-   const publishMessage = `
+      const publishMessage = `
 Published On : ${new Date().toLocaleString("en-IN", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  second: "2-digit",
-  hour12: true,
-})}
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      })}
 
-${item.action || "N/A"} ${item.exchange || "N/A"} ${item.call_type || "N/A"} Expiry: ${
-  item.expiry_date ? formatExpiry(item.expiry_date) : "N/A"
-}
+${item.action || "N/A"} ${item.exchange || "N/A"} ${
+        item.call_type || "N/A"
+      } Expiry: ${
+        item.expiry_date
+          ? formatExpiry(item.expiry_date)
+          : "N/A"
+      }
 
 Stock Name: ${item.name || item.symbol || "N/A"}
 
-Call Type  : ${item.trade_type || "N/A"}
+Call Type: ${item.trade_type || "N/A"}
 
-Entry  : ${getEntry()}
+Entry: ${getEntry()}
 
-Target  : ${item.targets?.[0] || "-"}${
-  item.targets?.[1] || item.targets?.[2]
-    ? `
-T2  : ${item.targets?.[1] || "-"}
-T3  : ${item.targets?.[2] || "-"}`
-    : ""
-}
+Target: ${item.targets?.[0] || "-"}${
+        item.targets?.[1] || item.targets?.[2]
+          ? `
+T2: ${item.targets?.[1] || "-"}
+T3: ${item.targets?.[2] || "-"}`
+          : ""
+      }
 
-SL  : ${item.stop_losses?.[0] || "-"}${
-  item.stop_losses?.[1] || item.stop_losses?.[2]
-    ? `
-SL 2  : ${item.stop_losses?.[1] || "-"}
-SL 3  : ${item.stop_losses?.[2] || "-"}`
-    : ""
-}
+SL: ${item.stop_losses?.[0] || "-"}${
+        item.stop_losses?.[1] || item.stop_losses?.[2]
+          ? `
+SL 2: ${item.stop_losses?.[1] || "-"}
+SL 3: ${item.stop_losses?.[2] || "-"}`
+          : ""
+      }
 
 Holding Period: ${item.holding_period || "N/A"}
 
@@ -1112,77 +1451,78 @@ Rationale: ${item.rationale || "N/A"}
 Underlying Study: ${item.underlying_study || "N/A"}
 Remarks: ${item.remarks || "N/A"}
 
-ISCLAIMER CUM DISCLOSURE:
+DISCLAIMER CUM DISCLOSURE:
 
 ${disclaimer}
 
-Research Analyst: ${raFullName || "N/A"} (${raDetails?.org_name || "N/A"})
-SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
-Contact No: ${raDetails?.mobile || "N/A"}
-Email ID: ${raDetails?.email || "N/A"}
+Research Analyst: ${raFullName || "N/A"} (${
+        raDetails.org_name || "N/A"
+      })
+SEBI Registration No: ${raDetails.sebi_reg_no || "N/A"}
+Contact No: ${raDetails.mobile || "N/A"}
+Email ID: ${raDetails.email || "N/A"}
 
 Read Full Disclaimer / Disclosure at:
 https://lotusfunds.com/disclaimer&disclosure
 `.trim();
 
+      console.log("FINAL PUBLISH MESSAGE:", publishMessage);
 
-
-   await axios.patch(
-  `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/publish`,
-  {
-    message_text: publishMessage,
-  },
-  {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  }
-);
-
-    setRecommendations((prev) =>
-      prev.map((rec) =>
-        rec.id === item.id
-          ? { ...rec, status: "PUBLISHED" }
-          : rec
-      )
-    );
-
-  
-
-    console.log("TELEGRAM MESSAGE:", publishMessage);
-
-    
-
-    await axios.post(
-      `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
-      {
-        message: publishMessage,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
+      await axios.patch(
+        `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/publish`,
+        {
+          message_text: publishMessage,
         },
-      }
-    );
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    alert("Call initiated successfully ✅");
-  } catch (err: any) {
-    console.error(err);
+      setRecommendations((prev) =>
+        prev.map((rec) =>
+          rec.id === item.id
+            ? { ...rec, status: "PUBLISHED" }
+            : rec
+        )
+      );
 
-    alert(
-      err?.response?.data?.message ||
-      "Something went wrong"
-    );
-  }
-}, []);
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
+        {
+          message: publishMessage,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
+      alert("Call initiated successfully ✅");
+    } catch (err: any) {
+      console.error(
+        "Initiate failed:",
+        err?.response?.data || err
+      );
+
+      alert(
+        err?.response?.data?.message ||
+          "Something went wrong"
+      );
+    }
+  },
+  [raDetails]
+);
 
 
 const handleTrack = async () => {
-      if (submittingRef.current) return;
+  if (submittingRef.current) return;
 
   submittingRef.current = true;
   setIsSubmitting(true);
+
   try {
     const token = localStorage.getItem("token");
 
@@ -1190,114 +1530,147 @@ const handleTrack = async () => {
       alert("Please login again");
       return;
     }
+
     const missingFields = getMissingFields();
 
-if (missingFields.length > 0) {
-  alert(`Please fill required fields:\n\n${missingFields.join(", ")}`);
+    if (missingFields.length > 0) {
+      alert(
+        `Please fill required fields:\n\n${missingFields.join(", ")}`
+      );
+      return;
+    }
+
+    /*
+     * suggestion and inputValue are strings from useStockAutocomplete.
+     * Use the completed suggestion when it matches the typed text.
+     * Otherwise use exactly what the user typed.
+     */
+    
+
+    const priceErr =
+      getPriceError("entry", form) ||
+      getPriceError("target", form) ||
+      getPriceError("stopLoss", form) ||
+      getPriceError("entryLow", form) ||
+      getPriceError("entryUpper", form) ||
+      getPriceError("target2", form) ||
+      getPriceError("target3", form) ||
+      getPriceError("stopLoss2", form) ||
+      getPriceError("stopLoss3", form);
+
+    if (priceErr) {
+      const priceRow = document.getElementById("prices-row");
+
+      if (priceRow) {
+        priceRow.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
+
+      return;
+    }
+
+    const underlyingStudy = Array.isArray(form.underlyingStudy)
+      ? form.underlyingStudy
+          .map((study) => study.label)
+          .filter(Boolean)
+          .join(", ")
+      : "";
+
+    /*
+     * Do not use form.symbol here because its initial value is "SYM".
+     * Until the autocomplete hook returns a separate symbol field,
+     * use the selected/displayed stock name for both fields.
+     */
+
+    const finalDisplayName =
+  suggestion &&
+  suggestion.toLowerCase().startsWith(inputValue.trim().toLowerCase())
+    ? suggestion.trim()
+    : inputValue.trim();
+
+if (!finalDisplayName) {
+  alert("Stock name is required");
   return;
 }
 
-    const finalDisplayName = (
-      typeof suggestion === "string"
-        ? suggestion
-        : (suggestion as any)?.display_name ?? inputValue
-    ).trim();
+const finalSymbol = String(
+  form.symbol && form.symbol !== "SYM"
+    ? form.symbol
+    : finalDisplayName
+)
+  .trim()
+  .slice(0, 30);
 
-
-        const priceErr =
-  getPriceError("entry", form) ||
-  getPriceError("target", form) ||
-  getPriceError("stopLoss", form) ||
-  getPriceError("entryLow", form) ||
-  getPriceError("entryUpper", form) ||
-  getPriceError("target2", form) ||
-  getPriceError("target3", form) ||
-  getPriceError("stopLoss2", form) ||
-  getPriceError("stopLoss3", form);
-
-if (priceErr) {
-  const priceRow = document.getElementById("prices-row");
-
-  if (priceRow) {
-    priceRow.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-  }
-
-  return;
-}
-
-    // 🔹 Base payload
     const payload = {
       status: "DRAFT",
 
       exchange_type: form.exchangeType,
       market_type: form.exchange,
-      symbol: form.symbol || finalDisplayName,
-      display_name: finalDisplayName,
+
+     symbol: finalSymbol.slice(0, 30),
+  display_name: finalDisplayName,
 
       action: form.action,
       call_type: form.callType,
       trade_type: form.tradeType,
       expiry_date: form.expiry || null,
 
-      // 🔹 Entry
       entry_price: form.entry || null,
-      entry_price_low: form.rangeEnabled ? form.entryLow || null : null,
-      entry_price_upper: form.rangeEnabled ? form.entryUpper || null : null,
 
-      // 🔹 Targets
+      entry_price_low: form.rangeEnabled
+        ? form.entryLow || null
+        : null,
+
+      entry_price_upper: form.rangeEnabled
+        ? form.entryUpper || null
+        : null,
+
       target_price: form.target || null,
+
       target_price_2: form.secondaryTargetEnabled
         ? form.target2 || null
         : null,
+
       target_price_3: form.secondaryTargetEnabled
         ? form.target3 || null
         : null,
 
-      // 🔹 Stop Loss
       stop_loss: form.stopLoss || null,
+
       stop_loss_2: form.stopLoss2Enabled
         ? form.stopLoss2 || null
         : null,
+
       stop_loss_3: form.stopLoss2Enabled
         ? form.stopLoss3 || null
         : null,
 
-      // ⚠️ FIXED KEY
       holding_period: form.holdingPeriod || null,
-
-      rationale: form.rationale,
-      underlying_study: form.underlyingStudy.map((s) => s.label).join(", ") || null,
+      rationale: form.rationale || null,
+      underlying_study: underlyingStudy || null,
 
       is_algo: false,
       has_vested_interest: false,
+
       research_remarks: form.remark || null,
     };
 
-    // =========================================================
-    // ✅ CONVERT TO FORMDATA
-    // =========================================================
+    console.log("TRACK PAYLOAD:", payload);
+
     const formData = new FormData();
 
-    // 🔹 attach file if exists
     if (selectedFile) {
       formData.append("file", selectedFile);
     }
 
-    // 🔹 append all fields
     Object.entries(payload).forEach(([key, value]) => {
       if (value !== null && value !== undefined) {
-        formData.append(key, value as any);
+        formData.append(key, String(value));
       }
     });
 
-    console.log("TRACK FORM DATA READY");
-
-    // =========================================================
-    // ✅ API CALL
-    // =========================================================
     await axios.post(
       `${import.meta.env.VITE_API_URL}/api/research/calls`,
       formData,
@@ -1308,30 +1681,32 @@ if (priceErr) {
         },
       }
     );
+
     await fetchRecommendations();
 
-    // Optional reset
-     resetForm();
+    resetForm();
 
     alert("Draft Saved ✅");
+  } catch (err: any) {
+    console.error(
+      "Track failed:",
+      err?.response?.data || err
+    );
 
-    // 🔥 Refresh list
-    
-
- } catch (err: any) {
-  console.error("Track failed:", err?.response?.data || err);
-
-  alert(
-    err?.response?.data?.message ||
-      err?.response?.data?.error ||
-      "Track failed"
-  );
-}finally {
+    alert(
+      err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        "Track failed"
+    );
+  } finally {
     submittingRef.current = false;
     setIsSubmitting(false);
   }
-  
 };
+
+
+
+
  
 
 const validateAndTrack = (event: React.MouseEvent<HTMLButtonElement>) => {
