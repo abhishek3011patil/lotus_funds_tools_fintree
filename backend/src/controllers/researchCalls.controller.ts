@@ -973,3 +973,58 @@ export const updateRADisclaimer = async (
     client.release();
   }
 };
+
+
+
+export const getRAMessageProfile = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const raUserId = req.user?.id;
+
+    if (!raUserId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT
+        salutation,
+        first_name,
+        middle_name,
+        surname,
+        org_name,
+        sebi_reg_no,
+        mobile,
+        email,
+        additional_comments
+      FROM ra_details
+      WHERE user_id = $1
+      `,
+      [raUserId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "RA details not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error("GET RA MESSAGE PROFILE ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load RA message profile",
+    });
+  }
+};

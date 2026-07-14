@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createErrata, createResearchCall, getResearchPerformance } from "../controllers/researchCalls.controller";
+import { createErrata, createResearchCall, getRAMessageProfile, getResearchPerformance } from "../controllers/researchCalls.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 import {
     getResearchCalls,
@@ -34,6 +34,13 @@ router.get("/test", (req, res) => {
     console.log("TEST ROUTE HIT");
     res.json({ ok: true });
 });
+
+
+router.get(
+  "/ra/message-profile",
+  authenticate,
+  getRAMessageProfile
+);
 
 export default router;
 

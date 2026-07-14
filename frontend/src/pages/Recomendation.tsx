@@ -70,6 +70,27 @@ const FLAT_STUDY_OPTIONS = UNDERLYING_STUDIES.flatMap((g) =>
 
 
 const NewRecommendation = () => {
+    const [raDetails, setRaDetails] = useState<any>(null);
+
+
+const fetchRAMessageProfile = async () => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const res = await axios.get(
+      `${import.meta.env.VITE_API_URL}/api/research/ra/message-profile`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    setRaDetails(res.data.data);
+  } catch (error) {
+    console.error("Failed to fetch RA message profile:", error);
+  }
+};
 
   const getMissingFields = () => {
   const missing: string[] = [];
@@ -269,6 +290,11 @@ const submittingRef = useRef(false);
       return;
     }
 
+    if (!raDetails) {
+  alert("RA profile details are still loading. Please try again.");
+  return;
+}
+
     const finalDisplayName =
       suggestion &&
       suggestion.toLowerCase().startsWith(inputValue.toLowerCase())
@@ -295,6 +321,21 @@ const submittingRef = useRef(false);
 };
 
 const now = new Date();
+
+const raFullName = [
+  raDetails?.salutation,
+  raDetails?.first_name,
+  raDetails?.middle_name,
+  raDetails?.surname,
+]
+  .filter(Boolean)
+  .join(" ");
+
+const disclaimer =
+  raDetails?.additional_comments ||
+  "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
+
+
 
 const publishMessage = `
 Published On : ${now.toLocaleString("en-IN", {
@@ -344,6 +385,18 @@ Underlying Study: ${
   form.underlyingStudy.map((s) => s.label).join(", ") || "N/A"
 }
 Remarks: ${form.remark || "N/A"}
+
+DISCLAIMER CUM DISCLOSURE:
+
+${disclaimer}
+
+Research Analyst: ${raFullName || "N/A"} (${raDetails?.org_name || "N/A"})
+SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
+Contact No: ${raDetails?.mobile || "N/A"}
+Email ID: ${raDetails?.email || "N/A"}
+
+Read Full Disclaimer / Disclosure at:
+https://lotusfunds.com/disclaimer&disclosure
 `.trim();
 
 
@@ -403,6 +456,8 @@ Remarks: ${form.remark || "N/A"}
     research_remarks: form.remark || undefined,
   };
 
+
+
   const errataMessage = `
 ERRATA / CORRECTION
 
@@ -446,6 +501,18 @@ SL 3  : ${form.stopLoss3}`
 
 Reason:
 ${form.remark || "Correction issued by Research Analyst"}
+
+DISCLAIMER CUM DISCLOSURE:
+
+${disclaimer}
+
+Research Analyst: ${raFullName || "N/A"} (${raDetails?.org_name || "N/A"})
+SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
+Contact No: ${raDetails?.mobile || "N/A"}
+Email ID: ${raDetails?.email || "N/A"}
+
+Read Full Disclaimer / Disclosure at:
+https://lotusfunds.com/disclaimer&disclosure
 `.trim();
 
   res = await axios.post(
@@ -560,51 +627,7 @@ try {
  const now = new Date();
 
 
-const message = `
-Published On : ${now.toLocaleString("en-IN", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  second: "2-digit",
-  hour12: true,
-})}
 
-${form.action} ${form.exchange} ${form.callType} Expiry: ${form.expiry ? formatExpiry(form.expiry) : "N/A"}
-
-Stock Name: ${finalDisplayName}
-
-Call Type  :${form.tradeType} 
-
-Entry  : ${
-  form.rangeEnabled
-    ? `${form.entryLow} - ${form.entryUpper}`
-    : form.entry
-}
-
-Target  : ${form.target}${
-  form.secondaryTargetEnabled
-    ? `
-T2  : ${form.target2}
-T3  : ${form.target3}`
-    : ""
-}
-
-SL  : ${form.stopLoss}${
-  form.stopLoss2Enabled
-    ? `
-SL 2  : ${form.stopLoss2}
-SL 3  : ${form.stopLoss3}`
-    : ""
-}
-
-Holding Period: ${form.holdingPeriod || "N/A"}
-
-Rationale: ${form.rationale}
-Underlying Study: ${form.underlyingStudy.map((s) => s.label).join(", ") || "N/A"}
-Remarks: ${form.remark || "N/A"}
-`;
 
 
 
@@ -813,6 +836,8 @@ finally {
 
   useEffect(() => {
     fetchRecommendations();
+    fetchRAMessageProfile();
+
   }, []);
 
   // 1. EXIT FUNCTION (Removes the item from the list)
@@ -1029,6 +1054,21 @@ const handleInitiate = useCallback(async (item: any) => {
 };
 
 
+
+const raFullName = [
+  raDetails?.salutation,
+  raDetails?.first_name,
+  raDetails?.middle_name,
+  raDetails?.surname,
+]
+  .filter(Boolean)
+  .join(" ");
+
+const disclaimer =
+  raDetails?.additional_comments ||
+  "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
+
+
    const publishMessage = `
 Published On : ${new Date().toLocaleString("en-IN", {
   day: "numeric",
@@ -1071,6 +1111,18 @@ Holding Period: ${item.holding_period || "N/A"}
 Rationale: ${item.rationale || "N/A"}
 Underlying Study: ${item.underlying_study || "N/A"}
 Remarks: ${item.remarks || "N/A"}
+
+ISCLAIMER CUM DISCLOSURE:
+
+${disclaimer}
+
+Research Analyst: ${raFullName || "N/A"} (${raDetails?.org_name || "N/A"})
+SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
+Contact No: ${raDetails?.mobile || "N/A"}
+Email ID: ${raDetails?.email || "N/A"}
+
+Read Full Disclaimer / Disclosure at:
+https://lotusfunds.com/disclaimer&disclosure
 `.trim();
 
 
@@ -1098,6 +1150,8 @@ Remarks: ${item.remarks || "N/A"}
   
 
     console.log("TELEGRAM MESSAGE:", publishMessage);
+
+    
 
     await axios.post(
       `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,

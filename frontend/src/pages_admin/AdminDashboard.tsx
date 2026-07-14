@@ -432,6 +432,9 @@ const paginatedSuspendedRows = filteredSuspendedRows.slice(
   }
 };
 
+
+
+
   const handleViewParticipant = (row: AdminRow) => {
     setPanelMode("participant");
     setSelectedRA(row);
@@ -553,6 +556,31 @@ setParticipantUsername("");
   } catch (error) {
     console.error(error);
     alert("Update failed");
+  }
+};
+
+
+
+
+const fetchWhatsAppParticipants = async (raId: string) => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/whatsapp/ra/${raId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const result = await res.json();
+
+    console.log("WhatsApp Participants:", result.data);
+
+  } catch (err) {
+    console.error("Failed to fetch WhatsApp participants:", err);
   }
 };
 
@@ -712,6 +740,8 @@ const handleResendPasswordLink = async (userId: string) => {
     alert("Failed to send password setup link");
   }
 };
+
+
 
 
 

@@ -633,7 +633,7 @@ export const sendMessageToRAClients = async (
       });
     }
 
-    const [sessionResult, raResult, usersResult] = await Promise.all([
+   const [sessionResult, usersResult] = await Promise.all([
       pool.query(
         `
         SELECT telegram_session
@@ -643,23 +643,7 @@ export const sendMessageToRAClients = async (
         [raId]
       ),
 
-      pool.query(
-        `
-        SELECT
-          salutation,
-          first_name,
-          middle_name,
-          surname,
-          org_name,
-          sebi_reg_no,
-          mobile,
-          email,
-          additional_comments
-        FROM ra_details
-        WHERE user_id = $1
-        `,
-        [raId]
-      ),
+   
 
       pool.query(
         `
@@ -675,7 +659,7 @@ export const sendMessageToRAClients = async (
     ]);
 
     const sessionString = sessionResult.rows[0]?.telegram_session;
-    const ra = raResult.rows[0];
+  
     const users = usersResult.rows;
 
     if (!sessionString) {
@@ -685,12 +669,7 @@ export const sendMessageToRAClients = async (
       });
     }
 
-    if (!ra) {
-      return res.status(400).json({
-        success: false,
-        message: "RA details not found",
-      });
-    }
+   
 
     if (users.length === 0) {
       return res.status(400).json({
@@ -699,32 +678,7 @@ export const sendMessageToRAClients = async (
       });
     }
 
-    const disclaimer =
-      ra.additional_comments ||
-      "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
-
-    const fullName = [
-      ra.salutation,
-      ra.first_name,
-      ra.middle_name,
-      ra.surname,
-    ]
-      .filter(Boolean)
-      .join(" ");
-
-    const finalMessage = `
-${frontendMessage}
-
-DISCLAIMER CUM DISCLOSURE:
-
-${disclaimer}
-
-Research Analyst: ${fullName} (${ra.org_name || "N/A"})
-SEBI Registration No: ${ra.sebi_reg_no || "N/A"}
-Contact No: ${ra.mobile || "N/A"}
-Email ID : ${ra.email || "N/A"}
-
-`;
+   const finalMessage = String(frontendMessage).trim();
 
 // Read Full Disclaimer / Disclosure at : https://lotusfunds.com/disclaimer&disclosure
 
@@ -821,11 +775,11 @@ Email ID : ${ra.email || "N/A"}
         });
         await createAuditLog({
   adminId: req.user?.id,
-  adminName: fullName || req.user?.name || "RA",
+ adminName: req.user?.name || "RA",
   adminRole: req.user?.role || "RESEARCH_ANALYST",
   action: "TELEGRAM_MESSAGE_SENT",
   module: "TELEGRAM",
-  targetEntity: fullName || raId,
+  targetEntity: raId,
   targetType: "TELEGRAM_BROADCAST",
   description: "Research call/message sent via Telegram",
   status: failCount === 0 ? "SUCCESS" : "PARTIAL_SUCCESS",
