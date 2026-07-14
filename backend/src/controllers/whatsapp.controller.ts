@@ -1,7 +1,8 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { pool } from "../db";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { createAuditLog } from "../utils/auditLogger";
+
 
 const normalizePhone = (phone: string): string => {
   let digits = String(phone || "").replace(/\D/g, "");
@@ -395,6 +396,63 @@ export const deleteWhatsAppParticipant = async (
     return res.status(500).json({
       success: false,
       message: "Failed to remove WhatsApp participant",
+    });
+  }
+};
+
+export const getWhatsAppParticipantsByRA = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { raId } = req.params;
+
+    if (
+      !raId ||
+      raId === "undefined" ||
+      raId === "null"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid RA ID",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT
+        id,
+        ra_user_id,
+        participant_name,
+        phone_number,
+        consent_confirmed,
+        consent_source,
+        consent_confirmed_at,
+        is_active,
+        created_at,
+        updated_at
+      FROM whatsapp_participants
+      WHERE ra_user_id = $1
+      ORDER BY participant_name ASC
+      `,
+      [raId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      count: result.rows.length,
+      data: result.rows,
+    });
+  } catch (err) {
+    console.error(
+      "GET WHATSAPP PARTICIPANTS ERROR:",
+      err
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to fetch WhatsApp participants",
     });
   }
 };
