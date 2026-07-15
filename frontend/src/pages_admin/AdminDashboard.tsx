@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
@@ -56,7 +56,7 @@ type AdminRow = {
 const ITEMS_PER_PAGE = 10;
 
 const AdminDashboard = () => {
-  
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<AdminRow[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -603,6 +603,105 @@ const fetchWhatsAppParticipants = async (raId: string) => {
   }
 };
 
+const handleAddWhatsAppParticipant = async () => {
+  if (!whatsappName.trim() || !whatsappPhone.trim()) {
+    alert("Please enter both Name and Phone Number");
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem("token");
+    const raId = selectedRA?.userId || selectedRA?.id;
+
+    if (!raId) {
+      alert("RA ID is missing");
+      return;
+    }
+
+    const formattedPhone = whatsappPhone.startsWith("+91") ? whatsappPhone : `+91${whatsappPhone}`;
+
+   const res = await fetch(
+  `${import.meta.env.VITE_API_URL}/api/whatsapp/participants`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      raId,
+      participantName: whatsappName,
+      phoneNumber: formattedPhone,
+      consentConfirmed: true,
+      consentSource: "RA_DECLARATION",
+        }),
+      }
+    );
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "Failed to add participant");
+
+    alert("Participant added successfully!");
+    
+    // Clear inputs
+    setWhatsappName("");
+    setWhatsappPhone("");
+    
+    // Refresh List
+    fetchWhatsAppParticipants(raId);
+  } catch (err: any) {
+    alert(err.message);
+  }
+};
+
+// 2. Handlers for Excel File Upload
+const handleExcelUploadClick = () => {
+  fileInputRef.current?.click();
+};
+
+const handleExcelFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const raId = selectedRA?.userId || selectedRA?.id;
+  if (!raId) {
+    alert("RA ID is missing");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("raId", raId);
+
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/whatsapp/upload-excel/${raId}`, // Replace with your exact Excel upload API route
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      }
+    );
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "Failed to process excel file");
+
+    alert("Excel uploaded and participants processed successfully!");
+    
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    
+    // Refresh List
+    fetchWhatsAppParticipants(raId);
+  } catch (err: any) {
+    alert(err.message);
+  }
+};
+
+
   const renderEditableCell = (
     p: Participant,
     field: keyof Participant,
@@ -635,6 +734,8 @@ const fetchWhatsAppParticipants = async (raId: string) => {
       );
     }
 
+
+// 1. Handlers for Single Participant (Save Details)
 
     // suspended logic
 
@@ -1490,108 +1591,119 @@ const handleDeleteWhatsAppParticipant = async () => {
                 </Box>
 
                 {/* Add New Participant Area */}
-                <Box sx={{ mt: 4 }}>
-                  <Typography fontWeight={600} sx={{ mb: 1.5 }}>
-                    Add New Participant
-                  </Typography>
+<Box sx={{ mt: 4 }}>
+  <Typography fontWeight={600} sx={{ mb: 1.5 }}>
+    Add New Participant
+  </Typography>
 
-                  <Paper 
-                    elevation={0}
-                    sx={{ 
-                      p: 3, 
-                      borderRadius: "24px", 
-                      border: "1px solid #e2e8f0",
-                      backgroundColor: "#ffffff",
-                    }}
-                  >
-                    {/* Input Layout Elements */}
-                    <Box sx={{ display: "flex", flexDirection: "row", gap: 2, mt: 1, mb: 2.5 }}>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        label="Name"
-                        placeholder="Name"
-                        value={whatsappName}
-                        onChange={(e) => setWhatsappName(e.target.value)}
-                        sx={{ 
-                          '& .MuiOutlinedInput-root': { borderRadius: '10px' }
-                        }}
-                      />
-                      <TextField
-                        fullWidth
-                        size="small"
-                        label="Phone Number"
-                        placeholder="Enter Mobile Number"
-                        value={whatsappPhone}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, "");
-                          if (val.length <= 10) setWhatsappPhone(val);
-                        }}
-                        sx={{ 
-                          '& .MuiOutlinedInput-root': { borderRadius: '10px' }
-                        }}
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <Typography sx={{ color: "#718096", fontSize: "0.95rem", fontWeight: 400 }}>
-                                +91
-                              </Typography>
-                            </InputAdornment>
-                          ),
-                        }}
-                      />
-                    </Box>
+  {/* Hidden input for excel upload */}
+  <input
+    type="file"
+    ref={fileInputRef}
+    style={{ display: "none" }}
+    accept=".xlsx, .xls"
+    onChange={handleExcelFileChange}
+  />
 
-                    {/* Button Shape Actions Group */}
-                    <Box sx={{ display: "flex", gap: 2 }}>
-                      <Button 
-                        variant="contained" 
-                        startIcon={<SendIcon sx={{ transform: "rotate(-25deg)", fontSize: "0.9rem" }} />}
-                        sx={{ 
-                          textTransform: "none", 
-                          fontWeight: 600,
-                          backgroundColor: "#22c55e", 
-                          px: 3,
-                          py: 1,
-                          borderRadius: "14px",
-                          boxShadow: "0px 2px 4px rgba(34, 197, 94, 0.2)",
-                          "&:hover": { backgroundColor: "#16a34a", boxShadow: "none" } 
-                        }}
-                      >
-                        Save Details
-                      </Button>
-                      <Button 
-                        variant="outlined" 
-                        sx={{ 
-                          textTransform: "none", 
-                          fontWeight: 600, 
-                          color: "#1e3a8a",
-                          borderColor: "#bfdbfe",
-                          borderRadius: "14px", 
-                          px: 3,
-                          "&:hover": { borderColor: "#3b82f6", backgroundColor: "#f0f9ff" }
-                        }}
-                      >
-                        Add Excel
-                      </Button>
-                      <Button 
-                        variant="outlined" 
-                        startIcon={<FileDownloadIcon sx={{ fontSize: "1.1rem" }} />}
-                        sx={{ 
-                          textTransform: "none", 
-                          fontWeight: 600, 
-                          color: "#1e3a8a",
-                          borderColor: "#bfdbfe",
-                          borderRadius: "14px", 
-                          px: 3,
-                          "&:hover": { borderColor: "#3b82f6", backgroundColor: "#f0f9ff" }
-                        }}
-                      >
-                        Template
-                      </Button>
-                    </Box>
-                  </Paper>
-                </Box>
+  <Paper 
+    elevation={0}
+    sx={{ 
+      p: 3, 
+      borderRadius: "24px", 
+      border: "1px solid #e2e8f0",
+      backgroundColor: "#ffffff",
+    }}
+  >
+    {/* Input Layout Elements */}
+    <Box sx={{ display: "flex", flexDirection: "row", gap: 2, mt: 1, mb: 2.5 }}>
+      <TextField
+        fullWidth
+        size="small"
+        label="Name"
+        placeholder="Name"
+        value={whatsappName}
+        onChange={(e) => setWhatsappName(e.target.value)}
+        sx={{ 
+          '& .MuiOutlinedInput-root': { borderRadius: '10px' }
+        }}
+      />
+      <TextField
+        fullWidth
+        size="small"
+        label="Phone Number"
+        placeholder="Enter Mobile Number"
+        value={whatsappPhone}
+        onChange={(e) => {
+          const val = e.target.value.replace(/\D/g, "");
+          if (val.length <= 10) setWhatsappPhone(val);
+        }}
+        sx={{ 
+          '& .MuiOutlinedInput-root': { borderRadius: '10px' }
+        }}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <Typography sx={{ color: "#718096", fontSize: "0.95rem", fontWeight: 400 }}>
+                +91
+              </Typography>
+            </InputAdornment>
+          ),
+        }}
+      />
+    </Box>
+
+    {/* Button Shape Actions Group */}
+    <Box sx={{ display: "flex", gap: 2 }}>
+      <Button 
+        variant="contained" 
+        onClick={handleAddWhatsAppParticipant}
+        startIcon={<SendIcon sx={{ transform: "rotate(-25deg)", fontSize: "0.9rem" }} />}
+        sx={{ 
+          textTransform: "none", 
+          fontWeight: 600,
+          backgroundColor: "#22c55e", 
+          px: 3,
+          py: 1,
+          borderRadius: "14px",
+          boxShadow: "0px 2px 4px rgba(34, 197, 94, 0.2)",
+          "&:hover": { backgroundColor: "#16a34a", boxShadow: "none" } 
+        }}
+      >
+        Save Details
+      </Button>
+      <Button 
+        variant="outlined" 
+        onClick={handleExcelUploadClick}
+        sx={{ 
+          textTransform: "none", 
+          fontWeight: 600, 
+          color: "#1e3a8a",
+          borderColor: "#bfdbfe",
+          borderRadius: "14px", 
+          px: 3,
+          "&:hover": { borderColor: "#3b82f6", backgroundColor: "#f0f9ff" }
+        }}
+      >
+        Add Excel
+      </Button>
+      <Button 
+        variant="outlined" 
+        startIcon={<FileDownloadIcon sx={{ fontSize: "1.1rem" }} />}
+        sx={{ 
+          textTransform: "none", 
+          fontWeight: 600, 
+          color: "#1e3a8a",
+          borderColor: "#bfdbfe",
+          borderRadius: "14px", 
+          px: 3,
+          "&:hover": { borderColor: "#3b82f6", backgroundColor: "#f0f9ff" }
+        }}
+      >
+        Template
+      </Button>
+    </Box>
+  </Paper>
+</Box>
 
                 {/* Bottom Action Section */}
                 <Box sx={{ display: "flex", gap: 2, mt: 4 }}>

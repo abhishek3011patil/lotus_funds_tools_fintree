@@ -15,7 +15,7 @@ import {
   DialogContent,
   DialogActions,
 } from '@mui/material';
-import Grid from "@mui/material/GridLegacy";
+import Grid from "@mui/material/GridLegacy"; 
 import { Search, Download } from '@mui/icons-material';
 import axios from "axios";
 import * as XLSX from 'xlsx';
@@ -232,94 +232,167 @@ const handleResetFilters = () => {
         </Typography>
       </Box>
 
-      <Paper sx={{ p: 3, mb: 3, boxShadow: 'none', border: '1px solid #E9E9EE', borderRadius: 2 }}>
-        <Grid container spacing={3} alignItems="center">
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              placeholder="Search logs..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              InputProps={{
-                startAdornment: <Search sx={{ color: 'text.secondary', mr: 1 }} />,
-              }}
-              size="small"
-              sx={{ height: '48px' }}
-            />
-          </Grid>
-
-          <Grid item xs={6} sm={6} md={2.5}>
-            <FormControl fullWidth size="medium" sx={{ minWidth: 130 }}>
-              <InputLabel>Date</InputLabel>
-              <Select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} label="Date">
-                <MenuItem value="">All</MenuItem>
-                <MenuItem value="today">Today</MenuItem>
-                <MenuItem value="week">This Week</MenuItem>
-                <MenuItem value="month">This Month</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-
-          <Grid item xs={6} sm={6} md={2.5}>
-            <FormControl fullWidth size="medium" sx={{ minWidth: 130 }}>
-              <InputLabel>Users</InputLabel>
-              <Select value={userFilter} onChange={(e) => setUserFilter(e.target.value)} label="Users">
-                <MenuItem value="">All Users</MenuItem>
-                <MenuItem value="admin">Admin</MenuItem>
-                <MenuItem value="superadmin">Super Admin</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-
-          <Grid item xs={6} sm={6} md={2.5}>
-            <FormControl fullWidth size="medium" sx={{ minWidth: 130 }}>
-              <InputLabel>Modules</InputLabel>
-              <Select value={moduleFilter} onChange={(e) => setModuleFilter(e.target.value)} label="Modules">
-                <MenuItem value="">All Modules</MenuItem>
-                <MenuItem value="RA">RA</MenuItem>
-                <MenuItem value="Broker">Broker</MenuItem>
-                <MenuItem value="TELEGRAM_CLIENT">Telegram</MenuItem>
-                <MenuItem value="Billing">Billing</MenuItem>
-                <MenuItem value="Subscription">Subscription</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-
-          <Grid item xs={6} sm={6} md={2.5}>
-            <FormControl fullWidth size="medium" sx={{ minWidth: 130 }}>
-              <InputLabel>Status</InputLabel>
-              <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} label="Status">
-                <MenuItem value="">All Status</MenuItem>
-                <MenuItem value="SUCCESS">Success</MenuItem>
-                <MenuItem value="FAILED">Failed</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={6} sm={6} md={2.5}>
-  <Button
-    fullWidth
-    variant="outlined"
-    size="medium"
-    onClick={handleResetFilters}
-    sx={{ height: "100%" }}
+<Paper 
+  elevation={0}
+  sx={{ 
+    p: { xs: 2, md: 2.5 }, 
+    mb: 3, 
+    border: '1px solid #e2e8f0', 
+    borderRadius: '14px',
+    backgroundColor: '#ffffff'
+  }}
+>
+  <Box 
+    sx={{ 
+      display: 'flex', 
+      flexDirection: { xs: 'column', lg: 'row' }, 
+      alignItems: { xs: 'stretch', lg: 'center' }, 
+      justifyContent: 'space-between',
+      gap: 2
+    }}
   >
-    Reset
-  </Button>
-</Grid>
+    {/* Left Side: Inputs wrapper - responsive grid/wrap alignment across screens */}
+    <Box 
+      sx={{ 
+        display: 'flex', 
+        flexDirection: { xs: 'column', sm: 'row' }, 
+        flexWrap: 'wrap', 
+        alignItems: 'center', 
+        gap: 1.5, 
+        flexGrow: 1, 
+        width: '100%' 
+      }}
+    >
+      <TextField
+        placeholder="Search logs..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        InputProps={{
+          startAdornment: <Search sx={{ color: 'text.secondary', mr: 0.75, fontSize: '1.25rem' }} />,
+        }}
+        size="small"
+        sx={{ 
+          width: { xs: '100%', sm: 'calc(50% - 6px)', md: '240px' },
+          '& .MuiOutlinedInput-root': { borderRadius: '10px', height: '42px', fontSize: '0.9rem' } 
+        }}
+      />
 
-          <Grid item xs={6} sm={6} md={2}>
-            <Button
-              variant="outlined"
-              startIcon={<Download />}
-              onClick={handleExport}
-              fullWidth
-             sx={{ height: "100%" }}
-            >
-              Download
-            </Button>
-          </Grid>
-        </Grid>
-      </Paper>
+      <FormControl size="small" sx={{ width: { xs: '100%', sm: 'calc(50% - 6px)', md: '150px' } }}>
+        <InputLabel sx={{ fontSize: '0.9rem', mt: 0.1 }}>Date Range</InputLabel>
+        <Select 
+          value={dateFilter} 
+          onChange={(e) => setDateFilter(e.target.value)} 
+          label="Date Range"
+          sx={{ borderRadius: '10px', height: '42px', fontSize: '0.9rem' }}
+        >
+          <MenuItem value="" sx={{ fontSize: '0.9rem' }}>All Time</MenuItem>
+          <MenuItem value="today" sx={{ fontSize: '0.9rem' }}>Today</MenuItem>
+          <MenuItem value="week" sx={{ fontSize: '0.9rem' }}>This Week</MenuItem>
+          <MenuItem value="month" sx={{ fontSize: '0.9rem' }}>This Month</MenuItem>
+        </Select>
+      </FormControl>
+
+      <FormControl size="small" sx={{ width: { xs: '100%', sm: 'calc(50% - 6px)', md: '150px' } }}>
+        <InputLabel sx={{ fontSize: '0.9rem', mt: 0.1 }}>User Role</InputLabel>
+        <Select 
+          value={userFilter} 
+          onChange={(e) => setUserFilter(e.target.value)} 
+          label="User Role"
+          sx={{ borderRadius: '10px', height: '42px', fontSize: '0.9rem' }}
+        >
+          <MenuItem value="" sx={{ fontSize: '0.9rem' }}>All Roles</MenuItem>
+          <MenuItem value="admin" sx={{ fontSize: '0.9rem' }}>Admin</MenuItem>
+          <MenuItem value="superadmin" sx={{ fontSize: '0.9rem' }}>Super Admin</MenuItem>
+        </Select>
+      </FormControl>
+
+      <FormControl size="small" sx={{ width: { xs: '100%', sm: 'calc(50% - 6px)', md: '160px' } }}>
+        <InputLabel sx={{ fontSize: '0.9rem', mt: 0.1 }}>Modules</InputLabel>
+        <Select 
+          value={moduleFilter} 
+          onChange={(e) => setModuleFilter(e.target.value)} 
+          label="Modules"
+          sx={{ borderRadius: '10px', height: '42px', fontSize: '0.9rem' }}
+        >
+          <MenuItem value="" sx={{ fontSize: '0.9rem' }}>All Modules</MenuItem>
+          <MenuItem value="RA" sx={{ fontSize: '0.9rem' }}>RA</MenuItem>
+          <MenuItem value="Broker" sx={{ fontSize: '0.9rem' }}>Broker</MenuItem>
+          <MenuItem value="TELEGRAM_CLIENT" sx={{ fontSize: '0.9rem' }}>Telegram</MenuItem>
+          <MenuItem value="Billing" sx={{ fontSize: '0.9rem' }}>Billing</MenuItem>
+          <MenuItem value="Subscription" sx={{ fontSize: '0.9rem' }}>Subscription</MenuItem>
+        </Select>
+      </FormControl>
+
+      <FormControl size="small" sx={{ width: { xs: '100%', sm: 'calc(50% - 6px)', md: '150px' } }}>
+        <InputLabel sx={{ fontSize: '0.9rem', mt: 0.1 }}>Status</InputLabel>
+        <Select 
+          value={statusFilter} 
+          onChange={(e) => setStatusFilter(e.target.value)} 
+          label="Status"
+          sx={{ borderRadius: '10px', height: '42px', fontSize: '0.9rem' }}
+        >
+          <MenuItem value="" sx={{ fontSize: '0.9rem' }}>All Statuses</MenuItem>
+          <MenuItem value="SUCCESS" sx={{ fontSize: '0.9rem' }}>Success</MenuItem>
+          <MenuItem value="FAILED" sx={{ fontSize: '0.9rem' }}>Failed</MenuItem>
+        </Select>
+      </FormControl>
+    </Box>
+
+    {/* Right Side: Action Buttons - auto-stretches down onto mobile devices */}
+    <Box 
+      sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 1.5, 
+        width: { xs: '100%', lg: 'auto' }, 
+        justifyContent: { xs: 'stretch', sm: 'flex-end' } 
+      }}
+    >
+      <Button
+        variant="outlined"
+        size="medium"
+        onClick={handleResetFilters}
+        sx={{ 
+          textTransform: 'none', 
+          fontWeight: 600,
+          borderRadius: '10px',
+          px: 3,
+          height: '42px',
+          fontSize: '0.9rem',
+          borderColor: '#cbd5e1',
+          color: '#475569',
+          whiteSpace: 'nowrap',
+          flex: { xs: 1, sm: 'initial' },
+          '&:hover': { backgroundColor: '#f8fafc', borderColor: '#94a3b8' }
+        }}
+      >
+        Reset
+      </Button>
+      
+      <Button
+        variant="contained"
+        startIcon={<Download sx={{ fontSize: '1.1rem' }} />}
+        onClick={handleExport}
+        size="medium"
+        sx={{ 
+          textTransform: 'none', 
+          fontWeight: 600,
+          borderRadius: '10px',
+          px: 3,
+          height: '42px',
+          fontSize: '0.9rem',
+          backgroundColor: '#1e3a8a',
+          boxShadow: 'none',
+          whiteSpace: 'nowrap',
+          flex: { xs: 1, sm: 'initial' },
+          '&:hover': { backgroundColor: '#172554', boxShadow: 'none' }
+        }}
+      >
+        Export
+      </Button>
+    </Box>
+  </Box>
+</Paper>
 
     <AuditLogTable
   logs={logs}
@@ -327,17 +400,32 @@ const handleResetFilters = () => {
   showingEntries={logs.length}
 />
 
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-        <TablePagination
-  component="div"
-  count={totalLogs}
-  page={page}
-  onPageChange={handleChangePage}
-  rowsPerPage={rowsPerPage}
-  onRowsPerPageChange={handleChangeRowsPerPage}
-  rowsPerPageOptions={[5, 10, 25, 50]}
-/>
-      </Box>
+<Box 
+  sx={{ 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'flex-end', 
+    mt: 2,
+    borderTop: '1px solid #e2e8f0',
+    pt: 1
+  }}
+>
+  <TablePagination
+    component="div"
+    count={totalLogs}
+    page={page}
+    onPageChange={handleChangePage}
+    rowsPerPage={rowsPerPage}
+    onRowsPerPageChange={handleChangeRowsPerPage}
+    rowsPerPageOptions={[5, 10, 25, 50]}
+    sx={{
+      color: '#475569',
+      '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+        fontSize: '0.875rem',
+      }
+    }}
+  />
+</Box>
 
       {/* ── NEW: Date Range Export Dialog ─────────────────────────────── */}
       <Dialog
