@@ -22,7 +22,8 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogActions from "@mui/material/DialogActions";
 import {ToggleButton, ToggleButtonGroup} from "@mui/material";
-
+import SendIcon from '@mui/icons-material/Send';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import TelegramSearch from "./Admin common/TelegramSearch";
 
 type AdminRow = {
@@ -62,12 +63,15 @@ const AdminDashboard = () => {
   const [filterTab, setFilterTab] = useState<"all" | "approved" | "requests">("all");
 
   const [selectedRA, setSelectedRA] = useState<AdminRow | null>(null);
-  const [panelMode, setPanelMode] = useState<"ra" | "participant">("ra");
+  const [panelMode, setPanelMode] = useState<"ra" | "participant" | "whatsapp">("ra");
   const [suspendReason, setSuspendReason] = useState("");
   const [suspendedPage, setSuspendedPage] = useState(1);
   const [confirmOpen, setConfirmOpen] = useState(false);
 const [confirmType, setConfirmType] = useState<"RA" | "BROKER" | null>(null);
 const [confirmId, setConfirmId] = useState<string | null>(null);
+const [whatsappName, setWhatsappName] = useState("");
+const [whatsappPhone, setWhatsappPhone] = useState("");
+const [whatsappParticipantsList, setWhatsappParticipantsList] = useState<Participant[]>([]);
 
 // const phones = [
 //   "919773665373",
@@ -140,6 +144,7 @@ const [confirmId, setConfirmId] = useState<string | null>(null);
   phone_number?: string;
 
   entity_type?: "USER" | "GROUP" | "CHANNEL";
+  participant_name?: string;
 };
 
 const [participantsList, setParticipantsList] = useState<Participant[]>([]);
@@ -444,6 +449,17 @@ setParticipantUsername("");
     fetchParticipants(row.userId || row.id);
   };
 
+
+const handleViewWhatsAppParticipant = (row: AdminRow) => {
+    setPanelMode("whatsapp");
+    setSelectedRA(row);
+    setParticipant(null);
+    // Call the data fetching function here
+    fetchWhatsAppParticipants(row.userId || row.id);
+  };
+
+  
+
   const handleUpdateParticipant = async () => {
   if (!participant?.id) return;
 
@@ -564,6 +580,7 @@ setParticipantUsername("");
 
 const fetchWhatsAppParticipants = async (raId: string) => {
   try {
+    setParticipantLoading(true);
     const token = localStorage.getItem("token");
 
     const res = await fetch(
@@ -576,11 +593,13 @@ const fetchWhatsAppParticipants = async (raId: string) => {
     );
 
     const result = await res.json();
-
-    console.log("WhatsApp Participants:", result.data);
-
+    // Update the WhatsApp specific list state
+    setWhatsappParticipantsList(result.data || []);
   } catch (err) {
     console.error("Failed to fetch WhatsApp participants:", err);
+    setWhatsappParticipantsList([]);
+  } finally {
+    setParticipantLoading(false);
   }
 };
 
@@ -741,10 +760,62 @@ const handleResendPasswordLink = async (userId: string) => {
   }
 };
 
+const handleUpdateWhatsAppParticipant = async () => {
+  if (!participant?.id) return;
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/whatsapp/participant/${encodeURIComponent(participant.id)}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          participant_name: whatsappName,
+          phone_number: whatsappPhone.startsWith("+91") ? whatsappPhone : `+91${whatsappPhone}`,
+        }),
+      }
+    );
 
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "Update failed");
 
+    alert("WhatsApp participant updated successfully!");
+    if (selectedRA) fetchWhatsAppParticipants(selectedRA.userId || selectedRA.id);
+  } catch (err: any) {
+    alert(err.message);
+  }
+};
 
+const handleDeleteWhatsAppParticipant = async () => {
+  if (!participant?.id) return;
+  const ok = window.confirm("Are you sure you want to delete this WhatsApp participant?");
+  if (!ok) return;
 
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/whatsapp/participant/${encodeURIComponent(participant.id)}`,
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.message || "Delete failed");
+
+    alert("WhatsApp participant deleted successfully!");
+    setParticipant(null);
+    setWhatsappName("");
+    setWhatsappPhone("");
+    if (selectedRA) fetchWhatsAppParticipants(selectedRA.userId || selectedRA.id);
+  } catch (err: any) {
+    alert(err.message);
+  }
+};
 
   return (
 
@@ -797,6 +868,7 @@ const handleResendPasswordLink = async (userId: string) => {
               <TableCell>Requests</TableCell>
                <TableCell align="right">Action</TableCell> 
               <TableCell>Telegram</TableCell>
+              <TableCell>WhatsApp</TableCell>
             </TableRow>
           </TableHead>
 
@@ -868,15 +940,45 @@ const handleResendPasswordLink = async (userId: string) => {
                       gap: 0.75,
                     }}
                   >
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => handleViewParticipant(row)}
-                    >
-                      View Participant
-                    </Button>
+<Button
+  size="small"
+  variant="contained"
+  onClick={() => handleViewParticipant(row)}
+  sx={{
+    backgroundColor: "#24A1DE",
+    color: "#fff",
+    textTransform: "none",
+    fontWeight: 500,
+    borderRadius: "8px",
+    boxShadow: "0px 2px 4px rgba(36, 161, 222, 0.2)",
+    "&:hover": {
+      backgroundColor: "#1d8bcb",
+      boxShadow: "none",
+    },
+  }}
+>
+  View Participant
+</Button>
                   </Box>
                 </TableCell>
+
+                {/* 👇 ADD THIS NEW WHATSAPP CELL */}
+<TableCell>
+  <Button
+    size="small"
+    variant="contained"
+    onClick={() => handleViewWhatsAppParticipant(row)}
+    sx={{
+      backgroundColor: "#25D366", // WhatsApp Green
+      color: "#fff",
+      "&:hover": { backgroundColor: "#128C7E" }
+    }}
+  >
+    View Participant
+  </Button>
+</TableCell>
+
+                
               </TableRow>
             ))}
 
@@ -1039,7 +1141,7 @@ const handleResendPasswordLink = async (userId: string) => {
             X
           </Button>
 
-          {panelMode === "ra" ? (
+         {panelMode === "ra" ? (
             <>
               <Typography fontWeight={600}>RA Verification</Typography>
 
@@ -1057,127 +1159,101 @@ const handleResendPasswordLink = async (userId: string) => {
                   gap: 1,
                 }}
               >
-{/*                 
-                <Button onClick={() => openFile(selectedRA.pan)}>View PAN</Button>
-                <Button onClick={() => openFile(selectedRA.address)}>
-                  View Address
-                </Button>
-                <Button onClick={() => openFile(selectedRA.sebi)}>View SEBI</Button>
-                <Button onClick={() => openFile(selectedRA.sebi_receipt)}>
-                  View SEBI Receipt
-                </Button>
-                <Button onClick={() => openFile(selectedRA.nism)}>View NISM</Button>
-                <Button onClick={() => openFile(selectedRA.cheque)}>View Cheque</Button> */}
-                
-
                 <Button
- 
-  onClick={() =>
-    selectedRA?.userId &&
-    navigate(`/admin/disclaimer-history/${selectedRA.userId}`)
-  }
->
-  View Disclaimer History
-</Button>
-                
+                  onClick={() =>
+                    selectedRA?.userId &&
+                    navigate(`/admin/disclaimer-history/${selectedRA.userId}`)
+                  }
+                >
+                  View Disclaimer History
+                </Button>
                 
                 <Button
- 
-  onClick={() =>
-    selectedRA?.userId &&
-    handleResendPasswordLink((selectedRA.userId))
-  }
->
-  Resend Password Link
-</Button>
+                  onClick={() =>
+                    selectedRA?.userId &&
+                    handleResendPasswordLink((selectedRA.userId))
+                  }
+                >
+                  Resend Password Link
+                </Button>
 
-
-<Button
- 
-  onClick={() =>
-    navigate("/admin/ra-profile-update-requests")
-  }
->
-  Profile Update Requests
-</Button>
+                <Button
+                  onClick={() =>
+                    navigate("/admin/ra-profile-update-requests")
+                  }
+                >
+                  Profile Update Requests
+                </Button>
               </Box>
 
-              
-
-
-
-
- {/* APPROVE / EDIT */}
-<Box
-  sx={{
-    display: "flex",
-    flexDirection: "column",
-    gap: 2,
-    mt: 3,
-  }}
->
-  {selectedRA.status?.toLowerCase() === "active" ? (
-    <>
-      <TextField
-        fullWidth
-        multiline
-        rows={2}
-        placeholder="Suspend Reason"
-        value={suspendReason}
-        onChange={(e) => setSuspendReason(e.target.value)}
-      />
-
-      <Button
-        variant="contained"
-        color="error"
-        fullWidth
-        onClick={() => {
-          if (!suspendReason.trim()) {
-            alert("Please enter suspend reason");
-            return;
-          }
-
-          handleSuspend(selectedRA.userId || "");
-        }}
-        sx={{
-          py: 1.2,
-          fontWeight: 600,
-          borderRadius: 2,
-        }}
-      >
-        Suspend
-      </Button>
-    </>
-    
-    
-  ) : (
-    <Button
-      variant="contained"
-      color="success"
-      fullWidth
-      onClick={() => handleActivate(selectedRA.userId)}
-      sx={{
-        py: 1.2,
-        fontWeight: 600,
-        borderRadius: 2,
-      }}
-    >
-      Activate
-    </Button>
-    
-  )}
-     
-</Box>
-            </>
-          ) : (
-            <>
+              {/* APPROVE / EDIT */}
               <Box
                 sx={{
-                  width: "95%",   // 👈 takes almost full screen
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                  mt: 3,
+                }}
+              >
+                {selectedRA.status?.toLowerCase() === "active" ? (
+                  <>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={2}
+                      placeholder="Suspend Reason"
+                      value={suspendReason}
+                      onChange={(e) => setSuspendReason(e.target.value)}
+                    />
+
+                    <Button
+                      variant="contained"
+                      color="error"
+                      fullWidth
+                      onClick={() => {
+                        if (!suspendReason.trim()) {
+                          alert("Please enter suspend reason");
+                          return;
+                        }
+
+                        handleSuspend(selectedRA.userId || "");
+                      }}
+                      sx={{
+                        py: 1.2,
+                        fontWeight: 600,
+                        borderRadius: 2,
+                      }}
+                    >
+                      Suspend
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="contained"
+                    color="success"
+                    fullWidth
+                    onClick={() => handleActivate(selectedRA.userId)}
+                    sx={{
+                      py: 1.2,
+                      fontWeight: 600,
+                      borderRadius: 2,
+                    }}
+                  >
+                    Activate
+                  </Button>
+                )}
+              </Box>
+            </>
+          ) : panelMode === "participant" ? (
+            <>
+              {/* 👤 TELEGRAM VIEW PARTICIPANTS PANEL */}
+              <Box
+                sx={{
+                  width: "95%",
                   mx: "auto",
                 }}
               >
-                <Typography fontWeight={600}>View Participant</Typography>
+                <Typography fontWeight={600}>View Participant (Telegram)</Typography>
 
                 {/* Participants Section */}
                 <Box sx={{ mt: 2 }}>
@@ -1211,99 +1287,64 @@ const handleResendPasswordLink = async (userId: string) => {
                     <TableContainer component={Paper} sx={{ overflowX: "auto" }}>
                       <Table size="small" sx={{ minWidth: 400 }}>
                         <TableHead>
-  <TableRow>
-    <TableCell>Type</TableCell>
-    <TableCell>Phone</TableCell>
-    <TableCell>Username</TableCell>
-    <TableCell>User ID</TableCell>
-  </TableRow>
-</TableHead>
+                          <TableRow>
+                            <TableCell>Type</TableCell>
+                            <TableCell>Phone</TableCell>
+                            <TableCell>Username</TableCell>
+                            <TableCell>User ID</TableCell>
+                          </TableRow>
+                        </TableHead>
 
                         <TableBody>
-  {participantsList
-    .filter((p) => {
-      const q = participantSearchQuery.trim().toLowerCase();
+                          {participantsList
+                            .filter((p) => {
+                              const q = participantSearchQuery.trim().toLowerCase();
+                              if (!q) return true;
+                              return (
+                                String(p.phone_number || "").toLowerCase().includes(q) ||
+                                String(p.telegram_client_name || "").toLowerCase().includes(q) ||
+                                String(p.telegram_user_id || "").toLowerCase().includes(q) ||
+                                String(p.entity_type || "").toLowerCase().includes(q)
+                              );
+                            })
+                            .map((p) => {
+                              const isRowEditing = editingCell?.id === String(p.id);
+                              const type = p.entity_type || "USER";
 
-      if (!q) return true;
+                              return (
+                                <TableRow
+                                  key={p.id}
+                                  selected={participant?.id === p.id}
+                                  onClick={() => {
+                                    if (isRowEditing) return;
+                                    setParticipant(p);
+                                    setParticipantUsername(p.telegram_client_name || "");
+                                  }}
+                                  sx={{ cursor: "pointer" }}
+                                >
+                                  <TableCell>
+                                    {type === "GROUP" ? "👥 Group" : type === "CHANNEL" ? "📢 Channel" : "👤 User"}
+                                  </TableCell>
 
-      return (
-        String(p.phone_number || "")
-          .toLowerCase()
-          .includes(q) ||
+                                  <TableCell>
+                                    {type === "USER"
+                                      ? renderEditableCell(p, "phone_number", p.phone_number)
+                                      : type === "GROUP"
+                                      ? "Group"
+                                      : "Channel"}
+                                  </TableCell>
 
-        String(p.telegram_client_name || "")
-          .toLowerCase()
-          .includes(q) ||
+                                  <TableCell>
+                                    {renderEditableCell(p, "telegram_client_name", p.telegram_client_name)}
+                                  </TableCell>
 
-        String(p.telegram_user_id || "")
-          .toLowerCase()
-          .includes(q) ||
-
-        String(p.entity_type || "")
-          .toLowerCase()
-          .includes(q)
-      );
-    })
-    .map((p) => {
-      const isRowEditing =
-        editingCell?.id === String(p.id);
-
-      const type = p.entity_type || "USER";
-
-      return (
-        <TableRow
-          key={p.id}
-          selected={participant?.id === p.id}
-          onClick={() => {
-            if (isRowEditing) return;
-
-            setParticipant(p);
-
-            setParticipantUsername(
-              p.telegram_client_name || ""
-            );
-          }}
-          sx={{ cursor: "pointer" }}
-        >
-          {/* TYPE */}
-          <TableCell>
-            {type === "GROUP"
-              ? "👥 Group"
-              : type === "CHANNEL"
-              ? "📢 Channel"
-              : "👤 User"}
-          </TableCell>
-
-          {/* PHONE */}
-          <TableCell>
-            {type === "USER"
-              ? renderEditableCell(
-                  p,
-                  "phone_number",
-                  p.phone_number
-                )
-              : type === "GROUP"
-              ? "Group"
-              : "Channel"}
-          </TableCell>
-
-          {/* USERNAME */}
-          <TableCell>
-            {renderEditableCell(
-              p,
-              "telegram_client_name",
-              p.telegram_client_name
-            )}
-          </TableCell>
-
-          {/* TELEGRAM ID */}
-          <TableCell>
-            {p.telegram_user_id}
-          </TableCell>
-        </TableRow>
-      );
-    })}
-</TableBody>
+                                  <TableCell>
+                                    {p.telegram_user_id}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                        </TableBody>
                       </Table>
                     </TableContainer>
                   )}
@@ -1311,53 +1352,288 @@ const handleResendPasswordLink = async (userId: string) => {
 
                 {/* Add New Participant */}
                 <Box sx={{ mt: 3 }}>
-  <Typography fontWeight={600} sx={{ mb: 1 }}>
-    Add New Participant
-  </Typography>
+                  <Typography fontWeight={600} sx={{ mb: 1 }}>
+                    Add New Participant
+                  </Typography>
 
-  {selectedRA && (
-    <TelegramSearch
-  raId={selectedRA.userId}
-  onSaved={async () => {
-    await fetchParticipants(selectedRA.userId!);
-  }}
-/>
-  )}
-</Box>
+                  {selectedRA && (
+                    <TelegramSearch
+                      raId={selectedRA.userId}
+                      onSaved={async () => {
+                        await fetchParticipants(selectedRA.userId!);
+                      }}
+                    />
+                  )}
+                </Box>
 
                 {/* Update / Delete Buttons */}
                 <Box sx={{ display: "flex", gap: 2, mt: 3 }}>
                   <Button
-  variant="contained"
-  fullWidth
-  disabled={!participant || participantLoading}
-  onClick={handleUpdateParticipant}
-  sx={{
-    backgroundColor: participant ? "#1976d2" : "#e0e0e0",
-    color: participant ? "#fff" : "#9e9e9e",
-    "&:hover": {
-      backgroundColor: participant ? "#1565c0" : "#e0e0e0",
-    },
-  }}
->
-  Update
-</Button>
+                    variant="contained"
+                    fullWidth
+                    disabled={!participant || participantLoading}
+                    onClick={handleUpdateParticipant}
+                    sx={{
+                      backgroundColor: participant ? "#1976d2" : "#e0e0e0",
+                      color: participant ? "#fff" : "#9e9e9e",
+                      "&:hover": {
+                        backgroundColor: participant ? "#1565c0" : "#e0e0e0",
+                      },
+                    }}
+                  >
+                    Update
+                  </Button>
 
                   <Button
-  variant="contained"
-  fullWidth
-  disabled={!participant || participantLoading}
-  onClick={handleDeleteParticipant}
-  sx={{
-    backgroundColor: participant ? "#d32f2f" : "#e0e0e0",
-    color: participant ? "#fff" : "#9e9e9e",
-    "&:hover": {
-      backgroundColor: participant ? "#b71c1c" : "#e0e0e0",
-    },
-  }}
->
-  Delete
-</Button>
+                    variant="contained"
+                    fullWidth
+                    disabled={!participant || participantLoading}
+                    onClick={handleDeleteParticipant}
+                    sx={{
+                      backgroundColor: participant ? "#d32f2f" : "#e0e0e0",
+                      color: participant ? "#fff" : "#9e9e9e",
+                      "&:hover": {
+                        backgroundColor: participant ? "#b71c1c" : "#e0e0e0",
+                      },
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </Box>
+              </Box>
+            </>
+         ) : (
+            <>
+              {/* 🟢 WHATSAPP VIEW PARTICIPANTS PANEL */}
+              <Box sx={{ width: "95%", mx: "auto" }}>
+                <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+                  View Participant (WhatsApp)
+                </Typography>
+
+                {/* Participants List Section */}
+                <Box sx={{ mt: 2 }}>
+                  <Typography fontWeight={600} sx={{ mb: 1 }}>
+                    Participants
+                  </Typography>
+
+                  <Typography color="text.secondary" sx={{ mb: 1, mt: 1 }}>
+                    Search User
+                  </Typography>
+
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="Search by Name or Number"
+                    value={participantSearchQuery}
+                    onChange={(e) => setParticipantSearchQuery(e.target.value)}
+                    sx={{ mb: 2 }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon fontSize="small" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+
+                  {participantLoading ? (
+                    <Typography>Loading...</Typography>
+                  ) : (
+                    <TableContainer component={Paper} elevation={0} sx={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "12px" }}>
+                      <Table size="small" sx={{ minWidth: 400 }}>
+                        <TableHead sx={{ backgroundColor: "#ffffff", borderBottom: "1px solid #e2e8f0" }}>
+                          <TableRow>
+                            <TableCell sx={{ fontWeight: 500, color: "#2d3748", py: 1.5 }}>Name</TableCell>
+                            <TableCell sx={{ fontWeight: 500, color: "#2d3748", py: 1.5 }}>Phone</TableCell>
+                          </TableRow>
+                        </TableHead>
+
+                        <TableBody>
+                          {whatsappParticipantsList
+                            .filter((p) => {
+                              const q = participantSearchQuery.trim().toLowerCase();
+                              if (!q) return true;
+                              return (
+                                String(p.phone_number || "").toLowerCase().includes(q) ||
+                                String(p.participant_name || "").toLowerCase().includes(q)
+                              );
+                            })
+                            .map((p) => {
+                              const isRowEditing = editingCell?.id === String(p.id);
+                              return (
+                                <TableRow
+                                  key={p.id}
+                                  selected={participant?.id === p.id}
+                                  onClick={() => {
+                                    if (isRowEditing) return;
+                                    setParticipant(p);
+                                    setWhatsappName(p.participant_name || "");
+                                    
+                                    const cleanPhone = (p.phone_number || "").replace(/^\+91/, "");
+                                    setWhatsappPhone(cleanPhone);
+                                  }}
+                                  sx={{ cursor: "pointer", "&:hover": { backgroundColor: "#f8fafc" } }}
+                                >
+                                  <TableCell>
+                                    {renderEditableCell(p, "participant_name", p.participant_name)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {renderEditableCell(p, "phone_number", p.phone_number)}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </Box>
+
+                {/* Add New Participant Area */}
+                <Box sx={{ mt: 4 }}>
+                  <Typography fontWeight={600} sx={{ mb: 1.5 }}>
+                    Add New Participant
+                  </Typography>
+
+                  <Paper 
+                    elevation={0}
+                    sx={{ 
+                      p: 3, 
+                      borderRadius: "24px", 
+                      border: "1px solid #e2e8f0",
+                      backgroundColor: "#ffffff",
+                    }}
+                  >
+                    {/* Input Layout Elements */}
+                    <Box sx={{ display: "flex", flexDirection: "row", gap: 2, mt: 1, mb: 2.5 }}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Name"
+                        placeholder="Name"
+                        value={whatsappName}
+                        onChange={(e) => setWhatsappName(e.target.value)}
+                        sx={{ 
+                          '& .MuiOutlinedInput-root': { borderRadius: '10px' }
+                        }}
+                      />
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Phone Number"
+                        placeholder="Enter Mobile Number"
+                        value={whatsappPhone}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "");
+                          if (val.length <= 10) setWhatsappPhone(val);
+                        }}
+                        sx={{ 
+                          '& .MuiOutlinedInput-root': { borderRadius: '10px' }
+                        }}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <Typography sx={{ color: "#718096", fontSize: "0.95rem", fontWeight: 400 }}>
+                                +91
+                              </Typography>
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                    </Box>
+
+                    {/* Button Shape Actions Group */}
+                    <Box sx={{ display: "flex", gap: 2 }}>
+                      <Button 
+                        variant="contained" 
+                        startIcon={<SendIcon sx={{ transform: "rotate(-25deg)", fontSize: "0.9rem" }} />}
+                        sx={{ 
+                          textTransform: "none", 
+                          fontWeight: 600,
+                          backgroundColor: "#22c55e", 
+                          px: 3,
+                          py: 1,
+                          borderRadius: "14px",
+                          boxShadow: "0px 2px 4px rgba(34, 197, 94, 0.2)",
+                          "&:hover": { backgroundColor: "#16a34a", boxShadow: "none" } 
+                        }}
+                      >
+                        Save Details
+                      </Button>
+                      <Button 
+                        variant="outlined" 
+                        sx={{ 
+                          textTransform: "none", 
+                          fontWeight: 600, 
+                          color: "#1e3a8a",
+                          borderColor: "#bfdbfe",
+                          borderRadius: "14px", 
+                          px: 3,
+                          "&:hover": { borderColor: "#3b82f6", backgroundColor: "#f0f9ff" }
+                        }}
+                      >
+                        Add Excel
+                      </Button>
+                      <Button 
+                        variant="outlined" 
+                        startIcon={<FileDownloadIcon sx={{ fontSize: "1.1rem" }} />}
+                        sx={{ 
+                          textTransform: "none", 
+                          fontWeight: 600, 
+                          color: "#1e3a8a",
+                          borderColor: "#bfdbfe",
+                          borderRadius: "14px", 
+                          px: 3,
+                          "&:hover": { borderColor: "#3b82f6", backgroundColor: "#f0f9ff" }
+                        }}
+                      >
+                        Template
+                      </Button>
+                    </Box>
+                  </Paper>
+                </Box>
+
+                {/* Bottom Action Section */}
+                <Box sx={{ display: "flex", gap: 2, mt: 4 }}>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    disabled={!participant || participantLoading}
+                    onClick={handleUpdateWhatsAppParticipant}
+                    sx={{
+                      py: 1,
+                      fontWeight: 600,
+                      borderRadius: "12px",
+                      textTransform: "none",
+                      backgroundColor: participant ? "#1976d2" : "#e0e0e0",
+                      color: participant ? "#fff" : "#9e9e9e",
+                      "&:hover": {
+                        backgroundColor: participant ? "#1565c0" : "#e0e0e0",
+                      },
+                    }}
+                  >
+                    Update
+                  </Button>
+
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    disabled={!participant || participantLoading}
+                    onClick={handleDeleteWhatsAppParticipant}
+                    sx={{
+                      py: 1,
+                      fontWeight: 600,
+                      borderRadius: "12px",
+                      textTransform: "none",
+                      backgroundColor: participant ? "#d32f2f" : "#e0e0e0",
+                      color: participant ? "#fff" : "#9e9e9e",
+                      "&:hover": {
+                        backgroundColor: participant ? "#b71c1c" : "#e0e0e0",
+                      },
+                    }}
+                  >
+                    Delete
+                  </Button>
                 </Box>
               </Box>
             </>

@@ -254,20 +254,40 @@ return (
     Enter Telegram username, group username, or channel username.
   </Typography>
 
-  <Box sx={{ display: "flex", gap: 1, maxWidth: { xs: "100%", md: "75%" } }}>
-    <TextField
-      fullWidth
-      size="small"
-      placeholder="@username / group / channel"
-      value={telegramUsername}
-      onChange={(e) => setTelegramUsername(e.target.value)}
-    />
+  {/* 🔄 REPLACE comment fixed */}
+  <Box 
+    sx={{ 
+    display: "flex", 
+    flexDirection: { xs: "column", sm: "row" }, 
+    gap: 1.5, 
+    width: "100%",
+    maxWidth: { xs: "100%", md: "75%" } 
+  }}
+>
+  <TextField
+    fullWidth
+    size="small"
+    placeholder="@username / group / channel"
+    value={telegramUsername}
+    onChange={(e) => setTelegramUsername(e.target.value)}
+    sx={{ "& .MuiOutlinedInput-root": { backgroundColor: "#ffffff" } }}
+  />
 
+  <Box sx={{ display: "flex", gap: 1, width: "100%" }}>
     <Button
       variant="contained"
       onClick={handleAddParticipant}
       disabled={saving}
-      sx={{ whiteSpace: "nowrap", textTransform: "none", px: 3 }}
+     sx={{
+    width: { xs: "100%", sm: "auto" },
+    whiteSpace: "nowrap",
+    textTransform: "none",
+    px: 3,
+    backgroundColor: "#1D4ED8",
+    "&:hover": {
+      backgroundColor: "#1E40AF",
+    },
+  }}
     >
       {saving ? "Adding..." : "Add"}
     </Button>
@@ -276,7 +296,13 @@ return (
       variant="outlined"
       startIcon={<UploadFileIcon />}
       onClick={() => fileInputRef.current?.click()}
-      sx={{ whiteSpace: "nowrap", textTransform: "none" }}
+      //fullWidth={{ xs: true, sm: false }}
+      sx={{ 
+         width: { xs: "100%", sm: "auto" },
+        whiteSpace: "nowrap", 
+        textTransform: "none",
+        flexGrow: { xs: 1, sm: 0 }
+      }}
     >
       Add Excel
     </Button>
@@ -289,14 +315,15 @@ return (
   Download Excel
 </Button>
 
-    <input
-      ref={fileInputRef}
-      type="file"
-      accept=".xlsx,.xls"
-      hidden
-      onChange={handleExcelUpload}
-    />
-  </Box>
+  <input
+    ref={fileInputRef}
+    type="file"
+    accept=".xlsx,.xls"
+    hidden
+    onChange={handleExcelUpload}
+  />
+</Box>
+</Box>
 </Box>
 
       {/* Section 2: Participants List */}
@@ -325,11 +352,21 @@ return (
           }}
         />
 
-        {loading ? (
+{loading ? (
           <Typography sx={{ mt: 2, fontSize: 14, color: "text.secondary" }}>Loading...</Typography>
         ) : (
           <>
-            <TableContainer component={Paper} sx={{ overflowX: "auto", boxShadow: "none", border: "1px solid #E9E9EE" }}>
+            {/* DESKTOP TABLE VIEW: Visible on tablets and desktops (md and up) */}
+            <TableContainer
+              component={Paper}
+              sx={{
+                display: { xs: "none", md: "block" },
+                overflowX: "auto",
+                boxShadow: "none",
+                border: "1px solid #E9E9EE",
+                borderRadius: "12px",
+              }}
+            >
               <Table size="small" sx={{ minWidth: 650 }}>
                 <TableHead sx={{ backgroundColor: "#f9f9fb" }}>
                   <TableRow>
@@ -409,6 +446,80 @@ return (
               </Table>
             </TableContainer>
 
+            {/* MOBILE CARD VIEW: Visible only on mobile screens (xs up to md) */}
+            <Box sx={{ display: { xs: "flex", md: "none" }, flexDirection: "column", gap: 2 }}>
+              {paginatedParticipants.length === 0 ? (
+                <Paper variant="outlined" sx={{ p: 3, textAlign: "center", borderRadius: "12px", color: "text.secondary", border: "1px solid #E9E9EE" }}>
+                  No participants found
+                </Paper>
+              ) : (
+                paginatedParticipants.map((participant) => {
+                  const type = participant.entity_type || "USER";
+
+                  return (
+                    <Paper
+                      key={participant.id}
+                      variant="outlined"
+                      sx={{ p: 2, borderRadius: "12px", backgroundColor: "#ffffff", borderColor: "#E9E9EE" }}
+                    >
+                      {/* Top row with the Chip and the Action Button */}
+                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
+                        <Chip
+                          size="small"
+                          label={
+                            type === "GROUP"
+                              ? "👥 Group"
+                              : type === "CHANNEL"
+                              ? "📢 Channel"
+                              : "👤 User"
+                          }
+                          color={
+                            type === "GROUP"
+                              ? "info"
+                              : type === "CHANNEL"
+                              ? "secondary"
+                              : "default"
+                          }
+                          sx={{ fontWeight: 500 }}
+                        />
+                        <Button
+                          color="error"
+                          variant="outlined"
+                          size="small"
+                          startIcon={<DeleteOutlineIcon />}
+                          onClick={() => handleDelete(participant.id)}
+                          sx={{ textTransform: "none", py: 0.25 }}
+                        >
+                          Remove
+                        </Button>
+                      </Box>
+
+                      {/* Metadata Rows */}
+                      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, pt: 1.5, borderTop: "1px dashed #E5E7EB" }}>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <Typography variant="caption" color="text.secondary">Username / Name:</Typography>
+                          <Typography variant="body2" fontWeight={600}>{participant.telegram_client_name || "N/A"}</Typography>
+                        </Box>
+                        
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <Typography variant="caption" color="text.secondary">Telegram ID:</Typography>
+                          <Typography variant="body2" sx={{ fontFamily: "monospace" }}>{participant.telegram_user_id || "N/A"}</Typography>
+                        </Box>
+
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <Typography variant="caption" color="text.secondary">Phone:</Typography>
+                          <Typography variant="body2">
+                            {type === "USER" ? participant.phone_number || "N/A" : type}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Paper>
+                  );
+                })
+              )}
+            </Box>
+
+            {/* Pagination Section */}
             {pageCount > 1 && (
               <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
                 <Pagination
@@ -422,7 +533,7 @@ return (
             )}
           </>
         )}
-      </Box>
+        </Box>
     </Box>
   );
 };
