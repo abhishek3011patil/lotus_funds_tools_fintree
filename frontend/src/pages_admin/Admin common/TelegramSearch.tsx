@@ -346,12 +346,10 @@ const downloadTemplate = async () => {
   <Button
   variant="outlined"
   size="large"
-  startIcon={<DownloadIcon />}
-  onClick={downloadTemplate}
+  onClick={() => window.open("/excel_sheets/Telegram sheets.xlsx", "_blank")}
 >
-  Template
+  Download Excel
 </Button>
-
   <input
     ref={fileInputRef}
     type="file"

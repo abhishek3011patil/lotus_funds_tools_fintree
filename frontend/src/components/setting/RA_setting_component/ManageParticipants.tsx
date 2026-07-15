@@ -281,6 +281,14 @@ return (
       Add Excel
     </Button>
 
+     <Button
+  variant="outlined"
+  
+  onClick={() => window.open("/excel_sheets/Telegram sheets.xlsx", "_blank")}
+>
+  Download Excel
+</Button>
+
     <input
       ref={fileInputRef}
       type="file"
