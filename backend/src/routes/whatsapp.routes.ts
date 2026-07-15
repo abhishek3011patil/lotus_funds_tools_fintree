@@ -6,6 +6,7 @@ import {
   updateWhatsAppParticipant,
   deleteWhatsAppParticipant,
   getWhatsAppParticipantsByRA,
+  testWhatsAppMessage,
 } from "../controllers/whatsapp.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 
@@ -37,4 +38,10 @@ router.get(
   getWhatsAppParticipantsByRA
 );
 
+
+router.post(
+  "/test-message",
+  authenticate,
+  testWhatsAppMessage
+);
 export default router;

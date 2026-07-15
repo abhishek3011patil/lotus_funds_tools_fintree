@@ -65,6 +65,11 @@ const ManageParticipants: React.FC = () => {
     }
   };
 
+
+
+
+
+
   const handleAddParticipant = async () => {
     if (!telegramUsername.trim()) {
       alert("Enter Telegram username, group, or channel");
@@ -320,18 +325,16 @@ return (
         Add Excel
       </Button>
 
-      <Button
-        variant="outlined"
-        onClick={() => window.open("/excel_sheets/Telegram sheets.xlsx", "_blank")}
-        sx={{ 
-          width: { xs: "100%", sm: "auto" },
-          whiteSpace: "nowrap", 
-          textTransform: "none",
-          px: 3
-        }}
-      >
-        Download Excel
-      </Button>
+    <Button
+  variant="outlined"
+  size="large"
+  component="a"
+  href="/excel_sheets/telegram-sheets.xlsx"
+  download="telegram-sheets.xlsx"
+  sx={{ width: { xs: "100%", sm: "auto" }, whiteSpace: "nowrap", textTransform: "none", px: 3}}
+>
+  Download Excel
+</Button>
 
       <input
         ref={fileInputRef}

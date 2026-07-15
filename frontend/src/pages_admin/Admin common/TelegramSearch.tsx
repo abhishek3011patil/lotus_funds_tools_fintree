@@ -342,11 +342,12 @@ const downloadTemplate = async () => {
   >
     Add Excel
   </Button>
-
-  <Button
+<Button
   variant="outlined"
   size="large"
-  onClick={() => window.open("/excel_sheets/Telegram sheets.xlsx", "_blank")}
+  component="a"
+  href="/excel_sheets/telegram-sheets.xlsx"
+  download="telegram-sheets.xlsx"
 >
   Download Excel
 </Button>

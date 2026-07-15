@@ -45,9 +45,9 @@ const Settings = () => {
     <Box 
       sx={{ 
         display: "flex", 
-        flexDirection: { xs: "column", sm: "row" },
+        flexDirection: { xs: "column", sm: "column" },
         justifyContent: "space-between", 
-        alignItems: { xs: "flex-start", sm: "center" }, 
+        alignItems: { xs: "flex-start", sm: "start" }, 
         gap: 2,
         backgroundColor: "#ffffff", 
         border: "1px solid #e0e0e0", 
@@ -75,7 +75,7 @@ const Settings = () => {
       <Button 
         variant="contained" 
         onClick={() => navigate("/ra/profile")}
-        fullWidth={{ xs: true, sm: false }}
+     
         sx={{ 
           textTransform: "none", 
           borderRadius: "8px", 

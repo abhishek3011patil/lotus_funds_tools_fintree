@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { pool } from "../db";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { createAuditLog } from "../utils/auditLogger";
+import axios from "axios";
 
 
 const normalizePhone = (phone: string): string => {
@@ -453,6 +454,108 @@ export const getWhatsAppParticipantsByRA = async (
       success: false,
       message:
         "Failed to fetch WhatsApp participants",
+    });
+  }
+};
+
+export const testWhatsAppMessage = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const { raId, message } = req.body;
+
+    const raUserId = resolveRAUserId(req, raId);
+
+    if (!raUserId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (!message?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Message is required",
+      });
+    }
+
+    const participantsResult = await pool.query(
+      `
+      SELECT
+        participant_name,
+        phone_number
+      FROM whatsapp_participants
+      WHERE ra_user_id = $1
+        AND consent_confirmed = TRUE
+        AND is_active = TRUE
+      ORDER BY participant_name
+      `,
+      [raUserId]
+    );
+
+    if ((participantsResult.rowCount ?? 0) === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No active WhatsApp participants found",
+      });
+    }
+
+    let success = 0;
+    let failed = 0;
+
+    for (const participant of participantsResult.rows) {
+      try {
+        const destination = participant.phone_number.replace(/\D/g, "");
+
+        await axios.post(
+          `https://graph.facebook.com/v23.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+          {
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: destination,
+            type: "text",
+            text: {
+              preview_url: false,
+              body: message,
+            },
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+              "Content-Type": "application/json",
+            },
+            timeout: 20000,
+          }
+        );
+
+        success++;
+      } catch (err: any) {
+        failed++;
+
+        console.error(
+          `WhatsApp failed for ${participant.phone_number}`,
+          err.response?.data || err.message
+        );
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Test message sent to ${success} participant(s)${
+        failed ? ` (${failed} failed)` : ""
+      }`,
+    });
+  } catch (err: any) {
+    console.error(
+      "TEST WHATSAPP ERROR:",
+      err.response?.data || err.message || err
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to send test WhatsApp message",
     });
   }
 };

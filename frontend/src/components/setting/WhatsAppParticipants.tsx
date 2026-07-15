@@ -32,6 +32,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import axios from "axios";
 
 type WhatsAppParticipant = {
   id: string;
@@ -77,6 +78,58 @@ const WhatsAppParticipants = ({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+
+
+
+  const [testing, setTesting] = useState(false);
+
+const handleTestMessage = async () => {
+  try {
+    setTesting(true);
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      alert("Please login again");
+      return;
+    }
+
+    const testMessage = `Hello,
+
+WhatsApp notifications have been started successfully.
+
+Your Research Analyst may send research calls to you today through this WhatsApp number.
+
+This is only a test message. No investment action is required.
+
+- Lotus Funds`;
+
+    const response = await axios.post(
+      `${import.meta.env.VITE_API_URL}/api/whatsapp/test-message`,
+      {
+        raId,
+        message: testMessage,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    alert(response.data.message);
+  } catch (error: any) {
+    console.error(error);
+
+    alert(
+      error.response?.data?.message ||
+        "Failed to send test WhatsApp message"
+    );
+  } finally {
+    setTesting(false);
+  }
+};
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -344,7 +397,26 @@ const WhatsAppParticipants = ({
     Boolean(editingParticipant || form.consentConfirmed);
 
   return (
-    <Box sx={{ mt: 4, width: "100%" }}>
+    <Box sx={{ mt: 4, width: "100%" }}>  <Button
+  variant="contained"
+  color="success"
+  startIcon={
+    testing ? (
+      <CircularProgress size={18} color="inherit" />
+    ) : (
+      <WhatsAppIcon />
+    )
+  }
+  onClick={handleTestMessage}
+  disabled={testing}
+  sx={{
+    marginBottom: 3,
+    textTransform: "none",
+    whiteSpace: "nowrap",
+  }}
+>
+  {testing ? "Sending..." : "Test WhatsApp"}
+</Button>
     <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: -1 }}>
         <WhatsAppIcon color="success" sx={{ fontSize: 24 }} />
         <Typography 
@@ -494,6 +566,8 @@ const WhatsAppParticipants = ({
       />
     )}
   </Stack>
+
+ 
 </Box>
 
      <Box sx={{ width: "100%", pt: 2, borderTop: "1px solid #E9E9EE" }}>
