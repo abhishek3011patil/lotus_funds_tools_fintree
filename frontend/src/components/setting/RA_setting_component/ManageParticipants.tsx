@@ -223,7 +223,15 @@ alert(message || "Upload completed");
 
 
 return (
-    <Box sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 4 }}>
+    <Box
+  sx={{
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    gap: { xs: 2, md: 4 },
+    px: { xs: 1, sm: 2 },
+  }}
+>
       <Typography 
         variant="h6" 
         sx={{ 
@@ -239,9 +247,10 @@ return (
 
       {/* Section 1: Add New Participant */}
   
+{/* Section 1: Add New Participant */}
 <Box sx={{ 
   width: "100%", 
-  p: 3, 
+  p: { xs: 2, md: 3 },
   border: "1px solid #E9E9EE", 
   borderRadius: 2, 
   backgroundColor: "#fafafa" 
@@ -254,76 +263,85 @@ return (
     Enter Telegram username, group username, or channel username.
   </Typography>
 
-  {/* 🔄 REPLACE comment fixed */}
   <Box 
     sx={{ 
-    display: "flex", 
-    flexDirection: { xs: "column", sm: "row" }, 
-    gap: 1.5, 
-    width: "100%",
-    maxWidth: { xs: "100%", md: "75%" } 
-  }}
->
-  <TextField
-    fullWidth
-    size="small"
-    placeholder="@username / group / channel"
-    value={telegramUsername}
-    onChange={(e) => setTelegramUsername(e.target.value)}
-    sx={{ "& .MuiOutlinedInput-root": { backgroundColor: "#ffffff" } }}
-  />
+      display: "flex", 
+      flexDirection: { xs: "column", md: "row" }, 
+      gap: 1.5, 
+      width: "100%"
+    }}
+  >
+    <TextField
+      fullWidth
+      size="small"
+      placeholder="@username / group / channel"
+      value={telegramUsername}
+      onChange={(e) => setTelegramUsername(e.target.value)}
+      sx={{ "& .MuiOutlinedInput-root": { backgroundColor: "#ffffff" } }}
+    />
 
-  <Box sx={{ display: "flex", gap: 1, width: "100%" }}>
-    <Button
-      variant="contained"
-      onClick={handleAddParticipant}
-      disabled={saving}
-     sx={{
-    width: { xs: "100%", sm: "auto" },
-    whiteSpace: "nowrap",
-    textTransform: "none",
-    px: 3,
-    backgroundColor: "#1D4ED8",
-    "&:hover": {
-      backgroundColor: "#1E40AF",
-    },
-  }}
-    >
-      {saving ? "Adding..." : "Add"}
-    </Button>
-
-    <Button
-      variant="outlined"
-      startIcon={<UploadFileIcon />}
-      onClick={() => fileInputRef.current?.click()}
-      //fullWidth={{ xs: true, sm: false }}
+    <Box 
       sx={{ 
-         width: { xs: "100%", sm: "auto" },
-        whiteSpace: "nowrap", 
-        textTransform: "none",
-        flexGrow: { xs: 1, sm: 0 }
+        display: "flex", 
+        flexDirection: { xs: "column", sm: "row" }, 
+        gap: 1, 
+        width: { xs: "100%", md: "auto" } 
       }}
     >
-      Add Excel
-    </Button>
+      <Button
+        variant="contained"
+        onClick={handleAddParticipant}
+        disabled={saving}
+        sx={{
+          width: { xs: "100%", sm: "auto" },
+          whiteSpace: "nowrap",
+          textTransform: "none",
+          px: 3,
+          backgroundColor: "#1D4ED8",
+          "&:hover": {
+            backgroundColor: "#1E40AF",
+          },
+        }}
+      >
+        {saving ? "Adding..." : "Add"}
+      </Button>
 
-     <Button
-  variant="outlined"
-  
-  onClick={() => window.open("/excel_sheets/Telegram sheets.xlsx", "_blank")}
->
-  Download Excel
-</Button>
+      <Button
+        variant="outlined"
+        startIcon={<UploadFileIcon />}
+        onClick={() => fileInputRef.current?.click()}
+        sx={{ 
+          width: { xs: "100%", sm: "auto" },
+          whiteSpace: "nowrap", 
+          textTransform: "none",
+          px: 3
+        }}
+      >
+        Add Excel
+      </Button>
 
-  <input
-    ref={fileInputRef}
-    type="file"
-    accept=".xlsx,.xls"
-    hidden
-    onChange={handleExcelUpload}
-  />
-</Box>
-</Box>
+      <Button
+        variant="outlined"
+        onClick={() => window.open("/excel_sheets/Telegram sheets.xlsx", "_blank")}
+        sx={{ 
+          width: { xs: "100%", sm: "auto" },
+          whiteSpace: "nowrap", 
+          textTransform: "none",
+          px: 3
+        }}
+      >
+        Download Excel
+      </Button>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx,.xls"
+        hidden
+        onChange={handleExcelUpload}
+      />
+    </Box>
+  </Box>
 </Box>
 
       {/* Section 2: Participants List */}
@@ -463,7 +481,14 @@ return (
                       sx={{ p: 2, borderRadius: "12px", backgroundColor: "#ffffff", borderColor: "#E9E9EE" }}
                     >
                       {/* Top row with the Chip and the Action Button */}
-                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
+                      <Box
+  sx={{
+    display: "flex",
+    flexDirection: "column",
+    gap: 1,
+    mb: 1.5,
+  }}
+>
                         <Chip
                           size="small"
                           label={
@@ -482,28 +507,50 @@ return (
                           }
                           sx={{ fontWeight: 500 }}
                         />
-                        <Button
-                          color="error"
-                          variant="outlined"
-                          size="small"
-                          startIcon={<DeleteOutlineIcon />}
-                          onClick={() => handleDelete(participant.id)}
-                          sx={{ textTransform: "none", py: 0.25 }}
-                        >
-                          Remove
-                        </Button>
+                       <Button
+  fullWidth
+  color="error"
+  variant="outlined"
+  size="small"
+  startIcon={<DeleteOutlineIcon />}
+  onClick={() => handleDelete(participant.id)}
+  sx={{
+    textTransform: "none",
+  }}
+>
+  Remove
+</Button>
                       </Box>
 
                       {/* Metadata Rows */}
                       <Box sx={{ display: "flex", flexDirection: "column", gap: 1, pt: 1.5, borderTop: "1px dashed #E5E7EB" }}>
                         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <Typography variant="caption" color="text.secondary">Username / Name:</Typography>
-                          <Typography variant="body2" fontWeight={600}>{participant.telegram_client_name || "N/A"}</Typography>
+                          <Typography
+  variant="body2"
+  fontWeight={600}
+  sx={{
+    wordBreak: "break-word",
+    overflowWrap: "anywhere",
+    textAlign: "right",
+    maxWidth: "60%",
+  }}
+>
+  {participant.telegram_client_name || "N/A"}
+</Typography>
                         </Box>
                         
                         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <Typography variant="caption" color="text.secondary">Telegram ID:</Typography>
-                          <Typography variant="body2" sx={{ fontFamily: "monospace" }}>{participant.telegram_user_id || "N/A"}</Typography>
+                         <Typography
+  variant="body2"
+  sx={{
+    fontFamily: "monospace",
+    wordBreak: "break-all",
+    maxWidth: "60%",
+    textAlign: "right",
+  }}
+>{participant.telegram_user_id || "N/A"}</Typography>
                         </Box>
 
                         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -523,11 +570,12 @@ return (
             {pageCount > 1 && (
               <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
                 <Pagination
+                size={window.innerWidth < 600 ? "small" : "medium"}
                   count={pageCount}
                   page={page}
                   onChange={(_, value) => setPage(value)}
                   color="primary"
-                  size="small"
+                
                 />
               </Box>
             )}
