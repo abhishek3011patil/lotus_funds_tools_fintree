@@ -74,12 +74,15 @@ export const getWhatsAppParticipants = async (
       [raUserId]
     );
 
+    
+
     if (raCheck.rowCount === 0) {
       return res.status(404).json({
         success: false,
         message: "Research Analyst not found",
       });
     }
+
 
     const result = await pool.query(
       `
@@ -100,6 +103,23 @@ export const getWhatsAppParticipants = async (
       `,
       [raUserId]
     );
+
+    await createAuditLog({
+  userId: req.user?.id,
+  action: "VIEW_PARTICIPANTS",
+  module: "WHATSAPP",
+  targetEntity: raUserId,
+  targetType: "RESEARCH_ANALYST",
+  description: "Viewed WhatsApp participants",
+  reason: "Participant list viewed",
+  oldValue: null,
+  newValue: {
+    totalParticipants: result.rows.length,
+  },
+  status: "SUCCESS",
+  ipAddress: req.ip,
+  device: req.headers["user-agent"],
+} as any);
 
     return res.status(200).json({
       success: true,
@@ -217,17 +237,20 @@ export const addWhatsAppParticipant = async (
       ]
     );
 
-    await createAuditLog({
-      userId: req.user.id,
-      action: "WHATSAPP_PARTICIPANT_ADDED",
-      module: "WHATSAPP",
-      status: "SUCCESS",
-      details: {
-        raUserId,
-        participantId: result.rows[0].id,
-        phoneNumber: phone,
-      },
-    } as any);
+   await createAuditLog({
+  userId: req.user.id,
+  action: "ADD_PARTICIPANT",
+  module: "WHATSAPP",
+  targetEntity: result.rows[0].id,
+  targetType: "WHATSAPP_PARTICIPANT",
+  description: `Added WhatsApp participant ${name}`,
+  reason: "New participant created",
+  oldValue: null,
+  newValue: result.rows[0],
+  status: "SUCCESS",
+  ipAddress: req.ip,
+  device: req.headers["user-agent"],
+} as any);
 
     return res.status(201).json({
       success: true,
@@ -259,6 +282,7 @@ export const updateWhatsAppParticipant = async (
   res: Response
 ) => {
   try {
+    
     const { id } = req.params;
     const {
       raId,
@@ -267,7 +291,14 @@ export const updateWhatsAppParticipant = async (
       isActive,
     } = req.body;
 
+    console.log("===== UPDATE WHATSAPP =====");
+console.log("Participant ID:", id);
+console.log("Body RA ID:", raId);
+console.log("Logged-in User:", req.user?.id);
+console.log("Role:", req.user?.role);
+
     const raUserId = resolveRAUserId(req, raId);
+    console.log("Resolved RA User ID:", raUserId);
 
     if (!raUserId) {
       return res.status(401).json({
@@ -293,6 +324,29 @@ export const updateWhatsAppParticipant = async (
       });
     }
 
+    console.log("Searching with:");
+console.log({
+  participantId: id,
+  raUserId,
+});
+
+    const oldParticipant = await pool.query(
+`
+SELECT *
+FROM whatsapp_participants
+WHERE id=$1
+AND ra_user_id=$2
+`,
+[id, raUserId]
+);
+
+if (oldParticipant.rowCount === 0) {
+  return res.status(404).json({
+    success: false,
+    message: "WhatsApp participant not found",
+  });
+}
+
     const result = await pool.query(
       `
       UPDATE whatsapp_participants
@@ -314,12 +368,28 @@ export const updateWhatsAppParticipant = async (
       ]
     );
 
+
     if (result.rowCount === 0) {
       return res.status(404).json({
         success: false,
         message: "WhatsApp participant not found",
       });
     }
+
+    await createAuditLog({
+  userId: req.user?.id,
+  action: "UPDATE_PARTICIPANT",
+  module: "WHATSAPP",
+  targetEntity: id,
+  targetType: "WHATSAPP_PARTICIPANT",
+  description: `Updated participant ${name}`,
+  reason: "Participant details modified",
+  oldValue: oldParticipant.rows[0],
+  newValue: result.rows[0],
+  status: "SUCCESS",
+  ipAddress: req.ip,
+  device: req.headers["user-agent"],
+} as any);
 
     return res.status(200).json({
       success: true,
@@ -370,6 +440,23 @@ export const deleteWhatsAppParticipant = async (
       });
     }
 
+    const oldParticipant = await pool.query(
+`
+SELECT *
+FROM whatsapp_participants
+WHERE id=$1
+AND ra_user_id=$2
+`,
+[id, raUserId]
+);
+
+if (oldParticipant.rowCount === 0) {
+  return res.status(404).json({
+    success: false,
+    message: "WhatsApp participant not found",
+  });
+}
+
     const result = await pool.query(
       `
       DELETE FROM whatsapp_participants
@@ -386,6 +473,21 @@ export const deleteWhatsAppParticipant = async (
         message: "WhatsApp participant not found",
       });
     }
+
+    await createAuditLog({
+  userId: req.user?.id,
+  action: "DELETE_PARTICIPANT",
+  module: "WHATSAPP",
+  targetEntity: id,
+  targetType: "WHATSAPP_PARTICIPANT",
+  description: `Deleted participant ${oldParticipant.rows[0].participant_name}`,
+  reason: "Participant removed",
+  oldValue: oldParticipant.rows[0],
+  newValue: null,
+  status: "SUCCESS",
+  ipAddress: req.ip,
+  device: req.headers["user-agent"],
+} as any);
 
     return res.status(200).json({
       success: true,
@@ -438,6 +540,23 @@ export const getWhatsAppParticipantsByRA = async (
       `,
       [raId]
     );
+
+    await createAuditLog({
+  userId: (req as AuthRequest).user?.id,
+  action: "VIEW_PARTICIPANTS",
+  module: "WHATSAPP",
+  targetEntity: raId,
+  targetType: "RESEARCH_ANALYST",
+  description: `Viewed WhatsApp participants for RA`,
+  reason: "Participant list fetched",
+  oldValue: null,
+  newValue: {
+    totalParticipants: result.rows.length,
+  },
+  status: "SUCCESS",
+  ipAddress: req.ip,
+  device: req.headers["user-agent"],
+} as any);
 
     return res.status(200).json({
       success: true,

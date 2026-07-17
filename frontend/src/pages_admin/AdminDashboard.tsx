@@ -72,6 +72,7 @@ const [confirmId, setConfirmId] = useState<string | null>(null);
 const [whatsappName, setWhatsappName] = useState("");
 const [whatsappPhone, setWhatsappPhone] = useState("");
 const [whatsappParticipantsList, setWhatsappParticipantsList] = useState<Participant[]>([]);
+const [whatsappParticipant, setWhatsappParticipant] = useState<Participant | null>(null);
 
 // const phones = [
 //   "919773665373",
@@ -461,7 +462,7 @@ const handleViewWhatsAppParticipant = (row: AdminRow) => {
   
 
   const handleUpdateParticipant = async () => {
-  if (!participant?.id) return;
+ if (!whatsappParticipant?.id) return;
 
   const token = localStorage.getItem("token");
 
@@ -747,7 +748,13 @@ const handleExcelFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => 
   e.stopPropagation();
 
   // ✅ SET SELECTED PARTICIPANT
+if (panelMode === "participant") {
   setParticipant(p);
+}
+
+if (panelMode === "whatsapp") {
+  setWhatsappParticipant(p);
+}
 
   // ✅ START EDITING
   setEditingCell({
@@ -862,58 +869,126 @@ const handleResendPasswordLink = async (userId: string) => {
 };
 
 const handleUpdateWhatsAppParticipant = async () => {
-  if (!participant?.id) return;
+
+  if (!whatsappParticipant?.id) {
+    alert("Please select participant");
+    return;
+  }
+
+
+  const phone =
+    whatsappPhone.replace(/\D/g,"");
+
+
+  const payload = {
+    participantName: whatsappName.trim(),
+    phoneNumber: phone,
+    raId: selectedRA?.userId || selectedRA?.id
+  };
+
+
+  console.log("UPDATE PAYLOAD:", payload);
+
+
   try {
-    const token = localStorage.getItem("token");
+
     const res = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/whatsapp/participant/${encodeURIComponent(participant.id)}`,
+      `${import.meta.env.VITE_API_URL}/api/whatsapp/participants/${whatsappParticipant.id}`,
       {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+        method:"PUT",
+        headers:{
+          "Content-Type":"application/json",
+          Authorization:`Bearer ${localStorage.getItem("token")}`
         },
-        body: JSON.stringify({
-          participant_name: whatsappName,
-          phone_number: whatsappPhone.startsWith("+91") ? whatsappPhone : `+91${whatsappPhone}`,
-        }),
+        body:JSON.stringify(payload)
       }
     );
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.message || "Update failed");
 
-    alert("WhatsApp participant updated successfully!");
-    if (selectedRA) fetchWhatsAppParticipants(selectedRA.userId || selectedRA.id);
-  } catch (err: any) {
+    const data = await res.json();
+
+    console.log("UPDATE RESPONSE:",data);
+
+
+    if(!res.ok){
+      throw new Error(data.message || "Update failed");
+    }
+
+
+    alert("Updated successfully");
+
+
+    setWhatsappParticipantsList(prev =>
+      prev.map(item =>
+        item.id === whatsappParticipant.id
+        ? data.data
+        : item
+      )
+    );
+
+
+  }catch(err:any){
+
+    console.error(err);
     alert(err.message);
+
   }
+
 };
 
 const handleDeleteWhatsAppParticipant = async () => {
-  if (!participant?.id) return;
-  const ok = window.confirm("Are you sure you want to delete this WhatsApp participant?");
+
+  if (!whatsappParticipant?.id) {
+    alert("Please select WhatsApp participant");
+    return;
+  }
+
+  const ok = window.confirm(
+    "Are you sure you want to delete this WhatsApp participant?"
+  );
+
   if (!ok) return;
 
+
   try {
+
     const token = localStorage.getItem("token");
+
     const res = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/whatsapp/participant/${encodeURIComponent(participant.id)}`,
+      `${import.meta.env.VITE_API_URL}/api/whatsapp/participants/${encodeURIComponent(
+        whatsappParticipant.id
+      )}?raId=${selectedRA?.userId || selectedRA?.id}`,
       {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        method:"DELETE",
+        headers:{
+          Authorization:`Bearer ${token}`
+        }
       }
     );
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.message || "Delete failed");
 
-    alert("WhatsApp participant deleted successfully!");
-    setParticipant(null);
+    const data = await res.json();
+
+    if(!res.ok)
+      throw new Error(data.message || "Delete failed");
+
+
+    alert("WhatsApp participant deleted successfully");
+
+
+    setWhatsappParticipantsList(prev =>
+      prev.filter(
+        p => p.id !== whatsappParticipant.id
+      )
+    );
+
+
+    setWhatsappParticipant(null);
     setWhatsappName("");
     setWhatsappPhone("");
-    if (selectedRA) fetchWhatsAppParticipants(selectedRA.userId || selectedRA.id);
-  } catch (err: any) {
+
+
+  } catch(err:any){
     alert(err.message);
   }
 };
@@ -1491,8 +1566,11 @@ const handleDeleteWhatsAppParticipant = async () => {
                     disabled={!participant || participantLoading}
                     onClick={handleDeleteParticipant}
                     sx={{
-                      backgroundColor: participant ? "#d32f2f" : "#e0e0e0",
-                      color: participant ? "#fff" : "#9e9e9e",
+                     backgroundColor: whatsappParticipant ? "#d32f2f" : "#e0e0e0",
+color: whatsappParticipant ? "#fff" : "#9e9e9e",
+"&:hover": {
+  backgroundColor: whatsappParticipant ? "#b71c1c" : "#e0e0e0",
+},
                       "&:hover": {
                         backgroundColor: participant ? "#b71c1c" : "#e0e0e0",
                       },
@@ -1564,15 +1642,20 @@ const handleDeleteWhatsAppParticipant = async () => {
                               return (
                                 <TableRow
                                   key={p.id}
-                                  selected={participant?.id === p.id}
+                                  selected={whatsappParticipant?.id === p.id}
                                   onClick={() => {
-                                    if (isRowEditing) return;
-                                    setParticipant(p);
-                                    setWhatsappName(p.participant_name || "");
-                                    
-                                    const cleanPhone = (p.phone_number || "").replace(/^\+91/, "");
-                                    setWhatsappPhone(cleanPhone);
-                                  }}
+  if (isRowEditing) return;
+
+  setWhatsappParticipant(p);
+
+  setWhatsappName(p.participant_name || "");
+
+  let phone = p.phone_number || "";
+
+  phone = phone.replace("+91", "");
+
+  setWhatsappPhone(phone);
+}}
                                   sx={{ cursor: "pointer", "&:hover": { backgroundColor: "#f8fafc" } }}
                                 >
                                   <TableCell>
@@ -1710,15 +1793,15 @@ const handleDeleteWhatsAppParticipant = async () => {
                   <Button
                     variant="contained"
                     fullWidth
-                    disabled={!participant || participantLoading}
+                    disabled={!whatsappParticipant || participantLoading}
                     onClick={handleUpdateWhatsAppParticipant}
                     sx={{
                       py: 1,
                       fontWeight: 600,
                       borderRadius: "12px",
                       textTransform: "none",
-                      backgroundColor: participant ? "#1976d2" : "#e0e0e0",
-                      color: participant ? "#fff" : "#9e9e9e",
+                      backgroundColor: whatsappParticipant ? "#1976d2" : "#e0e0e0",
+color: whatsappParticipant ? "#fff" : "#9e9e9e",
                       "&:hover": {
                         backgroundColor: participant ? "#1565c0" : "#e0e0e0",
                       },
@@ -1730,7 +1813,7 @@ const handleDeleteWhatsAppParticipant = async () => {
                   <Button
                     variant="contained"
                     fullWidth
-                    disabled={!participant || participantLoading}
+                    disabled={!whatsappParticipant || participantLoading}
                     onClick={handleDeleteWhatsAppParticipant}
                     sx={{
                       py: 1,

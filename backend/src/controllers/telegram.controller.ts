@@ -1117,6 +1117,12 @@ export const saveParticipantRA = async (
       }
     }
 
+    console.log("Entity Type:", entityType);
+console.log("Entity:", entity);
+console.log("Telegram ID:", telegramId);
+console.log("Username:", username);
+console.log("Phone:", phone);
+
     // ==========================================
     // ✅ SAVE TO DB
     // ==========================================
