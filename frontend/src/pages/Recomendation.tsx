@@ -15,12 +15,16 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Typography,
-  InputAdornment, 
-  Tooltip
+ 
 } from "@mui/material";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+
 import RecommendationsPanel from "../components/page_Mainapp/RecommendationsPanel";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
+
+import AdditionalPriceSection, {
+  type AdditionalPriceField,
+  type AdditionalToggleField,
+} from "../components/page_Mainapp/AdditionalPriceSection";
 
 import {
   useRef,
@@ -46,6 +50,7 @@ import PriceSection, {
   type MainPriceField,
 } from "../components/page_Mainapp/PriceSection";
 import axios from "axios";
+import RemarksField from "../components/page_Mainapp/RemarksField";
 
 
 const BUY_COLOR = "#22c55e";
@@ -153,12 +158,6 @@ const [isSubmitting, setIsSubmitting] = useState(false);
 
 const submittingRef = useRef(false);
 
-  const transparentInputSx = {
-    backgroundColor: "transparent",
-    "& .MuiOutlinedInput-notchedOutline": { borderColor: "#b6c3b6" },
-    "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#9fb19f" },
-    "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#6fa66f" },
-  };
 
 const handleFileChange = (
   event: ChangeEvent<HTMLInputElement>
@@ -672,23 +671,9 @@ finally {
 }
 };
 
-  const handleToggle = useCallback(
-    (field: keyof RecommendationForm) => {
-      dispatch({ type: "SET_FIELD", field, value: !form[field] });
-    },
-    [form]
-  );
 
-  const handlePriceChange = useCallback(
-    (field: keyof RecommendationForm) =>
-      (e: ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
-        if (val.includes("-")) return;
 
-        dispatch({ type: "SET_FIELD", field, value: val });
-      },
-    []
-  );
+
 
   // hooks 
   const expiryDates = useExpiryDates(
@@ -841,6 +826,22 @@ finally {
 
   }, []);
 
+  useEffect(() => {
+  if (form.action === "BUY" && form.tradeType === "STBT") {
+    dispatch({
+      type: "SET_FIELD",
+      field: "tradeType",
+      value: "BTST",
+    });
+  } else if (form.action === "SELL" && form.tradeType === "BTST") {
+    dispatch({
+      type: "SET_FIELD",
+      field: "tradeType",
+      value: "STBT",
+    });
+  }
+}, [form.action, form.tradeType]);
+
   const formatIndianDateTime = (
     value: string | Date
   ) => {
@@ -971,12 +972,21 @@ const handleExit = useCallback(
   const organizationName =
     raDetails.org_name || "Lotus Funds";
 
+  const isErrataCall =
+  item.version_type === "ERRATA" ||
+  Boolean(item.parent_call_id);
+
+const exitHeader = isErrataCall
+  ? "ERRATA / CORRECTION CALL EXIT"
+  : "CALL EXIT";
+
   const exitMessage = `
+  ${exitHeader}
 Exit Message Published On : ${formatIndianDateTime(new Date())}
 
 EXIT ${marketType} ${callType} Expiry: ${formatExpiryDate(
-    item.expiry_date
-  )}
+  item.expiry_date
+)}
 
 Stock Name: ${stockName}
 
@@ -1934,10 +1944,16 @@ const validateAndTrack = (event: MouseEvent<HTMLButtonElement>) => {
   event.preventDefault();
   setWasValidated(true);
 
-  const priceErr =
-    getPriceError("entry", form) ||
-    getPriceError("target", form) ||
-    getPriceError("stopLoss", form);
+ const priceErr =
+  getPriceError("entry", form) ||
+  getPriceError("target", form) ||
+  getPriceError("stopLoss", form) ||
+  getPriceError("entryLow", form) ||
+  getPriceError("entryUpper", form) ||
+  getPriceError("target2", form) ||
+  getPriceError("target3", form) ||
+  getPriceError("stopLoss2", form) ||
+  getPriceError("stopLoss3", form);
 
   if (priceErr) {
     const priceRow = document.getElementById("prices-row");
@@ -2101,6 +2117,80 @@ const getMainPriceError = useCallback(
     form.stopLoss3,
   ]
 );
+
+const commitRemark = useCallback(
+  (value: string) => {
+    dispatch({
+      type: "SET_FIELD",
+      field: "remark",
+      value,
+    });
+  },
+  []
+);
+
+const commitAdditionalPrice = useCallback(
+  (
+    field: AdditionalPriceField,
+    value: string
+  ) => {
+    startTransition(() => {
+      dispatch({
+        type: "SET_FIELD",
+        field,
+        value,
+      });
+    });
+  },
+  []
+);
+
+const toggleAdditionalSection = useCallback(
+  (field: AdditionalToggleField) => {
+    const nextValue =
+      field === "rangeEnabled"
+        ? !form.rangeEnabled
+        : field === "secondaryTargetEnabled"
+          ? !form.secondaryTargetEnabled
+          : !form.stopLoss2Enabled;
+
+    dispatch({
+      type: "SET_FIELD",
+      field,
+      value: nextValue,
+    });
+  },
+  [
+    form.rangeEnabled,
+    form.secondaryTargetEnabled,
+    form.stopLoss2Enabled,
+  ]
+);
+
+const getAdditionalPriceError = useCallback(
+  (
+    field: AdditionalPriceField,
+    values: Record<
+      AdditionalPriceField,
+      string
+    >
+  ) => {
+    return getPriceError(field, {
+      ...form,
+      ...values,
+    });
+  },
+  [
+    form.action,
+    form.entry,
+    form.target,
+    form.stopLoss,
+    form.rangeEnabled,
+    form.secondaryTargetEnabled,
+    form.stopLoss2Enabled,
+  ]
+);
+
 
   return (
     <Box
@@ -2298,8 +2388,19 @@ maxWidth: "100%",
               }}
             >
               <ToggleButton value="Intraday">Intraday</ToggleButton>
-              <ToggleButton value="BTST">BTST</ToggleButton>
-              <ToggleButton value="STBT">STBT</ToggleButton>
+             <ToggleButton
+  value="BTST"
+  disabled={form.action === "SELL"}
+>
+  BTST
+</ToggleButton>
+
+<ToggleButton
+  value="STBT"
+  disabled={form.action === "BUY"}
+>
+  STBT
+</ToggleButton>
               <ToggleButton value="Short Term">Short Term</ToggleButton>
               <ToggleButton
                 value="Long Term"
@@ -2401,183 +2502,39 @@ maxWidth: "100%",
         </Box>
 
         {/* Prices Row */}
-<Box 
-  id="prices-row" 
-  sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1, mb: 1 }}
->
-  {(["entry", "target", "stopLoss"] as const).map((field) => {
-    const errorMsg = getPriceError(field, form);
-    const label = field === "entry" ? "Entry" : field === "target" ? "Target" : "Stop Loss";
-
-    return (
-      <TextField
-        key={field}
-        required
-        label={label}
-        size="small"
-        type="number"
-        value={form[field]}
-        onChange={handlePriceChange(field)}
-        // Only shows red if validation was attempted and failed
-        error={!!errorMsg && wasValidated} 
-        sx={{ ...transparentInputSx, flex: 1 }}
-        InputProps={{
-          endAdornment: errorMsg && wasValidated ? (
-            <InputAdornment position="end">
-              <Tooltip title={errorMsg} arrow placement="top">
-                <ErrorOutlineIcon color="error" sx={{ cursor: "pointer", fontSize: '1.1rem' }} />
-              </Tooltip>
-            </InputAdornment>
-          ) : null,
-        }}
-      />
-    );
-  })}
-</Box>
+<PriceSection
+  values={{
+    entry: form.entry,
+    target: form.target,
+    stopLoss: form.stopLoss,
+  }}
+  wasValidated={wasValidated}
+  onCommit={commitMainPrice}
+  getError={getMainPriceError}
+/>
 
         {/* Switched Options Row */}
-        <Box
-  sx={{
-    display: "flex",
-    flexDirection: { xs: "column", md: "row" },
-    justifyContent: "space-between",
-    mb: 1,
-    gap: { xs: 2, md: 1.5 },
+  <AdditionalPriceSection
+  values={{
+    entryLow: form.entryLow,
+    entryUpper: form.entryUpper,
+    target2: form.target2,
+    target3: form.target3,
+    stopLoss2: form.stopLoss2,
+    stopLoss3: form.stopLoss3,
   }}
->
-  {[
-    { label: "Range", field: "rangeEnabled" as const, p1: "Lower Entry", p2: "Upper Entry", v1: "entryLow" as const, v2: "entryUpper" as const },
-    { label: "Secondary Target", field: "secondaryTargetEnabled" as const, p1: "T2", p2: "T3", v1: "target2" as const, v2: "target3" as const },
-    { label: "Stop Loss 2", field: "stopLoss2Enabled" as const, p1: "SL2", p2: "SL3", v1: "stopLoss2" as const, v2: "stopLoss3" as const },
-  ].map((cfg) => {
-    const isActive = form[cfg.field];
-
-    return (
-      <Box
-        key={cfg.label}
-        sx={{
-          textAlign: "center",
-          flex: 1,
-          border: "1px solid rgba(0,0,0,0.08)",
-          borderRadius: 2,
-          p: 1.5,
-          backgroundColor: isActive ? "rgba(25, 118, 210, 0.02)" : "transparent",
-          transition: "all 0.2s ease",
-        }}
-      >
-        {/* Header with Switch */}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 1,
-            mb: 1.5,
-          }}
-        >
-          <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: isActive ? "primary.main" : "text.secondary" }}>
-            {cfg.label}
-          </Typography>
-          <Switch
-            size="small"
-            checked={isActive}
-            onChange={() => handleToggle(cfg.field)}
-          />
-        </Box>
-
-        {/* Inputs Column */}
-        <Box 
-          sx={{ 
-            display: "flex", 
-            flexDirection: "column", 
-            gap: 1.5, 
-            justifyContent: "center",
-            alignItems: "center" 
-          }}
-        >
-          {isActive ? (
-            <>
-              {[
-                { id: cfg.v1, placeholder: cfg.p1 },
-                { id: cfg.v2, placeholder: cfg.p2 }
-              ].map((input) => {
-                const errorMsg = getPriceError(input.id, form);
-                return (
-                  <TextField
-                    key={input.id}
-                    value={form[input.id]}
-                    onChange={handlePriceChange(input.id)}
-                    placeholder={input.placeholder}
-                    size="small"
-                    variant="outlined"
-                    error={!!errorMsg && wasValidated}
-                    sx={{
-                      width: "100%",
-                      "& .MuiInputBase-input": {
-                        py: 1,
-                        fontSize: "0.7rem",
-                        textAlign: "center",
-                      },
-                    }}
-                    InputProps={{
-                      endAdornment: errorMsg && wasValidated ? (
-                        <InputAdornment position="end">
-                          <Tooltip title={errorMsg} arrow placement="top">
-                            <ErrorOutlineIcon color="error" sx={{ fontSize: '1rem' }} />
-                          </Tooltip>
-                        </InputAdornment>
-                      ) : null,
-                    }}
-                  />
-                );
-              })}
-            </>
-          ) : (
-            <>
-              {/* Stacked Disabled Placeholders */}
-              <Button
-                disabled
-                fullWidth
-                size="small"
-                variant="outlined"
-                sx={{
-                  py: 0.5,
-                  fontSize: "0.65rem",
-                  height: 32,
-                  backgroundColor: "#f9fafb",
-                  borderColor: "#f3f4f6",
-                  color: "#9ca3af !important",
-                  textTransform: "none",
-                  borderStyle: "dashed"
-                }}
-              >
-                Disabled
-              </Button>
-              <Button
-                disabled
-                fullWidth
-                size="small"
-                variant="outlined"
-                sx={{
-                  py: 0.5,
-                  fontSize: "0.65rem",
-                  height: 32,
-                  backgroundColor: "#f9fafb",
-                  borderColor: "#f3f4f6",
-                  color: "#9ca3af !important",
-                  textTransform: "none",
-                  borderStyle: "dashed"
-                }}
-              >
-                Disabled
-              </Button>
-            </>
-          )}
-        </Box>
-      </Box>
-    );
-  })}
-</Box>
+  toggles={{
+    rangeEnabled: form.rangeEnabled,
+    secondaryTargetEnabled:
+      form.secondaryTargetEnabled,
+    stopLoss2Enabled:
+      form.stopLoss2Enabled,
+  }}
+  wasValidated={wasValidated}
+  onToggle={toggleAdditionalSection}
+  onCommit={commitAdditionalPrice}
+  getError={getAdditionalPriceError}
+/>
 
         {/* Holding period & Rationale Container */}
         <Box
@@ -2768,15 +2725,10 @@ sx={{
 
         {/* Remarks & Upload */}
         <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1.5, mb: 2 }}>
-          <TextField
-            required
-            multiline
-            rows={2}
-            placeholder="Research Analyst's Remarks"
-            value={form.remark}
-            onChange={(e) => dispatch({ type: "SET_FIELD", field: "remark", value: e.target.value })}
-            sx={{ flexGrow: 1 }}
-          />
+         <RemarksField
+  value={form.remark}
+  onCommit={commitRemark}
+/>
 
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: { xs: "100%", sm: 160 } }}>
             <input
