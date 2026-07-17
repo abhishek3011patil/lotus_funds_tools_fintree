@@ -21,9 +21,20 @@ import {
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import RecommendationsPanel from "../components/page_Mainapp/RecommendationsPanel";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
-import { useRef, useState, useEffect, useMemo, useCallback, useReducer } from "react";
+
+import {
+  useRef,
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useReducer,
+  startTransition,
+  type ChangeEvent,
+  type MouseEvent,
+} from "react";
 import { FormHelperText } from "@mui/material";
-import { startTransition } from "react";
+
 import { useExpiryDates } from "../hooks/useExpiryDates";
 import { useStockAutocomplete } from "../hooks/useStockAutocomplete";
 import {
@@ -31,13 +42,17 @@ import {
   getRecentStudies,
 } from "../assets/UnderlyingStudy";
 import type { StudyOption } from "../assets/UnderlyingStudy";
+import PriceSection, {
+  type MainPriceField,
+} from "../components/page_Mainapp/PriceSection";
 import axios from "axios";
-import React from "react";
+
+
 const BUY_COLOR = "#22c55e";
 const SELL_COLOR = "#ef4444";
 
 
-const MemoRecommendationsPanel = React.memo(RecommendationsPanel);
+
 
 
 const getActionStyles = (current: "BUY" | "SELL", button: "BUY" | "SELL") => {
@@ -52,13 +67,7 @@ const getActionStyles = (current: "BUY" | "SELL", button: "BUY" | "SELL") => {
     },
   };
 };
-const rootGridSx = {
-  display: "grid",
-  gridTemplateColumns: "3fr 1.5fr",
-  gap: 2,
-  height: "auto",
-  boxSizing: "border-box",
-};
+
 
 const FLAT_STUDY_OPTIONS = UNDERLYING_STUDIES.flatMap((g) =>
   g.options.map((opt) => ({
@@ -151,7 +160,9 @@ const submittingRef = useRef(false);
     "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#6fa66f" },
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+const handleFileChange = (
+  event: ChangeEvent<HTMLInputElement>
+) =>  {
   const file = event.target.files?.[0];
   if (file) {
     setSelectedFile(file);   // ✅ store it
@@ -260,17 +271,7 @@ const submittingRef = useRef(false);
   }
 };
 
-  const getRAIdFromToken = () => {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) return null;
 
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.id; // ✅ THIS is your RA ID
-  } catch {
-    return null;
-  }
-};
 
 
 
@@ -680,7 +681,7 @@ finally {
 
   const handlePriceChange = useCallback(
     (field: keyof RecommendationForm) =>
-      (e: React.ChangeEvent<HTMLInputElement>) => {
+      (e: ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
         if (val.includes("-")) return;
 
@@ -840,35 +841,251 @@ finally {
 
   }, []);
 
+  const formatIndianDateTime = (
+    value: string | Date
+  ) => {
+    const date = new Date(value);
+  
+    if (Number.isNaN(date.getTime())) {
+      return "N/A";
+    }
+  
+    return date.toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+  };
+  
+  const formatExpiryDate = (
+    value?: string | null
+  ) => {
+    if (!value) return "N/A";
+  
+    const date = new Date(value);
+  
+    if (Number.isNaN(date.getTime())) {
+      return "N/A";
+    }
+  
+    return date.toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
   // 1. EXIT FUNCTION (Removes the item from the list)
-  const handleExit = useCallback(async (id: string) => {
-    if (!window.confirm("Are you sure you want to exit this recommendation?")) {
+
+const handleExit = useCallback(
+  async (
+    item: any,
+    exitPrice: number,
+    exitRemark: string
+  ) => {
+     const token = localStorage.getItem("token");
+
+  if (!token) {
+    throw new Error("Please login again");
+  }
+
+  if (!raDetails) {
+    throw new Error("RA message profile is still loading");
+  }
+
+  if (!Number.isFinite(exitPrice) || exitPrice <= 0) {
+    throw new Error("Please enter a valid exit price");
+  }
+
+  const trimmedExitRemark = exitRemark.trim();
+
+  if (!trimmedExitRemark) {
+    throw new Error("Exit remark is required");
+  }
+
+  const entryPrice = Number(
+    item.entry?.ideal ??
+      item.entry_price ??
+      item.entry?.low ??
+      item.entry_price_low
+  );
+
+  if (!Number.isFinite(entryPrice) || entryPrice <= 0) {
+    throw new Error("Original entry price is not available");
+  }
+
+  const action = String(item.action || "").toUpperCase();
+
+  if (action !== "BUY" && action !== "SELL") {
+    throw new Error("Invalid recommendation action");
+  }
+
+  const pnl =
+    action === "SELL"
+      ? entryPrice - exitPrice
+      : exitPrice - entryPrice;
+
+  const formattedPnl =
+    pnl > 0
+      ? `Profit ${pnl.toFixed(2)}`
+      : pnl < 0
+        ? `Loss ${Math.abs(pnl).toFixed(2)}`
+        : "No Profit / No Loss";
+
+  const stockName =
+    item.display_name ||
+    item.name ||
+    item.symbol ||
+    "N/A";
+
+  const marketType =
+    item.instrument ||
+    item.market_type ||
+    "STOCK";
+
+  const callType = item.call_type || "Cash";
+
+  const disclaimer =
+    item.disclaimer_snapshot ||
+    raDetails.additional_comments ||
+    "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
+
+  const raFullName =
+    raDetails.full_name ||
+    [
+      raDetails.salutation,
+      raDetails.first_name,
+      raDetails.middle_name,
+      raDetails.surname,
+    ]
+      .filter(Boolean)
+      .join(" ") ||
+    "N/A";
+
+  const organizationName =
+    raDetails.org_name || "Lotus Funds";
+
+  const exitMessage = `
+Exit Message Published On : ${formatIndianDateTime(new Date())}
+
+EXIT ${marketType} ${callType} Expiry: ${formatExpiryDate(
+    item.expiry_date
+  )}
+
+Stock Name: ${stockName}
+
+Call Type : Exit
+
+Exit Price : ${exitPrice}
+
+Entry Price : ${entryPrice}
+
+PnL : ${formattedPnl}
+
+Recommendation Published On : ${formatIndianDateTime(
+    item.created_at
+  )}
+
+Remarks: ${trimmedExitRemark}
+
+DISCLAIMER CUM DISCLOSURE:
+
+${disclaimer}
+
+Research Analyst: ${raFullName} (${organizationName})
+SEBI Registration No: ${raDetails.sebi_reg_no || "N/A"}
+Contact No: ${raDetails.mobile || "N/A"}
+Email ID: ${raDetails.email || "N/A"}
+
+Read Full Disclaimer / Disclosure at:
+https://lotusfunds.com/disclaimer&disclosure
+`.trim();
+
+  const response = await axios.patch(
+    `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/exit`,
+    {
+      exit_price: exitPrice,
+      exit_remark: trimmedExitRemark,
+      message_text: exitMessage,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  setRecommendations((previous) =>
+    previous.map((recommendation) =>
+      recommendation.id === item.id
+        ? {
+            ...recommendation,
+            status: "CLOSED",
+            exit_price: exitPrice,
+            exit_remark: trimmedExitRemark,
+            closed_at:
+              response.data?.data?.closed_at ||
+              response.data?.closed_at ||
+              new Date().toISOString(),
+          }
+        : recommendation
+    )
+  );
+
+  try {
+    const telegramStatus = await axios.get(
+      `${import.meta.env.VITE_API_URL}/api/telegram/status`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!telegramStatus.data?.connected) {
+      alert(
+        "Research call exited and WhatsApp queued, but Telegram is not connected"
+      );
       return;
     }
 
-    try {
-      const token = localStorage.getItem("token");
-      const DATA_SOURCE =
-        import.meta.env.VITE_API_URL + "/api/research/calls";
-      const response = await fetch(`${DATA_SOURCE}/${id}/exit`, {
-        method: "PUT",
+    await axios.post(
+      `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
+      {
+        message: exitMessage,
+      },
+      {
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to exit recommendation");
       }
+    );
 
-      // 🔥 Refetch updated list from backend
-      await fetchRecommendations();
+    alert(
+      "Research call exited. WhatsApp queued and Telegram sending started ✅"
+    );
+  } catch (telegramError: any) {
+    console.error(
+      "EXIT TELEGRAM ERROR:",
+      telegramError?.response?.data || telegramError
+    );
 
-    } catch (error) {
-      console.error("Exit failed:", error);
-    }
-  }, []);
+    alert(
+      telegramError?.response?.data?.message ||
+        "Research call exited and WhatsApp queued, but Telegram sending failed"
+    );
+  }
+  },
+  [raDetails]
+);
 
   // 2. MODIFY FUNCTION (Loads data back into the form)
   const handleModify = useCallback((item) => {
@@ -910,13 +1127,13 @@ finally {
     });
 
     window.scrollTo({ top: 0 });
-  }, []);
+  }, [setDirectValue]);
   // Temporary
   const [wasValidated, setWasValidated] = useState(false);
 
 
 const validateAndPublish = async (
-  event: React.MouseEvent<HTMLButtonElement>
+  event: MouseEvent<HTMLButtonElement>
 ) => {
   event.preventDefault();
 
@@ -995,7 +1212,11 @@ if (missingFields.length > 0) {
       setDirectValue("A.F. Enterprises Ltd");
       console.log("Form Populated ✅");
     };
-  }, []);
+  },
+  [setDirectValue]
+);
+
+
 
 
   //instiate
@@ -1709,7 +1930,7 @@ const finalSymbol = String(
 
  
 
-const validateAndTrack = (event: React.MouseEvent<HTMLButtonElement>) => {
+const validateAndTrack = (event: MouseEvent<HTMLButtonElement>) => {
   event.preventDefault();
   setWasValidated(true);
 
@@ -1837,6 +2058,49 @@ const getPriceError = (field: string, currentForm: any): string | null => {
 
   return null;
 };
+
+
+const commitMainPrice = useCallback(
+  (
+    field: MainPriceField,
+    value: string
+  ) => {
+    dispatch({
+      type: "SET_FIELD",
+      field,
+      value,
+    });
+  },
+  []
+);
+
+const getMainPriceError = useCallback(
+  (
+    field: MainPriceField,
+    values: {
+      entry: string;
+      target: string;
+      stopLoss: string;
+    }
+  ) => {
+    return getPriceError(field, {
+      ...form,
+      ...values,
+    });
+  },
+  [
+    form.action,
+    form.rangeEnabled,
+    form.entryLow,
+    form.entryUpper,
+    form.secondaryTargetEnabled,
+    form.target2,
+    form.target3,
+    form.stopLoss2Enabled,
+    form.stopLoss2,
+    form.stopLoss3,
+  ]
+);
 
   return (
     <Box
@@ -2606,13 +2870,13 @@ sx={{
 
       </Paper>
 
-      <MemoRecommendationsPanel
-        loading={loading}
-        recommendations={recommendations}
-        onModify={handleModify}
-        onExit={handleExit}
-        onInitiate={handleInitiate}
-      />
+ <RecommendationsPanel
+  loading={loading}
+  recommendations={recommendations}
+  onModify={handleModify}
+  onExit={handleExit}
+  onInitiate={handleInitiate}
+/>
       {/* RIGHT PANEL */}
 
     </Box>

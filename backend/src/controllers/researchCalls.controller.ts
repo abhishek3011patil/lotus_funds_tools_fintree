@@ -259,7 +259,7 @@ export const getResearchPerformance = async (req: AuthRequest, res: Response) =>
         rc.expiry_date AS expiry,
         rc.entry_price AS entry,
         rc.version_type,
-        '--' AS exit,
+        rc.exit_price AS exit_price,
         rc.status,
         NULL AS profit_loss,
         u.name AS researcher_name

@@ -44,7 +44,7 @@ interface HistoryRecord {
   symbol: string;
   expiry: string | null;
   entry: number | string;
-  exit: number | string;
+  exit_price: number | string;
   status: string;
   profitLoss: number;
   researcherName?: string;
@@ -67,7 +67,7 @@ interface ApiHistoryRecord {
   symbol?: string;
   expiry?: string | null;
   entry?: number | string;
-  exit?: number | string;
+  exit_price?: number | string;
   status?: string;
   profit_loss?: number | null;
   researcher_name?: string;
@@ -101,7 +101,7 @@ export default function RecommendationHistory({
     symbol: row.symbol || "-",
     expiry: row.expiry || row.expiry_date || null,
     entry: row.entry ?? "-",
-    exit: row.exit ?? "-",
+    exit_price: row.exit_price ?? "-",
       version_type: row.version_type,
     status: row.status || "-",
     profitLoss: Number(row.profit_loss ?? 0),
@@ -628,7 +628,7 @@ justifyContent: { xs: "center", md: "flex-start" },
                     <TableCell sx={historyBodyStyle}> {row.expiry ? new Date(row.expiry).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", }) : "-"} </TableCell>
                     
                     <TableCell sx={historyBodyStyle}>{row.entry}</TableCell>
-                    <TableCell sx={historyBodyStyle}>{row.exit}</TableCell>
+                    <TableCell sx={historyBodyStyle}>{row.exit_price}</TableCell>
                     <TableCell sx={historyBodyStyle}>
   <Box
     sx={{
