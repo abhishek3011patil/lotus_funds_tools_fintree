@@ -9,6 +9,7 @@ import FolderIcon from "@mui/icons-material/Folder";
 import Header from "./Header";
 import Sidebar from "../page_Mainapp/Sidebar";
 import type { SidebarItem } from "../../types/sidebar";
+import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 
 const automationSidebarItems: SidebarItem[] = [
   {
@@ -31,6 +32,13 @@ const automationSidebarItems: SidebarItem[] = [
     path: "/admin/AdminAuditLogs" , 
     icon: <FolderIcon sx={{ mr: 1.5 }} />
    },
+
+  {
+    label: "Notifications",
+    path: "/admin/notifications",
+    icon: <NotificationsNoneIcon sx={{ mr: 1.5 }} />
+
+  },
   {
     label: "Settings",
     path: "/admin/settings",
