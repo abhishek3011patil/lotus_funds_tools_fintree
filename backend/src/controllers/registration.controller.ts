@@ -137,7 +137,6 @@ export const getAllRegistrations = async (req: Request, res: Response) => {
         sebi_certificate,
         sebi_receipt,
         nism_certificate,
-        created_at,
         cancelled_cheque,
         status,
         rejection_reason,
@@ -178,8 +177,6 @@ SELECT
   u.role,
   u.status AS user_status,
   u.suspended_reason,
-  u.created_at,
-  u.suspended_at,
 
   rd.id AS ra_id,
   rd.first_name,
@@ -761,6 +758,7 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
         });
       }
     }
+    
 
     // ================= INSERT =================
     const result = await pool.query(
@@ -814,8 +812,8 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
         $40,$41,
         $42,$43,
         $44,$45,
-        $46,$47,$48,$49,
-        $50
+        $46,$47,$48,
+        $49
       )
       RETURNING id;
       `,
@@ -1255,7 +1253,6 @@ export const getBrokerById = async (req: Request, res: Response) => {
 export const updateRARegistration = async (req: AuthRequest, res: Response) => {
   
   try {
-    //console.log(req.files);
     const idParam = req.params.id;
 
 if (!idParam) {
