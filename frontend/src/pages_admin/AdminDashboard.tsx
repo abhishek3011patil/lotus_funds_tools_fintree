@@ -532,7 +532,11 @@ const handleViewWhatsAppParticipant = (row: AdminRow) => {
   }
 };
 
-  const handleInlineUpdate = async (p: Participant, field: keyof Participant) => {
+const handleInlineUpdate = async (
+  p: Participant,
+  field: keyof Participant
+) => {
+
   const newValue = editingCell?.value.trim();
 
   if (!newValue || newValue === p[field]) {
@@ -540,38 +544,100 @@ const handleViewWhatsAppParticipant = (row: AdminRow) => {
     return;
   }
 
+  const token = localStorage.getItem("token");
+
   try {
-    const token = localStorage.getItem("token");
 
-    const res = await fetch(
-      `${import.meta.env.VITE_API_URL}/api/telegram/participant/${encodeURIComponent(p.id)}`, // ✅ FIX
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ [field]: newValue }),
+    // ================= TELEGRAM =================
+
+    if (panelMode === "participant") {
+
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/telegram/participant/${p.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            [field]: newValue,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.message);
+        return;
       }
-    );
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert(data?.message || "Update failed");
-      return;
+      setParticipantsList((prev) =>
+        prev.map((item) =>
+          item.id === p.id
+            ? { ...item, [field]: newValue }
+            : item
+        )
+      );
     }
 
-    setParticipantsList((prev) =>
-      prev.map((item) =>
-        item.id === p.id ? { ...item, [field]: newValue } : item
-      )
-    );
+    // ================= WHATSAPP =================
+
+    else if (panelMode === "whatsapp") {
+
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/whatsapp/participants/${p.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            participantName:
+              field === "participant_name"
+                ? newValue
+                : p.participant_name,
+
+            phoneNumber:
+              field === "phone_number"
+                ? newValue
+                : p.phone_number,
+
+            raId: selectedRA?.userId || selectedRA?.id,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.message);
+        return;
+      }
+
+      setWhatsappParticipantsList((prev) =>
+        prev.map((item) =>
+          item.id === p.id
+            ? data.data
+            : item
+        )
+      );
+
+      setWhatsappParticipant(data.data);
+
+      setWhatsappName(data.data.participant_name);
+
+      setWhatsappPhone(data.data.phone_number);
+    }
 
     setEditingCell(null);
 
-  } catch (error) {
-    console.error(error);
+  } catch (err) {
+
+    console.error(err);
+
     alert("Update failed");
   }
 };
@@ -721,11 +787,46 @@ const handleExcelFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => 
           value={editingCell.value}
           autoFocus
           onClick={(e) => e.stopPropagation()}
-          onChange={(e) =>
-            setEditingCell((prev) =>
-              prev ? { ...prev, value: e.target.value } : prev
-            )
-          }
+         onChange={(e) => {
+  const value = e.target.value;
+
+  setEditingCell((prev) =>
+    prev ? { ...prev, value } : prev
+  );
+
+  // Telegram
+  if (panelMode === "participant") {
+    if (participant) {
+      setParticipant({
+        ...participant,
+        [field]: value,
+      });
+    }
+  }
+
+  // WhatsApp
+  if (panelMode === "whatsapp") {
+    if (field === "participant_name") {
+      if (whatsappParticipant) {
+        setWhatsappParticipant({
+          ...whatsappParticipant,
+          participant_name: value,
+        });
+      }
+    }
+
+    if (field === "phone_number") {
+      const phone = value.replace("+91", "");
+
+      if (whatsappParticipant) {
+        setWhatsappParticipant({
+          ...whatsappParticipant,
+          phone_number: phone,
+        });
+      }
+    }
+  }
+}}
           onBlur={() => handleInlineUpdate(p, field)}
           onKeyDown={(e) => {
             if (e.key === "Enter") handleInlineUpdate(p, field);
@@ -1570,10 +1671,7 @@ const handleDeleteWhatsAppParticipant = async () => {
 color: whatsappParticipant ? "#fff" : "#9e9e9e",
 "&:hover": {
   backgroundColor: whatsappParticipant ? "#b71c1c" : "#e0e0e0",
-},
-                      "&:hover": {
-                        backgroundColor: participant ? "#b71c1c" : "#e0e0e0",
-                      },
+}
                     }}
                   >
                     Delete
@@ -1820,10 +1918,11 @@ color: whatsappParticipant ? "#fff" : "#9e9e9e",
                       fontWeight: 600,
                       borderRadius: "12px",
                       textTransform: "none",
-                      backgroundColor: participant ? "#d32f2f" : "#e0e0e0",
-                      color: participant ? "#fff" : "#9e9e9e",
-                      "&:hover": {
-                        backgroundColor: participant ? "#b71c1c" : "#e0e0e0",
+                     backgroundColor: whatsappParticipant ? "#d32f2f" : "#e0e0e0",
+color: whatsappParticipant ? "#fff" : "#9e9e9e",
+
+"&:hover": {
+    backgroundColor: whatsappParticipant ? "#b71c1c" : "#e0e0e0",
                       },
                     }}
                   >
