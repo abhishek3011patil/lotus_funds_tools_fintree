@@ -34,6 +34,9 @@ const getClientIp = (req: any): string => {
 /* =========================================================
    CREATE RESEARCH CALL  (POST /api/research/calls)
    ========================================================= */
+/* =========================================================
+   CREATE RESEARCH CALL (POST /api/research/calls)
+   ========================================================= */
 export const createResearchCall = async (
   req: AuthRequest,
   res: Response
@@ -240,6 +243,9 @@ export const createResearchCall = async (
 /* =========================================================
    CREATE RESEARCH CALL  (POST /api/research/performance)
    ========================================================= */
+/* =========================================================
+   GET RESEARCH PERFORMANCE (GET /api/research/performance)
+   ========================================================= */
 export const getResearchPerformance = async (req: AuthRequest, res: Response) => {
   try {
     const page = Number(req.query.page) || 1;
@@ -290,6 +296,9 @@ export const getResearchPerformance = async (req: AuthRequest, res: Response) =>
 
 /* =========================================================
    GET MY CALLS  (GET /api/research/calls/my)
+   ========================================================= */
+/* =========================================================
+   GET MY RESEARCH CALLS (GET /api/research/calls/my)
    ========================================================= */
 export const getResearchCalls = async (req: AuthRequest, res: Response) => {
     console.log("Logged in user:", req.user);
@@ -370,6 +379,9 @@ export const getResearchCalls = async (req: AuthRequest, res: Response) => {
 
 /* =========================================================
    GET PUBLISHED CALLS (GET /api/research/calls/published)
+   ========================================================= */
+/* =========================================================
+   GET PUBLISHED RESEARCH CALLS (GET /api/research/calls/published)
    ========================================================= */
 export const getPublishedCalls = async (_req: AuthRequest, res: Response) => {
     try {
@@ -471,6 +483,9 @@ export const getPublishedCalls = async (_req: AuthRequest, res: Response) => {
    ========================================================= */
 
 
+/* =========================================================
+   CREATE ERRATA (POST /api/research/calls/errata)
+   ========================================================= */
 export const createErrata = async (
   req: AuthRequest,
   res: Response
@@ -746,6 +761,9 @@ if (whatsappMessage) {
    ========================================================= */
 
 
+/* =========================================================
+   PUBLISH DRAFT RESEARCH CALL (PATCH /api/research/calls/:id/publish)
+   ========================================================= */
 export const publishDraftCall = async (
   req: AuthRequest,
   res: Response
@@ -881,6 +899,9 @@ export const publishDraftCall = async (
 
 
 
+/* =========================================================
+   GET RESEARCH ANALYST DISCLAIMER (GET /api/registration/research/disclaimer)
+   ========================================================= */
 export const getRADisclaimer = async (
   req: AuthRequest,
   res: Response
@@ -917,6 +938,9 @@ export const getRADisclaimer = async (
   }
 };
 
+/* =========================================================
+   UPDATE RESEARCH ANALYST DISCLAIMER (PUT /api/registration/research/disclaimer)
+   ========================================================= */
 export const updateRADisclaimer = async (
   req: AuthRequest,
   res: Response
@@ -1035,6 +1059,9 @@ export const updateRADisclaimer = async (
 
 
 
+/* =========================================================
+   GET RESEARCH ANALYST MESSAGE PROFILE (GET /api/ra/message-profile)
+   ========================================================= */
 export const getRAMessageProfile = async (
   req: AuthRequest,
   res: Response

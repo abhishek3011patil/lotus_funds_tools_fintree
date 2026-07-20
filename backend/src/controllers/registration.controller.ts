@@ -119,6 +119,9 @@ const getClientIp = (req: Request) => {
 };
 
 /* ================= GET ALL REGISTRATIONS ================= */
+/* =========================================================
+   GET ALL REGISTRATIONS (GET /api/registration/all-registrations)
+   ========================================================= */
 export const getAllRegistrations = async (req: Request, res: Response) => {
   try {
     const result = await pool.query(`
@@ -161,6 +164,9 @@ export const getAllRegistrations = async (req: Request, res: Response) => {
 
 /* ================= GET ALL REGISTRATIONS via users table (ACTIVE users with role RESEARCH_ANALYST)================= */
 
+/* =========================================================
+   GET ACTIVE REGISTERED USERS (GET /api/registration/all-registrations-active-users)
+   ========================================================= */
 export const getAllRegistrationsActiveUsers = async (req: Request, res: Response) => {
   try {
 const result = await pool.query(`
@@ -602,6 +608,9 @@ ORDER BY u.created_at DESC
 // };
 
 
+/* =========================================================
+   REGISTER RESEARCH ANALYST (POST /api/registration/register-ra)
+   ========================================================= */
 export const registerRA = async (req: AuthRequest, res: Response) => {
   try {
     const data = req.body || {};
@@ -957,6 +966,9 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
 
 /* ================= APPROVE REGISTRATION ================= */
 
+/* =========================================================
+   APPROVE REGISTRATION (PUT /api/registration/approve/:id)
+   ========================================================= */
 export const approveRegistration = async (req: Request, res: Response) => {
   const client = await pool.connect();
 
@@ -1038,6 +1050,9 @@ export const approveRegistration = async (req: Request, res: Response) => {
 
 
 /* ================= REJECT USER (RA/BROKER) ================= */
+/* =========================================================
+   REJECT USER (PUT /api/registration/reject/:type/:id)
+   ========================================================= */
 export const rejectUser = async (req: AuthRequest, res: Response) => {
   const client = await pool.connect();
 
@@ -1177,6 +1192,9 @@ ipAddress: getClientIp(req),
 };
 /* ================= GET SINGLE REGISTRATION ================= */
 
+/* =========================================================
+   GET RESEARCH ANALYST REGISTRATION (GET /api/registration/ra/:id)
+   ========================================================= */
 export const getRegistrationById = async (req: Request, res: Response) => {
   try {
 
@@ -1205,6 +1223,9 @@ export const getRegistrationById = async (req: Request, res: Response) => {
 };
 
 /* ================= Broker id  ================= */
+/* =========================================================
+   GET BROKER REGISTRATION (GET /api/registration/broker/:id)
+   ========================================================= */
 export const getBrokerById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -1228,6 +1249,9 @@ export const getBrokerById = async (req: Request, res: Response) => {
 
 /* ================= UPDATE RA REGISTRATION ================= */
 
+/* =========================================================
+   UPDATE RESEARCH ANALYST REGISTRATION (PUT /api/registration/edit/ra/:id)
+   ========================================================= */
 export const updateRARegistration = async (req: AuthRequest, res: Response) => {
   
   try {
@@ -1456,6 +1480,9 @@ if (result.rows[0]?.user_id && data.email) {
 
 /* ================= UPDATE Broker REGISTRATION ================= */
 
+/* =========================================================
+   UPDATE BROKER REGISTRATION (PUT /api/registration/edit/broker/:id)
+   ========================================================= */
 export const updateBroker = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -1686,6 +1713,9 @@ await createAuditLog({
 }
 };
 
+/* =========================================================
+   CHANGE RESEARCH ANALYST PASSWORD (POST /api/registration/ra/change-password)
+   ========================================================= */
 export const changeRAUserPassword = async (req: AuthRequest, res: Response) => {
   try {
     console.log("🔥 CHANGE PASSWORD HIT");
@@ -1754,6 +1784,9 @@ export const changeRAUserPassword = async (req: AuthRequest, res: Response) => {
 };
 
 
+/* =========================================================
+   GET RESEARCH ANALYST PROFILE (GET /api/registration/profile)
+   ========================================================= */
 export const getMyRAProfile = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -1786,6 +1819,9 @@ export const getMyRAProfile = async (req: AuthRequest, res: Response) => {
 };
 
 
+/* =========================================================
+   CREATE PROFILE UPDATE REQUEST (POST /api/registration/ra/profile-update-request)
+   ========================================================= */
 export const createRAProfileUpdateRequest = async (
   req: AuthRequest,
   res: Response
@@ -1910,6 +1946,9 @@ await createAuditLog({
   }
 };
 
+/* =========================================================
+   GET PROFILE UPDATE REQUESTS (GET /api/registration/ra-profile-update-requests)
+   ========================================================= */
 export const getRAProfileUpdateRequests = async (
   req: AuthRequest,
   res: Response
@@ -2001,6 +2040,9 @@ export const getRAProfileUpdateRequests = async (
 };
 
 
+/* =========================================================
+   APPROVE PROFILE UPDATE REQUEST (PUT /api/registration/ra-profile-update-requests/:id/approve)
+   ========================================================= */
 export const approveRAProfileUpdateRequest = async (
   req: AuthRequest,
   res: Response
@@ -2229,6 +2271,9 @@ if (duplicate) {
   }
 };
 
+/* =========================================================
+   REJECT PROFILE UPDATE REQUEST (PUT /api/registration/ra-profile-update-requests/:id/reject)
+   ========================================================= */
 export const rejectRAProfileUpdateRequest = async (
   req: AuthRequest,
   res: Response
@@ -2290,6 +2335,9 @@ await createAuditLog({
   }
 };
 
+/* =========================================================
+   GET BANK BY IFSC (GET /api/registration/ifsc/:ifsc)
+   ========================================================= */
 export const getBankFromIFSC = async (
   req: Request,
   res: Response

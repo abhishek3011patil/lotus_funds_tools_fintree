@@ -45,6 +45,9 @@ const resolveRAUserId = (
 
 /* ================= GET PARTICIPANTS ================= */
 
+/* =========================================================
+   GET WHATSAPP PARTICIPANTS (GET /api/whatsapp/participants)
+   ========================================================= */
 export const getWhatsAppParticipants = async (
   req: AuthRequest,
   res: Response
@@ -137,6 +140,9 @@ export const getWhatsAppParticipants = async (
 
 /* ================= ADD PARTICIPANT ================= */
 
+/* =========================================================
+   ADD WHATSAPP PARTICIPANT (POST /api/whatsapp/participants)
+   ========================================================= */
 export const addWhatsAppParticipant = async (
   req: AuthRequest,
   res: Response
@@ -277,6 +283,9 @@ export const addWhatsAppParticipant = async (
 
 /* ================= UPDATE PARTICIPANT ================= */
 
+/* =========================================================
+   UPDATE WHATSAPP PARTICIPANT (PUT /api/whatsapp/participants/:id)
+   ========================================================= */
 export const updateWhatsAppParticipant = async (
   req: AuthRequest,
   res: Response
@@ -416,6 +425,9 @@ if (oldParticipant.rowCount === 0) {
 
 /* ================= DELETE PARTICIPANT ================= */
 
+/* =========================================================
+   DELETE WHATSAPP PARTICIPANT (DELETE /api/whatsapp/participants/:id)
+   ========================================================= */
 export const deleteWhatsAppParticipant = async (
   req: AuthRequest,
   res: Response
@@ -503,6 +515,9 @@ if (oldParticipant.rowCount === 0) {
   }
 };
 
+/* =========================================================
+   GET WHATSAPP PARTICIPANTS BY RESEARCH ANALYST (GET /api/whatsapp/ra/:raId)
+   ========================================================= */
 export const getWhatsAppParticipantsByRA = async (
   req: Request,
   res: Response
@@ -577,6 +592,9 @@ export const getWhatsAppParticipantsByRA = async (
   }
 };
 
+/* =========================================================
+   TEST WHATSAPP MESSAGE (POST /api/whatsapp/test-message)
+   ========================================================= */
 export const testWhatsAppMessage = async (
   req: AuthRequest,
   res: Response

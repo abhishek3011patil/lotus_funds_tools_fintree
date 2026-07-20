@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import { pool } from "../db";
 
+/* =========================================================
+   REGISTER BROKER (POST /api/broker/register-broker)
+   ========================================================= */
 export const createBroker = async (req: Request, res: Response) => {
   try {
     const data = req.body;
@@ -192,6 +195,9 @@ if (existing.rows.length > 0) {
   }
 };
 
+/* =========================================================
+   GET ALL BROKERS (GET /api/broker/all-brokers)
+   ========================================================= */
 export const getAllBrokers = async (req: Request, res: Response) => {
   try {
     const result = await pool.query("SELECT * FROM broker_details ORDER BY created_at DESC");

@@ -25,6 +25,9 @@ const getClientIp = (req: any): string => {
 ;
 // Use your actual queue service import path.
 
+/* =========================================================
+   EXIT RESEARCH CALL (PATCH /api/research/calls/:id/exit)
+   ========================================================= */
 export const exitResearchCall = async (
   req: AuthRequest,
   res: Response

@@ -17,6 +17,9 @@ const getClientIp = (req: Request) => {
   );
 };
 
+/* =========================================================
+   CREATE PAYMENT ORDER (POST /api/payments/create-order)
+   ========================================================= */
 export const createOrder = async (req: Request, res: Response): Promise<void> => {
   try {
     const { amount, planName, resetToken } = req.body;
@@ -72,6 +75,9 @@ adminRole: "SYSTEM",
   }
 };
 
+/* =========================================================
+   VERIFY PAYMENT (POST /api/payments/verify)
+   ========================================================= */
 export const verifyPayment = async (req: Request, res: Response): Promise<void> => {
   const {
     razorpay_order_id,
@@ -165,6 +171,9 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
   }
 };
 
+/* =========================================================
+   ACTIVATE FREE PLAN (POST /api/payments/activate-free-plan)
+   ========================================================= */
 export const activateFreePlan = async (req: Request, res: Response) => {
   const { resetToken, planName } = req.body;
 

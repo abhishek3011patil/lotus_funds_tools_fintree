@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import { pool } from "../db";
 
+/* =========================================================
+   GET AUDIT LOGS (GET /api/audit-logs/)
+   ========================================================= */
 export const getAuditLogs = async (req: Request, res: Response) => {
   try {
     const page = Math.max(Number(req.query.page) || 1, 1);
@@ -123,6 +126,9 @@ export const getAuditLogs = async (req: Request, res: Response) => {
 };
 
 
+/* =========================================================
+   EXPORT AUDIT LOGS (GET /api/audit-logs/export)
+   ========================================================= */
 export const exportAuditLogs = async (req: Request, res: Response) => {
   try {
     const search = String(req.query.search || "").trim().toLowerCase();
