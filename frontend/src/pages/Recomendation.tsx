@@ -826,21 +826,6 @@ finally {
 
   }, []);
 
-  useEffect(() => {
-  if (form.action === "BUY" && form.tradeType === "STBT") {
-    dispatch({
-      type: "SET_FIELD",
-      field: "tradeType",
-      value: "BTST",
-    });
-  } else if (form.action === "SELL" && form.tradeType === "BTST") {
-    dispatch({
-      type: "SET_FIELD",
-      field: "tradeType",
-      value: "STBT",
-    });
-  }
-}, [form.action, form.tradeType]);
 
   const formatIndianDateTime = (
     value: string | Date
@@ -932,6 +917,7 @@ const handleExit = useCallback(
       ? entryPrice - exitPrice
       : exitPrice - entryPrice;
 
+
   const formattedPnl =
     pnl > 0
       ? `Profit ${pnl.toFixed(2)}`
@@ -972,13 +958,10 @@ const handleExit = useCallback(
   const organizationName =
     raDetails.org_name || "Lotus Funds";
 
-  const isErrataCall =
-  item.version_type === "ERRATA" ||
-  Boolean(item.parent_call_id);
 
-const exitHeader = isErrataCall
-  ? "ERRATA / CORRECTION CALL EXIT"
-  : "CALL EXIT";
+
+const exitHeader 
+  = "EXIT Recommendation";
 
   const exitMessage = `
   ${exitHeader}
@@ -1096,6 +1079,30 @@ https://lotusfunds.com/disclaimer&disclosure
   },
   [raDetails]
 );
+
+
+      const handleActionChange = useCallback(
+  (_: React.MouseEvent<HTMLElement>, value: "BUY" | "SELL" | null) => {
+    if (!value) return;
+
+    const nextTradeType =
+      value === "BUY" && form.tradeType === "STBT"
+        ? "BTST"
+        : value === "SELL" && form.tradeType === "BTST"
+          ? "STBT"
+          : form.tradeType;
+
+    dispatch({
+      type: "SET_FORM",
+      payload: {
+        action: value,
+        tradeType: nextTradeType,
+      },
+    });
+  },
+  [form.tradeType]
+);
+
 
   // 2. MODIFY FUNCTION (Loads data back into the form)
   const handleModify = useCallback((item) => {
@@ -2192,6 +2199,34 @@ const getAdditionalPriceError = useCallback(
 );
 
 
+const selectedStudyValues = useMemo(
+  () =>
+    form.underlyingStudy.map((selected) => ({
+      ...selected,
+      group:
+        UNDERLYING_STUDIES.find((group) =>
+          group.options.some(
+            (option) => option.value === selected.value
+          )
+        )?.group ?? "Fundamental & General Analysis",
+    })),
+  [form.underlyingStudy]
+);
+
+const updateField = useCallback(
+  <K extends keyof RecommendationForm>(
+    field: K,
+    value: RecommendationForm[K]
+  ) => {
+    dispatch({
+      type: "SET_FIELD",
+      field,
+      value,
+    });
+  },
+  []
+);
+
   return (
     <Box
       sx={{
@@ -2268,7 +2303,11 @@ maxWidth: "100%",
             size="small"
             exclusive
             value={form.exchangeType}
-            onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "exchangeType", value: val })}
+           onChange={(_, value) => {
+  if (value) {
+    updateField("exchangeType", value);
+  }
+}}
             sx={{
               backgroundColor: "#eef2f7",
               "& .MuiToggleButtonGroup-grouped": {
@@ -2285,14 +2324,23 @@ maxWidth: "100%",
         {/* Action & Call Type Row */}
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 1 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
-            <ToggleButtonGroup size="small" exclusive value={form.action} onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "action", value: val })}>
+            <ToggleButtonGroup
+  size="small"
+  exclusive
+  value={form.action}
+  onChange={handleActionChange}
+>
               <ToggleButton value="BUY" sx={{ fontWeight: 700, px: 2, fontSize: "0.7rem", ...getActionStyles(form.action, "BUY") }}>BUY</ToggleButton>
               <ToggleButton value="SELL" sx={{ fontWeight: 700, px: 2, fontSize: "0.7rem", ...getActionStyles(form.action, "SELL") }}>SELL</ToggleButton>
             </ToggleButtonGroup>
 
             <Box sx={{ overflowX: "auto", maxWidth: "100%" }}>
               <ToggleButtonGroup
-                size="small" exclusive value={form.callType} onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "callType", value: val })}
+                size="small" exclusive value={form.callType} onChange={(_, value) => {
+  if (value) {
+    updateField("callType", value);
+  }
+}}
                 sx={{
                   backgroundColor: "#eef2f7",
                   display: "flex",
@@ -2326,7 +2374,11 @@ maxWidth: "100%",
             size="small"
             exclusive
             value={form.exchange}
-            onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "exchange", value: val })}
+            onChange={(_, value) => {
+  if (value) {
+    updateField("exchange", value);
+  }
+}}
             sx={{
               backgroundColor: "#eef2f7",
               "& .MuiToggleButtonGroup-grouped": {
@@ -2363,7 +2415,11 @@ maxWidth: "100%",
               size="small"
               exclusive
               value={form.tradeType}
-              onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "tradeType", value: val })}
+              onChange={(_, value) => {
+  if (value) {
+    updateField("tradeType", value);
+  }
+}}
               sx={{
                 backgroundColor: "#eef2f7",
                 whiteSpace: "nowrap",
@@ -2617,7 +2673,11 @@ maxWidth: "100%",
                 size="small"
                 exclusive
                 value={form.rationale}
-                onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "rationale", value: val })}
+                onChange={(_, value) => {
+  if (value) {
+    updateField("rationale", value);
+  }
+}}
 sx={{
   backgroundColor: "#eef2f7",
 
@@ -2668,13 +2728,7 @@ sx={{
   size="small"
   fullWidth
   options={studyOptions}
-  value={form.underlyingStudy.map((selected) => ({
-    ...selected,
-    group:
-      UNDERLYING_STUDIES.find((g) =>
-        g.options.some((o) => o.value === selected.value)
-      )?.group ?? "Fundamental & General Analysis",
-  }))}
+ value={selectedStudyValues}
   inputValue={underlyingStudyInput}
   onInputChange={(_, newInput) => setUnderlyingStudyInput(newInput)}
   onChange={handleUnderlyingStudyChange}
