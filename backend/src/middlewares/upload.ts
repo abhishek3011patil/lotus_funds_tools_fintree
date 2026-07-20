@@ -59,7 +59,7 @@ const fileFilter = (
   if (!isMimeAllowed || !isExtAllowed) {
     return cb(
       new Error(
-        "Invalid file type. Only PDF, JPG, JPEG, PNG, and WEBP files are allowed."
+        "Invalid file type.Only PDF, JPG, JPEG, PNG, WEBP, XLS and XLSX files are allowed."
       )
     );
   }
