@@ -20,24 +20,27 @@ import ExitRecommendationDialog from "./ExitRecommendationDialog";
 import LoadingPage from "../../common/LoadingPage";
 
 type Props = {
-    recommendations: any[];
-    loading: boolean;
-    onModify: (item: any) => void;
-   onExit: (
-  item: any,
-  exitPrice: number,
-  exitRemark: string
-) => Promise<void>;
-    onInitiate: (item: any) => Promise<void>;
+  recommendations: any[];
+  loading: boolean;
+  onModify: (item: any) => void;
+  onExit: (
+    item: any,
+    exitPrice: number,
+    exitRemark: string
+  ) => Promise<void>;
+  onInitiate: (item: any) => Promise<void>;
+
+  onViewHistory: (item: any) => void;
 };
 
 const RecommendationsPanel = memo(
     ({
-        recommendations,
-        loading,
-        onModify,
-        onExit,
-        onInitiate,
+         recommendations,
+  loading,
+  onModify,
+  onExit,
+  onInitiate,
+  onViewHistory,
     }: Props) => {
 
         // =========================================================
@@ -436,6 +439,28 @@ const closeExitDialog = useCallback(() => {
                                                             </Button>
 
                                                             <Button
+  size="small"
+  onClick={() => {
+    console.log("BUTTON CLICKED", item);
+    onViewHistory(item);
+  }}
+  sx={{
+    fontSize: "0.6rem",
+    textTransform: "none",
+    color: "#1976d2",
+    minWidth: "auto",
+    p: 0,
+    justifyContent: "flex-end",
+    "&:hover": {
+      backgroundColor: "transparent",
+      textDecoration: "underline",
+    },
+  }}
+>
+  Version History
+</Button>
+
+                                                            <Button
                                                                 size="small"
                                                               onClick={() => openExitDialog(item)}
                                                                 sx={{
@@ -462,6 +487,7 @@ const closeExitDialog = useCallback(() => {
                                                             >
                                                                 Exit
                                                             </Button>
+                                                            
                                                         </Box>
                                                     </TableCell>
                                                 </TableRow>

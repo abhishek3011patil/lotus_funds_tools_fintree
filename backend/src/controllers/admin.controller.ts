@@ -750,6 +750,8 @@ export const getDisclaimerHistoryByRA = async (
     });
   }
 };
+
+
 export const getNotifications = async (
   req: Request,
   res: Response
@@ -887,6 +889,8 @@ export const getNotifications = async (
     });
   }
 };
+
+
 export const deleteNotification = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;

@@ -15,6 +15,13 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Typography,
+   Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Chip,
+  Divider,
+  CircularProgress,
  
 } from "@mui/material";
 
@@ -156,6 +163,11 @@ const fetchRAMessageProfile = async () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 const [isSubmitting, setIsSubmitting] = useState(false);
 
+const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+const [versionHistory, setVersionHistory] = useState<any[]>([]);
+const [historyLoading, setHistoryLoading] = useState(false);
+
+
 const submittingRef = useRef(false);
 
 
@@ -271,18 +283,13 @@ const handleFileChange = (
 };
 
 
-
-
-
-  const handleSubmit = async () => {
-
-      if (submittingRef.current) return;
+const handleSubmit = async () => {
+  if (submittingRef.current) return;
 
   submittingRef.current = true;
   setIsSubmitting(true);
+
   try {
-    
-    
     const token = localStorage.getItem("token");
 
     if (!token) {
@@ -291,106 +298,307 @@ const handleFileChange = (
     }
 
     if (!raDetails) {
-  alert("RA profile details are still loading. Please try again.");
-  return;
-}
+      alert("RA profile details are still loading. Please try again.");
+      return;
+    }
 
     const finalDisplayName =
       suggestion &&
-      suggestion.toLowerCase().startsWith(inputValue.toLowerCase())
-        ? suggestion
-        : inputValue;
+      suggestion
+        .toLowerCase()
+        .startsWith(inputValue.trim().toLowerCase())
+        ? suggestion.trim()
+        : inputValue.trim();
 
-         const formatExpiry = (date: string) => {
-  const d = new Date(date);
+    if (!finalDisplayName) {
+      alert("Stock name is required");
+      return;
+    }
 
-  const day = d.getDate();
-  const suffix =
-    day % 10 === 1 && day !== 11
-      ? "st"
-      : day % 10 === 2 && day !== 12
-      ? "nd"
-      : day % 10 === 3 && day !== 13
-      ? "rd"
-      : "th";
+    const formatExpiry = (date: string) => {
+      const d = new Date(date);
+      const day = d.getDate();
 
-  return `${day}${suffix} ${d.toLocaleString("en-IN", {
-    month: "long",
-    year: "numeric",
-  })}`;
-};
+      const suffix =
+        day % 10 === 1 && day !== 11
+          ? "st"
+          : day % 10 === 2 && day !== 12
+            ? "nd"
+            : day % 10 === 3 && day !== 13
+              ? "rd"
+              : "th";
 
-const now = new Date();
+      return `${day}${suffix} ${d.toLocaleString("en-IN", {
+        month: "long",
+        year: "numeric",
+      })}`;
+    };
 
-const raFullName = [
-  raDetails?.salutation,
-  raDetails?.first_name,
-  raDetails?.middle_name,
-  raDetails?.surname,
-]
-  .filter(Boolean)
-  .join(" ");
+    const raFullName = [
+      raDetails?.salutation,
+      raDetails?.first_name,
+      raDetails?.middle_name,
+      raDetails?.surname,
+    ]
+      .filter(Boolean)
+      .join(" ");
 
-const disclaimer =
-  raDetails?.additional_comments ||
-  "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
+    const disclaimer =
+      raDetails?.additional_comments ||
+      "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
 
+    /*
+     * =========================================================
+     * ERRATA FLOW
+     * =========================================================
+     */
+    if (isErrataMode) {
+      if (!errataSourceId) {
+        alert("Original research call ID is missing");
+        return;
+      }
 
+      const trimmedRemark = form.remark.trim();
 
-const publishMessage = `
-Published On : ${now.toLocaleString("en-IN", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  second: "2-digit",
-  hour12: true,
-})}
+      if (!trimmedRemark) {
+        alert("Research Analyst Remark is required for Errata");
+        return;
+      }
 
-${form.action} ${form.exchange} ${form.callType} Expiry: ${
-  form.expiry ? formatExpiry(form.expiry) : "N/A"
-}
+      const updates = {
+        entry_price: form.entry || undefined,
+
+        entry_price_low: form.rangeEnabled
+          ? form.entryLow || undefined
+          : undefined,
+
+        entry_price_upper: form.rangeEnabled
+          ? form.entryUpper || undefined
+          : undefined,
+
+        target_price: form.target || undefined,
+
+        target_price_2: form.secondaryTargetEnabled
+          ? form.target2 || undefined
+          : undefined,
+
+        target_price_3: form.secondaryTargetEnabled
+          ? form.target3 || undefined
+          : undefined,
+
+        stop_loss: form.stopLoss || undefined,
+
+        stop_loss_2: form.stopLoss2Enabled
+          ? form.stopLoss2 || undefined
+          : undefined,
+
+        stop_loss_3: form.stopLoss2Enabled
+          ? form.stopLoss3 || undefined
+          : undefined,
+
+        holding_period: form.holdingPeriod || undefined,
+        rationale: form.rationale || undefined,
+
+        underlying_study:
+          form.underlyingStudy
+            .map((study) => study.label)
+            .join(", ") || undefined,
+
+        research_remarks: trimmedRemark,
+      };
+
+      const errataMessage = `
+ERRATA / CORRECTION
+
+Published On: ${new Date().toLocaleString("en-IN", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      })}
 
 Stock Name: ${finalDisplayName}
 
-Call Type  :${form.tradeType}
+${form.action} ${form.exchange} ${form.callType} Expiry: ${
+        form.expiry ? formatExpiry(form.expiry) : "N/A"
+      }
 
-Entry  : ${
-  form.rangeEnabled
-    ? `${form.entryLow} - ${form.entryUpper}`
-    : form.entry
-}
+Call Type: ${form.tradeType}
 
-Target  : ${form.target}${
-  form.secondaryTargetEnabled
-    ? `
-T2  : ${form.target2}
-T3  : ${form.target3}`
-    : ""
-}
+Entry: ${
+        form.rangeEnabled
+          ? `${form.entryLow} - ${form.entryUpper}`
+          : form.entry
+      }
 
-SL  : ${form.stopLoss}${
-  form.stopLoss2Enabled
-    ? `
-SL 2  : ${form.stopLoss2}
-SL 3  : ${form.stopLoss3}`
-    : ""
-}
+Target: ${form.target}${
+        form.secondaryTargetEnabled
+          ? `
+T2: ${form.target2}
+T3: ${form.target3}`
+          : ""
+      }
+
+SL: ${form.stopLoss}${
+        form.stopLoss2Enabled
+          ? `
+SL 2: ${form.stopLoss2}
+SL 3: ${form.stopLoss3}`
+          : ""
+      }
+
+Reason:
+${trimmedRemark}
+
+DISCLAIMER CUM DISCLOSURE:
+
+${disclaimer}
+
+Research Analyst: ${raFullName || "N/A"} (${
+        raDetails?.org_name || "N/A"
+      })
+SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
+Contact No: ${raDetails?.mobile || "N/A"}
+Email ID: ${raDetails?.email || "N/A"}
+
+Read Full Disclaimer / Disclosure at:
+https://lotusfunds.com/disclaimer&disclosure
+`.trim();
+
+      const errataResponse = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/research/calls/errata`,
+        {
+          call_id: errataSourceId,
+          updates,
+          errata_reason: trimmedRemark,
+          message_text: errataMessage,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log("ERRATA API RESPONSE:", errataResponse.data);
+
+      try {
+        const telegramStatus = await axios.get(
+          `${import.meta.env.VITE_API_URL}/api/telegram/status`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!telegramStatus.data?.connected) {
+          alert("Errata created, but Telegram is not connected");
+
+          await fetchRecommendations();
+          resetForm();
+          return;
+        }
+
+        await axios.post(
+          `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
+          {
+            message: errataMessage,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        alert("Errata Created ✅");
+      } catch (telegramError: any) {
+        console.error(
+          "ERRATA TELEGRAM ERROR:",
+          telegramError?.response?.data || telegramError
+        );
+
+        alert("Errata created, but Telegram sending failed");
+      }
+
+      await fetchRecommendations();
+      resetForm();
+
+      return;
+    }
+
+    /*
+     * =========================================================
+     * NORMAL PUBLISH FLOW
+     * =========================================================
+     */
+
+    const publishMessage = `
+Published On: ${new Date().toLocaleString("en-IN", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    })}
+
+${form.action} ${form.exchange} ${form.callType} Expiry: ${
+      form.expiry ? formatExpiry(form.expiry) : "N/A"
+    }
+
+Stock Name: ${finalDisplayName}
+
+Call Type: ${form.tradeType}
+
+Entry: ${
+      form.rangeEnabled
+        ? `${form.entryLow} - ${form.entryUpper}`
+        : form.entry
+    }
+
+Target: ${form.target}${
+      form.secondaryTargetEnabled
+        ? `
+T2: ${form.target2}
+T3: ${form.target3}`
+        : ""
+    }
+
+SL: ${form.stopLoss}${
+      form.stopLoss2Enabled
+        ? `
+SL 2: ${form.stopLoss2}
+SL 3: ${form.stopLoss3}`
+        : ""
+    }
 
 Holding Period: ${form.holdingPeriod || "N/A"}
 
 Rationale: ${form.rationale}
+
 Underlying Study: ${
-  form.underlyingStudy.map((s) => s.label).join(", ") || "N/A"
-}
+      form.underlyingStudy
+        .map((study) => study.label)
+        .join(", ") || "N/A"
+    }
+
 Remarks: ${form.remark || "N/A"}
 
 DISCLAIMER CUM DISCLOSURE:
 
 ${disclaimer}
 
-Research Analyst: ${raFullName || "N/A"} (${raDetails?.org_name || "N/A"})
+Research Analyst: ${raFullName || "N/A"} (${
+      raDetails?.org_name || "N/A"
+    })
 SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
 Contact No: ${raDetails?.mobile || "N/A"}
 Email ID: ${raDetails?.email || "N/A"}
@@ -399,277 +607,154 @@ Read Full Disclaimer / Disclosure at:
 https://lotusfunds.com/disclaimer&disclosure
 `.trim();
 
+    const payload = {
+      status: "PUBLISHED",
+      message_text: publishMessage,
 
+      exchange_type: form.exchangeType,
+      market_type: form.exchange,
 
-    // 🔹 Base payload (same as before)
- const payload = {
-  status: "PUBLISHED",
-  message_text: publishMessage,
+      symbol:
+        form.symbol && form.symbol !== "SYM"
+          ? form.symbol
+          : finalDisplayName.slice(0, 30),
 
-  exchange_type: form.exchangeType,
-  market_type: form.exchange,
-  symbol: "SYM",
-  display_name: finalDisplayName,
-  action: form.action,
-  call_type: form.callType,
-  trade_type: form.tradeType,
-  expiry_date: form.expiry || null,
-  entry_price: form.entry || null,
-  entry_price_low: form.entryLow || null,
-  entry_price_upper: form.entryUpper || null,
-  target_price: form.target || null,
-  target_price_2: form.target2 || null,
-  target_price_3: form.target3 || null,
-  stop_loss: form.stopLoss || null,
-  stop_loss_2: form.stopLoss2 || null,
-  stop_loss_3: form.stopLoss3 || null,
+      display_name: finalDisplayName,
+      action: form.action,
+      call_type: form.callType,
+      trade_type: form.tradeType,
+      expiry_date: form.expiry || null,
 
-  // Fix this field name:
-  holding_period: form.holdingPeriod || null,
+      entry_price: form.entry || null,
 
-  rationale: form.rationale,
-  underlying_study:
-    form.underlyingStudy.map((s) => s.label).join(", ") || null,
-  is_algo: false,
-  has_vested_interest: false,
-  research_remarks: form.remark || undefined,
-};
-    let res;
+      entry_price_low: form.rangeEnabled
+        ? form.entryLow || null
+        : null,
 
-    // =========================================================
-    // ✅ ERRATA FLOW (NO FILE HERE)
-    // =========================================================
-   if (isErrataMode && errataSourceId) {
-  const updates = {
-    entry_price: form.entry || undefined,
-    target_price: form.target || undefined,
-    stop_loss: form.stopLoss || undefined,
-    target_price_2: form.target2 || undefined,
-    target_price_3: form.target3 || undefined,
-    stop_loss_2: form.stopLoss2 || undefined,
-    stop_loss_3: form.stopLoss3 || undefined,
-    entry_price_low: form.entryLow || undefined,
-    entry_price_upper: form.entryUpper || undefined,
-    holding_period: form.holdingPeriod || undefined,
-    rationale: form.rationale || undefined,
-    underlying_study: form.underlyingStudy.map((s) => s.label).join(", ") || "N/A",
-    research_remarks: form.remark || undefined,
-  };
+      entry_price_upper: form.rangeEnabled
+        ? form.entryUpper || null
+        : null,
 
+      target_price: form.target || null,
 
+      target_price_2: form.secondaryTargetEnabled
+        ? form.target2 || null
+        : null,
 
-  const errataMessage = `
-ERRATA / CORRECTION
+      target_price_3: form.secondaryTargetEnabled
+        ? form.target3 || null
+        : null,
 
-Published On : ${new Date().toLocaleString("en-IN", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  second: "2-digit",
-  hour12: true,
-})}
+      stop_loss: form.stopLoss || null,
 
-Stock Name: ${finalDisplayName}
+      stop_loss_2: form.stopLoss2Enabled
+        ? form.stopLoss2 || null
+        : null,
 
-${form.action} ${form.exchange} ${form.callType} Expiry: ${form.expiry ? formatExpiry(form.expiry) : "N/A"}
+      stop_loss_3: form.stopLoss2Enabled
+        ? form.stopLoss3 || null
+        : null,
 
-Call Type  :${form.tradeType} 
+      holding_period: form.holdingPeriod || null,
+      rationale: form.rationale || null,
 
-Entry  : ${
-  form.rangeEnabled
-    ? `${form.entryLow} - ${form.entryUpper}`
-    : form.entry
-}
+      underlying_study:
+        form.underlyingStudy
+          .map((study) => study.label)
+          .join(", ") || null,
 
-Target  : ${form.target}${
-  form.secondaryTargetEnabled
-    ? `
-T2  : ${form.target2}
-T3  : ${form.target3}`
-    : ""
-}
+      is_algo: false,
+      has_vested_interest: false,
+      research_remarks: form.remark.trim() || null,
+    };
 
-SL  : ${form.stopLoss}${
-  form.stopLoss2Enabled
-    ? `
-SL 2  : ${form.stopLoss2}
-SL 3  : ${form.stopLoss3}`
-    : ""
-}
+    const formData = new FormData();
 
-Reason:
-${form.remark || "Correction issued by Research Analyst"}
-
-DISCLAIMER CUM DISCLOSURE:
-
-${disclaimer}
-
-Research Analyst: ${raFullName || "N/A"} (${raDetails?.org_name || "N/A"})
-SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
-Contact No: ${raDetails?.mobile || "N/A"}
-Email ID: ${raDetails?.email || "N/A"}
-
-Read Full Disclaimer / Disclosure at:
-https://lotusfunds.com/disclaimer&disclosure
-`.trim();
-
-  res = await axios.post(
-    import.meta.env.VITE_API_URL + "/api/research/calls/errata",
-    {
-      call_id: errataSourceId,
-      updates,
-         message_text: errataMessage,
-    },
-    {
-      headers: { Authorization: `Bearer ${token}` },
+    if (selectedFile) {
+      formData.append("file", selectedFile);
     }
-  );
 
-  
-
-  console.log("ERRATA TELEGRAM MESSAGE:", errataMessage);
-
-  const telegramStatus = await axios.get(
-  `${import.meta.env.VITE_API_URL}/api/telegram/status`,
-  {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  }
-);
-
-if (!telegramStatus.data.connected) {
-  alert("Errata created, but Telegram is not connected");
-  await fetchRecommendations();
-  resetForm();
-  return;
-}
- console.log("ERRATA TELEGRAM V2");
-  await axios.post(
-    `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
-    {
-      message: errataMessage,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
-  alert("Errata Created ✅");
-
-await fetchRecommendations();
-resetForm();
-
-return;
-}
-
-    // =========================================================
-    // ✅ NORMAL CREATE (WITH FILE)
-    // =========================================================
-    else {
-      const formData = new FormData();
-
-      // 🔹 attach file
-      if (selectedFile) {
-        formData.append("file", selectedFile);
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        formData.append(key, String(value));
       }
+    });
 
-      // 🔹 attach all fields
-      Object.entries(payload).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) {
-          formData.append(key, value as any);
-        }
-      });
+    await axios.post(
+      `${import.meta.env.VITE_API_URL}/api/research/calls`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
 
-      res = await axios.post(
-        import.meta.env.VITE_API_URL + "/api/research/calls",
-        formData,
+    try {
+      const telegramStatus = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/telegram/status`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
           },
         }
       );
 
-     
+      if (!telegramStatus.data?.connected) {
+        alert("Research call created, but Telegram is not connected");
 
-      // =========================================================
-      // ✅ TELEGRAM SEND (UNCHANGED)
-      // =========================================================
-try {
+        await fetchRecommendations();
+        resetForm();
+        return;
+      }
 
-  // ✅ CHECK TELEGRAM STATUS FIRST
-  const telegramStatus = await axios.get(
-    `${import.meta.env.VITE_API_URL}/api/telegram/status`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
+        {
+          message: publishMessage,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    } catch (telegramError: any) {
+      console.error(
+        "PUBLISH TELEGRAM ERROR:",
+        telegramError?.response?.data || telegramError
+      );
 
-  // ❌ IF NOT CONNECTED
- if (!telegramStatus.data.connected) {
-  alert("Research call created, but Telegram is not connected");
-  await fetchRecommendations();
-  resetForm();
-  return;
-}
+      alert("Research call created, but Telegram sending failed");
 
- 
-
- const now = new Date();
-
-
-
-
-
-
-  await axios.post(
-    `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
-   {
-    message: publishMessage,
-  },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-
-  console.log("✅ Telegram sent ONLY to this RA clients");
-
-} catch (telegramErr: any) {
-  console.error(
-    "⚠️ Telegram failed:",
-    telegramErr?.response?.data || telegramErr?.message
-  );
-}
+      await fetchRecommendations();
+      resetForm();
+      return;
     }
 
-    // =========================================================
-    // ✅ REFRESH + RESET
-    // =========================================================
-    
     await fetchRecommendations();
     resetForm();
-     alert("Research Call Created ✅");
 
+    alert("Research Call Created ✅");
   } catch (err: any) {
-    console.error(err);
-    alert(err?.response?.data?.message || "Error submitting call");
+    console.error(
+      "SUBMIT ERROR:",
+      err?.response?.data || err
+    );
+
+    alert(
+      err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        "Error submitting call"
+    );
+  } finally {
+    submittingRef.current = false;
+    setIsSubmitting(false);
   }
-finally {
-  submittingRef.current = false;
-  setIsSubmitting(false);
-}
 };
+
 
 
 
@@ -1081,6 +1166,49 @@ https://lotusfunds.com/disclaimer&disclosure
 );
 
 
+const handleViewHistory = async (item: any) => {
+  try {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      alert("Please login again");
+      return;
+    }
+
+    setHistoryDialogOpen(true);
+    setHistoryLoading(true);
+    setVersionHistory([]);
+
+    const res = await axios.get(
+      `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/versions`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    console.log("VERSION HISTORY:", res.data);
+
+    setVersionHistory(res.data?.versions || []);
+  } catch (err: any) {
+    console.error(
+      "VERSION HISTORY ERROR:",
+      err?.response?.data || err
+    );
+
+    alert(
+      err?.response?.data?.message ||
+        "Failed to load version history"
+    );
+
+    setHistoryDialogOpen(false);
+  } finally {
+    setHistoryLoading(false);
+  }
+};
+
+
       const handleActionChange = useCallback(
   (_: React.MouseEvent<HTMLElement>, value: "BUY" | "SELL" | null) => {
     if (!value) return;
@@ -1128,7 +1256,7 @@ https://lotusfunds.com/disclaimer&disclosure
         stopLoss2: item.stop_losses?.[1]?.toString() || "",
         stopLoss3: item.stop_losses?.[2]?.toString() || "",
         rationale: item.rationale || "",
-        remark: item.research_remarks || item.remark || "",
+ remark: "",
        underlyingStudy: item.underlying_study
   ? item.underlying_study.split(",").map((study: string) => ({
       label: study.trim(),
@@ -2783,6 +2911,17 @@ sx={{
   value={form.remark}
   onCommit={commitRemark}
 />
+{isErrataMode && (
+  <Typography
+    sx={{
+      fontSize: "0.65rem",
+      color: "text.secondary",
+      mt: 0.5,
+    }}
+  >
+    This remark is required and will be saved as the Errata reason.
+  </Typography>
+)}
 
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: { xs: "100%", sm: 160 } }}>
             <input
@@ -2882,10 +3021,159 @@ sx={{
   onModify={handleModify}
   onExit={handleExit}
   onInitiate={handleInitiate}
+  onViewHistory={handleViewHistory}
 />
       {/* RIGHT PANEL */}
 
-    </Box>
+     <Dialog
+  open={historyDialogOpen}
+  onClose={() => setHistoryDialogOpen(false)}
+  fullWidth
+  maxWidth="sm"
+>
+  <DialogTitle>
+    Recommendation Version History
+  </DialogTitle>
+
+  <DialogContent dividers>
+    {historyLoading ? (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          py: 4,
+        }}
+      >
+        <CircularProgress size={28} />
+      </Box>
+    ) : versionHistory.length === 0 ? (
+      <Typography color="text.secondary">
+        No version history found.
+      </Typography>
+    ) : (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+        }}
+      >
+        {versionHistory.map((version) => (
+          <Paper
+            key={version.id}
+            variant="outlined"
+            sx={{
+              p: 2,
+              borderColor: version.is_latest
+                ? "primary.main"
+                : "divider",
+              backgroundColor: version.is_latest
+                ? "action.hover"
+                : "background.paper",
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 1,
+                mb: 1,
+              }}
+            >
+              <Typography fontWeight={700}>
+                Version {version.version_number}
+              </Typography>
+
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <Chip
+                  size="small"
+                  label={version.version_type}
+                  color={
+                    version.version_type === "ERRATA"
+                      ? "warning"
+                      : "default"
+                  }
+                />
+
+                {version.is_latest && (
+                  <Chip
+                    size="small"
+                    label="Latest"
+                    color="primary"
+                  />
+                )}
+              </Box>
+            </Box>
+
+            <Typography variant="body2">
+              <strong>Stock:</strong>{" "}
+              {version.display_name || version.symbol || "N/A"}
+            </Typography>
+
+            <Typography variant="body2">
+              <strong>Action:</strong> {version.action || "N/A"}
+            </Typography>
+
+            <Typography variant="body2">
+              <strong>Entry:</strong>{" "}
+              {version.entry_price ||
+                (version.entry_price_low &&
+                version.entry_price_upper
+                  ? `${version.entry_price_low} - ${version.entry_price_upper}`
+                  : "N/A")}
+            </Typography>
+
+            <Typography variant="body2">
+              <strong>Target:</strong>{" "}
+              {version.target_price || "N/A"}
+            </Typography>
+
+            <Typography variant="body2">
+              <strong>Stop Loss:</strong>{" "}
+              {version.stop_loss || "N/A"}
+            </Typography>
+
+            <Typography variant="body2">
+              <strong>Status:</strong>{" "}
+              {version.status || "N/A"}
+            </Typography>
+
+            {version.errata_reason && (
+              <>
+                <Divider sx={{ my: 1 }} />
+
+                <Typography variant="body2">
+                  <strong>Errata Reason:</strong>{" "}
+                  {version.errata_reason}
+                </Typography>
+              </>
+            )}
+
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mt: 1 }}
+            >
+              Created:{" "}
+              {new Date(version.created_at).toLocaleString("en-IN", {
+                timeZone: "Asia/Kolkata",
+              })}
+            </Typography>
+          </Paper>
+        ))}
+      </Box>
+    )}
+  </DialogContent>
+
+<DialogActions>
+  <Button onClick={() => setHistoryDialogOpen(false)}>
+    Close
+  </Button>
+</DialogActions>
+</Dialog> 
+
+      </Box>
   );
 };
 
