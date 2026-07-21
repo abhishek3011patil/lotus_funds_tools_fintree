@@ -2907,23 +2907,40 @@ sx={{
 
         {/* Remarks & Upload */}
         <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1.5, mb: 2 }}>
-         <RemarksField
-  value={form.remark}
-  onCommit={commitRemark}
-/>
-{isErrataMode && (
-  <Typography
-    sx={{
-      fontSize: "0.65rem",
-      color: "text.secondary",
-      mt: 0.5,
-    }}
-  >
-    This remark is required and will be saved as the Errata reason.
-  </Typography>
-)}
+        <Box
+  sx={{
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    minWidth: 0,
+  }}
+>
+  <RemarksField
+    value={form.remark}
+    onCommit={commitRemark}
+  />
 
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: { xs: "100%", sm: 160 } }}>
+  {isErrataMode && (
+    <Typography
+      sx={{
+        fontSize: "0.65rem",
+        color: "text.secondary",
+        mt: 0.5,
+      }}
+    >
+      This remark is required and will be saved as the Errata reason.
+    </Typography>
+  )}
+</Box>
+
+<Box
+  sx={{
+    display: "flex",
+    flexDirection: "column",
+    gap: 1,
+    minWidth: { xs: "100%", sm: 180 },
+  }}
+>
             <input
               required
               type="file"
