@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { activateRA, approveUser, getDisclaimerHistoryByRA, resendPasswordLink, suspendUser,getNotifications,deleteNotification } from "../controllers/admin.controller";
+import { activateRA, approveUser, getDisclaimerHistoryByRA, resendPasswordLink, suspendUser } from "../controllers/admin.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 import { requireAdmin } from "../middlewares/admin.middleware";
 import whatsappRoutes from "./whatsapp.routes";
@@ -30,12 +30,6 @@ router.put(
   activateRA
 );
 
-router.get(
-  "/notifications",
-  getNotifications
-);
-
-router.delete("/notifications/:id", deleteNotification);
 
 router.get(
   "/history/:userId",

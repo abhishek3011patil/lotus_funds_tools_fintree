@@ -59,14 +59,37 @@ const AdminNotification = () => {
     }
   };
 
-  const handleMarkAllCompleted = () => {
-    setNotifications(notifications.map(n => ({ ...n, isRead: true })));
-  };
+const handleMarkAllCompleted = async () => {
+  try {
+    const res = await fetch(
+      `${import.meta.env.VITE_API_URL}/notifications/mark-all-read`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+
+    const data = await res.json();
+
+    if (data.success) {
+      setNotifications(prev =>
+        prev.map(n => ({
+          ...n,
+          isRead: true,
+        }))
+      );
+    }
+  } catch (err) {
+    console.error(err);
+  }
+};
 
 const handleDeleteNotification = async (id) => {
   try {
     const res = await fetch(
-      `${import.meta.env.VITE_API_URL}/admin/notifications/${id}`,
+      `${import.meta.env.VITE_API_URL}/notifications/${id}`,
       {
         method: "DELETE",
         headers: {
@@ -103,7 +126,7 @@ const handleDeleteNotification = async (id) => {
   const fetchNotifications = async () => {
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/admin/notifications`,
+        `${import.meta.env.VITE_API_URL}/notifications`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
