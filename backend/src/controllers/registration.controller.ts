@@ -7,6 +7,7 @@ import crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
 import { createAuditLog } from "../utils/auditLogger";
 import axios from "axios";
+import { createNotification } from "../utils/notification";
 
 
 
@@ -610,6 +611,8 @@ ORDER BY u.created_at DESC
    ========================================================= */
 export const registerRA = async (req: AuthRequest, res: Response) => {
   try {
+
+    
     const data = req.body || {};
     const files = req.files as any;
 
@@ -887,6 +890,17 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
         data.additional_comments ?? null,
       ]
     );
+
+ const insertedRA = result.rows[0];
+
+await createNotification({
+  source: "Dashboard",
+  title: "New Research Analyst Registration",
+  description: `${data.first_name} ${data.surname} submitted a registration request.`,
+  notificationType: "RA",
+  referenceId: insertedRA.id,
+  referenceTable: "ra_details",
+});
 
     await createAuditLog({
       adminId: req.user?.id || undefined,
@@ -1906,6 +1920,16 @@ if (duplicate) {
   `,
   [userId, JSON.stringify(requestedChanges)]
 );
+
+await createNotification({
+  source: "Admin Approval",
+  title: "RA Profile Update Approval",
+  description: `${req.user?.name || "Research Analyst"} requested profile changes.`,
+  notificationType: "PROFILE_UPDATE",
+  referenceId: requestResult.rows[0].id,
+  referenceTable: "ra_profile_update_requests",
+});
+
 await createAuditLog({
   adminId: req.user?.id,
   adminName: req.user?.name || "RA",

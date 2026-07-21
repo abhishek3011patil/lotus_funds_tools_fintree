@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { pool } from "../db";
+import { createNotification } from "../utils/notification";
 
 /* =========================================================
    REGISTER BROKER (POST /api/broker/register-broker)
@@ -173,6 +174,16 @@ if (existing.rows.length > 0) {
     ];
 
       const result = await pool.query(query, values);
+      const broker = result.rows[0];
+
+await createNotification({
+  source: "Dashboard",
+  title: "New Broker Registration",
+  description: `${broker.legal_name} submitted a registration request.`,
+  notificationType: "BROKER",
+  referenceId: broker.id,
+  referenceTable: "broker_details",
+});
 
     return res.status(201).json({
       message: "Broker registered successfully",

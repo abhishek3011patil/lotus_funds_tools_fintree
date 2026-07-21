@@ -14,6 +14,7 @@ import auditRoutes from "./routes/audit.routes";
 import paymentRoutes from "./routes/payment.routes";
 import multer from "multer";
 import whatsappRoutes from "./routes/whatsapp.routes";
+import notificationRoutes from "./routes/notification.routes";
 
 const app = express();
 
@@ -71,6 +72,7 @@ app.use("/api/telegram", telegramRoutes);
 app.use("/admin", adminRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/audit-logs", auditRoutes);
+app.use("/notifications", notificationRoutes);
 
 app.get("/check", (_req, res) => {
   res.send("APP WORKING");
