@@ -120,8 +120,25 @@ const handleDeleteNotification = async (id) => {
   const groups = Array.from(new Set(filteredNotifications.map(n => n.dateGroup)));
 
   useEffect(() => {
+    markAllAsRead();
     fetchNotifications();
   }, []);
+
+  const markAllAsRead = async () => {
+  try {
+    await fetch(
+      `${import.meta.env.VITE_API_URL}/notifications/read-all`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   const fetchNotifications = async () => {
     try {

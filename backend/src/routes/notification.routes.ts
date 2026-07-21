@@ -3,6 +3,7 @@ import {
   getNotifications,
   deleteNotification,
   markAllNotificationsRead,
+  getUnreadNotificationCount
 } from "../controllers/notification.controller";
 
 import { authenticate } from "../middlewares/auth.middleware";
@@ -17,5 +18,7 @@ router.get("/", getNotifications);
 router.delete("/:id", deleteNotification);
 
 router.put("/mark-all-read", markAllNotificationsRead);
+
+router.get("/unread-count", getUnreadNotificationCount);
 
 export default router;

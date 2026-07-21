@@ -602,6 +602,8 @@ ORDER BY u.created_at DESC
 
 export const registerRA = async (req: AuthRequest, res: Response) => {
   try {
+
+    
     const data = req.body || {};
     const files = req.files as any;
 
