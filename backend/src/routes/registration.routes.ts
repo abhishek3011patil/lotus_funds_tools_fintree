@@ -168,6 +168,8 @@ router.put(
   requireAdmin,
   rejectRAProfileUpdateRequest
 );
+
+
 router.get("/profile", authenticate, getMyRAProfile);
 router.get("/ifsc/:ifsc", getBankFromIFSC);
 

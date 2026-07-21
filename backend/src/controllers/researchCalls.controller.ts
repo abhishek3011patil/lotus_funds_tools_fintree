@@ -34,6 +34,9 @@ const getClientIp = (req: any): string => {
 /* =========================================================
    CREATE RESEARCH CALL  (POST /api/research/calls)
    ========================================================= */
+/* =========================================================
+   CREATE RESEARCH CALL (POST /api/research/calls)
+   ========================================================= */
 export const createResearchCall = async (
   req: AuthRequest,
   res: Response
@@ -240,6 +243,9 @@ export const createResearchCall = async (
 /* =========================================================
    CREATE RESEARCH CALL  (POST /api/research/performance)
    ========================================================= */
+/* =========================================================
+   GET RESEARCH PERFORMANCE (GET /api/research/performance)
+   ========================================================= */
 export const getResearchPerformance = async (req: AuthRequest, res: Response) => {
   try {
     const page = Number(req.query.page) || 1;
@@ -259,7 +265,7 @@ export const getResearchPerformance = async (req: AuthRequest, res: Response) =>
         rc.expiry_date AS expiry,
         rc.entry_price AS entry,
         rc.version_type,
-        '--' AS exit,
+        rc.exit_price AS exit_price,
         rc.status,
         NULL AS profit_loss,
         u.name AS researcher_name
@@ -290,6 +296,9 @@ export const getResearchPerformance = async (req: AuthRequest, res: Response) =>
 
 /* =========================================================
    GET MY CALLS  (GET /api/research/calls/my)
+   ========================================================= */
+/* =========================================================
+   GET MY RESEARCH CALLS (GET /api/research/calls/my)
    ========================================================= */
 export const getResearchCalls = async (req: AuthRequest, res: Response) => {
     console.log("Logged in user:", req.user);
@@ -370,6 +379,9 @@ export const getResearchCalls = async (req: AuthRequest, res: Response) => {
 
 /* =========================================================
    GET PUBLISHED CALLS (GET /api/research/calls/published)
+   ========================================================= */
+/* =========================================================
+   GET PUBLISHED RESEARCH CALLS (GET /api/research/calls/published)
    ========================================================= */
 export const getPublishedCalls = async (_req: AuthRequest, res: Response) => {
     try {
@@ -470,7 +482,6 @@ export const getPublishedCalls = async (_req: AuthRequest, res: Response) => {
    CREATE ERRATA (POST /api/research/calls/errata)
    ========================================================= */
 
-
 export const createErrata = async (
   req: AuthRequest,
   res: Response
@@ -480,54 +491,102 @@ export const createErrata = async (
   try {
     await client.query("BEGIN");
 
-    const { call_id, updates, message_text } = req.body;
+    const {
+  call_id,
+  updates,
+  message_text,
+  errata_reason,
+} = req.body;
+
+
+
     const userId = req.user?.id;
+
+    if (!userId) {
+  await client.query("ROLLBACK");
+
+  return res.status(401).json({
+    message: "Unauthorized",
+  });
+}
+
+
+if (
+  !errata_reason ||
+  typeof errata_reason !== "string" ||
+  !errata_reason.trim()
+) {
+  await client.query("ROLLBACK");
+
+  return res.status(400).json({
+    message: "Errata reason is required",
+  });
+}
+
+if (!call_id) {
+  await client.query("ROLLBACK");
+
+  return res.status(400).json({
+    message: "Call ID is required",
+  });
+}
+
+if (
+  !updates ||
+  typeof updates !== "object" ||
+  Array.isArray(updates)
+) {
+  await client.query("ROLLBACK");
+
+  return res.status(400).json({
+    message: "Errata updates are required",
+  });
+}
 
     // =========================================================
     // 1️⃣ GET EXISTING CALL
     // =========================================================
-    const callResult = await client.query(
-      `
-      SELECT *
-      FROM research_calls
-      WHERE id = $1
-      AND ra_user_id = $2
-      `,
-      [call_id, userId]
-    );
+const callResult = await client.query(
+  `
+  SELECT *
+  FROM research_calls
+  WHERE id = $1
+    AND ra_user_id = $2
+    AND is_latest = true
+  FOR UPDATE
+  `,
+  [call_id, userId]
+);
 
-     if ((callResult.rowCount ?? 0) === 0) {
-      await client.query("ROLLBACK");
+  if ((callResult.rowCount ?? 0) === 0) {
+  await client.query("ROLLBACK");
 
-      return res.status(404).json({
-        message: "Call not found",
-      });
-    }
+  return res.status(404).json({
+    message:
+      "Latest research call not found or this call has already been replaced",
+  });
+}
 
     const existingCall = callResult.rows[0];
 
     // =========================================================
     // 2️⃣ VALIDATE STATUS
     // =========================================================
-    if (
-      !["PUBLISHED", "ERRATA"].includes(existingCall.status)
-    ) {
-      await client.query("ROLLBACK");
+if (existingCall.status === "CLOSED") {
+  await client.query("ROLLBACK");
 
-      return res.status(400).json({
-        message:
-          "Only published or errata calls can be modified",
-      });
-    }
+  return res.status(400).json({
+    message: "Cannot create Errata for a closed call",
+  });
+}
 
-    if (existingCall.status === "CLOSED") {
-      await client.query("ROLLBACK");
+if (existingCall.status !== "PUBLISHED") {
+  await client.query("ROLLBACK");
 
-      return res.status(400).json({
-        message:
-          "Cannot create errata for closed call",
-      });
-    }
+  return res.status(400).json({
+    message: "Only published calls can have an Errata",
+  });
+}
 
     // =========================================================
     // 3️⃣ DETERMINE ROOT CALL
@@ -539,25 +598,38 @@ export const createErrata = async (
     // =========================================================
     // 4️⃣ MARK OLD VERSIONS AS NOT LATEST
     // =========================================================
-    await client.query(
-      `
-      UPDATE research_calls
-      SET is_latest = false
-      WHERE id = $1
-      OR parent_call_id = $1
-      `,
-      [rootId]
-    );
+await client.query(
+  `
+  UPDATE research_calls
+  SET is_latest = false
+  WHERE (id = $1 OR parent_call_id = $1)
+    AND is_latest = true
+  `,
+  [rootId]
+);
+const versionResult = await client.query(
+  `
+  SELECT COALESCE(MAX(version_number), 0) + 1 AS next_version
+  FROM research_calls
+  WHERE id = $1
+     OR parent_call_id = $1
+  `,
+  [rootId]
+);
 
+const nextVersionNumber = Number(
+  versionResult.rows[0].next_version
+);
     // =========================================================
     // 5️⃣ CREATE NEW ERRATA VERSION
     // =========================================================
-    const insertResult = await client.query(
+const insertResult = await client.query(
   `
   INSERT INTO research_calls (
     ra_user_id,
     status,
     version_type,
+    version_number,
 
     exchange_type,
     market_type,
@@ -592,6 +664,11 @@ export const createErrata = async (
     has_vested_interest,
 
     research_remarks,
+    errata_reason,
+
+    file_url,
+    disclaimer_snapshot,
+    disclaimer_snapshot_at,
 
     parent_call_id,
     is_latest
@@ -600,43 +677,49 @@ export const createErrata = async (
     $1,
     $2,
     $3,
-
     $4,
+
     $5,
-
     $6,
-    $7,
 
+    $7,
     $8,
+
     $9,
     $10,
-
     $11,
 
     $12,
+
     $13,
     $14,
-
     $15,
+
     $16,
     $17,
-
     $18,
+
     $19,
     $20,
-
     $21,
 
     $22,
+
     $23,
-
     $24,
-    $25,
 
+    $25,
     $26,
 
     $27,
-    $28
+    $28,
+
+    $29,
+    $30,
+    $31,
+
+    $32,
+    $33
   )
   RETURNING *
   `,
@@ -644,6 +727,7 @@ export const createErrata = async (
     userId,
     "PUBLISHED",
     "ERRATA",
+    nextVersionNumber,
 
     existingCall.exchange_type,
     existingCall.market_type,
@@ -655,7 +739,7 @@ export const createErrata = async (
     updates.call_type ?? existingCall.call_type,
     updates.trade_type ?? existingCall.trade_type,
 
-    existingCall.expiry_date,
+    updates.expiry_date ?? existingCall.expiry_date,
 
     updates.entry_price ?? existingCall.entry_price,
     updates.entry_price_low ?? existingCall.entry_price_low,
@@ -680,8 +764,14 @@ export const createErrata = async (
     updates.research_remarks ??
       existingCall.research_remarks,
 
+    errata_reason.trim(),
+
+    existingCall.file_url,
+    existingCall.disclaimer_snapshot,
+    existingCall.disclaimer_snapshot_at,
+
     rootId,
-    true
+    true,
   ]
 );
 
@@ -704,48 +794,176 @@ if (whatsappMessage) {
   );
 }
 
-    await client.query("COMMIT");
+  await client.query("COMMIT");
 
-    await createAuditLog({
-  adminId: req.user?.id,
-  adminName: req.user?.name,
-  adminRole: req.user?.role,
-  action: "ERRATA_CREATED",
-  module: "RESEARCH_CALL",
-  targetEntity: insertResult.rows[0].symbol,
-  targetType: "CALL",
-  description: `Errata created for research call: ${insertResult.rows[0].symbol}`,
-  status: "SUCCESS",
-  ipAddress: getClientIp(req),
-  device: req.headers["user-agent"] as string,
-  oldValue: existingCall,
-  newValue: insertResult.rows[0],
+try {
+  await createAuditLog({
+    adminId: req.user?.id,
+    adminName: req.user?.name,
+    adminRole: req.user?.role,
+    action: "ERRATA_CREATED",
+    module: "RESEARCH_CALL",
+    targetEntity: errataCall.symbol,
+    targetType: "CALL",
+    description: `Errata created for research call: ${errataCall.symbol}`,
+    status: "SUCCESS",
+    ipAddress: getClientIp(req),
+    device: req.headers["user-agent"] as string,
+    oldValue: existingCall,
+    newValue: errataCall,
+  });
+} catch (auditError) {
+  console.error("ERRATA AUDIT LOG ERROR:", auditError);
+}
+
+return res.status(201).json({
+  message: "Errata created successfully",
+  data: errataCall,
 });
 
-    return res.status(201).json({
-      message: "Errata created successfully",
-      data: insertResult.rows[0],
-    });
-
-  } catch (error) {
+  }  catch (error) {
+  try {
     await client.query("ROLLBACK");
+  } catch (rollbackError) {
+    console.error("ERRATA ROLLBACK ERROR:", rollbackError);
+  }
 
-    console.error("ERRATA ERROR:", error);
+  console.error("ERRATA ERROR:", error);
 
-    return res.status(500).json({
-      message: "Internal server error",
-    });
-
-  } finally {
+  return res.status(500).json({
+    message: "Internal server error",
+  });
+} finally {
     client.release();
   }
 };
 
+
+/* =========================================================
+      GET CALL VERSION HISTORY
+   GET /api/research/calls/:callId/versions
+   ========================================================= */
+
+
+export const getCallVersionHistory = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user?.id;
+    const { callId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const selectedResult = await pool.query(
+      `
+      SELECT
+        id,
+        parent_call_id
+      FROM research_calls
+      WHERE id = $1
+        AND ra_user_id = $2
+      `,
+      [callId, userId]
+    );
+
+    if ((selectedResult.rowCount ?? 0) === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Research call not found",
+      });
+    }
+
+    const selectedCall = selectedResult.rows[0];
+
+    const rootId =
+      selectedCall.parent_call_id ?? selectedCall.id;
+
+  const historyResult = await pool.query(
+  `
+  SELECT
+    id,
+    parent_call_id,
+    version_type,
+    is_latest,
+    status,
+    created_at,
+
+    symbol,
+    display_name,
+    action,
+    call_type,
+    trade_type,
+
+    entry_price,
+    entry_price_low,
+    entry_price_upper,
+
+    target_price,
+    target_price_2,
+    target_price_3,
+
+    stop_loss,
+    stop_loss_2,
+    stop_loss_3,
+
+    holding_period,
+    rationale,
+    underlying_study,
+    research_remarks,
+    errata_reason,
+
+    file_url,
+    disclaimer_snapshot,
+    disclaimer_snapshot_at
+  FROM research_calls
+  WHERE ra_user_id = $2
+    AND (
+      id = $1
+      OR parent_call_id = $1
+    )
+  ORDER BY created_at DESC, id DESC
+  `,
+  [rootId, userId]
+);
+
+    const versions = historyResult.rows.map(
+      (row, index, rows) => ({
+        ...row,
+        version_number: rows.length - index,
+      })
+    );
+
+    return res.status(200).json({
+      success: true,
+      root_call_id: rootId,
+      versions,
+    });
+  } catch (error) {
+    console.error(
+      "GET CALL VERSION HISTORY ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load version history",
+    });
+  }
+};
 /* =========================================================
    publish Draft (POST /api/research/calls/:id/publish)
    ========================================================= */
 
 
+/* =========================================================
+   PUBLISH DRAFT RESEARCH CALL (PATCH /api/research/calls/:id/publish)
+   ========================================================= */
 export const publishDraftCall = async (
   req: AuthRequest,
   res: Response
@@ -881,6 +1099,9 @@ export const publishDraftCall = async (
 
 
 
+/* =========================================================
+   GET RESEARCH ANALYST DISCLAIMER (GET /api/registration/research/disclaimer)
+   ========================================================= */
 export const getRADisclaimer = async (
   req: AuthRequest,
   res: Response
@@ -917,6 +1138,9 @@ export const getRADisclaimer = async (
   }
 };
 
+/* =========================================================
+   UPDATE RESEARCH ANALYST DISCLAIMER (PUT /api/registration/research/disclaimer)
+   ========================================================= */
 export const updateRADisclaimer = async (
   req: AuthRequest,
   res: Response
@@ -1035,6 +1259,9 @@ export const updateRADisclaimer = async (
 
 
 
+/* =========================================================
+   GET RESEARCH ANALYST MESSAGE PROFILE (GET /api/ra/message-profile)
+   ========================================================= */
 export const getRAMessageProfile = async (
   req: AuthRequest,
   res: Response

@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import { pool } from "../db";
 import { createNotification } from "../utils/notification";
 
+/* =========================================================
+   REGISTER BROKER (POST /api/broker/register-broker)
+   ========================================================= */
 export const createBroker = async (req: Request, res: Response) => {
   try {
     const data = req.body;
@@ -203,6 +206,9 @@ await createNotification({
   }
 };
 
+/* =========================================================
+   GET ALL BROKERS (GET /api/broker/all-brokers)
+   ========================================================= */
 export const getAllBrokers = async (req: Request, res: Response) => {
   try {
     const result = await pool.query("SELECT * FROM broker_details ORDER BY created_at DESC");

@@ -1,34 +1,46 @@
-import { memo, useMemo } from "react";
 import {
-    Box,
-    Paper,
-    Typography,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Button,
+  memo,
+  useMemo,
+  useState,
+  useCallback,
+} from "react";
+import {
+  Box,
+  Paper,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Button,
 } from "@mui/material";
-
+import ExitRecommendationDialog from "./ExitRecommendationDialog";
 import LoadingPage from "../../common/LoadingPage";
 
 type Props = {
-    recommendations: any[];
-    loading: boolean;
-    onModify: (item: any) => void;
-    onExit: (id: string) => void;
-    onInitiate: (item: any) => void;
+  recommendations: any[];
+  loading: boolean;
+  onModify: (item: any) => void;
+  onExit: (
+    item: any,
+    exitPrice: number,
+    exitRemark: string
+  ) => Promise<void>;
+  onInitiate: (item: any) => Promise<void>;
+
+  onViewHistory: (item: any) => void;
 };
 
 const RecommendationsPanel = memo(
     ({
-        recommendations,
-        loading,
-        onModify,
-        onExit,
-        onInitiate,
+         recommendations,
+  loading,
+  onModify,
+  onExit,
+  onInitiate,
+  onViewHistory,
     }: Props) => {
 
         // =========================================================
@@ -63,6 +75,29 @@ const RecommendationsPanel = memo(
                 ),
             [latestRecommendations]
         );
+
+
+
+  const [exitDialogOpen, setExitDialogOpen] = useState(false);
+
+const [selectedExitCall, setSelectedExitCall] =
+  useState<any | null>(null);
+
+const openExitDialog = useCallback((item: any) => {
+  setSelectedExitCall(item);
+  setExitDialogOpen(true);
+}, []);
+
+const closeExitDialog = useCallback(() => {
+  setExitDialogOpen(false);
+  setSelectedExitCall(null);
+}, []);
+
+
+
+
+
+
 
         //console.log("RECOMMENDATIONS:", recommendations);
         //console.log("ACTIVE:", activeRecommendations);
@@ -404,12 +439,30 @@ const RecommendationsPanel = memo(
                                                             </Button>
 
                                                             <Button
+  size="small"
+  onClick={() => {
+    console.log("BUTTON CLICKED", item);
+    onViewHistory(item);
+  }}
+  sx={{
+    fontSize: "0.6rem",
+    textTransform: "none",
+    color: "#1976d2",
+    minWidth: "auto",
+    p: 0,
+    justifyContent: "flex-end",
+    "&:hover": {
+      backgroundColor: "transparent",
+      textDecoration: "underline",
+    },
+  }}
+>
+  Version History
+</Button>
+
+                                                            <Button
                                                                 size="small"
-                                                                onClick={() =>
-                                                                    onExit(
-                                                                        item.id
-                                                                    )
-                                                                }
+                                                              onClick={() => openExitDialog(item)}
                                                                 sx={{
                                                                     fontSize:
                                                                         "0.65rem",
@@ -434,6 +487,7 @@ const RecommendationsPanel = memo(
                                                             >
                                                                 Exit
                                                             </Button>
+                                                            
                                                         </Box>
                                                     </TableCell>
                                                 </TableRow>
@@ -608,9 +662,15 @@ const RecommendationsPanel = memo(
                         </Table>
                     </TableContainer>
                 </Paper>
+<ExitRecommendationDialog
+  open={exitDialogOpen}
+  item={selectedExitCall}
+  onClose={closeExitDialog}
+  onSubmit={onExit}
+/>
             </Box>
         );
     }
 );
 
-export default RecommendationsPanel;
+export default memo(RecommendationsPanel);

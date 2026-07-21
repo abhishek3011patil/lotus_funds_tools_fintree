@@ -37,6 +37,9 @@ const getClientIp = (req: Request) => {
 
 
 /* ================= SEND OTP AFTER PASSWORD ================= */
+/* =========================================================
+   REQUEST PASSWORD RESET OTP (POST /api/auth/request-otp)
+   ========================================================= */
 export const sendOtp = async (req: Request, res: Response) => {
   try {
     const { token } = req.body;
@@ -72,6 +75,9 @@ export const sendOtp = async (req: Request, res: Response) => {
 };
 
 /* ================= VERIFY OTP ================= */
+/* =========================================================
+   VERIFY OTP AND SET PASSWORD (POST /api/auth/verify-otp-and-set-password)
+   ========================================================= */
 export const verifyOtp = async (req: Request, res: Response) => {
   try {
     const { token, otp, password } = req.body;
@@ -109,6 +115,9 @@ export const verifyOtp = async (req: Request, res: Response) => {
 };
 
 /* ================= Login ================= */
+/* =========================================================
+   LOG IN (POST /api/auth/login)
+   ========================================================= */
 export const login = async (req: Request, res: Response) => {
   try {
     let { loginId, password } = req.body;
@@ -232,6 +241,9 @@ if (user.status.toLowerCase() !== "active") {
 };
 
 /* ================= LOGOUT ================= */
+/* =========================================================
+   LOG OUT (POST /api/auth/logout)
+   ========================================================= */
 export const logout = async (
   req: AuthRequest,
   res: Response
@@ -288,6 +300,9 @@ export const logout = async (
   }
 };
 /* ================= GET ME ================= */
+/* =========================================================
+   GET CURRENT USER (GET /api/auth/me)
+   ========================================================= */
 export const getMe = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
@@ -333,6 +348,9 @@ export const getMe = async (req: AuthRequest, res: Response) => {
 
 // ================= CHANGE ADMIN PASSWORD =================
 
+/* =========================================================
+   CHANGE ADMIN PASSWORD (POST /api/auth/admin/change-password)
+   ========================================================= */
 export const changeAdminPassword = async (req: AuthRequest, res: Response) => {
   try {
     const { oldPassword, newPassword } = req.body;

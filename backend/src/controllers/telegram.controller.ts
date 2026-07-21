@@ -74,6 +74,9 @@ interface ExcelParticipant {
   telegram_user_id?: string;
 }
 
+/* =========================================================
+   GET ALL TELEGRAM PARTICIPANTS (GET /api/telegram/participants)
+   ========================================================= */
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
     // We use a string query because TelegramUser is just a TYPE for the result
@@ -90,6 +93,9 @@ export const getAllUsers = async (req: Request, res: Response) => {
 };
 
 
+/* =========================================================
+   SAVE TELEGRAM USER (POST /api/telegram/save-user)
+   ========================================================= */
 export const saveTelegramUser = async (
   req: AuthRequest,
   res: Response
@@ -356,6 +362,9 @@ export const saveTelegramUser = async (
   }
 };
 
+/* =========================================================
+   UPDATE TELEGRAM PARTICIPANT (PUT /api/telegram/participant/:id)
+   ========================================================= */
 export const updateParticipant = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -457,6 +466,9 @@ if (role === "ADMIN") {
 
 // DELETE /api/telegram/participant/:telegram_user_id
 
+/* =========================================================
+   DELETE TELEGRAM PARTICIPANT (DELETE /api/telegram/participant/:id)
+   ========================================================= */
 export const deleteParticipant = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
@@ -546,6 +558,9 @@ if (role === "ADMIN") {
   }
 };
 
+/* =========================================================
+   GET TELEGRAM PARTICIPANTS BY RESEARCH ANALYST (GET /api/telegram/ra/:raId)
+   ========================================================= */
 export const getParticipantsByRA = async (
   req: Request,
   res: Response
@@ -608,6 +623,9 @@ export const getParticipantsByRA = async (
 const sleep = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
+/* =========================================================
+   SEND MESSAGE TO RESEARCH ANALYST CLIENTS (POST /api/telegram/send-ra-message)
+   ========================================================= */
 export const sendMessageToRAClients = async (
   req: AuthRequest,
   res: Response
@@ -814,6 +832,9 @@ import { setClient, getClient, deleteClient } from "../utils/telegramClientStore
 import { TelegramClient } from "telegram";
 import { StringSession } from "telegram/sessions";
 
+/* =========================================================
+   SEND TELEGRAM OTP (POST /api/telegram/send-otp)
+   ========================================================= */
 export const sendOtp = async (req: AuthRequest, res: Response) => {
   try {
     const { phoneNumber } = req.body;
@@ -869,6 +890,9 @@ export const sendOtp = async (req: AuthRequest, res: Response) => {
   }
 };
 
+/* =========================================================
+   VERIFY TELEGRAM OTP (POST /api/telegram/verify-otp)
+   ========================================================= */
 export const verifyOtp = async (req: AuthRequest, res: Response) => {
   try {
     const { code } = req.body;
@@ -957,6 +981,9 @@ export const getTelegramStatus = async (
   }
 };
 
+/* =========================================================
+   ADD TELEGRAM PARTICIPANT (POST /api/telegram/add-participant)
+   ========================================================= */
 export const saveParticipantRA = async (
   req: AuthRequest,
   res: Response
@@ -1213,6 +1240,9 @@ console.log("Phone:", phone);
   }
 };
 
+/* =========================================================
+   GET MY TELEGRAM PARTICIPANTS (GET /api/telegram/my-participants)
+   ========================================================= */
 export const getMyParticipants = async (
   req: AuthRequest,
   res: Response
@@ -1268,6 +1298,9 @@ export const getMyParticipants = async (
   }
 };
 
+/* =========================================================
+   UPLOAD TELEGRAM PARTICIPANTS (POST /api/telegram/upload-excel)
+   ========================================================= */
 export const uploadExcelParticipants = async (
   req: AuthRequest,
   res: Response
@@ -1591,6 +1624,9 @@ if (!entity) {
   }
 };
 
+/* =========================================================
+   DOWNLOAD TELEGRAM TEMPLATE (GET /api/telegram/download-template)
+   ========================================================= */
 export const downloadTelegramTemplate = (
   req: Request,
   res: Response
