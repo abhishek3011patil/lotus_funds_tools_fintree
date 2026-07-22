@@ -1166,7 +1166,7 @@ https://lotusfunds.com/disclaimer&disclosure
 );
 
 
-const handleViewHistory = async (item: any) => {
+const handleViewHistory = useCallback(async (item: any) => {
   try {
     const token = localStorage.getItem("token");
 
@@ -1188,8 +1188,6 @@ const handleViewHistory = async (item: any) => {
       }
     );
 
-    console.log("VERSION HISTORY:", res.data);
-
     setVersionHistory(res.data?.versions || []);
   } catch (err: any) {
     console.error(
@@ -1206,7 +1204,7 @@ const handleViewHistory = async (item: any) => {
   } finally {
     setHistoryLoading(false);
   }
-};
+}, []);
 
 
       const handleActionChange = useCallback(
@@ -2269,17 +2267,14 @@ const commitAdditionalPrice = useCallback(
     field: AdditionalPriceField,
     value: string
   ) => {
-    startTransition(() => {
-      dispatch({
-        type: "SET_FIELD",
-        field,
-        value,
-      });
+    dispatch({
+      type: "SET_FIELD",
+      field,
+      value,
     });
   },
   []
 );
-
 const toggleAdditionalSection = useCallback(
   (field: AdditionalToggleField) => {
     const nextValue =
