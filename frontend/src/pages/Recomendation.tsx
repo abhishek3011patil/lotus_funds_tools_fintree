@@ -236,30 +236,58 @@ const handleFileChange = (
     stopLoss2Enabled: false,
   };
 
-  type FormAction =
-    | {
+ type FormAction =
+  | {
       type: "SET_FIELD";
       field: keyof RecommendationForm;
       value: RecommendationForm[keyof RecommendationForm];
     }
-    | { type: "SET_FORM"; payload: Partial<RecommendationForm> }
-    | { type: "RESET" };
-
-  function formReducer(
-    state: RecommendationForm,
-    action: FormAction
-  ): RecommendationForm {
-    switch (action.type) {
-      case "SET_FIELD":
-        return { ...state, [action.field]: action.value };
-      case "SET_FORM":
-        return { ...state, ...action.payload };
-      case "RESET":
-        return initialForm;
-      default:
-        return state;
+  | {
+      type: "TOGGLE_ADDITIONAL";
+      field: AdditionalToggleField;
     }
+  | {
+      type: "SET_FORM";
+      payload: Partial<RecommendationForm>;
+    }
+  | {
+      type: "RESET";
+    };
+
+function formReducer(
+  state: RecommendationForm,
+  action: FormAction
+): RecommendationForm {
+  switch (action.type) {
+  case "SET_FIELD":
+  if (Object.is(state[action.field], action.value)) {
+    return state;
   }
+
+  return {
+    ...state,
+    [action.field]: action.value,
+  };
+
+    case "TOGGLE_ADDITIONAL":
+      return {
+        ...state,
+        [action.field]: !state[action.field],
+      };
+
+    case "SET_FORM":
+      return {
+        ...state,
+        ...action.payload,
+      };
+
+    case "RESET":
+      return initialForm;
+
+    default:
+      return state;
+  }
+}
 
   const [form, dispatch] = useReducer(formReducer, initialForm);
 
@@ -2209,19 +2237,7 @@ const getPriceError = (field: string, currentForm: any): string | null => {
 };
 
 
-const commitMainPrice = useCallback(
-  (
-    field: MainPriceField,
-    value: string
-  ) => {
-    dispatch({
-      type: "SET_FIELD",
-      field,
-      value,
-    });
-  },
-  []
-);
+
 
 const getMainPriceError = useCallback(
   (
@@ -2251,50 +2267,52 @@ const getMainPriceError = useCallback(
   ]
 );
 
-const commitRemark = useCallback(
-  (value: string) => {
+const commitMainPrice = useCallback(
+  (field: MainPriceField, value: string) => {
+    startTransition(() => {
+      dispatch({
+        type: "SET_FIELD",
+        field,
+        value,
+      });
+    });
+  },
+  []
+);
+
+const commitRemark = useCallback((value: string) => {
+  startTransition(() => {
     dispatch({
       type: "SET_FIELD",
       field: "remark",
       value,
     });
-  },
-  []
-);
+  });
+}, []);
 
 const commitAdditionalPrice = useCallback(
   (
     field: AdditionalPriceField,
     value: string
   ) => {
-    dispatch({
-      type: "SET_FIELD",
-      field,
-      value,
+    startTransition(() => {
+      dispatch({
+        type: "SET_FIELD",
+        field,
+        value,
+      });
     });
   },
   []
 );
 const toggleAdditionalSection = useCallback(
   (field: AdditionalToggleField) => {
-    const nextValue =
-      field === "rangeEnabled"
-        ? !form.rangeEnabled
-        : field === "secondaryTargetEnabled"
-          ? !form.secondaryTargetEnabled
-          : !form.stopLoss2Enabled;
-
     dispatch({
-      type: "SET_FIELD",
+      type: "TOGGLE_ADDITIONAL",
       field,
-      value: nextValue,
     });
   },
-  [
-    form.rangeEnabled,
-    form.secondaryTargetEnabled,
-    form.stopLoss2Enabled,
-  ]
+  []
 );
 
 const getAdditionalPriceError = useCallback(
@@ -2350,6 +2368,19 @@ const updateField = useCallback(
   []
 );
 
+const mainPriceValues = useMemo(
+  () => ({
+    entry: form.entry,
+    target: form.target,
+    stopLoss: form.stopLoss,
+  }),
+  [
+    form.entry,
+    form.target,
+    form.stopLoss,
+  ]
+);
+
 const additionalPriceValues = useMemo(
   () => ({
     entryLow: form.entryLow,
@@ -2368,6 +2399,9 @@ const additionalPriceValues = useMemo(
     form.stopLoss3,
   ]
 );
+
+
+
 
 const additionalPriceToggles = useMemo(
   () => ({
@@ -2874,11 +2908,7 @@ sx={{
 
         {/* Prices Row */}
 <PriceSection
-  values={{
-    entry: form.entry,
-    target: form.target,
-    stopLoss: form.stopLoss,
-  }}
+  values={mainPriceValues}
   wasValidated={wasValidated}
   onCommit={commitMainPrice}
   getError={getMainPriceError}

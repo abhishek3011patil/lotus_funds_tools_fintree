@@ -25,7 +25,13 @@ const RemarksField = memo(
         onChange={(event) =>
           setLocalValue(event.target.value)
         }
-        onBlur={() => onCommit(localValue)}
+        onBlur={() => {
+  if (localValue === value) {
+    return;
+  }
+
+  onCommit(localValue);
+}}
         sx={{ flexGrow: 1 }}
       />
     );

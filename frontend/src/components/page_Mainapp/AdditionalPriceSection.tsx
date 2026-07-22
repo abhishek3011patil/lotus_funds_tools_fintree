@@ -9,6 +9,7 @@ import {
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import {
   memo,
+  startTransition,
   useCallback,
   useEffect,
   useState,
@@ -28,10 +29,13 @@ export type AdditionalToggleField =
   | "secondaryTargetEnabled"
   | "stopLoss2Enabled";
 
+  
+
 type AdditionalPriceValues = Record<
   AdditionalPriceField,
   string
 >;
+
 
 type ToggleValues = Record<
   AdditionalToggleField,
@@ -93,6 +97,9 @@ const SECTIONS: Array<{
   },
 ];
 
+
+
+
 const AdditionalPriceSection = memo(
   ({
     values,
@@ -102,8 +109,11 @@ const AdditionalPriceSection = memo(
     onCommit,
     getError,
   }: AdditionalPriceSectionProps) => {
-    const [localValues, setLocalValues] =
+   
+ const [localValues, setLocalValues] =
       useState<AdditionalPriceValues>(values);
+const [localToggles, setLocalToggles] =
+  useState<ToggleValues>(toggles);
 
     useEffect(() => {
       setLocalValues(values);
@@ -147,7 +157,29 @@ const handleBlur = useCallback(
   },
   [localValues, values, onCommit]
 );
-  
+
+useEffect(() => {
+  setLocalToggles(toggles);
+}, [
+  toggles.rangeEnabled,
+  toggles.secondaryTargetEnabled,
+  toggles.stopLoss2Enabled,
+]);
+const handleToggle = useCallback(
+  (field: AdditionalToggleField) => {
+    // Urgent local update: switch changes immediately
+    setLocalToggles((previous) => ({
+      ...previous,
+      [field]: !previous[field],
+    }));
+
+    // Non-urgent parent synchronization
+    startTransition(() => {
+      onToggle(field);
+    });
+  },
+  [onToggle]
+);
 
     return (
       <Box
@@ -166,8 +198,8 @@ const handleBlur = useCallback(
         }}
       >
         {SECTIONS.map((section) => {
-          const isActive =
-            toggles[section.toggleField];
+        const isActive =
+  localToggles[section.toggleField];
 
           const fields = [
             {
@@ -195,7 +227,7 @@ const handleBlur = useCallback(
                 backgroundColor: isActive
                   ? "rgba(25, 118, 210, 0.02)"
                   : "transparent",
-                transition: "all 0.2s ease",
+                transition: "background-color 0.1s ease",
               }}
             >
               <Box
@@ -219,15 +251,13 @@ const handleBlur = useCallback(
                   {section.label}
                 </Typography>
 
-                <Switch
-                  size="small"
-                  checked={isActive}
-                  onChange={() =>
-                    onToggle(
-                      section.toggleField
-                    )
-                  }
-                />
+              <Switch
+  size="small"
+  checked={isActive}
+  onChange={() =>
+    handleToggle(section.toggleField)
+  }
+/>
               </Box>
 
               <Box

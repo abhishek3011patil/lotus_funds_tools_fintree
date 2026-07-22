@@ -655,4 +655,4 @@ const closeExitDialog = useCallback(() => {
     }
 );
 
-export default memo(RecommendationsPanel);
+export default RecommendationsPanel;

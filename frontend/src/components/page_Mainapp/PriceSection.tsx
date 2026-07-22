@@ -7,6 +7,7 @@ import {
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import {
   memo,
+  useCallback,
   useEffect,
   useState,
   type ChangeEvent,
@@ -32,6 +33,15 @@ type PriceSectionProps = {
   ) => string | null;
 };
 
+const PRICE_FIELDS: Array<{
+  field: MainPriceField;
+  label: string;
+}> = [
+  { field: "entry", label: "Entry" },
+  { field: "target", label: "Target" },
+  { field: "stopLoss", label: "Stop Loss" },
+];
+
 const PriceSection = memo(
   ({
     values,
@@ -50,27 +60,22 @@ const PriceSection = memo(
       values.stopLoss,
     ]);
 
-    const handleChange =
-      (field: MainPriceField) =>
-      (event: ChangeEvent<HTMLInputElement>) => {
-        const value = event.target.value;
+ const handleChange = useCallback(
+  (
+    field: MainPriceField,
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const value = event.target.value;
 
-        if (value.includes("-")) return;
+    if (value.includes("-")) return;
 
-        setLocalValues((previous) => ({
-          ...previous,
-          [field]: value,
-        }));
-      };
-
-    const fields: Array<{
-      field: MainPriceField;
-      label: string;
-    }> = [
-      { field: "entry", label: "Entry" },
-      { field: "target", label: "Target" },
-      { field: "stopLoss", label: "Stop Loss" },
-    ];
+    setLocalValues((previous) => ({
+      ...previous,
+      [field]: value,
+    }));
+  },
+  []
+);
 
     return (
       <Box
@@ -85,7 +90,7 @@ const PriceSection = memo(
           mb: 1,
         }}
       >
-        {fields.map(({ field, label }) => {
+        {PRICE_FIELDS.map(({ field, label }) => {
           const errorMessage = getError(
             field,
             localValues
@@ -99,13 +104,19 @@ const PriceSection = memo(
               size="small"
               type="number"
               value={localValues[field]}
-              onChange={handleChange(field)}
-              onBlur={() =>
-                onCommit(
-                  field,
-                  localValues[field]
-                )
-              }
+              onChange={(event) =>
+  handleChange(field, event)
+}
+              onBlur={() => {
+                const localValue =
+                  localValues[field];
+
+                if (localValue === values[field]) {
+                  return;
+                }
+
+                onCommit(field, localValue);
+              }}
               error={
                 wasValidated &&
                 Boolean(errorMessage)
