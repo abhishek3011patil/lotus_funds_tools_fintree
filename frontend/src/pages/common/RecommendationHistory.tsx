@@ -153,7 +153,7 @@ const [customDateOpen, setCustomDateOpen] = useState(false);
         }
 
      const res = await fetch(
-  `${import.meta.env.VITE_API_URL}/api/research/performance?page=${page}&limit=10&search=${searchQuery}`,
+  `${import.meta.env.VITE_API_URL}/api/history/my?page=${page}&limit=10&search=${searchQuery}`,
   {
     headers: {
       Authorization: `Bearer ${localStorage.getItem("token")}`,

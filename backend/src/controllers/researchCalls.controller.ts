@@ -246,12 +246,26 @@ export const createResearchCall = async (
 /* =========================================================
    GET RESEARCH PERFORMANCE (GET /api/research/performance)
    ========================================================= */
-export const getResearchPerformance = async (req: AuthRequest, res: Response) => {
+export const getRecommendationHistory = async (
+  req: AuthRequest,
+  res: Response
+) => {
   try {
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 50;
+    if (!req.user?.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(
+      Math.max(Number(req.query.limit) || 50, 1),
+      100
+    );
+
     const offset = (page - 1) * limit;
-    const search = (req.query.search as string) || "";
+    const search = String(req.query.search || "").trim();
 
     const query = `
       SELECT
@@ -265,18 +279,20 @@ export const getResearchPerformance = async (req: AuthRequest, res: Response) =>
         rc.expiry_date AS expiry,
         rc.entry_price AS entry,
         rc.version_type,
-        rc.exit_price AS exit_price,
+        rc.exit_price,
         rc.status,
         NULL AS profit_loss,
         u.name AS researcher_name
       FROM research_calls rc
-      JOIN users u ON u.id = rc.ra_user_id
+      JOIN users u
+        ON u.id = rc.ra_user_id
       WHERE rc.is_latest = true
-      AND (
-        rc.display_name ILIKE $3 OR
-        rc.symbol ILIKE $3 OR
-        u.name ILIKE $3
-      )
+        AND rc.ra_user_id = $4
+        AND (
+          rc.display_name ILIKE $3
+          OR rc.symbol ILIKE $3
+          OR u.name ILIKE $3
+        )
       ORDER BY rc.created_at DESC
       LIMIT $1 OFFSET $2
     `;
@@ -285,12 +301,17 @@ export const getResearchPerformance = async (req: AuthRequest, res: Response) =>
       limit,
       offset,
       `%${search}%`,
+      req.user.id,
     ]);
 
-    res.json(rows);
+    return res.status(200).json(rows);
   } catch (err) {
-    console.error("PERFORMANCE API ERROR:", err);
-    res.status(500).json({ message: "Server error" });
+    console.error("RECOMMENDATION HISTORY API ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch recommendation history",
+    });
   }
 };
 
@@ -1315,3 +1336,133 @@ export const getRAMessageProfile = async (
   }
 };
 
+
+
+export const getMyRecommendationHistory = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const raUserId = req.user?.id;
+
+    if (!raUserId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const page = Math.max(Number(req.query.page) || 1, 1);
+
+    const limit = Math.min(
+      Math.max(Number(req.query.limit) || 10, 1),
+      100
+    );
+
+    const offset = (page - 1) * limit;
+    const search = String(req.query.search || "").trim();
+
+    const query = `
+      SELECT
+        rc.created_at AS date_time,
+
+        COALESCE(rc.action, '-') AS action,
+        COALESCE(rc.exchange_type, '-') AS exchange,
+        COALESCE(rc.call_type, '-') AS type,
+        COALESCE(rc.trade_type, '-') AS category,
+
+        COALESCE(
+          rc.display_name,
+          rc.symbol,
+          '-'
+        ) AS instrument,
+
+        COALESCE(rc.symbol, '-') AS symbol,
+
+        rc.expiry_date AS expiry,
+
+        COALESCE(
+          rc.entry_price,
+          rc.entry_price_low,
+          rc.entry_price_upper
+        ) AS entry,
+
+        rc.exit_price,
+        COALESCE(rc.status, '-') AS status,
+        rc.version_type,
+
+        CASE
+          WHEN rc.exit_price IS NULL THEN 0
+
+          WHEN UPPER(COALESCE(rc.action, '')) = 'BUY' THEN
+            rc.exit_price -
+            COALESCE(
+              rc.entry_price,
+              rc.entry_price_low,
+              rc.entry_price_upper,
+              rc.exit_price
+            )
+
+          WHEN UPPER(COALESCE(rc.action, '')) = 'SELL' THEN
+            COALESCE(
+              rc.entry_price,
+              rc.entry_price_low,
+              rc.entry_price_upper,
+              rc.exit_price
+            ) - rc.exit_price
+
+          ELSE 0
+        END AS profit_loss,
+
+        COALESCE(
+          u.name,
+          rc.display_name,
+          '-'
+        ) AS researcher_name
+
+      FROM research_calls rc
+
+      LEFT JOIN users u
+        ON u.id = rc.ra_user_id
+
+      WHERE rc.ra_user_id = $1
+        AND rc.is_latest IS TRUE
+        AND (
+          $2 = ''
+          OR COALESCE(rc.display_name, '') ILIKE $3
+          OR COALESCE(rc.symbol, '') ILIKE $3
+          OR COALESCE(rc.exchange_type, '') ILIKE $3
+          OR COALESCE(rc.call_type, '') ILIKE $3
+          OR COALESCE(rc.trade_type, '') ILIKE $3
+          OR COALESCE(rc.action, '') ILIKE $3
+          OR COALESCE(rc.status, '') ILIKE $3
+          OR COALESCE(u.name, '') ILIKE $3
+        )
+
+      ORDER BY rc.created_at DESC
+
+      LIMIT $4
+      OFFSET $5
+    `;
+
+    const { rows } = await pool.query(query, [
+      raUserId,
+      search,
+      `%${search}%`,
+      limit,
+      offset,
+    ]);
+
+    return res.status(200).json(rows);
+  } catch (error) {
+    console.error(
+      "GET MY RECOMMENDATION HISTORY ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch recommendation history",
+    });
+  }
+};

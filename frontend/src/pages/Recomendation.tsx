@@ -2417,7 +2417,25 @@ maxWidth: "100%",
             You are creating an ERRATA for Call ID: {errataSourceId}
           </Box>
         )}
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+        <Box
+  sx={{
+    display: "flex",
+    flexDirection: {
+      xs: "column", // phone
+      sm: "row",    // tablet & laptop
+    },
+    alignItems: {
+      xs: "stretch",
+      sm: "center",
+    },
+    justifyContent: "space-between",
+    gap: {
+      xs: 1,
+      sm: 0,
+    },
+    mb: 1,
+  }}
+>
 
           <Typography variant="subtitle1" fontWeight={700} sx={{ fontSize: { xs: "0.9rem", sm: "1.1rem" } }}>
             New Recommendation
@@ -2431,13 +2449,31 @@ maxWidth: "100%",
     updateField("exchangeType", value);
   }
 }}
-            sx={{
-              backgroundColor: "#eef2f7",
-              "& .MuiToggleButtonGroup-grouped": {
-                border: "none", px: 1.5, py: 0.5, fontSize: "0.7rem", fontWeight: 700,
-                "&.Mui-selected": { backgroundColor: "#4f6bed", color: "#fff" },
-              },
-            }}
+           sx={{
+  width: {
+    xs: "100%", // phone
+    sm: "auto", // tablet & laptop unchanged
+  },
+  backgroundColor: "#eef2f7",
+
+  "& .MuiToggleButtonGroup-grouped": {
+    border: "none",
+    px: 1.5,
+    py: 0.5,
+    fontSize: "0.7rem",
+    fontWeight: 700,
+
+    flex: {
+      xs: 1,      // phone: NSE and BSE take equal width
+      sm: "unset" // laptop stays exactly as it is now
+    },
+
+    "&.Mui-selected": {
+      backgroundColor: "#4f6bed",
+      color: "#fff",
+    },
+  },
+}}
           >
             <ToggleButton value="NSE">NSE</ToggleButton>
             <ToggleButton value="BSE">BSE</ToggleButton>
@@ -2446,34 +2482,106 @@ maxWidth: "100%",
 
         {/* Action & Call Type Row */}
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 1 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
-            <ToggleButtonGroup
+          <Box
+  sx={{
+    display: "flex",
+    flexDirection: {
+      xs: "column",
+      sm: "row",
+    },
+    alignItems: {
+      xs: "stretch",
+      sm: "center",
+    },
+    justifyContent: "space-between",
+    gap: 1,
+  }}
+>
+<ToggleButtonGroup
   size="small"
   exclusive
   value={form.action}
   onChange={handleActionChange}
+  sx={{
+    width: {
+      xs: "100%",
+      sm: "auto",
+    },
+
+    "& .MuiToggleButtonGroup-grouped": {
+      flex: {
+        xs: 1,
+        sm: "unset",
+      },
+    },
+  }}
 >
               <ToggleButton value="BUY" sx={{ fontWeight: 700, px: 2, fontSize: "0.7rem", ...getActionStyles(form.action, "BUY") }}>BUY</ToggleButton>
               <ToggleButton value="SELL" sx={{ fontWeight: 700, px: 2, fontSize: "0.7rem", ...getActionStyles(form.action, "SELL") }}>SELL</ToggleButton>
             </ToggleButtonGroup>
 
-            <Box sx={{ overflowX: "auto", maxWidth: "100%" }}>
+            <Box
+  sx={{
+    width: {
+      xs: "100%",
+      sm: "auto",
+    },
+    overflowX: {
+      xs: "auto",
+      sm: "visible",
+    },
+    "&::-webkit-scrollbar": {
+      display: "none",
+    },
+    scrollbarWidth: "none",
+  }}
+>
               <ToggleButtonGroup
                 size="small" exclusive value={form.callType} onChange={(_, value) => {
   if (value) {
     updateField("callType", value);
   }
 }}
-                sx={{
-                  backgroundColor: "#eef2f7",
-                  display: "flex",
-                  flexWrap: "wrap",
-                  whiteSpace: "nowrap",
-                  "& .MuiToggleButtonGroup-grouped": {
-                    border: "none", m: 0.2, px: 1, fontSize: "0.65rem", fontWeight: 700,
-                    "&.Mui-selected": { backgroundColor: "#4f6bed", color: "#fff" },
-                  },
-                }}
+              sx={{
+  backgroundColor: "#eef2f7",
+
+  display: {
+    xs: "inline-flex",
+    sm: "flex",
+  },
+
+  width: {
+    xs: "max-content",
+    sm: "auto",
+  },
+
+  whiteSpace: "nowrap",
+
+  "& .MuiToggleButtonGroup-grouped": {
+    border: "none",
+
+    flex: {
+      xs: "0 0 auto",
+      sm: 1,
+    },
+
+    minWidth: {
+      xs: 95,
+      sm: 0,
+    },
+
+    px: 1.5,
+    py: 0.8,
+
+    fontSize: "0.65rem",
+    fontWeight: 700,
+
+    "&.Mui-selected": {
+      backgroundColor: "#4f6bed",
+      color: "#fff",
+    },
+  },
+}}
               >
                 <ToggleButton value="Cash">CASH</ToggleButton>
                 <ToggleButton value="Futures">FUTURES</ToggleButton>
@@ -2502,38 +2610,62 @@ maxWidth: "100%",
     updateField("exchange", value);
   }
 }}
-            sx={{
-              backgroundColor: "#eef2f7",
-              "& .MuiToggleButtonGroup-grouped": {
-                border: "none",
-                px: 1.5,
-                fontSize: "0.65rem",
-                fontWeight: 700,
-                color: "#6b7280",
-                "&.Mui-selected": {
-                  backgroundColor: "#4f6bed",
-                  color: "#fff",
-                  "&:hover": {
-                    backgroundColor: "#3b51c5",
-                  },
-                },
-              },
-            }}
+sx={{
+  width: {
+    xs: "100%",
+    md: "auto",
+  },
+
+  backgroundColor: "#eef2f7",
+
+  "& .MuiToggleButtonGroup-grouped": {
+    border: "none",
+
+    flex: {
+      xs: 1,
+      md: "unset",
+    },
+
+    px: 1.5,
+    py: 0.8,
+
+    fontSize: "0.65rem",
+    fontWeight: 700,
+    color: "#6b7280",
+
+    "&.Mui-selected": {
+      backgroundColor: "#4f6bed",
+      color: "#fff",
+
+      "&:hover": {
+        backgroundColor: "#3b51c5",
+      },
+    },
+  },
+}}
           >
             <ToggleButton value="STOCK">STOCK</ToggleButton>
             <ToggleButton value="INDEX">INDEX</ToggleButton>
           </ToggleButtonGroup>
 
           {/* TRADE TYPE GROUP */}
-          <Box sx={{     width: { xs: "100%", md: "auto" },
-    overflowX: { xs: "auto", md: "visible" },
-    overflowY: "hidden",
-    WebkitOverflowScrolling: "touch",
+          <Box sx={{
+  width: {
+    xs: "100%",
+    md: "auto",
+  },
 
-    "&::-webkit-scrollbar": {
-      display: "none",
-    },
-    scrollbarWidth: "none", }}>
+  overflowX: {
+    xs: "auto",
+    md: "visible",
+  },
+
+  "&::-webkit-scrollbar": {
+    display: "none",
+  },
+
+  scrollbarWidth: "none",
+}}>
             <ToggleButtonGroup
               size="small"
               exclusive
@@ -2544,27 +2676,55 @@ maxWidth: "100%",
   }
 }}
               sx={{
-                backgroundColor: "#eef2f7",
-                whiteSpace: "nowrap",
-                "& .MuiToggleButtonGroup-grouped": {
-                  border: "none",
-                  px: 1,
-                  fontSize: "0.65rem",
-                  fontWeight: 700,
-                  color: "#6b7280",
-                  "&.Mui-selected": {
-                    backgroundColor: "#4f6bed",
-                    color: "#fff",
-                    "&:hover": {
-                      backgroundColor: "#3b51c5",
-                    },
-                  },
-                  "&.Mui-disabled": {
-                    color: "#9ca3af",
-                    backgroundColor: "#e5e7eb",
-                  },
-                },
-              }}
+  backgroundColor: "#eef2f7",
+
+  display: {
+    xs: "inline-flex",
+    md: "flex",
+  },
+
+  width: {
+    xs: "max-content",
+    md: "100%",
+  },
+
+  borderRadius: 1.5,
+
+  "& .MuiToggleButtonGroup-grouped": {
+    border: "none",
+
+    flex: {
+      xs: "0 0 auto",
+      md: 1,
+    },
+
+    minWidth: {
+      xs: 95,
+      md: 0,
+    },
+
+    px: 2,
+    py: 0.8,
+
+    fontSize: {
+      xs: "0.68rem",
+      md: "0.7rem",
+    },
+
+    fontWeight: 700,
+    whiteSpace: "nowrap",
+    color: "#6b7280",
+
+    "&.Mui-selected": {
+      backgroundColor: "#4f6bed",
+      color: "#fff",
+
+      "&:hover": {
+        backgroundColor: "#3b51c5",
+      },
+    },
+  },
+}}
             >
               <ToggleButton value="Intraday">Intraday</ToggleButton>
              <ToggleButton
@@ -2977,20 +3137,32 @@ sx={{
           </Box>
         </Box>
 
-        <Box
-          sx={{
-            display: "flex",
-            gap: 2,
-            mt: 2,
-            justifyContent: "flex-start", // change to "space-between" if needed
-          }}
-        >
+      <Box
+  sx={{
+    display: "flex",
+    flexDirection: {
+      xs: "column", // Phone
+      sm: "row",    // Tablet & Laptop
+    },
+    gap: 1.5,
+    mt: 2,
+    width: "100%",
+    justifyContent: "flex-start",
+  }}
+>
    <Button
   type="button"
   disabled={isSubmitting}
   variant="contained"
   onClick={validateAndPublish}
-  sx={{ fontWeight: 700, px: 4 }}
+ sx={{
+  fontWeight: 700,
+  px: 4,
+  width: {
+    xs: "100%",
+    sm: "auto",
+  },
+}}
 >
   {isSubmitting
     ? isErrataMode
@@ -3001,22 +3173,33 @@ sx={{
       : "Publish Call"}
 </Button>
 
-         <Button
+<Button
   type="button"
- disabled={isSubmitting || isErrataMode}
-    variant="outlined"
+  disabled={isSubmitting || isErrataMode}
+  variant="outlined"
   onClick={validateAndTrack}
-  
+  sx={{
+    width: {
+      xs: "100%",
+      sm: "auto",
+    },
+  }}
 >
   {isSubmitting ? "Saving Draft..." : "Track"}
 </Button>
 
 
- <Button
+<Button
   type="button"
   variant="outlined"
   disabled={isSubmitting}
   onClick={resetForm}
+  sx={{
+    width: {
+      xs: "100%",
+      sm: "auto",
+    },
+  }}
 >
   Reset
 </Button>

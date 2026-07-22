@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createErrata, createResearchCall, getCallVersionHistory, getRAMessageProfile, getResearchPerformance } from "../controllers/researchCalls.controller";
+import { createErrata, createResearchCall, getCallVersionHistory, getMyRecommendationHistory, getRAMessageProfile } from "../controllers/researchCalls.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 import {
     getResearchCalls,
@@ -24,7 +24,7 @@ router.get(
 
 router.get("/research/calls/published", authenticate, getPublishedCalls);
 router.patch("/research/calls/:id/exit", authenticate, exitResearchCall);
-router.get("/research/performance", authenticate, getResearchPerformance);
+//outer.get("/research/performance", authenticate, getResearchPerformance);
 
 
 
@@ -42,6 +42,13 @@ router.get("/test", (req, res) => {
     console.log("TEST ROUTE HIT");
     res.json({ ok: true });
 });
+
+
+router.get(
+  "/history/my",
+  authenticate,
+  getMyRecommendationHistory
+);
 
 
 router.get(
