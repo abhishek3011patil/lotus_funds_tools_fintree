@@ -399,96 +399,78 @@ const closeExitDialog = useCallback(() => {
                                                             py: 1.5,
                                                         }}
                                                     >
-                                                        <Box
-                                                            sx={{
-                                                                display: "flex",
-                                                                flexDirection:
-                                                                    "column",
-                                                                gap: 0.5,
-                                                            }}
-                                                        >
-                                                            <Button
-                                                                size="small"
-                                                                onClick={() =>
-                                                                    onModify(
-                                                                        item
-                                                                    )
-                                                                }
-                                                                sx={{
-                                                                    fontSize:
-                                                                        "0.6rem",
-                                                                    textTransform:
-                                                                        "none",
-                                                                    color:
-                                                                        "#757575",
-                                                                    minWidth:
-                                                                        "auto",
-                                                                    p: 0,
-                                                                    justifyContent:
-                                                                        "flex-end",
-                                                                    "&:hover":
-                                                                        {
-                                                                            backgroundColor:
-                                                                                "transparent",
-                                                                            textDecoration:
-                                                                                "underline",
-                                                                        },
-                                                                }}
-                                                            >
-                                                                Modify/Errata
-                                                            </Button>
-
-                                                            <Button
-  size="small"
-  onClick={() => {
-    console.log("BUTTON CLICKED", item);
-    onViewHistory(item);
-  }}
+                                                      <Box
   sx={{
-    fontSize: "0.6rem",
-    textTransform: "none",
-    color: "#1976d2",
-    minWidth: "auto",
-    p: 0,
-    justifyContent: "flex-end",
-    "&:hover": {
-      backgroundColor: "transparent",
-      textDecoration: "underline",
-    },
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-end",
+    gap: 0.6,
   }}
 >
-  Version History
-</Button>
+  <Button
+    size="small"
+    onClick={() => onModify(item)}
+    sx={{
+      fontSize: "0.72rem",
+      fontWeight: 700,
+      textTransform: "none",
+      color: "#f57c00",
+      minWidth: 100,
+      p: 0,
+      justifyContent: "flex-end",
+      lineHeight: 1.3,
+      "&:hover": {
+        backgroundColor: "transparent",
+        color: "#ef6c00",
+        textDecoration: "underline",
+      },
+    }}
+  >
+    Modify/Errata
+  </Button>
 
-                                                            <Button
-                                                                size="small"
-                                                              onClick={() => openExitDialog(item)}
-                                                                sx={{
-                                                                    fontSize:
-                                                                        "0.65rem",
-                                                                    textTransform:
-                                                                        "none",
-                                                                    color:
-                                                                        "#6200ea",
-                                                                    fontWeight: 800,
-                                                                    minWidth:
-                                                                        "auto",
-                                                                    p: 0,
-                                                                    justifyContent:
-                                                                        "flex-end",
-                                                                    "&:hover":
-                                                                        {
-                                                                            backgroundColor:
-                                                                                "transparent",
-                                                                            color:
-                                                                                "#4500a0",
-                                                                        },
-                                                                }}
-                                                            >
-                                                                Exit
-                                                            </Button>
-                                                            
-                                                        </Box>
+  <Button
+    size="small"
+    onClick={() => onViewHistory(item)}
+    sx={{
+      fontSize: "0.72rem",
+      fontWeight: 700,
+      textTransform: "none",
+      color: "#1976d2",
+      minWidth: 100,
+      p: 0,
+      justifyContent: "flex-end",
+      lineHeight: 1.3,
+      "&:hover": {
+        backgroundColor: "transparent",
+        textDecoration: "underline",
+      },
+    }}
+  >
+    Version History
+  </Button>
+
+  <Button
+    size="small"
+    onClick={() => openExitDialog(item)}
+    sx={{
+      fontSize: "0.72rem",
+      fontWeight: 700,
+      textTransform: "none",
+      color: "#6200ea",
+      minWidth: 100,
+      p: 0,
+      justifyContent: "flex-end",
+      lineHeight: 1.3,
+      "&:hover": {
+        backgroundColor: "transparent",
+        color: "#4500a0",
+      },
+    }}
+  >
+    Exit
+  </Button>
+</Box>
                                                     </TableCell>
                                                 </TableRow>
                                             );

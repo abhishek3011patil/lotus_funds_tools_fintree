@@ -1166,7 +1166,7 @@ https://lotusfunds.com/disclaimer&disclosure
 );
 
 
-const handleViewHistory = async (item: any) => {
+const handleViewHistory = useCallback(async (item: any) => {
   try {
     const token = localStorage.getItem("token");
 
@@ -1188,8 +1188,6 @@ const handleViewHistory = async (item: any) => {
       }
     );
 
-    console.log("VERSION HISTORY:", res.data);
-
     setVersionHistory(res.data?.versions || []);
   } catch (err: any) {
     console.error(
@@ -1206,7 +1204,7 @@ const handleViewHistory = async (item: any) => {
   } finally {
     setHistoryLoading(false);
   }
-};
+}, []);
 
 
       const handleActionChange = useCallback(
@@ -2269,17 +2267,14 @@ const commitAdditionalPrice = useCallback(
     field: AdditionalPriceField,
     value: string
   ) => {
-    startTransition(() => {
-      dispatch({
-        type: "SET_FIELD",
-        field,
-        value,
-      });
+    dispatch({
+      type: "SET_FIELD",
+      field,
+      value,
     });
   },
   []
 );
-
 const toggleAdditionalSection = useCallback(
   (field: AdditionalToggleField) => {
     const nextValue =
@@ -2907,23 +2902,40 @@ sx={{
 
         {/* Remarks & Upload */}
         <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1.5, mb: 2 }}>
-         <RemarksField
-  value={form.remark}
-  onCommit={commitRemark}
-/>
-{isErrataMode && (
-  <Typography
-    sx={{
-      fontSize: "0.65rem",
-      color: "text.secondary",
-      mt: 0.5,
-    }}
-  >
-    This remark is required and will be saved as the Errata reason.
-  </Typography>
-)}
+        <Box
+  sx={{
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    minWidth: 0,
+  }}
+>
+  <RemarksField
+    value={form.remark}
+    onCommit={commitRemark}
+  />
 
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: { xs: "100%", sm: 160 } }}>
+  {isErrataMode && (
+    <Typography
+      sx={{
+        fontSize: "0.65rem",
+        color: "text.secondary",
+        mt: 0.5,
+      }}
+    >
+      This remark is required and will be saved as the Errata reason.
+    </Typography>
+  )}
+</Box>
+
+<Box
+  sx={{
+    display: "flex",
+    flexDirection: "column",
+    gap: 1,
+    minWidth: { xs: "100%", sm: 180 },
+  }}
+>
             <input
               required
               type="file"
