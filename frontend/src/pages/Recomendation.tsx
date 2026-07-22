@@ -15,15 +15,37 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Typography,
-  InputAdornment, 
-  Tooltip
+   Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Chip,
+  Divider,
+  CircularProgress,
+ 
 } from "@mui/material";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+
 import RecommendationsPanel from "../components/page_Mainapp/RecommendationsPanel";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
-import { useRef, useState, useEffect, useMemo, useCallback, useReducer } from "react";
+
+import AdditionalPriceSection, {
+  type AdditionalPriceField,
+  type AdditionalToggleField,
+} from "../components/page_Mainapp/AdditionalPriceSection";
+
+import {
+  useRef,
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useReducer,
+  startTransition,
+  type ChangeEvent,
+  type MouseEvent,
+} from "react";
 import { FormHelperText } from "@mui/material";
-import { startTransition } from "react";
+
 import { useExpiryDates } from "../hooks/useExpiryDates";
 import { useStockAutocomplete } from "../hooks/useStockAutocomplete";
 import {
@@ -31,13 +53,18 @@ import {
   getRecentStudies,
 } from "../assets/UnderlyingStudy";
 import type { StudyOption } from "../assets/UnderlyingStudy";
+import PriceSection, {
+  type MainPriceField,
+} from "../components/page_Mainapp/PriceSection";
 import axios from "axios";
-import React from "react";
+import RemarksField from "../components/page_Mainapp/RemarksField";
+
+
 const BUY_COLOR = "#22c55e";
 const SELL_COLOR = "#ef4444";
 
 
-const MemoRecommendationsPanel = React.memo(RecommendationsPanel);
+
 
 
 const getActionStyles = (current: "BUY" | "SELL", button: "BUY" | "SELL") => {
@@ -52,13 +79,7 @@ const getActionStyles = (current: "BUY" | "SELL", button: "BUY" | "SELL") => {
     },
   };
 };
-const rootGridSx = {
-  display: "grid",
-  gridTemplateColumns: "3fr 1.5fr",
-  gap: 2,
-  height: "auto",
-  boxSizing: "border-box",
-};
+
 
 const FLAT_STUDY_OPTIONS = UNDERLYING_STUDIES.flatMap((g) =>
   g.options.map((opt) => ({
@@ -142,16 +163,17 @@ const fetchRAMessageProfile = async () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 const [isSubmitting, setIsSubmitting] = useState(false);
 
+const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+const [versionHistory, setVersionHistory] = useState<any[]>([]);
+const [historyLoading, setHistoryLoading] = useState(false);
+
+
 const submittingRef = useRef(false);
 
-  const transparentInputSx = {
-    backgroundColor: "transparent",
-    "& .MuiOutlinedInput-notchedOutline": { borderColor: "#b6c3b6" },
-    "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#9fb19f" },
-    "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#6fa66f" },
-  };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+const handleFileChange = (
+  event: ChangeEvent<HTMLInputElement>
+) =>  {
   const file = event.target.files?.[0];
   if (file) {
     setSelectedFile(file);   // ✅ store it
@@ -260,29 +282,14 @@ const submittingRef = useRef(false);
   }
 };
 
-  const getRAIdFromToken = () => {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) return null;
 
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.id; // ✅ THIS is your RA ID
-  } catch {
-    return null;
-  }
-};
-
-
-
-  const handleSubmit = async () => {
-
-      if (submittingRef.current) return;
+const handleSubmit = async () => {
+  if (submittingRef.current) return;
 
   submittingRef.current = true;
   setIsSubmitting(true);
+
   try {
-    
-    
     const token = localStorage.getItem("token");
 
     if (!token) {
@@ -291,106 +298,307 @@ const submittingRef = useRef(false);
     }
 
     if (!raDetails) {
-  alert("RA profile details are still loading. Please try again.");
-  return;
-}
+      alert("RA profile details are still loading. Please try again.");
+      return;
+    }
 
     const finalDisplayName =
       suggestion &&
-      suggestion.toLowerCase().startsWith(inputValue.toLowerCase())
-        ? suggestion
-        : inputValue;
+      suggestion
+        .toLowerCase()
+        .startsWith(inputValue.trim().toLowerCase())
+        ? suggestion.trim()
+        : inputValue.trim();
 
-         const formatExpiry = (date: string) => {
-  const d = new Date(date);
+    if (!finalDisplayName) {
+      alert("Stock name is required");
+      return;
+    }
 
-  const day = d.getDate();
-  const suffix =
-    day % 10 === 1 && day !== 11
-      ? "st"
-      : day % 10 === 2 && day !== 12
-      ? "nd"
-      : day % 10 === 3 && day !== 13
-      ? "rd"
-      : "th";
+    const formatExpiry = (date: string) => {
+      const d = new Date(date);
+      const day = d.getDate();
 
-  return `${day}${suffix} ${d.toLocaleString("en-IN", {
-    month: "long",
-    year: "numeric",
-  })}`;
-};
+      const suffix =
+        day % 10 === 1 && day !== 11
+          ? "st"
+          : day % 10 === 2 && day !== 12
+            ? "nd"
+            : day % 10 === 3 && day !== 13
+              ? "rd"
+              : "th";
 
-const now = new Date();
+      return `${day}${suffix} ${d.toLocaleString("en-IN", {
+        month: "long",
+        year: "numeric",
+      })}`;
+    };
 
-const raFullName = [
-  raDetails?.salutation,
-  raDetails?.first_name,
-  raDetails?.middle_name,
-  raDetails?.surname,
-]
-  .filter(Boolean)
-  .join(" ");
+    const raFullName = [
+      raDetails?.salutation,
+      raDetails?.first_name,
+      raDetails?.middle_name,
+      raDetails?.surname,
+    ]
+      .filter(Boolean)
+      .join(" ");
 
-const disclaimer =
-  raDetails?.additional_comments ||
-  "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
+    const disclaimer =
+      raDetails?.additional_comments ||
+      "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
 
+    /*
+     * =========================================================
+     * ERRATA FLOW
+     * =========================================================
+     */
+    if (isErrataMode) {
+      if (!errataSourceId) {
+        alert("Original research call ID is missing");
+        return;
+      }
 
+      const trimmedRemark = form.remark.trim();
 
-const publishMessage = `
-Published On : ${now.toLocaleString("en-IN", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  second: "2-digit",
-  hour12: true,
-})}
+      if (!trimmedRemark) {
+        alert("Research Analyst Remark is required for Errata");
+        return;
+      }
 
-${form.action} ${form.exchange} ${form.callType} Expiry: ${
-  form.expiry ? formatExpiry(form.expiry) : "N/A"
-}
+      const updates = {
+        entry_price: form.entry || undefined,
+
+        entry_price_low: form.rangeEnabled
+          ? form.entryLow || undefined
+          : undefined,
+
+        entry_price_upper: form.rangeEnabled
+          ? form.entryUpper || undefined
+          : undefined,
+
+        target_price: form.target || undefined,
+
+        target_price_2: form.secondaryTargetEnabled
+          ? form.target2 || undefined
+          : undefined,
+
+        target_price_3: form.secondaryTargetEnabled
+          ? form.target3 || undefined
+          : undefined,
+
+        stop_loss: form.stopLoss || undefined,
+
+        stop_loss_2: form.stopLoss2Enabled
+          ? form.stopLoss2 || undefined
+          : undefined,
+
+        stop_loss_3: form.stopLoss2Enabled
+          ? form.stopLoss3 || undefined
+          : undefined,
+
+        holding_period: form.holdingPeriod || undefined,
+        rationale: form.rationale || undefined,
+
+        underlying_study:
+          form.underlyingStudy
+            .map((study) => study.label)
+            .join(", ") || undefined,
+
+        research_remarks: trimmedRemark,
+      };
+
+      const errataMessage = `
+ERRATA / CORRECTION
+
+Published On: ${new Date().toLocaleString("en-IN", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      })}
 
 Stock Name: ${finalDisplayName}
 
-Call Type  :${form.tradeType}
+${form.action} ${form.exchange} ${form.callType} Expiry: ${
+        form.expiry ? formatExpiry(form.expiry) : "N/A"
+      }
 
-Entry  : ${
-  form.rangeEnabled
-    ? `${form.entryLow} - ${form.entryUpper}`
-    : form.entry
-}
+Call Type: ${form.tradeType}
 
-Target  : ${form.target}${
-  form.secondaryTargetEnabled
-    ? `
-T2  : ${form.target2}
-T3  : ${form.target3}`
-    : ""
-}
+Entry: ${
+        form.rangeEnabled
+          ? `${form.entryLow} - ${form.entryUpper}`
+          : form.entry
+      }
 
-SL  : ${form.stopLoss}${
-  form.stopLoss2Enabled
-    ? `
-SL 2  : ${form.stopLoss2}
-SL 3  : ${form.stopLoss3}`
-    : ""
-}
+Target: ${form.target}${
+        form.secondaryTargetEnabled
+          ? `
+T2: ${form.target2}
+T3: ${form.target3}`
+          : ""
+      }
+
+SL: ${form.stopLoss}${
+        form.stopLoss2Enabled
+          ? `
+SL 2: ${form.stopLoss2}
+SL 3: ${form.stopLoss3}`
+          : ""
+      }
+
+Reason:
+${trimmedRemark}
+
+DISCLAIMER CUM DISCLOSURE:
+
+${disclaimer}
+
+Research Analyst: ${raFullName || "N/A"} (${
+        raDetails?.org_name || "N/A"
+      })
+SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
+Contact No: ${raDetails?.mobile || "N/A"}
+Email ID: ${raDetails?.email || "N/A"}
+
+Read Full Disclaimer / Disclosure at:
+https://lotusfunds.com/disclaimer&disclosure
+`.trim();
+
+      const errataResponse = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/research/calls/errata`,
+        {
+          call_id: errataSourceId,
+          updates,
+          errata_reason: trimmedRemark,
+          message_text: errataMessage,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log("ERRATA API RESPONSE:", errataResponse.data);
+
+      try {
+        const telegramStatus = await axios.get(
+          `${import.meta.env.VITE_API_URL}/api/telegram/status`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!telegramStatus.data?.connected) {
+          alert("Errata created, but Telegram is not connected");
+
+          await fetchRecommendations();
+          resetForm();
+          return;
+        }
+
+        await axios.post(
+          `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
+          {
+            message: errataMessage,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        alert("Errata Created ✅");
+      } catch (telegramError: any) {
+        console.error(
+          "ERRATA TELEGRAM ERROR:",
+          telegramError?.response?.data || telegramError
+        );
+
+        alert("Errata created, but Telegram sending failed");
+      }
+
+      await fetchRecommendations();
+      resetForm();
+
+      return;
+    }
+
+    /*
+     * =========================================================
+     * NORMAL PUBLISH FLOW
+     * =========================================================
+     */
+
+    const publishMessage = `
+Published On: ${new Date().toLocaleString("en-IN", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    })}
+
+${form.action} ${form.exchange} ${form.callType} Expiry: ${
+      form.expiry ? formatExpiry(form.expiry) : "N/A"
+    }
+
+Stock Name: ${finalDisplayName}
+
+Call Type: ${form.tradeType}
+
+Entry: ${
+      form.rangeEnabled
+        ? `${form.entryLow} - ${form.entryUpper}`
+        : form.entry
+    }
+
+Target: ${form.target}${
+      form.secondaryTargetEnabled
+        ? `
+T2: ${form.target2}
+T3: ${form.target3}`
+        : ""
+    }
+
+SL: ${form.stopLoss}${
+      form.stopLoss2Enabled
+        ? `
+SL 2: ${form.stopLoss2}
+SL 3: ${form.stopLoss3}`
+        : ""
+    }
 
 Holding Period: ${form.holdingPeriod || "N/A"}
 
 Rationale: ${form.rationale}
+
 Underlying Study: ${
-  form.underlyingStudy.map((s) => s.label).join(", ") || "N/A"
-}
+      form.underlyingStudy
+        .map((study) => study.label)
+        .join(", ") || "N/A"
+    }
+
 Remarks: ${form.remark || "N/A"}
 
 DISCLAIMER CUM DISCLOSURE:
 
 ${disclaimer}
 
-Research Analyst: ${raFullName || "N/A"} (${raDetails?.org_name || "N/A"})
+Research Analyst: ${raFullName || "N/A"} (${
+      raDetails?.org_name || "N/A"
+    })
 SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
 Contact No: ${raDetails?.mobile || "N/A"}
 Email ID: ${raDetails?.email || "N/A"}
@@ -399,295 +607,158 @@ Read Full Disclaimer / Disclosure at:
 https://lotusfunds.com/disclaimer&disclosure
 `.trim();
 
+    const payload = {
+      status: "PUBLISHED",
+      message_text: publishMessage,
 
+      exchange_type: form.exchangeType,
+      market_type: form.exchange,
 
-    // 🔹 Base payload (same as before)
- const payload = {
-  status: "PUBLISHED",
-  message_text: publishMessage,
+      symbol:
+        form.symbol && form.symbol !== "SYM"
+          ? form.symbol
+          : finalDisplayName.slice(0, 30),
 
-  exchange_type: form.exchangeType,
-  market_type: form.exchange,
-  symbol: "SYM",
-  display_name: finalDisplayName,
-  action: form.action,
-  call_type: form.callType,
-  trade_type: form.tradeType,
-  expiry_date: form.expiry || null,
-  entry_price: form.entry || null,
-  entry_price_low: form.entryLow || null,
-  entry_price_upper: form.entryUpper || null,
-  target_price: form.target || null,
-  target_price_2: form.target2 || null,
-  target_price_3: form.target3 || null,
-  stop_loss: form.stopLoss || null,
-  stop_loss_2: form.stopLoss2 || null,
-  stop_loss_3: form.stopLoss3 || null,
+      display_name: finalDisplayName,
+      action: form.action,
+      call_type: form.callType,
+      trade_type: form.tradeType,
+      expiry_date: form.expiry || null,
 
-  // Fix this field name:
-  holding_period: form.holdingPeriod || null,
+      entry_price: form.entry || null,
 
-  rationale: form.rationale,
-  underlying_study:
-    form.underlyingStudy.map((s) => s.label).join(", ") || null,
-  is_algo: false,
-  has_vested_interest: false,
-  research_remarks: form.remark || undefined,
-};
-    let res;
+      entry_price_low: form.rangeEnabled
+        ? form.entryLow || null
+        : null,
 
-    // =========================================================
-    // ✅ ERRATA FLOW (NO FILE HERE)
-    // =========================================================
-   if (isErrataMode && errataSourceId) {
-  const updates = {
-    entry_price: form.entry || undefined,
-    target_price: form.target || undefined,
-    stop_loss: form.stopLoss || undefined,
-    target_price_2: form.target2 || undefined,
-    target_price_3: form.target3 || undefined,
-    stop_loss_2: form.stopLoss2 || undefined,
-    stop_loss_3: form.stopLoss3 || undefined,
-    entry_price_low: form.entryLow || undefined,
-    entry_price_upper: form.entryUpper || undefined,
-    holding_period: form.holdingPeriod || undefined,
-    rationale: form.rationale || undefined,
-    underlying_study: form.underlyingStudy.map((s) => s.label).join(", ") || "N/A",
-    research_remarks: form.remark || undefined,
-  };
+      entry_price_upper: form.rangeEnabled
+        ? form.entryUpper || null
+        : null,
 
+      target_price: form.target || null,
 
+      target_price_2: form.secondaryTargetEnabled
+        ? form.target2 || null
+        : null,
 
-  const errataMessage = `
-ERRATA / CORRECTION
+      target_price_3: form.secondaryTargetEnabled
+        ? form.target3 || null
+        : null,
 
-Published On : ${new Date().toLocaleString("en-IN", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  second: "2-digit",
-  hour12: true,
-})}
+      stop_loss: form.stopLoss || null,
 
-Stock Name: ${finalDisplayName}
+      stop_loss_2: form.stopLoss2Enabled
+        ? form.stopLoss2 || null
+        : null,
 
-${form.action} ${form.exchange} ${form.callType} Expiry: ${form.expiry ? formatExpiry(form.expiry) : "N/A"}
+      stop_loss_3: form.stopLoss2Enabled
+        ? form.stopLoss3 || null
+        : null,
 
-Call Type  :${form.tradeType} 
+      holding_period: form.holdingPeriod || null,
+      rationale: form.rationale || null,
 
-Entry  : ${
-  form.rangeEnabled
-    ? `${form.entryLow} - ${form.entryUpper}`
-    : form.entry
-}
+      underlying_study:
+        form.underlyingStudy
+          .map((study) => study.label)
+          .join(", ") || null,
 
-Target  : ${form.target}${
-  form.secondaryTargetEnabled
-    ? `
-T2  : ${form.target2}
-T3  : ${form.target3}`
-    : ""
-}
+      is_algo: false,
+      has_vested_interest: false,
+      research_remarks: form.remark.trim() || null,
+    };
 
-SL  : ${form.stopLoss}${
-  form.stopLoss2Enabled
-    ? `
-SL 2  : ${form.stopLoss2}
-SL 3  : ${form.stopLoss3}`
-    : ""
-}
+    const formData = new FormData();
 
-Reason:
-${form.remark || "Correction issued by Research Analyst"}
-
-DISCLAIMER CUM DISCLOSURE:
-
-${disclaimer}
-
-Research Analyst: ${raFullName || "N/A"} (${raDetails?.org_name || "N/A"})
-SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
-Contact No: ${raDetails?.mobile || "N/A"}
-Email ID: ${raDetails?.email || "N/A"}
-
-Read Full Disclaimer / Disclosure at:
-https://lotusfunds.com/disclaimer&disclosure
-`.trim();
-
-  res = await axios.post(
-    import.meta.env.VITE_API_URL + "/api/research/calls/errata",
-    {
-      call_id: errataSourceId,
-      updates,
-         message_text: errataMessage,
-    },
-    {
-      headers: { Authorization: `Bearer ${token}` },
+    if (selectedFile) {
+      formData.append("file", selectedFile);
     }
-  );
 
-  
-
-  console.log("ERRATA TELEGRAM MESSAGE:", errataMessage);
-
-  const telegramStatus = await axios.get(
-  `${import.meta.env.VITE_API_URL}/api/telegram/status`,
-  {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  }
-);
-
-if (!telegramStatus.data.connected) {
-  alert("Errata created, but Telegram is not connected");
-  await fetchRecommendations();
-  resetForm();
-  return;
-}
- console.log("ERRATA TELEGRAM V2");
-  await axios.post(
-    `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
-    {
-      message: errataMessage,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
-  alert("Errata Created ✅");
-
-await fetchRecommendations();
-resetForm();
-
-return;
-}
-
-    // =========================================================
-    // ✅ NORMAL CREATE (WITH FILE)
-    // =========================================================
-    else {
-      const formData = new FormData();
-
-      // 🔹 attach file
-      if (selectedFile) {
-        formData.append("file", selectedFile);
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        formData.append(key, String(value));
       }
+    });
 
-      // 🔹 attach all fields
-      Object.entries(payload).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) {
-          formData.append(key, value as any);
-        }
-      });
+    await axios.post(
+      `${import.meta.env.VITE_API_URL}/api/research/calls`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
 
-      res = await axios.post(
-        import.meta.env.VITE_API_URL + "/api/research/calls",
-        formData,
+    try {
+      const telegramStatus = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/telegram/status`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
           },
         }
       );
 
-     
+      if (!telegramStatus.data?.connected) {
+        alert("Research call created, but Telegram is not connected");
 
-      // =========================================================
-      // ✅ TELEGRAM SEND (UNCHANGED)
-      // =========================================================
-try {
+        await fetchRecommendations();
+        resetForm();
+        return;
+      }
 
-  // ✅ CHECK TELEGRAM STATUS FIRST
-  const telegramStatus = await axios.get(
-    `${import.meta.env.VITE_API_URL}/api/telegram/status`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
+        {
+          message: publishMessage,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    } catch (telegramError: any) {
+      console.error(
+        "PUBLISH TELEGRAM ERROR:",
+        telegramError?.response?.data || telegramError
+      );
 
-  // ❌ IF NOT CONNECTED
- if (!telegramStatus.data.connected) {
-  alert("Research call created, but Telegram is not connected");
-  await fetchRecommendations();
-  resetForm();
-  return;
-}
+      alert("Research call created, but Telegram sending failed");
 
- 
-
- const now = new Date();
-
-
-
-
-
-
-  await axios.post(
-    `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
-   {
-    message: publishMessage,
-  },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-
-  console.log("✅ Telegram sent ONLY to this RA clients");
-
-} catch (telegramErr: any) {
-  console.error(
-    "⚠️ Telegram failed:",
-    telegramErr?.response?.data || telegramErr?.message
-  );
-}
+      await fetchRecommendations();
+      resetForm();
+      return;
     }
 
-    // =========================================================
-    // ✅ REFRESH + RESET
-    // =========================================================
-    
     await fetchRecommendations();
     resetForm();
-     alert("Research Call Created ✅");
 
+    alert("Research Call Created ✅");
   } catch (err: any) {
-    console.error(err);
-    alert(err?.response?.data?.message || "Error submitting call");
+    console.error(
+      "SUBMIT ERROR:",
+      err?.response?.data || err
+    );
+
+    alert(
+      err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        "Error submitting call"
+    );
+  } finally {
+    submittingRef.current = false;
+    setIsSubmitting(false);
   }
-finally {
-  submittingRef.current = false;
-  setIsSubmitting(false);
-}
 };
 
-  const handleToggle = useCallback(
-    (field: keyof RecommendationForm) => {
-      dispatch({ type: "SET_FIELD", field, value: !form[field] });
-    },
-    [form]
-  );
 
-  const handlePriceChange = useCallback(
-    (field: keyof RecommendationForm) =>
-      (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
-        if (val.includes("-")) return;
 
-        dispatch({ type: "SET_FIELD", field, value: val });
-      },
-    []
-  );
+
+
 
   // hooks 
   const expiryDates = useExpiryDates(
@@ -840,35 +911,326 @@ finally {
 
   }, []);
 
+
+  const formatIndianDateTime = (
+    value: string | Date
+  ) => {
+    const date = new Date(value);
+  
+    if (Number.isNaN(date.getTime())) {
+      return "N/A";
+    }
+  
+    return date.toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+  };
+  
+  const formatExpiryDate = (
+    value?: string | null
+  ) => {
+    if (!value) return "N/A";
+  
+    const date = new Date(value);
+  
+    if (Number.isNaN(date.getTime())) {
+      return "N/A";
+    }
+  
+    return date.toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
   // 1. EXIT FUNCTION (Removes the item from the list)
-  const handleExit = useCallback(async (id: string) => {
-    if (!window.confirm("Are you sure you want to exit this recommendation?")) {
+
+const handleExit = useCallback(
+  async (
+    item: any,
+    exitPrice: number,
+    exitRemark: string
+  ) => {
+     const token = localStorage.getItem("token");
+
+  if (!token) {
+    throw new Error("Please login again");
+  }
+
+  if (!raDetails) {
+    throw new Error("RA message profile is still loading");
+  }
+
+  if (!Number.isFinite(exitPrice) || exitPrice <= 0) {
+    throw new Error("Please enter a valid exit price");
+  }
+
+  const trimmedExitRemark = exitRemark.trim();
+
+  if (!trimmedExitRemark) {
+    throw new Error("Exit remark is required");
+  }
+
+  const entryPrice = Number(
+    item.entry?.ideal ??
+      item.entry_price ??
+      item.entry?.low ??
+      item.entry_price_low
+  );
+
+  if (!Number.isFinite(entryPrice) || entryPrice <= 0) {
+    throw new Error("Original entry price is not available");
+  }
+
+  const action = String(item.action || "").toUpperCase();
+
+  if (action !== "BUY" && action !== "SELL") {
+    throw new Error("Invalid recommendation action");
+  }
+
+  const pnl =
+    action === "SELL"
+      ? entryPrice - exitPrice
+      : exitPrice - entryPrice;
+
+
+  const formattedPnl =
+    pnl > 0
+      ? `Profit ${pnl.toFixed(2)}`
+      : pnl < 0
+        ? `Loss ${Math.abs(pnl).toFixed(2)}`
+        : "No Profit / No Loss";
+
+  const stockName =
+    item.display_name ||
+    item.name ||
+    item.symbol ||
+    "N/A";
+
+  const marketType =
+    item.instrument ||
+    item.market_type ||
+    "STOCK";
+
+  const callType = item.call_type || "Cash";
+
+  const disclaimer =
+    item.disclaimer_snapshot ||
+    raDetails.additional_comments ||
+    "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
+
+  const raFullName =
+    raDetails.full_name ||
+    [
+      raDetails.salutation,
+      raDetails.first_name,
+      raDetails.middle_name,
+      raDetails.surname,
+    ]
+      .filter(Boolean)
+      .join(" ") ||
+    "N/A";
+
+  const organizationName =
+    raDetails.org_name || "Lotus Funds";
+
+
+
+const exitHeader 
+  = "EXIT Recommendation";
+
+  const exitMessage = `
+  ${exitHeader}
+Exit Message Published On : ${formatIndianDateTime(new Date())}
+
+EXIT ${marketType} ${callType} Expiry: ${formatExpiryDate(
+  item.expiry_date
+)}
+
+Stock Name: ${stockName}
+
+Call Type : Exit
+
+Exit Price : ${exitPrice}
+
+Entry Price : ${entryPrice}
+
+PnL : ${formattedPnl}
+
+Recommendation Published On : ${formatIndianDateTime(
+    item.created_at
+  )}
+
+Remarks: ${trimmedExitRemark}
+
+DISCLAIMER CUM DISCLOSURE:
+
+${disclaimer}
+
+Research Analyst: ${raFullName} (${organizationName})
+SEBI Registration No: ${raDetails.sebi_reg_no || "N/A"}
+Contact No: ${raDetails.mobile || "N/A"}
+Email ID: ${raDetails.email || "N/A"}
+
+Read Full Disclaimer / Disclosure at:
+https://lotusfunds.com/disclaimer&disclosure
+`.trim();
+
+  const response = await axios.patch(
+    `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/exit`,
+    {
+      exit_price: exitPrice,
+      exit_remark: trimmedExitRemark,
+      message_text: exitMessage,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  setRecommendations((previous) =>
+    previous.map((recommendation) =>
+      recommendation.id === item.id
+        ? {
+            ...recommendation,
+            status: "CLOSED",
+            exit_price: exitPrice,
+            exit_remark: trimmedExitRemark,
+            closed_at:
+              response.data?.data?.closed_at ||
+              response.data?.closed_at ||
+              new Date().toISOString(),
+          }
+        : recommendation
+    )
+  );
+
+  try {
+    const telegramStatus = await axios.get(
+      `${import.meta.env.VITE_API_URL}/api/telegram/status`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!telegramStatus.data?.connected) {
+      alert(
+        "Research call exited and WhatsApp queued, but Telegram is not connected"
+      );
       return;
     }
 
-    try {
-      const token = localStorage.getItem("token");
-      const DATA_SOURCE =
-        import.meta.env.VITE_API_URL + "/api/research/calls";
-      const response = await fetch(`${DATA_SOURCE}/${id}/exit`, {
-        method: "PUT",
+    await axios.post(
+      `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
+      {
+        message: exitMessage,
+      },
+      {
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
+        },
+      }
+    );
+
+    alert(
+      "Research call exited. WhatsApp queued and Telegram sending started ✅"
+    );
+  } catch (telegramError: any) {
+    console.error(
+      "EXIT TELEGRAM ERROR:",
+      telegramError?.response?.data || telegramError
+    );
+
+    alert(
+      telegramError?.response?.data?.message ||
+        "Research call exited and WhatsApp queued, but Telegram sending failed"
+    );
+  }
+  },
+  [raDetails]
+);
+
+
+const handleViewHistory = async (item: any) => {
+  try {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      alert("Please login again");
+      return;
+    }
+
+    setHistoryDialogOpen(true);
+    setHistoryLoading(true);
+    setVersionHistory([]);
+
+    const res = await axios.get(
+      `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/versions`,
+      {
+        headers: {
           Authorization: `Bearer ${token}`,
         },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to exit recommendation");
       }
+    );
 
-      // 🔥 Refetch updated list from backend
-      await fetchRecommendations();
+    console.log("VERSION HISTORY:", res.data);
 
-    } catch (error) {
-      console.error("Exit failed:", error);
-    }
-  }, []);
+    setVersionHistory(res.data?.versions || []);
+  } catch (err: any) {
+    console.error(
+      "VERSION HISTORY ERROR:",
+      err?.response?.data || err
+    );
+
+    alert(
+      err?.response?.data?.message ||
+        "Failed to load version history"
+    );
+
+    setHistoryDialogOpen(false);
+  } finally {
+    setHistoryLoading(false);
+  }
+};
+
+
+      const handleActionChange = useCallback(
+  (_: React.MouseEvent<HTMLElement>, value: "BUY" | "SELL" | null) => {
+    if (!value) return;
+
+    const nextTradeType =
+      value === "BUY" && form.tradeType === "STBT"
+        ? "BTST"
+        : value === "SELL" && form.tradeType === "BTST"
+          ? "STBT"
+          : form.tradeType;
+
+    dispatch({
+      type: "SET_FORM",
+      payload: {
+        action: value,
+        tradeType: nextTradeType,
+      },
+    });
+  },
+  [form.tradeType]
+);
+
 
   // 2. MODIFY FUNCTION (Loads data back into the form)
   const handleModify = useCallback((item) => {
@@ -894,7 +1256,7 @@ finally {
         stopLoss2: item.stop_losses?.[1]?.toString() || "",
         stopLoss3: item.stop_losses?.[2]?.toString() || "",
         rationale: item.rationale || "",
-        remark: item.research_remarks || item.remark || "",
+ remark: "",
        underlyingStudy: item.underlying_study
   ? item.underlying_study.split(",").map((study: string) => ({
       label: study.trim(),
@@ -910,13 +1272,13 @@ finally {
     });
 
     window.scrollTo({ top: 0 });
-  }, []);
+  }, [setDirectValue]);
   // Temporary
   const [wasValidated, setWasValidated] = useState(false);
 
 
 const validateAndPublish = async (
-  event: React.MouseEvent<HTMLButtonElement>
+  event: MouseEvent<HTMLButtonElement>
 ) => {
   event.preventDefault();
 
@@ -995,7 +1357,11 @@ if (missingFields.length > 0) {
       setDirectValue("A.F. Enterprises Ltd");
       console.log("Form Populated ✅");
     };
-  }, []);
+  },
+  [setDirectValue]
+);
+
+
 
 
   //instiate
@@ -1709,14 +2075,20 @@ const finalSymbol = String(
 
  
 
-const validateAndTrack = (event: React.MouseEvent<HTMLButtonElement>) => {
+const validateAndTrack = (event: MouseEvent<HTMLButtonElement>) => {
   event.preventDefault();
   setWasValidated(true);
 
-  const priceErr =
-    getPriceError("entry", form) ||
-    getPriceError("target", form) ||
-    getPriceError("stopLoss", form);
+ const priceErr =
+  getPriceError("entry", form) ||
+  getPriceError("target", form) ||
+  getPriceError("stopLoss", form) ||
+  getPriceError("entryLow", form) ||
+  getPriceError("entryUpper", form) ||
+  getPriceError("target2", form) ||
+  getPriceError("target3", form) ||
+  getPriceError("stopLoss2", form) ||
+  getPriceError("stopLoss3", form);
 
   if (priceErr) {
     const priceRow = document.getElementById("prices-row");
@@ -1838,6 +2210,151 @@ const getPriceError = (field: string, currentForm: any): string | null => {
   return null;
 };
 
+
+const commitMainPrice = useCallback(
+  (
+    field: MainPriceField,
+    value: string
+  ) => {
+    dispatch({
+      type: "SET_FIELD",
+      field,
+      value,
+    });
+  },
+  []
+);
+
+const getMainPriceError = useCallback(
+  (
+    field: MainPriceField,
+    values: {
+      entry: string;
+      target: string;
+      stopLoss: string;
+    }
+  ) => {
+    return getPriceError(field, {
+      ...form,
+      ...values,
+    });
+  },
+  [
+    form.action,
+    form.rangeEnabled,
+    form.entryLow,
+    form.entryUpper,
+    form.secondaryTargetEnabled,
+    form.target2,
+    form.target3,
+    form.stopLoss2Enabled,
+    form.stopLoss2,
+    form.stopLoss3,
+  ]
+);
+
+const commitRemark = useCallback(
+  (value: string) => {
+    dispatch({
+      type: "SET_FIELD",
+      field: "remark",
+      value,
+    });
+  },
+  []
+);
+
+const commitAdditionalPrice = useCallback(
+  (
+    field: AdditionalPriceField,
+    value: string
+  ) => {
+    startTransition(() => {
+      dispatch({
+        type: "SET_FIELD",
+        field,
+        value,
+      });
+    });
+  },
+  []
+);
+
+const toggleAdditionalSection = useCallback(
+  (field: AdditionalToggleField) => {
+    const nextValue =
+      field === "rangeEnabled"
+        ? !form.rangeEnabled
+        : field === "secondaryTargetEnabled"
+          ? !form.secondaryTargetEnabled
+          : !form.stopLoss2Enabled;
+
+    dispatch({
+      type: "SET_FIELD",
+      field,
+      value: nextValue,
+    });
+  },
+  [
+    form.rangeEnabled,
+    form.secondaryTargetEnabled,
+    form.stopLoss2Enabled,
+  ]
+);
+
+const getAdditionalPriceError = useCallback(
+  (
+    field: AdditionalPriceField,
+    values: Record<
+      AdditionalPriceField,
+      string
+    >
+  ) => {
+    return getPriceError(field, {
+      ...form,
+      ...values,
+    });
+  },
+  [
+    form.action,
+    form.entry,
+    form.target,
+    form.stopLoss,
+    form.rangeEnabled,
+    form.secondaryTargetEnabled,
+    form.stopLoss2Enabled,
+  ]
+);
+
+
+const selectedStudyValues = useMemo(
+  () =>
+    form.underlyingStudy.map((selected) => ({
+      ...selected,
+      group:
+        UNDERLYING_STUDIES.find((group) =>
+          group.options.some(
+            (option) => option.value === selected.value
+          )
+        )?.group ?? "Fundamental & General Analysis",
+    })),
+  [form.underlyingStudy]
+);
+
+const updateField = useCallback(
+  <K extends keyof RecommendationForm>(
+    field: K,
+    value: RecommendationForm[K]
+  ) => {
+    dispatch({
+      type: "SET_FIELD",
+      field,
+      value,
+    });
+  },
+  []
+);
+
   return (
     <Box
       sx={{
@@ -1914,7 +2431,11 @@ maxWidth: "100%",
             size="small"
             exclusive
             value={form.exchangeType}
-            onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "exchangeType", value: val })}
+           onChange={(_, value) => {
+  if (value) {
+    updateField("exchangeType", value);
+  }
+}}
             sx={{
               backgroundColor: "#eef2f7",
               "& .MuiToggleButtonGroup-grouped": {
@@ -1931,14 +2452,23 @@ maxWidth: "100%",
         {/* Action & Call Type Row */}
         <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 1 }}>
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
-            <ToggleButtonGroup size="small" exclusive value={form.action} onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "action", value: val })}>
+            <ToggleButtonGroup
+  size="small"
+  exclusive
+  value={form.action}
+  onChange={handleActionChange}
+>
               <ToggleButton value="BUY" sx={{ fontWeight: 700, px: 2, fontSize: "0.7rem", ...getActionStyles(form.action, "BUY") }}>BUY</ToggleButton>
               <ToggleButton value="SELL" sx={{ fontWeight: 700, px: 2, fontSize: "0.7rem", ...getActionStyles(form.action, "SELL") }}>SELL</ToggleButton>
             </ToggleButtonGroup>
 
             <Box sx={{ overflowX: "auto", maxWidth: "100%" }}>
               <ToggleButtonGroup
-                size="small" exclusive value={form.callType} onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "callType", value: val })}
+                size="small" exclusive value={form.callType} onChange={(_, value) => {
+  if (value) {
+    updateField("callType", value);
+  }
+}}
                 sx={{
                   backgroundColor: "#eef2f7",
                   display: "flex",
@@ -1972,7 +2502,11 @@ maxWidth: "100%",
             size="small"
             exclusive
             value={form.exchange}
-            onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "exchange", value: val })}
+            onChange={(_, value) => {
+  if (value) {
+    updateField("exchange", value);
+  }
+}}
             sx={{
               backgroundColor: "#eef2f7",
               "& .MuiToggleButtonGroup-grouped": {
@@ -2009,7 +2543,11 @@ maxWidth: "100%",
               size="small"
               exclusive
               value={form.tradeType}
-              onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "tradeType", value: val })}
+              onChange={(_, value) => {
+  if (value) {
+    updateField("tradeType", value);
+  }
+}}
               sx={{
                 backgroundColor: "#eef2f7",
                 whiteSpace: "nowrap",
@@ -2034,8 +2572,19 @@ maxWidth: "100%",
               }}
             >
               <ToggleButton value="Intraday">Intraday</ToggleButton>
-              <ToggleButton value="BTST">BTST</ToggleButton>
-              <ToggleButton value="STBT">STBT</ToggleButton>
+             <ToggleButton
+  value="BTST"
+  disabled={form.action === "SELL"}
+>
+  BTST
+</ToggleButton>
+
+<ToggleButton
+  value="STBT"
+  disabled={form.action === "BUY"}
+>
+  STBT
+</ToggleButton>
               <ToggleButton value="Short Term">Short Term</ToggleButton>
               <ToggleButton
                 value="Long Term"
@@ -2137,183 +2686,39 @@ maxWidth: "100%",
         </Box>
 
         {/* Prices Row */}
-<Box 
-  id="prices-row" 
-  sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1, mb: 1 }}
->
-  {(["entry", "target", "stopLoss"] as const).map((field) => {
-    const errorMsg = getPriceError(field, form);
-    const label = field === "entry" ? "Entry" : field === "target" ? "Target" : "Stop Loss";
-
-    return (
-      <TextField
-        key={field}
-        required
-        label={label}
-        size="small"
-        type="number"
-        value={form[field]}
-        onChange={handlePriceChange(field)}
-        // Only shows red if validation was attempted and failed
-        error={!!errorMsg && wasValidated} 
-        sx={{ ...transparentInputSx, flex: 1 }}
-        InputProps={{
-          endAdornment: errorMsg && wasValidated ? (
-            <InputAdornment position="end">
-              <Tooltip title={errorMsg} arrow placement="top">
-                <ErrorOutlineIcon color="error" sx={{ cursor: "pointer", fontSize: '1.1rem' }} />
-              </Tooltip>
-            </InputAdornment>
-          ) : null,
-        }}
-      />
-    );
-  })}
-</Box>
+<PriceSection
+  values={{
+    entry: form.entry,
+    target: form.target,
+    stopLoss: form.stopLoss,
+  }}
+  wasValidated={wasValidated}
+  onCommit={commitMainPrice}
+  getError={getMainPriceError}
+/>
 
         {/* Switched Options Row */}
-        <Box
-  sx={{
-    display: "flex",
-    flexDirection: { xs: "column", md: "row" },
-    justifyContent: "space-between",
-    mb: 1,
-    gap: { xs: 2, md: 1.5 },
+  <AdditionalPriceSection
+  values={{
+    entryLow: form.entryLow,
+    entryUpper: form.entryUpper,
+    target2: form.target2,
+    target3: form.target3,
+    stopLoss2: form.stopLoss2,
+    stopLoss3: form.stopLoss3,
   }}
->
-  {[
-    { label: "Range", field: "rangeEnabled" as const, p1: "Lower Entry", p2: "Upper Entry", v1: "entryLow" as const, v2: "entryUpper" as const },
-    { label: "Secondary Target", field: "secondaryTargetEnabled" as const, p1: "T2", p2: "T3", v1: "target2" as const, v2: "target3" as const },
-    { label: "Stop Loss 2", field: "stopLoss2Enabled" as const, p1: "SL2", p2: "SL3", v1: "stopLoss2" as const, v2: "stopLoss3" as const },
-  ].map((cfg) => {
-    const isActive = form[cfg.field];
-
-    return (
-      <Box
-        key={cfg.label}
-        sx={{
-          textAlign: "center",
-          flex: 1,
-          border: "1px solid rgba(0,0,0,0.08)",
-          borderRadius: 2,
-          p: 1.5,
-          backgroundColor: isActive ? "rgba(25, 118, 210, 0.02)" : "transparent",
-          transition: "all 0.2s ease",
-        }}
-      >
-        {/* Header with Switch */}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 1,
-            mb: 1.5,
-          }}
-        >
-          <Typography sx={{ fontSize: "0.75rem", fontWeight: 700, color: isActive ? "primary.main" : "text.secondary" }}>
-            {cfg.label}
-          </Typography>
-          <Switch
-            size="small"
-            checked={isActive}
-            onChange={() => handleToggle(cfg.field)}
-          />
-        </Box>
-
-        {/* Inputs Column */}
-        <Box 
-          sx={{ 
-            display: "flex", 
-            flexDirection: "column", 
-            gap: 1.5, 
-            justifyContent: "center",
-            alignItems: "center" 
-          }}
-        >
-          {isActive ? (
-            <>
-              {[
-                { id: cfg.v1, placeholder: cfg.p1 },
-                { id: cfg.v2, placeholder: cfg.p2 }
-              ].map((input) => {
-                const errorMsg = getPriceError(input.id, form);
-                return (
-                  <TextField
-                    key={input.id}
-                    value={form[input.id]}
-                    onChange={handlePriceChange(input.id)}
-                    placeholder={input.placeholder}
-                    size="small"
-                    variant="outlined"
-                    error={!!errorMsg && wasValidated}
-                    sx={{
-                      width: "100%",
-                      "& .MuiInputBase-input": {
-                        py: 1,
-                        fontSize: "0.7rem",
-                        textAlign: "center",
-                      },
-                    }}
-                    InputProps={{
-                      endAdornment: errorMsg && wasValidated ? (
-                        <InputAdornment position="end">
-                          <Tooltip title={errorMsg} arrow placement="top">
-                            <ErrorOutlineIcon color="error" sx={{ fontSize: '1rem' }} />
-                          </Tooltip>
-                        </InputAdornment>
-                      ) : null,
-                    }}
-                  />
-                );
-              })}
-            </>
-          ) : (
-            <>
-              {/* Stacked Disabled Placeholders */}
-              <Button
-                disabled
-                fullWidth
-                size="small"
-                variant="outlined"
-                sx={{
-                  py: 0.5,
-                  fontSize: "0.65rem",
-                  height: 32,
-                  backgroundColor: "#f9fafb",
-                  borderColor: "#f3f4f6",
-                  color: "#9ca3af !important",
-                  textTransform: "none",
-                  borderStyle: "dashed"
-                }}
-              >
-                Disabled
-              </Button>
-              <Button
-                disabled
-                fullWidth
-                size="small"
-                variant="outlined"
-                sx={{
-                  py: 0.5,
-                  fontSize: "0.65rem",
-                  height: 32,
-                  backgroundColor: "#f9fafb",
-                  borderColor: "#f3f4f6",
-                  color: "#9ca3af !important",
-                  textTransform: "none",
-                  borderStyle: "dashed"
-                }}
-              >
-                Disabled
-              </Button>
-            </>
-          )}
-        </Box>
-      </Box>
-    );
-  })}
-</Box>
+  toggles={{
+    rangeEnabled: form.rangeEnabled,
+    secondaryTargetEnabled:
+      form.secondaryTargetEnabled,
+    stopLoss2Enabled:
+      form.stopLoss2Enabled,
+  }}
+  wasValidated={wasValidated}
+  onToggle={toggleAdditionalSection}
+  onCommit={commitAdditionalPrice}
+  getError={getAdditionalPriceError}
+/>
 
         {/* Holding period & Rationale Container */}
         <Box
@@ -2396,7 +2801,11 @@ maxWidth: "100%",
                 size="small"
                 exclusive
                 value={form.rationale}
-                onChange={(_, val) => val && dispatch({ type: "SET_FIELD", field: "rationale", value: val })}
+                onChange={(_, value) => {
+  if (value) {
+    updateField("rationale", value);
+  }
+}}
 sx={{
   backgroundColor: "#eef2f7",
 
@@ -2447,13 +2856,7 @@ sx={{
   size="small"
   fullWidth
   options={studyOptions}
-  value={form.underlyingStudy.map((selected) => ({
-    ...selected,
-    group:
-      UNDERLYING_STUDIES.find((g) =>
-        g.options.some((o) => o.value === selected.value)
-      )?.group ?? "Fundamental & General Analysis",
-  }))}
+ value={selectedStudyValues}
   inputValue={underlyingStudyInput}
   onInputChange={(_, newInput) => setUnderlyingStudyInput(newInput)}
   onChange={handleUnderlyingStudyChange}
@@ -2504,15 +2907,21 @@ sx={{
 
         {/* Remarks & Upload */}
         <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1.5, mb: 2 }}>
-          <TextField
-            required
-            multiline
-            rows={2}
-            placeholder="Research Analyst's Remarks"
-            value={form.remark}
-            onChange={(e) => dispatch({ type: "SET_FIELD", field: "remark", value: e.target.value })}
-            sx={{ flexGrow: 1 }}
-          />
+         <RemarksField
+  value={form.remark}
+  onCommit={commitRemark}
+/>
+{isErrataMode && (
+  <Typography
+    sx={{
+      fontSize: "0.65rem",
+      color: "text.secondary",
+      mt: 0.5,
+    }}
+  >
+    This remark is required and will be saved as the Errata reason.
+  </Typography>
+)}
 
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: { xs: "100%", sm: 160 } }}>
             <input
@@ -2606,16 +3015,165 @@ sx={{
 
       </Paper>
 
-      <MemoRecommendationsPanel
-        loading={loading}
-        recommendations={recommendations}
-        onModify={handleModify}
-        onExit={handleExit}
-        onInitiate={handleInitiate}
-      />
+ <RecommendationsPanel
+  loading={loading}
+  recommendations={recommendations}
+  onModify={handleModify}
+  onExit={handleExit}
+  onInitiate={handleInitiate}
+  onViewHistory={handleViewHistory}
+/>
       {/* RIGHT PANEL */}
 
-    </Box>
+     <Dialog
+  open={historyDialogOpen}
+  onClose={() => setHistoryDialogOpen(false)}
+  fullWidth
+  maxWidth="sm"
+>
+  <DialogTitle>
+    Recommendation Version History
+  </DialogTitle>
+
+  <DialogContent dividers>
+    {historyLoading ? (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          py: 4,
+        }}
+      >
+        <CircularProgress size={28} />
+      </Box>
+    ) : versionHistory.length === 0 ? (
+      <Typography color="text.secondary">
+        No version history found.
+      </Typography>
+    ) : (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+        }}
+      >
+        {versionHistory.map((version) => (
+          <Paper
+            key={version.id}
+            variant="outlined"
+            sx={{
+              p: 2,
+              borderColor: version.is_latest
+                ? "primary.main"
+                : "divider",
+              backgroundColor: version.is_latest
+                ? "action.hover"
+                : "background.paper",
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 1,
+                mb: 1,
+              }}
+            >
+              <Typography fontWeight={700}>
+                Version {version.version_number}
+              </Typography>
+
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <Chip
+                  size="small"
+                  label={version.version_type}
+                  color={
+                    version.version_type === "ERRATA"
+                      ? "warning"
+                      : "default"
+                  }
+                />
+
+                {version.is_latest && (
+                  <Chip
+                    size="small"
+                    label="Latest"
+                    color="primary"
+                  />
+                )}
+              </Box>
+            </Box>
+
+            <Typography variant="body2">
+              <strong>Stock:</strong>{" "}
+              {version.display_name || version.symbol || "N/A"}
+            </Typography>
+
+            <Typography variant="body2">
+              <strong>Action:</strong> {version.action || "N/A"}
+            </Typography>
+
+            <Typography variant="body2">
+              <strong>Entry:</strong>{" "}
+              {version.entry_price ||
+                (version.entry_price_low &&
+                version.entry_price_upper
+                  ? `${version.entry_price_low} - ${version.entry_price_upper}`
+                  : "N/A")}
+            </Typography>
+
+            <Typography variant="body2">
+              <strong>Target:</strong>{" "}
+              {version.target_price || "N/A"}
+            </Typography>
+
+            <Typography variant="body2">
+              <strong>Stop Loss:</strong>{" "}
+              {version.stop_loss || "N/A"}
+            </Typography>
+
+            <Typography variant="body2">
+              <strong>Status:</strong>{" "}
+              {version.status || "N/A"}
+            </Typography>
+
+            {version.errata_reason && (
+              <>
+                <Divider sx={{ my: 1 }} />
+
+                <Typography variant="body2">
+                  <strong>Errata Reason:</strong>{" "}
+                  {version.errata_reason}
+                </Typography>
+              </>
+            )}
+
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mt: 1 }}
+            >
+              Created:{" "}
+              {new Date(version.created_at).toLocaleString("en-IN", {
+                timeZone: "Asia/Kolkata",
+              })}
+            </Typography>
+          </Paper>
+        ))}
+      </Box>
+    )}
+  </DialogContent>
+
+<DialogActions>
+  <Button onClick={() => setHistoryDialogOpen(false)}>
+    Close
+  </Button>
+</DialogActions>
+</Dialog> 
+
+      </Box>
   );
 };
 

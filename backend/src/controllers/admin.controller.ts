@@ -28,6 +28,9 @@ const getClientIp = (req: Request) => {
   return ip;
 };
 
+/* =========================================================
+   APPROVE USER (POST /admin/approve-user)
+   ========================================================= */
 export const approveUser = async (
   req: AuthRequest,
   res: Response
@@ -367,6 +370,9 @@ if (existingUser.rows.length > 0) {
 };
 /* ================= SUSPEND USER ================= */
 
+/* =========================================================
+   SUSPEND USER (POST /admin/suspend-user)
+   ========================================================= */
 export const suspendUser = async (
   req: AuthRequest,
   res: Response
@@ -514,6 +520,9 @@ if (user.role === "BROKER") {
 };
 
 
+/* =========================================================
+   ACTIVATE RESEARCH ANALYST (PUT /admin/activate/ra/:id)
+   ========================================================= */
 export const activateRA = async (
   req: AuthRequest,
   res: Response
@@ -606,6 +615,9 @@ if (currentUser.status === "active") {
 };
 
 
+/* =========================================================
+   RESEND PASSWORD LINK (POST /admin/resend-password-link)
+   ========================================================= */
 export const resendPasswordLink = async (
   req: AuthRequest,
   res: Response
@@ -691,6 +703,9 @@ export const resendPasswordLink = async (
 };
 
 
+/* =========================================================
+   GET DISCLAIMER HISTORY BY RESEARCH ANALYST (GET /admin/history/:userId)
+   ========================================================= */
 export const getDisclaimerHistoryByRA = async (
   req: AuthRequest,
   res: Response

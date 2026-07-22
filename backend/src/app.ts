@@ -24,7 +24,8 @@ app.set("trust proxy", 1);
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   "http://localhost:5173",
-  "https://ng52ddcn-5173.inc1.devtunnels.ms"
+  "https://ng52ddcn-5173.inc1.devtunnels.ms",
+  "https://ng52ddcn-5174.inc1.devtunnels.ms"
 ].filter(Boolean) as string[];
 
 app.use(

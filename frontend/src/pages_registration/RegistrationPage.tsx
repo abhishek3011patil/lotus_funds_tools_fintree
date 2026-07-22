@@ -546,13 +546,13 @@ const cities = selectedState
 
           {/* testing */}
             
-{/* {import.meta.env.DEV && (
+ {import.meta.env.DEV && (
   <RARegistrationDevTools
     setForm={setFormData}
     setStep={setCurrentStep}
     finalStep={7}
   />
-)} */}
+)} 
     {/* testing */}
 
           <Box sx={currentStep > 1 ? styles.stepDone : styles.stepActive}>

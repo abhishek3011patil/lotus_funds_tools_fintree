@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createErrata, createResearchCall, getRAMessageProfile, getResearchPerformance } from "../controllers/researchCalls.controller";
+import { createErrata, createResearchCall, getCallVersionHistory, getRAMessageProfile, getResearchPerformance } from "../controllers/researchCalls.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 import {
     getResearchCalls,
@@ -16,9 +16,17 @@ router.post("/research/calls", authenticate, upload.single("file"), createResear
 
 router.get("/research/calls/my", authenticate, getResearchCalls);
 router.post("/research/calls/errata", authenticate, createErrata);
+router.get(
+  "/calls/:callId/versions",
+  authenticate,
+  getCallVersionHistory
+);
+
 router.get("/research/calls/published", authenticate, getPublishedCalls);
-router.put("/research/calls/:id/exit", authenticate, exitResearchCall);
+router.patch("/research/calls/:id/exit", authenticate, exitResearchCall);
 router.get("/research/performance", authenticate, getResearchPerformance);
+
+
 
 
 router.patch(

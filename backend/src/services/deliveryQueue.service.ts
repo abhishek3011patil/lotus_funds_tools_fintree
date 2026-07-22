@@ -6,7 +6,9 @@ type QueueWhatsAppResearchCallInput = {
   raUserId: string;
   eventType:
     | "RESEARCH_CALL_PUBLISHED"
-    | "RESEARCH_CALL_ERRATA";
+    | "RESEARCH_CALL_ERRATA"
+    | "RESEARCH_CALL_EXITED";
+    
   message: string;
   originalCallId?: string | null;
   client?: PoolClient;
