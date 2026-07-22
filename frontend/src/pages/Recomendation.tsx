@@ -2350,6 +2350,38 @@ const updateField = useCallback(
   []
 );
 
+const additionalPriceValues = useMemo(
+  () => ({
+    entryLow: form.entryLow,
+    entryUpper: form.entryUpper,
+    target2: form.target2,
+    target3: form.target3,
+    stopLoss2: form.stopLoss2,
+    stopLoss3: form.stopLoss3,
+  }),
+  [
+    form.entryLow,
+    form.entryUpper,
+    form.target2,
+    form.target3,
+    form.stopLoss2,
+    form.stopLoss3,
+  ]
+);
+
+const additionalPriceToggles = useMemo(
+  () => ({
+    rangeEnabled: form.rangeEnabled,
+    secondaryTargetEnabled: form.secondaryTargetEnabled,
+    stopLoss2Enabled: form.stopLoss2Enabled,
+  }),
+  [
+    form.rangeEnabled,
+    form.secondaryTargetEnabled,
+    form.stopLoss2Enabled,
+  ]
+);
+
   return (
     <Box
       sx={{
@@ -2854,21 +2886,8 @@ sx={{
 
         {/* Switched Options Row */}
   <AdditionalPriceSection
-  values={{
-    entryLow: form.entryLow,
-    entryUpper: form.entryUpper,
-    target2: form.target2,
-    target3: form.target3,
-    stopLoss2: form.stopLoss2,
-    stopLoss3: form.stopLoss3,
-  }}
-  toggles={{
-    rangeEnabled: form.rangeEnabled,
-    secondaryTargetEnabled:
-      form.secondaryTargetEnabled,
-    stopLoss2Enabled:
-      form.stopLoss2Enabled,
-  }}
+   values={additionalPriceValues}
+  toggles={additionalPriceToggles}
   wasValidated={wasValidated}
   onToggle={toggleAdditionalSection}
   onCommit={commitAdditionalPrice}
