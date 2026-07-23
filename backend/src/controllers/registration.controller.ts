@@ -11,6 +11,7 @@ import { createNotification } from "../utils/notification";
 
 
 
+
 const normalizeRAUpdateData = (data: any) => {
   if (data.email) data.email = data.email.trim().toLowerCase();
   if (data.mobile) data.mobile = data.mobile.trim();
@@ -762,65 +763,114 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
       }
     }
     
+const registrationToken = crypto.randomBytes(32).toString("hex");
+
+const registrationTokenHash = crypto
+  .createHash("sha256")
+  .update(registrationToken)
+  .digest("hex");
+
+const registrationTokenTtlHours = Math.max(
+  Number(process.env.REGISTRATION_TOKEN_TTL_HOURS || 24),
+  1
+);
+
+const registrationTokenExpiresAt = new Date(
+  Date.now() +
+    registrationTokenTtlHours * 60 * 60 * 1000
+);
+
 
     // ================= INSERT =================
     const result = await pool.query(
-      `
-      INSERT INTO ra_details (
-        user_id,
+  `
+  WITH new_ra AS (
+    INSERT INTO ra_details (
+      user_id,
 
-        salutation, first_name, middle_name, surname,
-        org_name, designation, short_bio,
-        email, mobile, telephone,
-        country, state, city, pincode,
-        address_line1, address_line2,
-        profile_image,
+      salutation, first_name, middle_name, surname,
+      org_name, designation, short_bio,
+      email, mobile, telephone,
+      country, state, city, pincode,
+      address_line1, address_line2,
+      profile_image,
 
-        sebi_reg_no, sebi_start_date, sebi_expiry_date,
-        sebi_certificate, sebi_receipt,
-        nism_reg_no, nism_valid_till, nism_certificate,
-        academic_qualification, professional_qualification,
-        market_experience, expertise, markets,
+      sebi_reg_no, sebi_start_date, sebi_expiry_date,
+      sebi_certificate, sebi_receipt,
+      nism_reg_no, nism_valid_till, nism_certificate,
+      academic_qualification, professional_qualification,
+      market_experience, expertise, markets,
 
-        bank_name,bank_branch, account_holder, account_number, ifsc_code,
-        cancelled_cheque,
-        pan_number, pan_card,
-        address_proof_type, address_proof_document,
-        declare_info_true, consent_verification,
+      bank_name, bank_branch, account_holder, account_number, ifsc_code,
+      cancelled_cheque,
+      pan_number, pan_card,
+      address_proof_type, address_proof_document,
+      declare_info_true, consent_verification,
 
-        no_guaranteed_returns, conflict_of_interest,
-        personal_trading, sebi_compliance, platform_policy,
+      no_guaranteed_returns, conflict_of_interest,
+      personal_trading, sebi_compliance, platform_policy,
 
-        additional_comments
-      )
-      VALUES (
-        $1,
+      additional_comments
+    )
+    VALUES (
+      $1,
 
-        $2,$3,$4,$5,
-        $6,$7,$8,
-        $9,$10,$11,
-        $12,$13,$14,$15,
-        $16,$17,
-        $18,
+      $2,$3,$4,$5,
+      $6,$7,$8,
+      $9,$10,$11,
+      $12,$13,$14,$15,
+      $16,$17,
+      $18,
 
-        $19,$20,$21,
-        $22,$23,
-        $24,$25,$26,
-        $27,$28,
-        $29,$30,$31,
+      $19,$20,$21,
+      $22,$23,
+      $24,$25,$26,
+      $27,$28,
+      $29,$30,$31,
 
-        $32,$33,$34,$35,$36,
-        $37,
-        $38,$39,
-        $40,$41,
-        $42,$43,
-        $44,$45,
-        $46,$47,$48,
-        $49
-      )
-      RETURNING id;
-      `,
-      [
+      $32,$33,$34,$35,$36,
+      $37,
+      $38,$39,
+      $40,$41,
+      $42,$43,
+      $44,$45,
+      $46,$47,$48,
+      $49
+    )
+    RETURNING id, user_id, email, mobile
+  ),
+  new_application AS (
+    INSERT INTO registration_applications (
+      applicant_type,
+      entity_id,
+      user_id,
+      email,
+      mobile,
+      status,
+      submitted_at,
+      registration_token_hash,
+      registration_token_expires_at
+    )
+    SELECT
+      'RA',
+      new_ra.id,
+      new_ra.user_id,
+      new_ra.email,
+      new_ra.mobile,
+      'FORM_SUBMITTED',
+      NOW(),
+      $50,
+      $51
+    FROM new_ra
+    RETURNING id
+  )
+  SELECT
+    new_ra.id AS ra_id,
+    new_application.id AS application_id
+  FROM new_ra
+  CROSS JOIN new_application;
+  `,
+  [
         userId,
 
         data.salutation ?? null,
@@ -888,6 +938,8 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
         toBool(data.platform_policy),
 
         data.additional_comments ?? null,
+        registrationTokenHash,
+registrationTokenExpiresAt,
       ]
     );
 
@@ -898,7 +950,7 @@ await createNotification({
   title: "New Research Analyst Registration",
   description: `${data.first_name} ${data.surname} submitted a registration request.`,
   notificationType: "RA",
-  referenceId: insertedRA.id,
+  referenceId: insertedRA.ra_id,
   referenceTable: "ra_details",
 });
 
@@ -916,18 +968,25 @@ await createNotification({
       device: req.headers["user-agent"] as string,
       oldValue: null,
       newValue: {
-        raId: result.rows[0].id,
+        raId: result.rows[0].ra_id,
         email: data.email,
         name: `${data.first_name} ${data.surname}`,
         sebiRegNo: data.sebi_reg_no || null,
       },
     });
 
-    return res.status(201).json({
-      success: true,
-      message: "RA Registration Submitted",
-      ra_id: result.rows[0].id,
-    });
+ return res.status(201).json({
+  success: true,
+  message:
+    "RA registration submitted. Select a subscription plan to continue.",
+  ra_id: result.rows[0].ra_id,
+  application_id: result.rows[0].application_id,
+  registration_token: registrationToken,
+  registration_token_expires_at:
+    registrationTokenExpiresAt.toISOString(),
+  next_step: "SELECT_SUBSCRIPTION_PLAN",
+});
+
   } catch (error: unknown) {
     const constraintMap: Record<string, { field: string; message: string }> = {
       ra_email_unique: {

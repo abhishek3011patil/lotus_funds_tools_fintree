@@ -27,6 +27,11 @@ import {
 } from "../controllers/registration.controller";
 import rateLimit from "express-rate-limit";
 
+import { selectRegistrationPlan } from "../controllers/registrationSubscription.controller";
+import {
+  rejectRegistrationWithRefund,
+} from "../controllers/registrationRejection.controller";
+
 
 const router = express.Router();
 
@@ -104,7 +109,12 @@ router.put(
 router.get("/all-registrations", authenticate, requireAdmin, getAllRegistrations);
 router.get("/all-registrations-active-users", authenticate, requireAdmin, getAllRegistrationsActiveUsers);
 router.put("/approve/:id", authenticate, requireAdmin, approveRegistration);
-router.put("/reject/:type/:id", authenticate, requireAdmin, rejectUser);
+router.put(
+  "/reject/:type/:id",
+  authenticate,
+  requireAdmin,
+  rejectRegistrationWithRefund
+);
 router.get("/ra/:id", authenticate, requireAdmin, getRegistrationById);
 router.get("/broker/:id", authenticate, requireAdmin, getBrokerById);
 
@@ -170,7 +180,15 @@ router.put(
 );
 
 
+
+
 router.get("/profile", authenticate, getMyRAProfile);
 router.get("/ifsc/:ifsc", getBankFromIFSC);
+
+
+router.post(
+  "/:applicationId/select-plan",
+  selectRegistrationPlan
+);
 
 export default router;

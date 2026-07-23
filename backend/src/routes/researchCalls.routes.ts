@@ -8,12 +8,25 @@ import {
 } from "../controllers/researchCalls.controller";
 import { exitResearchCall } from "../controllers/exitResearchCall";
 import { upload } from "../middlewares/upload";
+import { requireActiveSubscription, requireSubscriptionFeature, reserveSubscriptionEventLimit } from "../middlewares/subscriptionAccess.middleware";
 
 
 const router = Router();
 
-router.post("/research/calls", authenticate, upload.single("file"), createResearchCall);
-
+router.post(
+  "/research/calls",
+  authenticate,
+  requireActiveSubscription,
+  requireSubscriptionFeature(
+    "RA_RESEARCH_CALLS"
+  ),
+  reserveSubscriptionEventLimit({
+    limitKey:
+      "RA_RESEARCH_CALLS_PER_MONTH",
+  }),
+  upload.single("file"),
+  createResearchCall
+);
 router.get("/research/calls/my", authenticate, getResearchCalls);
 router.post("/research/calls/errata", authenticate, createErrata);
 router.get(

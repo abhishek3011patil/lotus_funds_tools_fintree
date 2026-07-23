@@ -226,6 +226,176 @@ const SubscriptionPage: React.FC = () => {
   const [token, setToken] = useState<string | null>(null);
   const navigate = useNavigate();
 
+
+  const openRazorpayCheckout = (
+  orderResponse: any,
+  applicationId: string,
+  registrationToken: string
+) => {
+  if (!window.Razorpay) {
+    alert("Razorpay Checkout failed to load.");
+    return;
+  }
+
+  const options = {
+    key: orderResponse.checkout.keyId,
+    order_id:
+      orderResponse.order.razorpayOrderId,
+    amount:
+      orderResponse.order.amountPaise,
+    currency:
+      orderResponse.order.currency,
+    name:
+      orderResponse.checkout.businessName,
+    description:
+      orderResponse.checkout.description,
+
+    prefill: {
+      email:
+        orderResponse.checkout.prefill.email,
+      contact:
+        orderResponse.checkout.prefill.contact,
+    },
+
+    handler: async (paymentResponse: any) => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/payments/registration-verify`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+              "x-registration-token":
+                registrationToken,
+            },
+            body: JSON.stringify({
+              applicationId,
+              razorpayOrderId:
+                paymentResponse.razorpay_order_id,
+              razorpayPaymentId:
+                paymentResponse.razorpay_payment_id,
+              razorpaySignature:
+                paymentResponse.razorpay_signature,
+            }),
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result.message ||
+              "Payment verification failed."
+          );
+        }
+
+        window.location.href =
+          "/registration/under-review";
+      } catch (error) {
+        console.error(error);
+
+        alert(
+          error instanceof Error
+            ? error.message
+            : "Payment verification failed."
+        );
+      }
+    },
+
+    modal: {
+      ondismiss: () => {
+        console.log(
+          "Razorpay Checkout closed."
+        );
+      },
+    },
+  };
+
+  const razorpay =
+    new window.Razorpay(options);
+
+  razorpay.on(
+    "payment.failed",
+    (response: any) => {
+      alert(
+        response.error?.description ||
+          "Payment failed."
+      );
+    }
+  );
+
+  razorpay.open();
+};
+
+const handlePayment = async () => {
+  const applicationId =
+    sessionStorage.getItem(
+      "registration_application_id"
+    );
+
+  const registrationToken =
+    sessionStorage.getItem(
+      "registration_token"
+    );
+
+  if (
+    !applicationId ||
+    !registrationToken
+  ) {
+    alert(
+      "Registration session not found. Please register again."
+    );
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/payments/registration-order`,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+
+          "x-registration-token":
+            registrationToken,
+        },
+
+        body: JSON.stringify({
+          applicationId,
+        }),
+      }
+    );
+
+    const orderResponse =
+      await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        orderResponse.message ||
+          "Unable to create payment order."
+      );
+    }
+
+    openRazorpayCheckout(
+      orderResponse,
+      applicationId,
+      registrationToken
+    );
+  } catch (error) {
+    console.error(
+      "Create payment order error:",
+      error
+    );
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : "Unable to start payment."
+    );
+  }
+};
   useEffect(() => {
     // 2. Capture token from URL on mount
     const t = searchParams.get("token");
@@ -242,10 +412,9 @@ const SubscriptionPage: React.FC = () => {
       handleFreePlanActivation();
       return;
     }
-
-    // 4. Logic for PAID PLANS
-    setSelectedPlan({ planName, price });
-    setPaymentOpen(true);
+// Start payment for the plan already selected
+// and saved by the backend.
+void handlePayment();
   };
 
   const handleFreePlanActivation = async () => {

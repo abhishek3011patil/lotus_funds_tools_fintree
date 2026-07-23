@@ -146,12 +146,21 @@ export const login = async (req: Request, res: Response) => {
 
     } else {
       /* ================= NORMAL USERS ================= */
-      const userRes = await pool.query(
-        `SELECT id, email, username, password_hash, role, status
-         FROM users 
-         WHERE LOWER(email) = $1`,
-        [loginId]
-      );
+  const userRes = await pool.query(
+  `
+    SELECT
+      id,
+      email,
+      username,
+      password_hash,
+      role,
+      status,
+      is_active
+    FROM users
+    WHERE LOWER(email) = $1
+  `,
+  [loginId]
+);
 
       if (userRes.rows.length === 0) {
         return res.status(400).json({ message: "Invalid credentials ❌" });
@@ -159,17 +168,35 @@ export const login = async (req: Request, res: Response) => {
 
       user = userRes.rows[0];
 
+      if (user.status?.toLowerCase() === "suspended") {
+  return res.status(403).json({
+    message: "Account suspended by admin ❌",
+  });
+}
+
+if (!user.password_hash) {
+  return res.status(403).json({
+    message:
+      "Password setup is incomplete. Use the approval email to create your password.",
+  });
+}
+
+if (
+  user.status?.toLowerCase() !== "active" ||
+  user.is_active !== true
+) {
+  return res.status(403).json({
+    message: "Account inactive ❌",
+  });
+}
+
     if (user.status.toLowerCase() === "suspended") {
   return res.status(403).json({
     message: "Account suspended by admin ❌",
   });
 }
 
-if (user.status.toLowerCase() !== "active") {
-  return res.status(403).json({
-    message: "Account inactive ❌",
-  });
-}
+
     }
 
     /* ================= PASSWORD CHECK ================= */

@@ -47,3 +47,79 @@ export const sendOtpMail = async (to: string, otp: string) => {
     `,
   });
 };
+
+
+type RejectionRefundMailInput = {
+  to: string;
+  name: string;
+  reason: string;
+  refundRequired: boolean;
+  refundStatus?: string;
+  amountPaise?: number;
+  currency?: string;
+};
+
+const formatRefundAmount = (
+  amountPaise?: number,
+  currency = "INR"
+): string | null => {
+  if (
+    amountPaise === undefined ||
+    !Number.isFinite(amountPaise)
+  ) {
+    return null;
+  }
+
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency,
+  }).format(amountPaise / 100);
+};
+
+export const sendRejectionRefundMail =
+  async ({
+    to,
+    name,
+    reason,
+    refundRequired,
+    refundStatus,
+    amountPaise,
+    currency = "INR",
+  }: RejectionRefundMailInput) => {
+    const formattedAmount =
+      formatRefundAmount(
+        amountPaise,
+        currency
+      );
+
+    const refundMessage =
+      refundRequired
+        ? refundStatus === "processed"
+          ? `A full refund${
+              formattedAmount
+                ? ` of ${formattedAmount}`
+                : ""
+            } has been processed to the original payment method.`
+          : refundStatus === "failed"
+            ? "We could not complete the refund automatically. Our team will review it."
+            : `A full refund${
+                formattedAmount
+                  ? ` of ${formattedAmount}`
+                  : ""
+              } has been initiated and is being processed.`
+        : "No payment refund is required for this application.";
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to,
+      subject:
+        "Registration Review Update",
+      html: `
+        <h2>Hello ${name}</h2>
+        <p>Your registration was not approved.</p>
+        <p><strong>Reason:</strong> ${reason}</p>
+        <p>${refundMessage}</p>
+        <p>If you need clarification, please contact support.</p>
+      `,
+    });
+  };

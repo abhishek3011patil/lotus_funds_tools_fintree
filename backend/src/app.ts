@@ -16,6 +16,9 @@ import multer from "multer";
 import whatsappRoutes from "./routes/whatsapp.routes";
 import notificationRoutes from "./routes/notification.routes";
 import performanceRoutes from "./routes/performance.routes";
+import subscriptionPlanRoutes from "./routes/subscriptionPlans.routes";
+import razorpayWebhookRoutes from "./routes/razorpayWebhook.routes";
+import subscriptionAccessRoutes from "./routes/subscriptionAccess.routes";
 
 const app = express();
 
@@ -41,7 +44,12 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+   allowedHeaders: [
+  "Content-Type",
+  "Authorization",
+  "x-registration-token",
+  "x-idempotency-key",
+],
   })
 );
 
@@ -58,10 +66,24 @@ const limiter = rateLimit({
   },
 });
 
+
 app.use(limiter);
 
+/*
+ * Razorpay webhook must receive the raw request body.
+ * This must remain above express.json().
+ */
+app.use(
+  "/api/payments/razorpay",
+  express.raw({
+    type: "application/json",
+    limit: "1mb",
+  }),
+  razorpayWebhookRoutes
+);
 
 app.use(express.json({ limit: "1mb" }));
+
 
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
@@ -72,10 +94,15 @@ app.use("/api/broker", brokerRoutes);
 app.use("/api/registration", registrationRoutes);
 app.use("/api/telegram", telegramRoutes);
 app.use("/admin", adminRoutes);
-app.use("/api/payments", paymentRoutes);
+
 app.use("/api/audit-logs", auditRoutes);
 app.use("/notifications", notificationRoutes);
 app.use("/api/performance", performanceRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use(
+  "/api/subscription-plans",
+  subscriptionPlanRoutes
+);
 
 app.get("/check", (_req, res) => {
   res.send("APP WORKING");
@@ -85,7 +112,10 @@ app.get("/check", (_req, res) => {
 
 app.use("/api/whatsapp", whatsappRoutes);
 
-
+app.use(
+  "/api/subscriptions",
+  subscriptionAccessRoutes
+);
 
 app.use((err: any, _req: any, res: any, _next: any) => {
   console.error("UPLOAD ERROR:", err);

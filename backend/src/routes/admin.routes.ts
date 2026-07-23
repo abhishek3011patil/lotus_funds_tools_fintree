@@ -3,13 +3,15 @@ import { activateRA, approveUser, getDisclaimerHistoryByRA, resendPasswordLink, 
 import { authenticate } from "../middlewares/auth.middleware";
 import { requireAdmin } from "../middlewares/admin.middleware";
 import whatsappRoutes from "./whatsapp.routes";
+import { approvePaidRegistration } from "../controllers/adminSubscriptionApproval.controller";
+
 
 const router = Router();
 
 // ✅ Apply middleware to all admin routes
 router.use(authenticate, requireAdmin);
 
-router.post("/approve-user", approveUser);
+router.post("/approve-user", approvePaidRegistration);
 
 router.post("/suspend-user", suspendUser);
 
