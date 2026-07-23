@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { Box, Typography, ToggleButtonGroup, ToggleButton, Chip } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import PlanCard, { PlanFeature, PlanBenefit } from "./PlanCard";
 import PaymentMethod from "./payment/PaymentMethod";
 import { useSearchParams, useNavigate } from "react-router-dom";
 
-interface PlanConfig {
+// Types
+export type UserRoleTab = "RA" | "BROKER" | "CLIENT";
+
+export interface PlanConfig {
   planName: string;
   description: string;
   monthlyPrice: string;
@@ -22,206 +25,209 @@ interface PlanConfig {
   additionalBenefits: PlanBenefit[];
 }
 
-const plans: PlanConfig[] = [
-  {
-    planName: "Free of Charge",
-    description:
-      "Get started with essential tools and features to explore Tarkashh's capabilities at no cost.",
-    monthlyPrice: "₹0/mo",
-    annualPrice: "₹0/yr",
-    ctaText: "Get Started Free",
-    ctaColor: "white",
-    ctaTextColor: "black",
-    ctaBorderColor: "black",
-
-    highlighted: true,
-
-    featuredBenefits: [
-      {
-        text: "Access to Tarkashh Basic",
-        subText: "Get access to basic financial tools and analysis features",
-        isHighlight: true,
-      },
-      {
-        text: "Basic portfolio tracking",
-        subText: "Track up to 5 portfolios with standard analytics",
-      },
-      {
-        text: "Community support",
-        subText: "Get help from the Tarkashh community forums",
-      },
-    ],
-    additionalBenefits: [
-      {
-        text: "Market overview",
-        subText: "Access to basic market data and trends",
-      },
-      {
-        text: "Email notifications",
-        subText: "Get daily market summary emails",
-      },
-      {
-        text: "200 monthly API credits",
-        subText: "API credits for accessing Tarkashh data services",
-      },
-      {
-        text: "Standard reports",
-        subText: "Generate up to 5 reports per month",
-      },
-      {
-        text: "Storage",
-        subText: "500 MB total storage for reports and data",
-      },
-    ],
-  },
-  {
-    planName: "Tarkashh Plus",
-    description:
-      "Get more access to new and powerful features to boost your productivity and financial creativity.",
-    monthlyPrice: "₹199/mo",
-    annualPrice: "₹1,990/yr",
-    // monthlyOriginalPrice: "₹399",
-    annualOriginalPrice: "₹4,788",
-    monthlySubText: "for 6 months, ₹399/mo after",
-    annualSubText: "Save 58% compared to monthly pricing",
-    ctaText: "Get Tarkashh Plus",
-    ctaColor: "#1a73e8",
-    ctaTextColor: "#fff",
-    featuredBenefits: [
-      {
-        text: "More access to Tarkashh 3 Pro",
-        subText:
-          "Get more access to our most intelligent financial model Tarkashh 3 Pro",
-        isHighlight: true,
-      },
-      {
-        text: "More access to premium features",
-        subText:
-          "Get enhanced access to advanced analytics, real-time alerts, and deep research tools",
-        isHighlight: true,
-      },
-      {
-        text: "Priority portfolio analysis",
-        subText: "Track unlimited portfolios with AI-powered insights",
-      },
-    ],
-    additionalBenefits: [
-      {
-        text: "Advanced analytics",
-        subText: "AI-powered financial analysis and forecasting tools",
-      },
-      {
-        text: "Real-time alerts",
-        subText: "Instant notifications for market movements and portfolio changes",
-      },
-      {
-        text: "1,000 monthly API credits",
-        subText:
-          "API credits to increase access to next-level Tarkashh features",
-      },
-      {
-        text: "Tarkashh Search",
-        subText: "Higher access to the Tarkashh 3 Pro model and more",
-      },
-      {
-        text: "Tarkashh Insights",
-        subText:
-          "More access to our research partner with audio and video overviews",
-      },
-      {
-        text: "Tarkashh in Email, Docs & more",
-        subText: "Access Tarkashh directly in your workflow apps",
-      },
-      {
-        text: "Storage",
-        subText: "5 TB total storage for reports, data, and backups",
-      },
-    ],
-  },
-  {
-    planName: "Tarkashh Pro",
-    description:
-      "Unlock the highest levels of access to the best of Tarkashh and exclusive premium features.",
-    monthlyPrice: "₹24,500/mo",
-    annualPrice: "₹2,45,000/yr",
-    annualSubText: "Save 17% compared to monthly pricing",
-    ctaText: "Get Tarkashh Pro",
-    ctaColor: "#1a73e8",
-    featuredBenefits: [
-      {
-        text: "Highest access to Tarkashh 3 Pro",
-        subText:
-          "Get the highest access to our most intelligent model Tarkashh 3 Pro",
-        isHighlight: true,
-      },
-      {
-        text: "Highest limits to premium features",
-        subText:
-          "Get the highest limits to advanced analytics, real-time alerts, Tarkashh Pro, and deep research",
-        isHighlight: true,
-      },
-      {
-        text: "Earliest access to new innovations",
-        subText:
-          "Unlock access to exclusive beta features and Tarkashh Agent",
-        isHighlight: true,
-      },
-    ],
-    additionalBenefits: [
-      {
-        text: "Enterprise analytics",
-        subText: "Highest limits to AI-powered financial analysis tools",
-      },
-      {
-        text: "Real-time streaming",
-        subText: "Live market data streaming with zero latency",
-      },
-      {
-        text: "25,000 monthly API credits",
-        subText:
-          "API credits to unlock maximum access to all Tarkashh features",
-      },
-      {
-        text: "Tarkashh Search",
-        subText: "Get the highest access to the Tarkashh 3 Pro model and more",
-      },
-      {
-        text: "Tarkashh Insights",
-        subText:
-          "Highest access to our research partner with audio and video overviews",
-      },
-      {
-        text: "Tarkashh in Email, Docs, Vids & more",
-        subText: "Highest access to Tarkashh directly in your workflow apps",
-      },
-      {
-        text: "Tarkashh Premium individual plan",
-        subText: "Tarkashh ad-free, offline, in the background",
-      },
-      {
-        text: "Tarkashh Developer Programme premium",
-        subText:
-          "Build, learn and grow faster as a developer with the highest limits",
-      },
-      {
-        text: "Tarkashh Studio",
-        subText:
-          "Get the highest limits to prototype, experiment, and build with our Tarkashh 3.1 Pro models",
-      },
-      {
-        text: "Storage",
-        subText: "30 TB total storage for reports, data, and backups",
-      },
-    ],
-  },
-];
+// Refined, Professional Copy per User Role
+const rolePlans: Record<UserRoleTab, PlanConfig[]> = {
+  RA: [
+    {
+      planName: "RA Starter",
+      description: "Essential toolkit for independent analysts to publish and manage research recommendations.",
+      monthlyPrice: "₹1,499/mo",
+      annualPrice: "₹14,990/yr",
+      ctaText: "Get Started",
+      ctaColor: "white",
+      ctaTextColor: "black",
+      ctaBorderColor: "black",
+      highlighted: false,
+      featuredBenefits: [
+        { text: "Dedicated RA Dashboard", isHighlight: true },
+        { text: "Publish & manage research calls" },
+        { text: "Draft management & Errata logs" },
+        { text: "In-app broadcast alerts" },
+      ],
+      additionalBenefits: [
+        { text: "SEBI Compliance & Profile Setup" },
+        { text: "Basic performance analytics" },
+        { text: "Standard email support" },
+        { text: "Limits: 100 Subs | 50 Calls/mo | 1 Broker | 1 Seat" },
+      ],
+    },
+    {
+      planName: "RA Professional",
+      description: "Automated distribution channels and advanced analytics for growing research practices.",
+      monthlyPrice: "₹3,999/mo",
+      annualPrice: "₹39,990/yr",
+      ctaText: "Upgrade to Professional",
+      ctaColor: "#1a73e8",
+      ctaTextColor: "#fff",
+      highlighted: true,
+      featuredBenefits: [
+        { text: "Everything in Starter", isHighlight: true },
+        { text: "Automated WhatsApp & Telegram delivery", isHighlight: true },
+        { text: "Advanced analytics & exportable reports" },
+        { text: "Subscriber CRM & bulk CSV import" },
+      ],
+      additionalBenefits: [
+        { text: "Publish detailed market reports" },
+        { text: "Priority customer support" },
+        { text: "Limits: 1,000 Subs | 250 Calls/mo | 5 Brokers | 3 Seats" },
+      ],
+    },
+    {
+      planName: "RA Elite",
+      description: "Enterprise infrastructure with unlimited call volume, direct APIs, and team controls.",
+      monthlyPrice: "₹8,999/mo",
+      annualPrice: "₹89,990/yr",
+      ctaText: "Get Elite Access",
+      ctaColor: "#1a73e8",
+      ctaTextColor: "#fff",
+      highlighted: false,
+      featuredBenefits: [
+        { text: "Everything in Professional", isHighlight: true },
+        { text: "Unlimited research calls & brokers", isHighlight: true },
+        { text: "REST API & Webhook access" },
+        { text: "Role-based team permissions" },
+      ],
+      additionalBenefits: [
+        { text: "Real-time delivery monitoring" },
+        { text: "Dedicated account manager" },
+        { text: "Limits: 5,000+ Subs | Unlimited Calls | 10+ Seats" },
+      ],
+    },
+  ],
+  BROKER: [
+    {
+      planName: "Broker Basic",
+      description: "Core client management interface designed for emerging broking firms.",
+      monthlyPrice: "₹2,499/mo",
+      annualPrice: "₹24,990/yr",
+      ctaText: "Get Started",
+      ctaColor: "white",
+      ctaTextColor: "black",
+      ctaBorderColor: "black",
+      highlighted: false,
+      featuredBenefits: [
+        { text: "Broker Operations Hub", isHighlight: true },
+        { text: "1 Analyst connection" },
+        { text: "Client portfolio management" },
+        { text: "Research feed & announcements" },
+      ],
+      additionalBenefits: [
+        { text: "Standard technical support" },
+        { text: "Limits: 1 RA | 100 Clients | 1 Admin Seat" },
+      ],
+    },
+    {
+      planName: "Broker Professional",
+      description: "White-labeled portal featuring multi-analyst integration and instant messaging.",
+      monthlyPrice: "₹6,999/mo",
+      annualPrice: "₹69,990/yr",
+      ctaText: "Upgrade to Professional",
+      ctaColor: "#1a73e8",
+      ctaTextColor: "#fff",
+      highlighted: true,
+      featuredBenefits: [
+        { text: "Everything in Basic", isHighlight: true },
+        { text: "Multi-RA connection engine", isHighlight: true },
+        { text: "WhatsApp & Telegram client distribution" },
+        { text: "Custom white-label portal" },
+      ],
+      additionalBenefits: [
+        { text: "Business analytics & custom reports" },
+        { text: "Limits: 10 RAs | 2,000 Clients | 5 Admin Seats" },
+      ],
+    },
+    {
+      planName: "Broker Enterprise",
+      description: "Complete API suite engineered for multi-branch, institutional brokerages.",
+      monthlyPrice: "₹18,999/mo",
+      annualPrice: "₹1,89,990/yr",
+      ctaText: "Contact Enterprise",
+      ctaColor: "#1a73e8",
+      ctaTextColor: "#fff",
+      highlighted: false,
+      featuredBenefits: [
+        { text: "Everything in Professional", isHighlight: true },
+        { text: "Full API suite & custom branding", isHighlight: true },
+        { text: "Institutional analytics suite" },
+        { text: "Multi-branch hierarchy management" },
+      ],
+      additionalBenefits: [
+        { text: "24/7 Dedicated Account Manager & SLA" },
+        { text: "Limits: Custom tailored volume" },
+      ],
+    },
+  ],
+  CLIENT: [
+    {
+      planName: "Client Basic",
+      description: "Free access to explore research feeds and essential market updates.",
+      monthlyPrice: "₹0/mo",
+      annualPrice: "₹0/yr",
+      ctaText: "Get Started Free",
+      ctaColor: "white",
+      ctaTextColor: "black",
+      ctaBorderColor: "black",
+      highlighted: false,
+      featuredBenefits: [
+        { text: "Personal Investor Dashboard", isHighlight: true },
+        { text: "Follow 1 Research Analyst" },
+        { text: "Real-time research feed stream" },
+      ],
+      additionalBenefits: [
+        { text: "In-app notifications" },
+        { text: "Educational market library" },
+        { text: "Limits: 1 RA | 30-day history" },
+      ],
+    },
+    {
+      planName: "Client Premium",
+      description: "Follow multiple analysts and receive real-time premium trade alerts.",
+      monthlyPrice: "₹299/mo",
+      annualPrice: "₹2,990/yr",
+      ctaText: "Get Premium",
+      ctaColor: "#1a73e8",
+      ctaTextColor: "#fff",
+      highlighted: true,
+      featuredBenefits: [
+        { text: "Everything in Basic", isHighlight: true },
+        { text: "Follow multiple Analysts", isHighlight: true },
+        { text: "Access premium research calls" },
+      ],
+      additionalBenefits: [
+        { text: "Instant email & broadcast alerts" },
+        { text: "Full research report archive" },
+        { text: "Limits: Up to 5 RAs | Unlimited history" },
+      ],
+    },
+    {
+      planName: "Client Elite",
+      description: "Complete investor toolkit with priority alerts, comparison tools, and top-tier support.",
+      monthlyPrice: "₹799/mo",
+      annualPrice: "₹7,990/yr",
+      ctaText: "Get Elite Access",
+      ctaColor: "#1a73e8",
+      ctaTextColor: "#fff",
+      highlighted: false,
+      featuredBenefits: [
+        { text: "Everything in Premium", isHighlight: true },
+        { text: "High-priority trade alerts", isHighlight: true },
+        { text: "Analyst Performance Comparison Matrix" },
+        { text: "Unlimited custom watchlists" },
+      ],
+      additionalBenefits: [
+        { text: "Exclusive macro & sector reports" },
+        { text: "Priority support" },
+        { text: "Limits: 15+ RAs | Unlimited Watchlists" },
+      ],
+    },
+  ],
+};
 
 const SubscriptionPage: React.FC = () => {
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "annual">("monthly");
+  const [selectedRole, setSelectedRole] = useState<UserRoleTab>("RA");
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<{ planName: string; price: string } | null>(null);
-  
-  // 1. Properly initialize search params and token state
+
   const [searchParams] = useSearchParams();
   const [token, setToken] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -397,24 +403,25 @@ const handlePayment = async () => {
   }
 };
   useEffect(() => {
-    // 2. Capture token from URL on mount
     const t = searchParams.get("token");
     setToken(t);
-    
+
     if (!t) {
       console.warn("No token found in URL. Please use the link from your email.");
     }
   }, [searchParams]);
 
   const handleGetStarted = (planName: string, price: string) => {
-    // 3. Logic for the FREE PLAN
-    if (planName === "Free of Charge" || price.includes("₹0")) {
+    if (planName.toLowerCase().includes("free") || price.includes("₹0")) {
       handleFreePlanActivation();
       return;
     }
 // Start payment for the plan already selected
 // and saved by the backend.
 void handlePayment();
+
+    setSelectedPlan({ planName, price });
+    setPaymentOpen(true);
   };
 
   const handleFreePlanActivation = async () => {
@@ -424,20 +431,21 @@ void handlePayment();
     }
 
     try {
-      // Use absolute path to port 5000 for local testing
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/payments/activate-free-plan`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          resetToken: token,
-          planName: "Free" 
-        }),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/payments/activate-free-plan`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            resetToken: token,
+            planName: "Free",
+          }),
+        }
+      );
 
       const data = await response.json();
 
       if (response.ok) {
-        // ✅ SUCCESS: Move to set-password
         window.location.href = `/set-password?token=${token}`;
       } else {
         alert(data.message || "Failed to activate free plan");
@@ -453,14 +461,7 @@ void handlePayment();
     setSelectedPlan(null);
   };
 
-  const handleBillingChange = (
-    _: React.MouseEvent<HTMLElement>,
-    newValue: "monthly" | "annual" | null
-  ) => {
-    if (newValue !== null) {
-      setBillingCycle(newValue);
-    }
-  };
+  const currentPlans = rolePlans[selectedRole];
 
   return (
     <Box
@@ -468,7 +469,9 @@ void handlePayment();
         minHeight: "100vh",
         bgcolor: "#f8f9fa",
         py: { xs: 3, md: 5 },
-        px: { xs: 2, md: 4 },
+        px: { xs: 2, sm: 3, md: 4 },
+        boxSizing: "border-box",
+        overflowX: "hidden",
       }}
     >
       {/* Header Section */}
@@ -479,7 +482,7 @@ void handlePayment();
             fontWeight: 700,
             color: "#202124",
             mb: 1.5,
-            fontSize: { xs: "1.5rem", md: "2rem" },
+            fontSize: { xs: "1.4rem", sm: "1.75rem", md: "2rem" },
           }}
         >
           Get more out of Tarkashh
@@ -491,111 +494,115 @@ void handlePayment();
             maxWidth: 650,
             mx: "auto",
             lineHeight: 1.6,
-            fontSize: "0.85rem",
+            fontSize: { xs: "0.8rem", sm: "0.85rem" },
+            px: 1,
           }}
         >
-          Lorem ipsum dolor sit amet consectetur adipisicing elit. Deserunt quo perspiciatis repellendus maiores cumque minus expedita quas provident earum accusamus rerum voluptate accusantium est recusandae, excepturi inventore illo voluptates eum.
+          Choose a tailored subscription plan built specifically for your role. Enhance your capabilities with robust financial analysis, real-time alerts, and seamless integrations.
         </Typography>
       </Box>
 
-      {/* Billing Toggle */}
+      {/* Custom Rounded Pill Tab Switcher */}
       <Box
         sx={{
           display: "flex",
           justifyContent: "center",
-          mb: 5,
+          mb: 4,
+          px: 1,
         }}
       >
-        <ToggleButtonGroup
-          value={billingCycle}
-          exclusive
-          onChange={handleBillingChange}
+        <Box
           sx={{
-            bgcolor: "#fff",
-            borderRadius: "28px",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            bgcolor: "#ffffff",
             border: "1px solid #dadce0",
-            overflow: "hidden",
-            "& .MuiToggleButton-root": {
-              border: "none",
-              borderRadius: "28px !important",
-              px: 3.5,
-              py: 1,
-              textTransform: "none",
-              fontWeight: 600,
-              fontSize: "0.9rem",
-              color: "#5f6368",
-              transition: "all 0.25s ease",
-              "&.Mui-selected": {
-                bgcolor: "#1a73e8",
-                color: "#fff",
-                "&:hover": {
-                  bgcolor: "#1557b0",
-                },
-              },
-              "&:hover": {
-                bgcolor: "rgba(26,115,232,0.08)",
-              },
-            },
+            borderRadius: "50px",
+            p: "4px",
+            boxShadow: "0px 1px 3px rgba(0,0,0,0.05)",
+            maxWidth: "100%",
           }}
         >
-          <ToggleButton value="monthly">Monthly</ToggleButton>
-          <ToggleButton value="annual">
-            Annual
-            <Chip
-              label="Save $$"
-              size="small"
-              sx={{
-                ml: 1,
-                height: 20,
-                fontSize: "0.65rem",
-                fontWeight: 700,
-                bgcolor:
-                  billingCycle === "annual"
-                    ? "rgba(255,255,255,0.25)"
-                    : "#e8f5e9",
-                color: billingCycle === "annual" ? "#fff" : "#2e7d32",
-              }}
-            />
-          </ToggleButton>
-        </ToggleButtonGroup>
+          {(["RA", "BROKER", "CLIENT"] as UserRoleTab[]).map((role) => {
+            const isSelected = selectedRole === role;
+            return (
+              <Box
+                key={role}
+                onClick={() => setSelectedRole(role)}
+                sx={{
+                  px: { xs: 2.5, sm: 4 },
+                  py: 1,
+                  borderRadius: "50px",
+                  cursor: "pointer",
+                  fontWeight: 700,
+                  fontSize: { xs: "0.75rem", sm: "0.85rem" },
+                  letterSpacing: "0.04em",
+                  color: isSelected ? "#ffffff" : "#3c4043",
+                  bgcolor: isSelected ? "#1a73e8" : "transparent",
+                  transition: "all 0.2s ease-in-out",
+                  userSelect: "none",
+                  textAlign: "center",
+                  whiteSpace: "nowrap",
+                  minWidth: { xs: 65, sm: 95 },
+                  "&:hover": {
+                    color: isSelected ? "#ffffff" : "#1a73e8",
+                  },
+                }}
+              >
+                {role}
+              </Box>
+            );
+          })}
+        </Box>
       </Box>
 
-      {/* Plans Grid */}
+      {/* Responsive Plans Container */}
       <Box
         sx={{
+          maxWidth: 1200,
+          mx: "auto",
+          width: "100%",
           display: "flex",
           flexDirection: { xs: "column", md: "row" },
-          gap: 3,
-          alignItems: { xs: "center", md: "stretch" },
+          gap: { xs: 2.5, md: 3 },
+          alignItems: "stretch",
           justifyContent: "center",
-          maxWidth: { xs: 600, md: 1200 },
-          mx: "auto",
+          boxSizing: "border-box",
         }}
       >
-        {plans.map((plan) => (
-          <PlanCard
+        {currentPlans.map((plan) => (
+          <Box
             key={plan.planName}
-            {...plan}
-            isAnnual={billingCycle === "annual"}
-            onGetStarted={() => handleGetStarted(
-              plan.planName,
-              billingCycle === "annual" ? plan.annualPrice : plan.monthlyPrice
-            )}
-          />
+            sx={{
+              width: { xs: "100%", md: "calc(33.333% - 16px)" },
+              flexShrink: 0,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <PlanCard
+              {...plan}
+              isAnnual={false}
+              onGetStarted={() =>
+                handleGetStarted(plan.planName, plan.monthlyPrice)
+              }
+            />
+          </Box>
         ))}
       </Box>
 
-      {/* Payment Method Dialog */}
+      {/* Payment Method Modal */}
       <PaymentMethod
         open={paymentOpen}
         onClose={handlePaymentClose}
         planName={selectedPlan?.planName || ""}
         planPrice={selectedPlan?.price || ""}
-        resetToken={token} 
+        resetToken={token}
       />
 
-      {/* Footer */}
-      <Box sx={{ textAlign: "center", mt: 5 }}>
+      {/* Footer Details */}
+      <Box sx={{ textAlign: "center", mt: 5, px: 2 }}>
         <Typography variant="caption" sx={{ color: "#9aa0a6", fontSize: "0.75rem" }}>
           Certain benefits are only available for eligible accounts. Learn
           more about{" "}
