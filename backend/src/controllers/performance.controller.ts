@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { pool } from "../db";
 import { AuthRequest } from "../middlewares/auth.middleware";
+import { calculatePerformanceMetrics } from "../services/performance.service";
 
 type PerformanceCall = {
   id: string;
@@ -14,17 +15,17 @@ type PerformanceCall = {
   closed_at: string | null;
 };
 
-type EvaluatedCall = {
-  id: string;
-  closedAt: string;
-  pnl: number;
-  targetHit: boolean;
-  stopLossHit: boolean;
-  earlyExit: boolean;
-};
+// type EvaluatedCall = {
+//   id: string;
+//   closedAt: string;
+//   pnl: number;
+//   targetHit: boolean;
+//   stopLossHit: boolean;
+//   earlyExit: boolean;
+// };
 
-const roundPercentage = (value: number): number =>
-  Number(value.toFixed(2));
+// const roundPercentage = (value: number): number =>
+//   Number(value.toFixed(2));
 
 export const getResearchPerformance   = async (
   req: AuthRequest,
@@ -119,120 +120,120 @@ const exitedThisMonth = rows.filter((call) => {
 
 
 
-const evaluatedCalls: EvaluatedCall[] = exitedThisMonth
-  .map((call): EvaluatedCall | null => {
-    const entryPrice = Number(call.entry_price);
-    const targetPrice = Number(call.target_price);
-    const stopLoss = Number(call.stop_loss);
-    const exitPrice = Number(call.exit_price);
+// const evaluatedCalls: EvaluatedCall[] = exitedThisMonth
+//   .map((call): EvaluatedCall | null => {
+//     const entryPrice = Number(call.entry_price);
+//     const targetPrice = Number(call.target_price);
+//     const stopLoss = Number(call.stop_loss);
+//     const exitPrice = Number(call.exit_price);
 
-    const hasValidPrices = [
-      entryPrice,
-      targetPrice,
-      stopLoss,
-      exitPrice,
-    ].every(Number.isFinite);
+//     const hasValidPrices = [
+//       entryPrice,
+//       targetPrice,
+//       stopLoss,
+//       exitPrice,
+//     ].every(Number.isFinite);
 
-    if (!hasValidPrices || !call.closed_at) {
-      return null;
-    }
+//     if (!hasValidPrices || !call.closed_at) {
+//       return null;
+//     }
 
-    const action = String(call.action).trim().toUpperCase();
+//     const action = String(call.action).trim().toUpperCase();
 
-    if (action !== "BUY" && action !== "SELL") {
-      return null;
-    }
+//     if (action !== "BUY" && action !== "SELL") {
+//       return null;
+//     }
 
-    const pnl =
-      action === "BUY"
-        ? exitPrice - entryPrice
-        : entryPrice - exitPrice;
+//     const pnl =
+//       action === "BUY"
+//         ? exitPrice - entryPrice
+//         : entryPrice - exitPrice;
 
-    // BUY: exit >= target
-    // SELL: exit <= target
-    const targetHit =
-      action === "BUY"
-        ? exitPrice >= targetPrice
-        : exitPrice <= targetPrice;
+//     // BUY: exit >= target
+//     // SELL: exit <= target
+//     const targetHit =
+//       action === "BUY"
+//         ? exitPrice >= targetPrice
+//         : exitPrice <= targetPrice;
 
-    // BUY: exit <= stop loss
-    // SELL: exit >= stop loss
-    const stopLossHit =
-      action === "BUY"
-        ? exitPrice <= stopLoss
-        : exitPrice >= stopLoss;
+//     // BUY: exit <= stop loss
+//     // SELL: exit >= stop loss
+//     const stopLossHit =
+//       action === "BUY"
+//         ? exitPrice <= stopLoss
+//         : exitPrice >= stopLoss;
 
-    // BUY: stop loss < exit < target
-    // SELL: target < exit < stop loss
-    const earlyExit =
-      action === "BUY"
-        ? exitPrice > stopLoss && exitPrice < targetPrice
-        : exitPrice > targetPrice && exitPrice < stopLoss;
+//     // BUY: stop loss < exit < target
+//     // SELL: target < exit < stop loss
+//     const earlyExit =
+//       action === "BUY"
+//         ? exitPrice > stopLoss && exitPrice < targetPrice
+//         : exitPrice > targetPrice && exitPrice < stopLoss;
 
-    return {
-      id: call.id,
-      closedAt: call.closed_at,
-      pnl,
-      targetHit,
-      stopLossHit,
-      earlyExit,
-    };
-  })
-  .filter((call): call is EvaluatedCall => call !== null);
+//     return {
+//       id: call.id,
+//       closedAt: call.closed_at,
+//       pnl,
+//       targetHit,
+//       stopLossHit,
+//       earlyExit,
+//     };
+//   })
+//   .filter((call): call is EvaluatedCall => call !== null);
 
-const profitableCalls = evaluatedCalls.filter(
-  (call) => call.pnl > 0
-);
+// const profitableCalls = evaluatedCalls.filter(
+//   (call) => call.pnl > 0
+// );
 
-const adverseCalls = evaluatedCalls.filter(
-  (call) => call.pnl < 0
-);
+// const adverseCalls = evaluatedCalls.filter(
+//   (call) => call.pnl < 0
+// );
 
-const targetHitCalls = evaluatedCalls.filter(
-  (call) => call.targetHit
-);
+// const targetHitCalls = evaluatedCalls.filter(
+//   (call) => call.targetHit
+// );
 
-const stopLossHitCalls = evaluatedCalls.filter(
-  (call) => call.stopLossHit
-);
+// const stopLossHitCalls = evaluatedCalls.filter(
+//   (call) => call.stopLossHit
+// );
 
-const earlyExitCalls = evaluatedCalls.filter(
-  (call) => call.earlyExit
-);
+// const earlyExitCalls = evaluatedCalls.filter(
+//   (call) => call.earlyExit
+// );
 
-const totalProfit = profitableCalls.reduce(
-  (sum, call) => sum + call.pnl,
-  0
-);
+// const totalProfit = profitableCalls.reduce(
+//   (sum, call) => sum + call.pnl,
+//   0
+// );
 
-const totalLoss = Math.abs(
-  adverseCalls.reduce(
-    (sum, call) => sum + call.pnl,
-    0
-  )
-);
+// const totalLoss = Math.abs(
+//   adverseCalls.reduce(
+//     (sum, call) => sum + call.pnl,
+//     0
+//   )
+// );
 
-const percentageOfTotalCalls = (count: number): number =>
-  totalCalls > 0
-    ? roundPercentage((count / totalCalls) * 100)
-    : 0;
+// const percentageOfTotalCalls = (count: number): number =>
+//   totalCalls > 0
+//     ? roundPercentage((count / totalCalls) * 100)
+//     : 0;
 
-// Submitted rule:
-// Risk : Reward = total loss / total profit
-const riskRewardRatio =
-  totalProfit > 0
-    ? Number((totalLoss / totalProfit).toFixed(2))
-    : null;
+// // Submitted rule:
+// // Risk : Reward = total loss / total profit
+// const riskRewardRatio =
+//   totalProfit > 0
+//     ? Number((totalLoss / totalProfit).toFixed(2))
+//     : null;
 
 
 
-const missingExitPriceCount = createdThisMonth.filter((call) => {
-  return (
-    call.closed_at !== null &&
-    (call.exit_price === null ||
-      call.exit_price === undefined)
-  );
-}).length;
+// const missingExitPriceCount = createdThisMonth.filter((call) => {
+//   return (
+//     call.closed_at !== null &&
+//     (call.exit_price === null ||
+//       call.exit_price === undefined)
+//   );
+// }).length;
 
 
 const lastTenResult = await pool.query<PerformanceCall>(
@@ -257,31 +258,31 @@ const lastTenResult = await pool.query<PerformanceCall>(
   `,
   [req.user.id]
 );
-const lastTen = lastTenResult.rows.map((call) => {
-  const entryPrice = Number(call.entry_price);
-  const exitPrice = Number(call.exit_price);
-  const action = String(call.action).trim().toUpperCase();
+// const lastTen = lastTenResult.rows.map((call) => {
+//   const entryPrice = Number(call.entry_price);
+//   const exitPrice = Number(call.exit_price);
+//   const action = String(call.action).trim().toUpperCase();
 
-  if (
-    !Number.isFinite(entryPrice) ||
-    !Number.isFinite(exitPrice)
-  ) {
-    return "n";
-  }
+//   if (
+//     !Number.isFinite(entryPrice) ||
+//     !Number.isFinite(exitPrice)
+//   ) {
+//     return "n";
+//   }
 
-if (action !== "BUY" && action !== "SELL") {
-  return "n";
-}
+// if (action !== "BUY" && action !== "SELL") {
+//   return "n";
+// }
 
-const pnl =
-  action === "BUY"
-    ? exitPrice - entryPrice
-    : entryPrice - exitPrice;
+// const pnl =
+//   action === "BUY"
+//     ? exitPrice - entryPrice
+//     : entryPrice - exitPrice;
 
-  if (pnl > 0) return "g";
-  if (pnl < 0) return "r";
-  return "n";
-});
+//   if (pnl > 0) return "g";
+//   if (pnl < 0) return "r";
+//   return "n";
+// });
 
 
 const activeResult = await pool.query<{ count: string }>(
@@ -298,46 +299,18 @@ const activeResult = await pool.query<{ count: string }>(
 
 const activeCount = Number(activeResult.rows[0]?.count ?? 0);
 
-  return res.status(200).json({
+const metrics = calculatePerformanceMetrics({
+  createdThisMonth,
+  exitedThisMonth,
+  lastTenRows: lastTenResult.rows,
+  activeCount,
+});
+
+//  
+return res.status(200).json({
   success: true,
   month,
-  metrics: {
-    total: totalCalls,
-
-    // Profitable calls / total calls × 100
-    accuracy: percentageOfTotalCalls(
-      profitableCalls.length
-    ),
-
-    // Target-hit calls / total calls × 100
-    strike: percentageOfTotalCalls(
-      targetHitCalls.length
-    ),
-
-    // Total loss / total profit
-    rr: riskRewardRatio,
-
-    active: activeCount,
-    exited: exitedThisMonth.length,
-    profit: profitableCalls.length,
-    adverse: adverseCalls.length,
-
-    // Stop-loss-hit calls / total calls × 100
-    sl: percentageOfTotalCalls(
-      stopLossHitCalls.length
-    ),
-
-    // Early-exit calls / total calls × 100
-    early: percentageOfTotalCalls(
-      earlyExitCalls.length
-    ),
-
-    last: lastTen,
-
-    totalProfit: Number(totalProfit.toFixed(2)),
-    totalLoss: Number(totalLoss.toFixed(2)),
-    missingExitPrice: missingExitPriceCount,
-  },
+  metrics,
 });
   } catch (error) {
     console.error("GET PERFORMANCE ERROR:", error);
