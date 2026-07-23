@@ -4,8 +4,6 @@ import {
   Grid,
   Paper,
   Typography,
-  Button,
-  IconButton,
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
@@ -176,7 +174,6 @@ setMetrics({
     <Paper sx={cardStyle}>
       <Box display="flex" justifyContent="space-between">
         <Typography fontSize="0.875rem">{title}</Typography>
-        <InfoOutlinedIcon sx={{ fontSize: "1.125rem", color: "#999" }} />
       </Box>
 
       <Box display="flex" justifyContent="space-between" alignItems="center" mt={2}>
@@ -187,54 +184,25 @@ setMetrics({
         >
           {value}
         </Typography>
-        <Button
-          variant="contained"
-          size="small"
-          sx={{
-            borderRadius: "1.125rem",
-            textTransform: "none",
-            fontWeight: 600,
-            px: 2.25,
-            minWidth: 0,
-            boxShadow: "none",
-            backgroundColor: "#4F6EF7",
-            "&:hover": { backgroundColor: "#3E5BE6", boxShadow: "none" },
-          }}
-        >
-          View
-        </Button>
       </Box>
     </Paper>
   );
 
-  const SmallCard = ({ title, value, green = false, red = false }: any) => (
+const SmallCard = ({ title, value, green = false, red = false }: any) => (
     <Paper sx={cardStyle}>
       <Box display="flex" justifyContent="space-between">
         <Typography fontSize="0.8125rem">{title}</Typography>
-        <InfoOutlinedIcon sx={{ fontSize: "1rem", color: "#999" }} />
       </Box>
 
       <Box display="flex" justifyContent="space-between" alignItems="center" mt={1}>
         <Typography
-          fontSize="1.625rem"
+          fontSize={{ xs: "1.125rem", sm: "1.625rem" }}
           fontWeight={700}
           color={green ? "#16a34a" : red ? "#dc2626" : "#000"}
+          sx={{ whiteSpace: "nowrap" }}
         >
           {value}
         </Typography>
-        <IconButton
-          size="small"
-          sx={{
-            width: "1.875rem",
-            height: "1.875rem",
-            borderRadius: "999px",
-            backgroundColor: "#4F6EF7",
-            color: "#fff",
-            "&:hover": { backgroundColor: "#3E5BE6" },
-          }}
-        >
-          <ArrowForwardIosIcon sx={{ fontSize: "0.8125rem" }} />
-        </IconButton>
       </Box>
     </Paper>
   );
@@ -249,10 +217,6 @@ const Last10 = () => (
       <Typography fontSize="0.8125rem">
         Last 10 Exited Calls
       </Typography>
-
-      <InfoOutlinedIcon
-        sx={{ fontSize: "1rem", color: "#999" }}
-      />
     </Box>
 
     <Box display="flex" gap={0.9} mt={2}>
