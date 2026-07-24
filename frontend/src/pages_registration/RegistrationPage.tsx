@@ -26,6 +26,10 @@ import InputAdornment from "@mui/material/InputAdornment";
 
 import { State, City } from "country-state-city";
 import { useNavigate } from "react-router-dom";
+import {
+  saveRARegistrationSession,
+} from "../features/raRegistrationSubscription";
+
 
 
 const RegistrationPage: React.FC = () => {
@@ -288,14 +292,63 @@ Object.entries(fileMapping).forEach(([key, file]) => {
   form
 );
 
-    if (response.data.success) {
-  localStorage.removeItem("raRegistrationForm");
-  localStorage.removeItem("raRegistrationStep");
+if (response.data.success) {
+  const applicationId =
+    typeof response.data.application_id ===
+    "string"
+      ? response.data.application_id.trim()
+      : "";
 
-  alert("✅ Registration submitted successfully!");
-  navigate("/login");
+  const registrationToken =
+    typeof response.data.registration_token ===
+    "string"
+      ? response.data.registration_token.trim()
+      : "";
+
+  const tokenExpiresAt =
+    typeof response.data
+      .registration_token_expires_at ===
+    "string"
+      ? response.data
+          .registration_token_expires_at
+          .trim()
+      : "";
+
+  if (
+    !applicationId ||
+    !registrationToken ||
+    !tokenExpiresAt ||
+    Number.isNaN(
+      Date.parse(tokenExpiresAt)
+    )
+  ) {
+    throw new Error(
+      "Registration succeeded, but the secure registration session was incomplete."
+    );
+  }
+
+  saveRARegistrationSession({
+    applicationId,
+    registrationToken,
+    tokenExpiresAt,
+    audienceType: "RA",
+  });
+
+  localStorage.removeItem(
+    "raRegistrationForm"
+  );
+
+  localStorage.removeItem(
+    "raRegistrationStep"
+  );
+
+  navigate(
+    "/registration/subscription",
+    {
+      replace: true,
+    }
+  );
 }
-
   }  catch (error: any) {
   if (error.response) {
     console.error("Backend error:", error.response.data);
@@ -323,10 +376,18 @@ Object.entries(fileMapping).forEach(([key, file]) => {
     }
 
     alert(backendData.message || "Registration failed");
-  } else {
-    console.error("Network error:", error);
-    alert("Network error");
-  }
+} else {
+  console.error(
+    "Registration error:",
+    error
+  );
+
+  alert(
+    error instanceof Error
+      ? error.message
+      : "Unable to complete registration."
+  );
+}
 }
 };
 

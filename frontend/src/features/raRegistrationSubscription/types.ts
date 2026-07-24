@@ -110,9 +110,15 @@ export interface RazorpaySuccessResponse {
 export interface VerifyRegistrationPaymentResponse {
   success: true;
   message?: string;
-  registrationStatus: "PAID_PENDING_APPROVAL";
-  subscriptionStatus: "PAID_PENDING_APPROVAL";
-  nextStep: "WAIT_FOR_ADMIN_APPROVAL";
+
+  registrationStatus:
+    "PAID_PENDING_APPROVAL";
+
+  subscriptionId?: string | null;
+
+  nextStep:
+    | "ADMIN_APPROVAL"
+    | "WAIT_FOR_ADMIN_APPROVAL";
 }
 
 export interface PasswordSetupAccount {

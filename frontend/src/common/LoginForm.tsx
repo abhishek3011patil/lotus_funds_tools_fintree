@@ -67,7 +67,6 @@ localStorage.setItem(
 localStorage.setItem("username", res.data.username);
 
 localStorage.setItem("role", role);
-      console.log("LOGIN:", res.data);
 
 
       if (role === "ADMIN" || role === "EMPLOYEE") {
@@ -76,9 +75,11 @@ localStorage.setItem("role", role);
         return;
       }
 
-      if (role === "RESEARCH_ANALYST") {
-        navigate("/ra-dashboard");
-      } else if (role === "BROKER") {
+     if (role === "RESEARCH_ANALYST") {
+  navigate("/recommendations", {
+    replace: true,
+  });
+} else if (role === "BROKER") {
         navigate("/broker-dashboard");
       } else if (role === "CLIENT") {
         navigate("/client-dashboard");

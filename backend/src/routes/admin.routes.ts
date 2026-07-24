@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { activateRA, approveUser, getDisclaimerHistoryByRA, resendPasswordLink, suspendUser } from "../controllers/admin.controller";
+import { activateRA, getDisclaimerHistoryByRA, resendPasswordLink, suspendUser } from "../controllers/admin.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 import { requireAdmin } from "../middlewares/admin.middleware";
 import whatsappRoutes from "./whatsapp.routes";

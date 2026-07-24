@@ -170,70 +170,95 @@ const RAPlanSelectionContent = ({
       }
 
       try {
-        await selectRAPlan(
-          session.applicationId,
-          session.registrationToken,
-          plan.id,
-          controller.signal
-        );
+  const storedSession =
+    getRARegistrationSession();
 
-        setRASelectedPlanId(plan.id);
-        if (mountedRef.current) {
-          setSelectedPlanId(plan.id);
-        }
+  const isRetryingSelectedPlan =
+    storedSession?.selectedPlanId ===
+    plan.id;
 
-        let orderResponse;
-        try {
-          orderResponse =
-            await createRARegistrationPaymentOrder(
-              session.applicationId,
-              session.registrationToken,
-              controller.signal
-            );
-        } catch (error) {
-          const storedSession =
-            getRARegistrationSession();
+  if (!isRetryingSelectedPlan) {
+    await selectRAPlan(
+      session.applicationId,
+      session.registrationToken,
+      plan.id,
+      controller.signal
+    );
 
-          if (
-            storedSession?.paymentStatus ===
-            "PAID_PENDING_APPROVAL"
-          ) {
-            navigate("/registration/under-review", {
-              replace: true,
-            });
-            return;
-          }
+    setRASelectedPlanId(plan.id);
 
-          throw error;
-        }
+    if (mountedRef.current) {
+      setSelectedPlanId(plan.id);
+    }
+  }
 
-        const razorpayResult =
-          await openRARegistrationCheckout(orderResponse);
-        const verification =
-          await verifyRARegistrationPayment(
-            session.applicationId,
-            session.registrationToken,
-            razorpayResult,
-            controller.signal
-          );
+  let orderResponse;
 
-        if (
-          verification.registrationStatus !==
-          "PAID_PENDING_APPROVAL"
-        ) {
-          throw new RegistrationApiError(
-            "The payment was received, but the server did not confirm the registration status. Please contact support before paying again.",
-            200,
-            "INVALID_PAYMENT_VERIFICATION_RESPONSE",
-            verification
-          );
-        }
+  try {
+    orderResponse =
+      await createRARegistrationPaymentOrder(
+        session.applicationId,
+        session.registrationToken,
+        controller.signal
+      );
+  } catch (error) {
+    const latestStoredSession =
+      getRARegistrationSession();
 
-        setRAPaymentStatus("PAID_PENDING_APPROVAL");
-        navigate("/registration/under-review", {
+    if (
+      latestStoredSession?.paymentStatus ===
+      "PAID_PENDING_APPROVAL"
+    ) {
+      navigate(
+        "/registration/under-review",
+        {
           replace: true,
-        });
-      } catch (error: unknown) {
+        }
+      );
+      return;
+    }
+
+    throw error;
+  }
+
+  const razorpayResult =
+    await openRARegistrationCheckout(
+      orderResponse
+    );
+
+  const verification =
+    await verifyRARegistrationPayment(
+      session.applicationId,
+      session.registrationToken,
+      razorpayResult,
+      controller.signal
+    );
+
+  if (
+    verification.registrationStatus !==
+    "PAID_PENDING_APPROVAL"
+  ) {
+    throw new RegistrationApiError(
+      "The payment was received, but the server did not confirm the registration status. Please contact support before paying again.",
+      200,
+      "INVALID_PAYMENT_VERIFICATION_RESPONSE",
+      verification
+    );
+  }
+
+  setRAPaymentStatus(
+    "PAID_PENDING_APPROVAL"
+  );
+
+  navigate(
+    "/registration/under-review",
+    {
+      replace: true,
+    }
+  );
+}
+
+      catch (error: unknown) {
         if (
           isAbortError(error) ||
           !mountedRef.current

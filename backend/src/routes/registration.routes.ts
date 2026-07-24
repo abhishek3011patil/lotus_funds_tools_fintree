@@ -108,7 +108,7 @@ router.put(
 
 router.get("/all-registrations", authenticate, requireAdmin, getAllRegistrations);
 router.get("/all-registrations-active-users", authenticate, requireAdmin, getAllRegistrationsActiveUsers);
-router.put("/approve/:id", authenticate, requireAdmin, approveRegistration);
+//router.put("/approve/:id", authenticate, requireAdmin, approveRegistration);
 router.put(
   "/reject/:type/:id",
   authenticate,

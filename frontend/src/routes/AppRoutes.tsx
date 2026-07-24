@@ -16,10 +16,28 @@ import AdminAuditLogs from "../pages_admin/AdminAuditLogs";
 const LoginForm = lazy(() => import("../common/LoginForm"));
 const LoginFormAdmin = lazy(() => import("../common/LoginFormAdmin"));
 const Signup = lazy(() => import("../pages/common/Signup"));
-const NewPassword = lazy(() => import("../common/NewPassword"));
-
+const RAPasswordSetupPage = lazy(
+  () =>
+    import(
+      "../features/raRegistrationSubscription/pages/RAPasswordSetupPage"
+    )
+);
 // --- Lazy: Registration ---
 const RegistrationPage = lazy(() => import("../pages_registration/RegistrationPage"));
+const RAPlanSelectionPage = lazy(
+  () =>
+    import(
+      "../features/raRegistrationSubscription/pages/RAPlanSelectionPage"
+    )
+);
+
+const RAUnderReviewPage = lazy(
+  () =>
+    import(
+      "../features/raRegistrationSubscription/pages/RAUnderReviewPage"
+    )
+);
+
 const BrokerRegistration = lazy(() => import("../pages_registration/BrokerRegistration"));
 
 // --- Lazy: Main (Employee / Broker) ---
@@ -87,18 +105,37 @@ const AppRoutes = () => {
       <Routes>
 
         {/* New Password — must be above wildcard */}
-        <Route path="/set-password" element={<NewPassword />} />
-
+       <Route
+  path="/set-password"
+  element={<RAPasswordSetupPage />}
+/>
         {/* Auth & Public */}
         <Route path="/login" element={<LoginForm />} />
         <Route path="/login-admin" element={<LoginFormAdmin />} />
         <Route path="/signup" element={<Signup />} />
 
         {/* Registration */}
-        <Route path="/registration">
-          <Route index element={<RegistrationPage />} />
-          <Route path="broker" element={<BrokerRegistration />} />
-        </Route>
+       <Route path="/registration">
+  <Route
+    index
+    element={<RegistrationPage />}
+  />
+
+  <Route
+    path="broker"
+    element={<BrokerRegistration />}
+  />
+
+  <Route
+    path="subscription"
+    element={<RAPlanSelectionPage />}
+  />
+
+  <Route
+    path="under-review"
+    element={<RAUnderReviewPage />}
+  />
+</Route>
 
         {/* Subscription */}
         <Route path="/subscription" element={<SubscriptionPage />} />
@@ -145,14 +182,7 @@ const AppRoutes = () => {
     </ProtectedRoute>
   }
 />
-          <Route
-            path="/recommendations"
-            element={
-              <ProtectedRoute allowedRoles={["RESEARCH_ANALYST"]}>
-                <Recommendations />
-              </ProtectedRoute>
-            }
-          />
+      
 
         </Route>
 
