@@ -4,6 +4,7 @@ const roleRoutes: Record<string, string> = {
     ADMIN: "/admin",
     EMPLOYEE: "/automation",
     RA: "/",
+    BROKER: "/broker",
     CLIENT: "/client",
 };
 

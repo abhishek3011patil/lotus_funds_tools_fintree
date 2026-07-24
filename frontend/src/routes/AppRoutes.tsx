@@ -5,10 +5,9 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import AppLayout from "../components/layout/AppLayout";
 import AutomationLayout from "../components/layout_automation/AppLayout";
 import AdminLayout from "../components/layout_admin/AppLayout";
-import ClientLayout from "../components/layout_client/AppLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import LoadingPage from "../common/LoadingPage";
-import AdminAuditLogs from "../pages_admin/AdminAuditLogs";
+import ClientLayout from "../client_section/components/ClientLayout";
 
 
 
@@ -72,11 +71,11 @@ const AdminSettings = lazy(() => import("../pages_admin/AdminSettings"));
 
 
 
-// --- Lazy: Client ---
-const ClientDashboard = lazy(() => import("../pages_client/Dashboard"));
-const ClientRecommendations = lazy(() => import("../pages_client/Recomendation"));
-const ClientPerformance = lazy(() => import("../pages_client/Performance"));
-const ClientNotFound = lazy(() => import("../pages_client/Notfound"));
+// --- Lazy: Client Section Pages ---
+const ClientDashboard = lazy(() => import("../client_section/pages/ClientDashboard"));
+const ClientTradeCalls = lazy(() => import("../client_section/pages/ClientTradeCalls"));
+const ClientPortfolio = lazy(() => import("../client_section/pages/ClientPortfolio"));
+const ClientSettings = lazy(() => import("../client_section/pages/ClientSettings"));
 
 // --- Lazy: Subscription ---
 const SubscriptionPage = lazy(() => import("../subscription/SubscriptionPage"));
@@ -89,6 +88,10 @@ const DisclaimerHistory = lazy(
   () => import("../pages_admin/Admin common/DisclaimerHistory")
 );
 
+const BrokerDashboard = lazy(() => import("../broker_section/pages/BrokerDashboard"));
+const BrokerRecommendations = lazy(() => import("../broker_section/pages/BrokerRecommendations"));
+const BrokerPerformance = lazy(() => import("../broker_section/pages/BrokerPerformance"));
+const BrokerSettings = lazy(() => import("../broker_section/pages/BrokerSettings"));
 
 // --- Fallback UI shown while a lazy chunk is loading ---
 const PageLoader = () => (
@@ -148,10 +151,6 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
-        
-
-
-
           <Route path="/" element={<Dashboard />} />
 <Route path="/performance" element={<Performance />} />
 <Route path="/settings" element={<Settings />} />
@@ -182,8 +181,22 @@ const AppRoutes = () => {
     </ProtectedRoute>
   }
 />
-      
+        </Route>
 
+        {/* 2. BROKER SECTION LAYOUT — BROKER ROLE ONLY */}
+        <Route
+          path="/broker"
+          element={
+            <ProtectedRoute allowedRoles={["BROKER"]}>
+              <BrokerLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<BrokerDashboard />} />
+          <Route path="recommendations" element={<BrokerRecommendations />} />
+          <Route path="performance" element={<BrokerPerformance />} />
+          <Route path="settings" element={<BrokerSettings />} />
         </Route>
 
         {/* 2. Morning Report Workflow — EMPLOYEE / ADMIN */}
@@ -266,24 +279,24 @@ const AppRoutes = () => {
         </Route>
 
         {/* 5. Client Layout — CLIENT ONLY */}
-        <Route
-          path="/client/*"
-          element={
-            <ProtectedRoute allowedRoles={["CLIENT"]}>
-              <ClientLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<ClientDashboard />} />
-          <Route path="dashboard" element={<ClientDashboard />} />
-          <Route path="recommendations" element={<ClientRecommendations />} />
-          <Route path="performance" element={<ClientPerformance />} />
-          <Route path="*" element={<ClientNotFound />} />
-        </Route>
+<Route
+  path="/client"
+  element={
+    <ProtectedRoute allowedRoles={["CLIENT"]}>
+      <ClientLayout />
+    </ProtectedRoute>
+  }
+>
+  <Route index element={<Navigate to="dashboard" replace />} />
+  <Route path="dashboard" element={<ClientDashboard />} />
+  <Route path="trade-calls" element={<ClientTradeCalls />} />
+  <Route path="portfolio" element={<ClientPortfolio />} />
+  <Route path="settings" element={<ClientSettings />} />
+</Route>
 
         {/* Catch-all — always last */}
         <Route path="*" element={<Navigate to="/" replace />} />
-        
+
 
       </Routes>
     </Suspense>
