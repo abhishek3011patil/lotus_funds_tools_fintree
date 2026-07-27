@@ -8,7 +8,8 @@ import AdminLayout from "../components/layout_admin/AppLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import LoadingPage from "../common/LoadingPage";
 import ClientLayout from "../client_section/components/ClientLayout";
-
+import BrokerLayout from "../broker_section/components/BrokerLayout";
+import AdminAuditLogs from "../pages_admin/AdminAuditLogs";
 
 
 // --- Lazy: Auth & Public ---
