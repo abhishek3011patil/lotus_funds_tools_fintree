@@ -8,7 +8,8 @@ import AdminLayout from "../components/layout_admin/AppLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import LoadingPage from "../common/LoadingPage";
 import ClientLayout from "../client_section/components/ClientLayout";
-
+import BrokerLayout from "../broker_section/components/BrokerLayout";
+import AdminAuditLogs from "../pages_admin/AdminAuditLogs";
 
 
 // --- Lazy: Auth & Public ---
@@ -73,9 +74,12 @@ const AdminSettings = lazy(() => import("../pages_admin/AdminSettings"));
 
 // --- Lazy: Client Section Pages ---
 const ClientDashboard = lazy(() => import("../client_section/pages/ClientDashboard"));
-const ClientTradeCalls = lazy(() => import("../client_section/pages/ClientTradeCalls"));
-const ClientPortfolio = lazy(() => import("../client_section/pages/ClientPortfolio"));
-const ClientSettings = lazy(() => import("../client_section/pages/ClientSettings"));
+const ClientRecommendations = lazy(() => import("../client_section/pages/ClientRecommendations"));
+const ClientBlogs = lazy(() => import("../client_section/pages/ClientBlogs"));
+const ClientVideos = lazy(() => import("../client_section/pages/ClientVideos"));
+const ClientPerformance = lazy(() => import("../client_section/pages/ClientPerformance"));
+const ClientNotifications = lazy(() => import("../client_section/pages/ClientNotifications"));
+const ClientProfile = lazy(() => import("../client_section/pages/ClientProfile"));
 
 // --- Lazy: Subscription ---
 const SubscriptionPage = lazy(() => import("../subscription/SubscriptionPage"));
@@ -279,21 +283,24 @@ const AppRoutes = () => {
         </Route>
 
         {/* 5. Client Layout — CLIENT ONLY */}
-<Route
-  path="/client"
-  element={
-    <ProtectedRoute allowedRoles={["CLIENT"]}>
-      <ClientLayout />
-    </ProtectedRoute>
-  }
->
-  <Route index element={<Navigate to="dashboard" replace />} />
-  <Route path="dashboard" element={<ClientDashboard />} />
-  <Route path="trade-calls" element={<ClientTradeCalls />} />
-  <Route path="portfolio" element={<ClientPortfolio />} />
-  <Route path="settings" element={<ClientSettings />} />
-</Route>
-
+{/* 3. Client Section Layout — CLIENT ROLE ONLY */}
+        <Route
+          path="/client"
+          element={
+            <ProtectedRoute allowedRoles={["CLIENT"]}>
+              <ClientLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<ClientDashboard />} />
+          <Route path="recommendations" element={<ClientRecommendations />} />
+          <Route path="blogs" element={<ClientBlogs />} />
+          <Route path="videos" element={<ClientVideos />} />
+          <Route path="performance" element={<ClientPerformance />} />
+          <Route path="notifications" element={<ClientNotifications />} />
+          <Route path="profile" element={<ClientProfile />} />
+        </Route>
         {/* Catch-all — always last */}
         <Route path="*" element={<Navigate to="/" replace />} />
 

@@ -8,6 +8,18 @@ import {
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import RecommendationHistory from "./common/RecommendationHistory";
+import ShowChartIcon from "@mui/icons-material/ShowChart";
+import PieChartIcon from "@mui/icons-material/PieChart";
+import TrackChangesIcon from "@mui/icons-material/TrackChanges";
+import BalanceIcon from "@mui/icons-material/Balance";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import TrendingDownIcon from "@mui/icons-material/TrendingDown";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import ExitToAppIcon from "@mui/icons-material/ExitToApp";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
+import HistoryIcon from "@mui/icons-material/History";
 import axios from "axios";
 
 interface PerformanceMetrics {
@@ -37,8 +49,6 @@ const [error, setError] = useState("");
 
 useEffect(() => {
   const controller = new AbortController();
-
-
 
 
   const fetchPerformance = async () => {
@@ -135,8 +145,6 @@ setMetrics({
 
 
 
-
-
   // useEffect(() => {
 
   //   const fetchPerformance = async () => {
@@ -170,56 +178,76 @@ setMetrics({
 
   // }, []); // runs once when page loads
 
-  const BigCard = ({ title, value, green = false, red = false }: any) => (
-    <Paper sx={cardStyle}>
-      <Box display="flex" justifyContent="space-between">
-        <Typography fontSize="0.875rem">{title}</Typography>
-      </Box>
-
-      <Box display="flex" justifyContent="space-between" alignItems="center" mt={2}>
-        <Typography
-          fontSize="3rem"
-          fontWeight={700}
-          color={green ? "#16a34a" : red ? "#dc2626" : "#000"}
-        >
-          {value}
-        </Typography>
-      </Box>
-    </Paper>
-  );
-
-const SmallCard = ({ title, value, green = false, red = false }: any) => (
-    <Paper sx={cardStyle}>
-      <Box display="flex" justifyContent="space-between">
-        <Typography fontSize="0.8125rem">{title}</Typography>
-      </Box>
-
-      <Box display="flex" justifyContent="space-between" alignItems="center" mt={1}>
-        <Typography
-          fontSize={{ xs: "1.125rem", sm: "1.625rem" }}
-          fontWeight={700}
-          color={green ? "#16a34a" : red ? "#dc2626" : "#000"}
-          sx={{ whiteSpace: "nowrap" }}
-        >
-          {value}
-        </Typography>
-      </Box>
-    </Paper>
-  );
-
-const Last10 = () => (
+const BigCard = ({ title, value, icon: Icon, green = false, red = false }: any) => (
   <Paper sx={cardStyle}>
-    <Box
-      display="flex"
-      justifyContent="space-between"
-      alignItems="center"
-    >
-      <Typography fontSize="0.8125rem">
-        Last 10 Exited Calls
+    <Box display="flex" justifyContent="space-between" alignItems="center" gap={1}>
+      <Typography fontSize={{ xs: "0.8rem", sm: "0.875rem" }} noWrap>
+        {title}
       </Typography>
+      {Icon && (
+        <Icon
+          sx={{
+            fontSize: { xs: 18, sm: 20 },
+            color: green ? "#16a34a" : red ? "#dc2626" : "text.secondary",
+            flexShrink: 0,
+          }}
+        />
+      )}
     </Box>
 
-    <Box display="flex" gap={0.9} mt={2}>
+    <Box display="flex" justifyContent="space-between" alignItems="center" mt={2}>
+      <Typography
+        fontSize={{ xs: "2.25rem", sm: "2.75rem", md: "3rem" }}
+        fontWeight={700}
+        color={green ? "#16a34a" : red ? "#dc2626" : "#000"}
+        sx={{ wordBreak: "break-word" }}
+      >
+        {value}
+      </Typography>
+    </Box>
+  </Paper>
+);
+
+const SmallCard = ({ title, value, icon: Icon, green = false, red = false }: any) => (
+  <Paper sx={{ ...cardStyle, minHeight: { xs: "85px", sm: "95px" } }}>
+    <Box display="flex" justifyContent="space-between" alignItems="center" gap={1}>
+      <Typography fontSize={{ xs: "0.75rem", sm: "0.8125rem" }} noWrap>
+        {title}
+      </Typography>
+      {Icon && (
+        <Icon
+          sx={{
+            fontSize: { xs: 14, sm: 16 },
+            color: green ? "#16a34a" : red ? "#dc2626" : "text.secondary",
+            flexShrink: 0,
+          }}
+        />
+      )}
+    </Box>
+
+    <Box display="flex" justifyContent="space-between" alignItems="center" mt={1}>
+      <Typography
+        fontSize={{ xs: "1.25rem", sm: "1.5rem", md: "1.625rem" }}
+        fontWeight={700}
+        color={green ? "#16a34a" : red ? "#dc2626" : "#000"}
+        sx={{ whiteSpace: "nowrap" }}
+      >
+        {value}
+      </Typography>
+    </Box>
+  </Paper>
+);
+
+const Last10 = () => (
+  <Paper sx={{ ...cardStyle, minHeight: { xs: "85px", sm: "95px" } }}>
+    <Box display="flex" justifyContent="space-between" alignItems="center" gap={1}>
+      <Typography fontSize={{ xs: "0.75rem", sm: "0.8125rem" }} noWrap>
+        Last 10 Exited Calls
+      </Typography>
+      <HistoryIcon sx={{ fontSize: { xs: 14, sm: 16 }, color: "text.secondary", flexShrink: 0 }} />
+    </Box>
+
+    <Box display="flex" gap={{ xs: 0.5, sm: 0.8 }} mt={1} alignItems="center" height="2.4rem">
       {metrics?.last.length ? (
         metrics.last.map((status, index) => {
           const backgroundColor =
@@ -240,30 +268,22 @@ const Last10 = () => (
                   : "Breakeven"
               }
               sx={{
-                width: "0.875rem",
-                height: "1.125rem",
-                borderRadius: "0.04375rem",
+                flex: 1,
+                height: { xs: "0.875rem", sm: "1.125rem" },
+                borderRadius: "2px",
                 backgroundColor,
               }}
             />
           );
         })
       ) : (
-        <Typography
-          fontSize="0.75rem"
-          color="text.secondary"
-        >
+        <Typography fontSize="0.75rem" color="text.secondary">
           No exited calls
         </Typography>
       )}
     </Box>
   </Paper>
 );
-
-
-
-
-  
 
 return (
   <Box>
@@ -299,100 +319,110 @@ return (
           >
             <Grid container spacing={2}>
               {/* COLUMN 1 */}
-              <Grid size={{ xs: 12, md: 3 }}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <Grid container spacing={2}>
                   <Grid size={12}>
-                    <BigCard
-                      title="Total Recommendations"
-                      value={metrics.total}
-                    />
+                  <BigCard
+  title="Total Recommendations"
+  value={metrics.total}
+  icon={FormatListBulletedIcon}
+/>
                   </Grid>
 
                   <Grid size={6}>
                     <SmallCard
-                      title="Active"
-                      value={metrics.active}
-                      green
-                    />
+  title="Active"
+  value={metrics.active}
+  icon={TrendingUpIcon}
+  green
+/>
                   </Grid>
 
                   <Grid size={6}>
                     <SmallCard
-                      title="Exited"
-                      value={metrics.exited}
-                    />
+  title="Exited"
+  value={metrics.exited}
+  icon={ExitToAppIcon}
+/>
                   </Grid>
                 </Grid>
               </Grid>
 
               {/* COLUMN 2 */}
-              <Grid size={{ xs: 12, md: 3 }}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <Grid container spacing={2}>
                   <Grid size={12}>
-                    <BigCard
-                      title="Accuracy"
-                      value={`${metrics.accuracy}%`}
-                      green={metrics.accuracy >= 80}
-                      red={metrics.accuracy < 80}
-                    />
+                   <BigCard
+  title="Accuracy"
+  value={`${metrics.accuracy}%`}
+  green={metrics.accuracy >= 80}
+  red={metrics.accuracy < 80}
+  icon={PieChartIcon}
+/>
+                  </Grid>
+
+                  <Grid size={6}>
+                   <SmallCard
+  title="Profitable"
+  value={metrics.profit}
+  icon={CheckCircleOutlineIcon}
+  green
+/>
                   </Grid>
 
                   <Grid size={6}>
                     <SmallCard
-                      title="Profitable"
-                      value={metrics.profit}
-                      green
-                    />
-                  </Grid>
-
-                  <Grid size={6}>
-                    <SmallCard
-                      title="Adverse"
-                      value={metrics.adverse}
-                      red
-                    />
+  title="Adverse"
+  value={metrics.adverse}
+  icon={TrendingDownIcon}
+  red
+/>
                   </Grid>
                 </Grid>
               </Grid>
 
               {/* COLUMN 3 */}
-              <Grid size={{ xs: 12, md: 3 }}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <Grid container spacing={2}>
                   <Grid size={12}>
                     <BigCard
-                      title="Target Strike Rate"
-                      value={`${metrics.strike}%`}
-                    />
+  title="Target Strike Rate"
+  value={`${metrics.strike}%`}
+  icon={TrackChangesIcon}
+/>
                   </Grid>
 
                   <Grid size={6}>
                     <SmallCard
-                      title="SL Hit Rate"
-                      value={`${metrics.sl}%`}
-                    />
+  title="SL Hit Rate"
+  value={`${metrics.sl}%`}
+  icon={CancelOutlinedIcon}
+/>
                   </Grid>
 
                   <Grid size={6}>
                     <SmallCard
-                      title="Early Exit"
-                      value={`${metrics.early}%`}
-                    />
+  title="Early Exit"
+  value={`${metrics.early}%`}
+  icon={AccessTimeIcon}
+/>
                   </Grid>
                 </Grid>
               </Grid>
 
               {/* COLUMN 4 */}
-              <Grid size={{ xs: 12, md: 3 }}>
+              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                 <Grid container spacing={2}>
                   <Grid size={12}>
                     <BigCard
-                      title="Risk : Reward Ratio"
-                      value={
-                        metrics.rr === null
-                          ? "N/A"
-                          : `${metrics.rr.toFixed(2)} : 1`
-                      }
-                    />
+        title="Risk : Reward Ratio"
+        value={
+          metrics.rr === null
+            ? "N/A"
+            : `${metrics.rr.toFixed(2)} : 1`
+        }
+        icon={BalanceIcon}
+      />
                   </Grid>
 
                   <Grid size={12}>
@@ -421,12 +451,15 @@ return (
 };
 
 const cardStyle = {
-  p: 2,
+  p: { xs: 1.5, sm: 2 },
   borderRadius: "0.145rem",
   border: "1px solid #E9E9EE",
   backgroundColor: "#fff",
   boxShadow: "none",
   height: "100%",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "space-between",
 };
 
 export default Performance;
