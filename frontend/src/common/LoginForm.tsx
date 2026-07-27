@@ -82,7 +82,7 @@ localStorage.setItem("role", role);
 } else if (role === "BROKER") {
         navigate("/broker-dashboard");
       } else if (role === "CLIENT") {
-        navigate("/client-dashboard");
+        navigate("/client/dashboard", { replace: true });
       } else {
         setMessage("Invalid role");
         localStorage.clear();

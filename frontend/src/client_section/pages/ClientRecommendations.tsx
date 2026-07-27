@@ -1,13 +1,13 @@
 import { Box, Typography } from "@mui/material";
 
-const ClientSettings = () => {
+const ClientPortfolio = () => {
   return (
     <Box>
       <Typography variant="h4" fontWeight="bold">
-        Client Settings
+        Client Recommendations
       </Typography>
     </Box>
   );
 };
 
-export default ClientSettings;
+export default ClientPortfolio;
