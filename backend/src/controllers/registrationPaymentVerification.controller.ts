@@ -11,6 +11,11 @@ type VerificationBody = {
   razorpaySignature?: unknown;
 };
 
+type FailureReconciliationBody = {
+  applicationId?: unknown;
+  razorpayOrderId?: unknown;
+};
+
 const getString = (value: unknown): string =>
   typeof value === "string" ? value.trim() : "";
 
@@ -258,6 +263,14 @@ export const verifyRegistrationPayment = async (
       );
 
     if (initialResult.rows.length === 0) {
+      console.warn(
+        "REGISTRATION PAYMENT ORDER MISMATCH:",
+        {
+          applicationId,
+          razorpayOrderId,
+        }
+      );
+
       res.status(404).json({
         success: false,
         message:
@@ -362,6 +375,18 @@ export const verifyRegistrationPayment = async (
       String(providerPayment.order_id || "") !==
       initial.provider_order_id
     ) {
+      console.warn(
+        "RAZORPAY ORDER/PAYMENT MISMATCH:",
+        {
+          applicationId,
+          expectedOrderId:
+            initial.provider_order_id,
+          receivedOrderId:
+            String(providerPayment.order_id || ""),
+          razorpayPaymentId,
+        }
+      );
+
       res.status(409).json({
         success: false,
         message:
@@ -374,6 +399,15 @@ export const verifyRegistrationPayment = async (
       Number(providerPayment.amount) !==
       Number(initial.amount_paise)
     ) {
+      console.warn(
+        "RAZORPAY ORDER/PAYMENT AMOUNT MISMATCH:",
+        {
+          applicationId,
+          razorpayOrderId,
+          razorpayPaymentId,
+        }
+      );
+
       res.status(409).json({
         success: false,
         message:
@@ -387,6 +421,15 @@ export const verifyRegistrationPayment = async (
         .toUpperCase() !==
       String(initial.currency || "").toUpperCase()
     ) {
+      console.warn(
+        "RAZORPAY ORDER/PAYMENT CURRENCY MISMATCH:",
+        {
+          applicationId,
+          razorpayOrderId,
+          razorpayPaymentId,
+        }
+      );
+
       res.status(409).json({
         success: false,
         message:
@@ -399,6 +442,17 @@ export const verifyRegistrationPayment = async (
       String(providerPayment.status || "")
         .toLowerCase() !== "captured"
     ) {
+      console.info(
+        "REGISTRATION PAYMENT NOT YET CAPTURED:",
+        {
+          applicationId,
+          razorpayOrderId,
+          razorpayPaymentId,
+          paymentStatus:
+            String(providerPayment.status || "unknown"),
+        }
+      );
+
       res.status(409).json({
         success: false,
         message:
@@ -884,6 +938,17 @@ export const verifyRegistrationPayment = async (
       }
 
       if (transactionError?.code === "23505") {
+        console.error(
+          "REGISTRATION PAYMENT UNIQUE CONSTRAINT ERROR:",
+          {
+            applicationId,
+            razorpayOrderId,
+            constraint:
+              transactionError.constraint ||
+              "unknown",
+          }
+        );
+
         res.status(409).json({
           success: false,
           message:
@@ -915,6 +980,445 @@ export const verifyRegistrationPayment = async (
       success: false,
       message:
         "Unable to verify the Razorpay payment.",
+    });
+  }
+};
+
+/**
+ * POST /api/payments/registration-failure
+ *
+ * Reconciles a failed or cancelled registration checkout without
+ * trusting the browser for the provider payment state.
+ */
+export const reconcileFailedRegistrationPayment = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const body =
+    (req.body || {}) as FailureReconciliationBody;
+  const applicationId =
+    getString(body.applicationId);
+  const razorpayOrderId =
+    getString(body.razorpayOrderId);
+  const registrationToken =
+    getRegistrationToken(req);
+
+  if (!applicationId || !razorpayOrderId) {
+    res.status(400).json({
+      success: false,
+      message:
+        "applicationId and razorpayOrderId are required.",
+    });
+    return;
+  }
+
+  if (!registrationToken) {
+    res.status(401).json({
+      success: false,
+      message: "Registration token is required.",
+    });
+    return;
+  }
+
+  try {
+    const initialResult =
+      await getVerificationRecord(
+        applicationId,
+        razorpayOrderId
+      );
+
+    if (initialResult.rows.length === 0) {
+      console.warn(
+        "REGISTRATION PAYMENT FAILURE ORDER MISMATCH:",
+        {
+          applicationId,
+          razorpayOrderId,
+        }
+      );
+
+      res.status(404).json({
+        success: false,
+        message:
+          "The registration payment order was not found.",
+      });
+      return;
+    }
+
+    const initial = initialResult.rows[0];
+    const access =
+      verifyRegistrationAccess(
+        initial,
+        registrationToken
+      );
+
+    if (!access.valid) {
+      res.status(401).json({
+        success: false,
+        message: access.message,
+      });
+      return;
+    }
+
+    const razorpay = getRazorpayClient();
+    const [
+      providerOrder,
+      providerPaymentCollection,
+    ]: [any, any] = await Promise.all([
+      razorpay.orders.fetch(razorpayOrderId),
+      razorpay.orders.fetchPayments(
+        razorpayOrderId
+      ),
+    ]);
+
+    const providerPayments = Array.isArray(
+      providerPaymentCollection?.items
+    )
+      ? providerPaymentCollection.items
+      : [];
+    const providerOrderStatus = String(
+      providerOrder?.status || ""
+    ).toLowerCase();
+
+    const orderDoesNotMatch =
+      String(providerOrder?.id || "") !==
+        razorpayOrderId ||
+      Number(providerOrder?.amount) !==
+        Number(initial.amount_paise) ||
+      String(providerOrder?.currency || "")
+        .toUpperCase() !==
+        String(initial.currency || "")
+          .toUpperCase();
+    const mismatchedPayment =
+      providerPayments.find(
+        (payment: any) =>
+          String(payment?.order_id || "") !==
+            razorpayOrderId ||
+          Number(payment?.amount) !==
+            Number(initial.amount_paise) ||
+          String(payment?.currency || "")
+            .toUpperCase() !==
+            String(initial.currency || "")
+              .toUpperCase()
+      );
+
+    if (
+      orderDoesNotMatch ||
+      mismatchedPayment
+    ) {
+      console.warn(
+        "RAZORPAY FAILURE RECONCILIATION MISMATCH:",
+        {
+          applicationId,
+          razorpayOrderId,
+          providerOrderStatus:
+            providerOrderStatus || "unknown",
+        }
+      );
+
+      res.status(409).json({
+        success: false,
+        message:
+          "Razorpay order or payment details do not match the local registration order.",
+      });
+      return;
+    }
+
+    const capturedPayment =
+      providerPayments.find(
+        (payment: any) =>
+          payment?.captured === true ||
+          String(payment?.status || "")
+            .toLowerCase() === "captured"
+      );
+
+    if (
+      providerOrderStatus === "paid" ||
+      capturedPayment
+    ) {
+      console.warn(
+        "REGISTRATION PAYMENT FAILURE RECONCILIATION REFUSED:",
+        {
+          applicationId,
+          razorpayOrderId,
+          reason: "captured_payment_exists",
+        }
+      );
+
+      res.status(409).json({
+        success: false,
+        message:
+          "This payment has been captured and cannot be marked as failed.",
+        nextStep: "VERIFY_PAYMENT",
+      });
+      return;
+    }
+
+    const pendingCapturePayment =
+      providerPayments.find(
+        (payment: any) =>
+          ["authorized", "created"].includes(
+            String(payment?.status || "")
+              .toLowerCase()
+          )
+      );
+
+    if (pendingCapturePayment) {
+      console.info(
+        "REGISTRATION PAYMENT NOT YET CAPTURED:",
+        {
+          applicationId,
+          razorpayOrderId,
+          razorpayPaymentId:
+            String(
+              pendingCapturePayment.id || ""
+            ),
+          paymentStatus: String(
+            pendingCapturePayment.status ||
+              "unknown"
+          ),
+        }
+      );
+
+      res.status(409).json({
+        success: false,
+        message:
+          "The payment is still awaiting capture and cannot be marked as failed.",
+        nextStep: "WAIT_FOR_PAYMENT_CAPTURE",
+      });
+      return;
+    }
+
+    const nonFailedPayment =
+      providerPayments.find(
+        (payment: any) =>
+          String(payment?.status || "")
+            .toLowerCase() !== "failed"
+      );
+
+    if (nonFailedPayment) {
+      res.status(409).json({
+        success: false,
+        message:
+          "The Razorpay payment state is not final and cannot be reconciled as failed.",
+      });
+      return;
+    }
+
+    const lastFailedPayment =
+      providerPayments[
+        providerPayments.length - 1
+      ];
+    const failureReason = String(
+      lastFailedPayment?.error_description ||
+        lastFailedPayment?.error_reason ||
+        "Razorpay checkout was cancelled or payment failed."
+    ).slice(0, 1000);
+
+    const db = await pool.connect();
+    let transactionOpen = false;
+
+    try {
+      await db.query("BEGIN");
+      transactionOpen = true;
+
+      const lockedResult = await db.query(
+        `
+          SELECT
+            application.id AS application_id,
+            application.status AS application_status,
+            application.registration_token_hash,
+            application.registration_token_expires_at,
+            payment_order.id AS local_order_id,
+            payment_order.status AS payment_order_status
+          FROM registration_applications application
+          INNER JOIN payment_orders payment_order
+            ON payment_order.registration_application_id =
+               application.id
+          WHERE application.id = $1
+            AND payment_order.provider = 'RAZORPAY'
+            AND payment_order.provider_order_id = $2
+          FOR UPDATE OF application, payment_order
+        `,
+        [applicationId, razorpayOrderId]
+      );
+
+      if (lockedResult.rows.length === 0) {
+        await db.query("ROLLBACK");
+        transactionOpen = false;
+
+        res.status(404).json({
+          success: false,
+          message:
+            "The registration payment order was not found.",
+        });
+        return;
+      }
+
+      const locked = lockedResult.rows[0];
+      const lockedAccess =
+        verifyRegistrationAccess(
+          locked,
+          registrationToken
+        );
+
+      if (!lockedAccess.valid) {
+        await db.query("ROLLBACK");
+        transactionOpen = false;
+
+        res.status(401).json({
+          success: false,
+          message: lockedAccess.message,
+        });
+        return;
+      }
+
+      if (
+        ![
+          "PAYMENT_PENDING",
+          "PAYMENT_FAILED",
+        ].includes(locked.application_status)
+      ) {
+        await db.query("ROLLBACK");
+        transactionOpen = false;
+
+        res.status(409).json({
+          success: false,
+          message:
+            "Payment failure cannot be reconciled at this registration stage.",
+          registrationStatus:
+            locked.application_status,
+        });
+        return;
+      }
+
+      if (
+        ![
+          "CREATED",
+          "PENDING",
+          "FAILED",
+        ].includes(locked.payment_order_status)
+      ) {
+        await db.query("ROLLBACK");
+        transactionOpen = false;
+
+        res.status(409).json({
+          success: false,
+          message:
+            "This payment order cannot be marked as failed.",
+          paymentOrderStatus:
+            locked.payment_order_status,
+        });
+        return;
+      }
+
+      await db.query(
+        `
+          UPDATE payment_orders
+          SET
+            status = 'FAILED',
+            failed_at = COALESCE(
+              failed_at,
+              NOW()
+            ),
+            failure_reason = $1,
+            updated_at = NOW()
+          WHERE id = $2
+        `,
+        [failureReason, locked.local_order_id]
+      );
+
+      await db.query(
+        `
+          UPDATE registration_applications
+          SET
+            status = 'PAYMENT_FAILED',
+            updated_at = NOW()
+          WHERE id = $1
+        `,
+        [applicationId]
+      );
+
+      await db.query("COMMIT");
+      transactionOpen = false;
+
+      console.info(
+        "REGISTRATION PAYMENT FAILURE RECONCILED:",
+        {
+          applicationId,
+          razorpayOrderId,
+          providerOrderStatus:
+            providerOrderStatus || "unknown",
+          failedPaymentCount:
+            providerPayments.length,
+        }
+      );
+
+      res.status(200).json({
+        success: true,
+        message:
+          "Failed registration payment reconciled.",
+        registrationStatus:
+          "PAYMENT_FAILED",
+        paymentOrderStatus: "FAILED",
+      });
+    } catch (transactionError: any) {
+      if (transactionOpen) {
+        try {
+          await db.query("ROLLBACK");
+        } catch (rollbackError) {
+          console.error(
+            "PAYMENT FAILURE RECONCILIATION ROLLBACK ERROR:",
+            rollbackError
+          );
+        }
+      }
+
+      if (transactionError?.code === "23505") {
+        console.error(
+          "PAYMENT FAILURE RECONCILIATION UNIQUE CONSTRAINT ERROR:",
+          {
+            applicationId,
+            razorpayOrderId,
+            constraint:
+              transactionError.constraint ||
+              "unknown",
+          }
+        );
+      }
+
+      throw transactionError;
+    } finally {
+      db.release();
+    }
+  } catch (error: any) {
+    if (error?.code === "22P02") {
+      res.status(400).json({
+        success: false,
+        message:
+          "Invalid registration application ID.",
+      });
+      return;
+    }
+
+    console.error(
+      "RECONCILE REGISTRATION PAYMENT FAILURE ERROR:",
+      {
+        applicationId,
+        razorpayOrderId,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unknown error",
+        code: error?.code || null,
+        constraint:
+          error?.constraint || null,
+      }
+    );
+
+    res.status(502).json({
+      success: false,
+      message:
+        "Unable to reconcile the failed Razorpay payment.",
     });
   }
 };

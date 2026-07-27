@@ -5,6 +5,7 @@ import {
 } from "../controllers/registrationPayment.controller";
 
 import {
+  reconcileFailedRegistrationPayment,
   verifyRegistrationPayment,
 } from "../controllers/registrationPaymentVerification.controller";
 
@@ -27,6 +28,10 @@ router.post(
 router.post(
   "/registration-verify",
   verifyRegistrationPayment
+);
+router.post(
+  "/registration-failure",
+  reconcileFailedRegistrationPayment
 );
 
 export default router;

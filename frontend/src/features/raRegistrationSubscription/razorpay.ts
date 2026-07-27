@@ -57,6 +57,10 @@ interface RazorpayWindow extends Window {
   Razorpay?: RazorpayConstructor;
 }
 
+type ReconcilePaymentFailure = (
+  razorpayOrderId: string
+) => Promise<void>;
+
 export class RazorpayCheckoutError extends Error {
   readonly code: RazorpayCheckoutErrorCode;
   readonly providerCode?: string;
@@ -193,7 +197,8 @@ export const loadRazorpayCheckout =
   };
 
 export const openRARegistrationCheckout = async (
-  orderResponse: RegistrationPaymentOrderResponse
+  orderResponse: RegistrationPaymentOrderResponse,
+  reconcilePaymentFailure?: ReconcilePaymentFailure
 ): Promise<RazorpaySuccessResponse> => {
   if (checkoutInProgress) {
     throw new RazorpayCheckoutError(
@@ -223,6 +228,7 @@ export const openRARegistrationCheckout = async (
   return new Promise<RazorpaySuccessResponse>(
     (resolve, reject) => {
       let settled = false;
+      let reconcilingFailure = false;
       let checkout: RazorpayInstance | null = null;
 
       const resolveOnce = (
@@ -249,6 +255,31 @@ export const openRARegistrationCheckout = async (
         reject(error);
       };
 
+      const rejectAfterReconciliation = (
+        error: RazorpayCheckoutError
+      ) => {
+        if (settled || reconcilingFailure) {
+          return;
+        }
+
+        if (!reconcilePaymentFailure) {
+          rejectOnce(error);
+          return;
+        }
+
+        reconcilingFailure = true;
+
+        void reconcilePaymentFailure(
+          orderResponse.order.razorpayOrderId
+        )
+          .catch(() => {
+            // Preserve the Checkout failure shown to the user.
+          })
+          .finally(() => {
+            rejectOnce(error);
+          });
+      };
+
       const options: RazorpayOptions = {
         key: orderResponse.checkout.keyId,
         order_id:
@@ -267,7 +298,7 @@ export const openRARegistrationCheckout = async (
         handler: resolveOnce,
         modal: {
           ondismiss: () => {
-            rejectOnce(
+            rejectAfterReconciliation(
               new RazorpayCheckoutError(
                 "Payment was not completed. Your selected plan has been kept so you can try again.",
                 "MODAL_DISMISSED"
@@ -287,7 +318,7 @@ export const openRARegistrationCheckout = async (
               response.error?.reason?.trim() ||
               "Payment failed. Please try again.";
 
-            rejectOnce(
+            rejectAfterReconciliation(
               new RazorpayCheckoutError(
                 message,
                 "PAYMENT_FAILED",

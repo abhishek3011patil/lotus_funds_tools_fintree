@@ -677,6 +677,13 @@ export const approvePaidRegistration =
           plainPasswordToken
         );
 
+      if (process.env.NODE_ENV !== "production") {
+        console.info(
+          "PASSWORD SETUP URL (development only):",
+          passwordSetupLink
+        );
+      }
+
       approvedResult = {
         userId: finalUserId,
         subscriptionId:

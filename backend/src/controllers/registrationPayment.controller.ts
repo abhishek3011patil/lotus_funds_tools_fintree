@@ -563,6 +563,17 @@ export const createRegistrationOrder = async (
       }
     }
 
+    if (error?.code === "23505") {
+      console.error(
+        "REGISTRATION PAYMENT ORDER UNIQUE CONSTRAINT ERROR:",
+        {
+          applicationId,
+          constraint:
+            error.constraint || "unknown",
+        }
+      );
+    }
+
     if (error?.code === "22P02") {
       res.status(400).json({
         success: false,

@@ -16,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 import {
   createRARegistrationPaymentOrder,
   getRAPlans,
+  reconcileRARegistrationPaymentFailure,
   RegistrationApiError,
   selectRAPlan,
   verifyRARegistrationPayment,
@@ -37,6 +38,9 @@ import type {
   RARegistrationSession,
 } from "../types";
 
+const MAX_PAYMENT_VERIFICATION_ATTEMPTS = 3;
+const PAYMENT_CAPTURE_RETRY_DELAY_MS = 2000;
+
 interface Feedback {
   severity: "error" | "warning" | "info";
   message: string;
@@ -53,6 +57,57 @@ const getErrorMessage = (
   error instanceof Error && error.message.trim()
     ? error.message
     : fallback;
+
+const shouldRetryPaymentCapture = (
+  error: unknown
+): boolean => {
+  if (
+    !(error instanceof RegistrationApiError) ||
+    error.status !== 409 ||
+    typeof error.payload !== "object" ||
+    error.payload === null
+  ) {
+    return false;
+  }
+
+  return (
+    (error.payload as { nextStep?: unknown })
+      .nextStep === "WAIT_FOR_PAYMENT_CAPTURE"
+  );
+};
+
+const waitForPaymentCaptureRetry = (
+  signal: AbortSignal
+): Promise<void> =>
+  new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(
+        new DOMException(
+          "Payment verification was cancelled.",
+          "AbortError"
+        )
+      );
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      signal.removeEventListener("abort", abort);
+      resolve();
+    }, PAYMENT_CAPTURE_RETRY_DELAY_MS);
+    const abort = () => {
+      window.clearTimeout(timer);
+      reject(
+        new DOMException(
+          "Payment verification was cancelled.",
+          "AbortError"
+        )
+      );
+    };
+
+    signal.addEventListener("abort", abort, {
+      once: true,
+    });
+  });
 
 const RAPlanSelectionContent = ({
   session,
@@ -223,19 +278,74 @@ const RAPlanSelectionContent = ({
 
   const razorpayResult =
     await openRARegistrationCheckout(
-      orderResponse
+      orderResponse,
+      async (razorpayOrderId) => {
+        if (mountedRef.current) {
+          setFeedback({
+            severity: "info",
+            message:
+              "Confirming the unsuccessful payment with Razorpay…",
+          });
+        }
+
+        await reconcileRARegistrationPaymentFailure(
+          session.applicationId,
+          session.registrationToken,
+          razorpayOrderId,
+          controller.signal
+        );
+      }
     );
 
-  const verification =
-    await verifyRARegistrationPayment(
-      session.applicationId,
-      session.registrationToken,
-      razorpayResult,
-      controller.signal
-    );
+  let verification:
+    | Awaited<
+        ReturnType<
+          typeof verifyRARegistrationPayment
+        >
+      >
+    | null = null;
+
+  for (
+    let attempt = 1;
+    attempt <=
+    MAX_PAYMENT_VERIFICATION_ATTEMPTS;
+    attempt += 1
+  ) {
+    try {
+      verification =
+        await verifyRARegistrationPayment(
+          session.applicationId,
+          session.registrationToken,
+          razorpayResult,
+          controller.signal
+        );
+      break;
+    } catch (error) {
+      if (
+        !shouldRetryPaymentCapture(error) ||
+        attempt ===
+          MAX_PAYMENT_VERIFICATION_ATTEMPTS
+      ) {
+        throw error;
+      }
+
+      if (mountedRef.current) {
+        setFeedback({
+          severity: "info",
+          message:
+            `Payment received. Waiting for Razorpay to capture it before verification ` +
+            `(attempt ${attempt + 1} of ${MAX_PAYMENT_VERIFICATION_ATTEMPTS})…`,
+        });
+      }
+
+      await waitForPaymentCaptureRetry(
+        controller.signal
+      );
+    }
+  }
 
   if (
-    verification.registrationStatus !==
+    verification?.registrationStatus !==
     "PAID_PENDING_APPROVAL"
   ) {
     throw new RegistrationApiError(

@@ -1,12 +1,50 @@
+import "./env";
 import nodemailer from "nodemailer";
+
+const emailUser =
+  process.env.EMAIL_USER?.trim() || "";
+const emailPass =
+  process.env.EMAIL_PASS?.replace(/\s/g, "") || "";
+
+console.info("EMAIL CONFIGURATION:", {
+  emailUserLoaded: Boolean(emailUser),
+  emailPassExists: Boolean(emailPass),
+});
 
 export const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    user: emailUser,
+    pass: emailPass,
   },
 });
+
+const getEmailErrorDetails = (
+  error: unknown
+) => {
+  const mailError = error as {
+    name?: string;
+    message?: string;
+    code?: string;
+    command?: string;
+    response?: string;
+    responseCode?: number;
+    stack?: string;
+  };
+
+  return {
+    name: mailError?.name || "Error",
+    message:
+      mailError?.message ||
+      "Unknown email error",
+    code: mailError?.code || null,
+    command: mailError?.command || null,
+    response: mailError?.response || null,
+    responseCode:
+      mailError?.responseCode || null,
+    stack: mailError?.stack || null,
+  };
+};
 
 export const sendApprovalMail = async (
   to: string,
@@ -17,7 +55,7 @@ export const sendApprovalMail = async (
     console.log("Sending approval email to:", to);
 
     const info = await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: emailUser,
       to,
       subject: "Account Approved - Set Your Password",
       html: `
@@ -27,18 +65,26 @@ export const sendApprovalMail = async (
       `,
     });
 
-    console.log("Approval email sent:", info.response);
+    console.info("APPROVAL EMAIL DELIVERY:", {
+      messageId: info.messageId,
+      accepted: info.accepted,
+      rejected: info.rejected,
+      response: info.response,
+    });
 
   } catch (error) {
-    console.error("Approval email error:", error); // 🔥 VERY IMPORTANT
-    throw error; // ❗ so API fails if mail fails
+    console.error(
+      "APPROVAL EMAIL ERROR:",
+      getEmailErrorDetails(error)
+    );
+    throw error;
   }
 };
 
 /* ✅ ADD THIS FUNCTION */
 export const sendOtpMail = async (to: string, otp: string) => {
   await transporter.sendMail({
-    from: process.env.EMAIL_USER,
+    from: emailUser,
     to,
     subject: "Your OTP Code",
     html: `
@@ -110,7 +156,7 @@ export const sendRejectionRefundMail =
         : "No payment refund is required for this application.";
 
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: emailUser,
       to,
       subject:
         "Registration Review Update",

@@ -5,6 +5,7 @@ import type {
   RAPlanFeature,
   RAPlanLimit,
   RazorpaySuccessResponse,
+  ReconcileRegistrationPaymentFailureResponse,
   RegistrationApiErrorPayload,
   RegistrationPaymentOrderResponse,
   SelectRAPlanResponse,
@@ -478,6 +479,25 @@ export const verifyRARegistrationPayment = async (
           razorpayResult.razorpay_payment_id,
         razorpaySignature:
           razorpayResult.razorpay_signature,
+      }),
+      signal,
+    }
+  );
+
+export const reconcileRARegistrationPaymentFailure = async (
+  applicationId: string,
+  registrationToken: string,
+  razorpayOrderId: string,
+  signal?: AbortSignal
+): Promise<ReconcileRegistrationPaymentFailureResponse> =>
+  requestJSON<ReconcileRegistrationPaymentFailureResponse>(
+    "/api/payments/registration-failure",
+    {
+      method: "POST",
+      headers: registrationHeaders(registrationToken),
+      body: JSON.stringify({
+        applicationId,
+        razorpayOrderId,
       }),
       signal,
     }

@@ -130,27 +130,36 @@ export const getAllRegistrations = async (req: Request, res: Response) => {
       SELECT 
         rd.id,
         rd.user_id,
-        first_name,
-        rd.surname AS last_name, 
-        mobile,
-        profile_image,
-        pan_card,
-        address_proof_document,
-        sebi_certificate,
-        sebi_receipt,
-        nism_certificate,
-        cancelled_cheque,
-        status,
-        rejection_reason,
+        rd.first_name,
+        rd.surname,
+        rd.mobile,
+        rd.profile_image,
+        rd.pan_card,
+        rd.address_proof_document,
+        rd.sebi_certificate,
+        rd.sebi_receipt,
+        rd.nism_certificate,
+        rd.cancelled_cheque,
+        rd.status,
+        rd.rejection_reason,
+        rd.created_at,
         tu.telegram_user_id,
         tu.telegram_client_name
       FROM ra_details rd
+      INNER JOIN registration_applications application
+        ON application.entity_id = rd.id
+      INNER JOIN subscriptions subscription
+        ON subscription.registration_application_id = application.id
       LEFT JOIN LATERAL (
-  SELECT telegram_user_id, telegram_client_name
-  FROM telegram_users
-  WHERE telegram_users.user_id = rd.user_id
-  LIMIT 1
-) tu ON true
+        SELECT telegram_user_id, telegram_client_name
+        FROM telegram_users
+        WHERE telegram_users.user_id = rd.user_id
+        LIMIT 1
+      ) tu ON true
+      WHERE rd.status = 'pending'
+        AND application.applicant_type = 'RA'
+        AND application.status = 'PAID_PENDING_APPROVAL'
+        AND subscription.status = 'PAID_PENDING_APPROVAL'
       ORDER BY rd.created_at DESC
     `);
 

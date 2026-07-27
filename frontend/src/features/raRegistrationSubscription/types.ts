@@ -121,6 +121,13 @@ export interface VerifyRegistrationPaymentResponse {
     | "WAIT_FOR_ADMIN_APPROVAL";
 }
 
+export interface ReconcileRegistrationPaymentFailureResponse {
+  success: true;
+  message: string;
+  registrationStatus: "PAYMENT_FAILED";
+  paymentOrderStatus: "FAILED";
+}
+
 export interface PasswordSetupAccount {
   name: string;
   email: string;
