@@ -4,6 +4,7 @@ import { startWhatsAppDeliveryWorker } from "./services/deliveryQueue.worker";
 import {
   startSubscriptionExpiryWorker,
 } from "./services/subscriptionExpiry.worker";
+import { warmInstrumentCache } from "./services/instrumentSearch.service";
 
 const PORT = process.env.PORT || 3000;
 console.log("🔥 SERVER START FILE RUNNING");
@@ -12,6 +13,7 @@ const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
      startWhatsAppDeliveryWorker();
      startSubscriptionExpiryWorker();
+     warmInstrumentCache();
 });
 
 // 🔥 THIS PREVENTS CLEAN EXIT

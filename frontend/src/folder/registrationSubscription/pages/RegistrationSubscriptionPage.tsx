@@ -29,7 +29,7 @@ import type { SubscriptionPlan } from "../types";
 const LoadingCards = () => (
   <Grid container spacing={3}>
     {[1, 2, 3].map((value) => (
-      <Grid item xs={12} md={4} key={value}>
+      <Grid size={{ xs: 12, md: 4 }} key={value}>
         <Skeleton
           variant="rounded"
           height={480}
@@ -228,7 +228,7 @@ const RegistrationSubscriptionPage = () => {
         ) : (
           <Grid container spacing={3} alignItems="stretch">
             {plans.map((plan) => (
-              <Grid item xs={12} md={4} key={plan.id}>
+              <Grid size={{ xs: 12, md: 4 }} key={plan.id}>
                 <SubscriptionPlanCard
                   plan={plan}
                   processing={

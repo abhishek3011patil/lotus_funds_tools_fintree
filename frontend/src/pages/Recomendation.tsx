@@ -343,6 +343,11 @@ const handleSubmit = async () => {
       return;
     }
 
+    const finalSymbol =
+      form.symbol && form.symbol !== "SYM"
+        ? form.symbol.trim()
+        : finalDisplayName.slice(0, 30);
+
     const formatExpiry = (date: string) => {
       const d = new Date(date);
       const day = d.getDate();
@@ -449,6 +454,7 @@ Published On: ${new Date().toLocaleString("en-IN", {
       })}
 
 Stock Name: ${finalDisplayName}
+Symbol: ${finalSymbol}
 
 ${form.action} ${form.exchange} ${form.callType} Expiry: ${
         form.expiry ? formatExpiry(form.expiry) : "N/A"
@@ -583,6 +589,7 @@ ${form.action} ${form.exchange} ${form.callType} Expiry: ${
     }
 
 Stock Name: ${finalDisplayName}
+Symbol: ${finalSymbol}
 
 Call Type: ${form.tradeType}
 
@@ -643,9 +650,7 @@ https://lotusfunds.com/disclaimer&disclosure
       market_type: form.exchange,
 
       symbol:
-        form.symbol && form.symbol !== "SYM"
-          ? form.symbol
-          : finalDisplayName.slice(0, 30),
+        finalSymbol,
 
       display_name: finalDisplayName,
       action: form.action,
@@ -803,6 +808,7 @@ https://lotusfunds.com/disclaimer&disclosure
     matches,
     handleInputChange,
     handleKeyDown,
+    isLoading: stockSearchLoading,
   } = isErrataMode
       ? {
         inputValue: autocomplete.inputValue,
@@ -811,6 +817,7 @@ https://lotusfunds.com/disclaimer&disclosure
         matches: [],
         handleInputChange: () => { },
         handleKeyDown: () => { },
+        isLoading: false,
       }
       : autocomplete;
 
@@ -1084,9 +1091,10 @@ EXIT ${marketType} ${callType} Expiry: ${formatExpiryDate(
   item.expiry_date
 )}
 
-Stock Name: ${stockName}
+  Stock Name: ${stockName}
+  Symbol: ${item.symbol || "N/A"}
 
-Call Type : Exit
+  Call Type : Exit
 
 Exit Price : ${exitPrice}
 
@@ -1270,6 +1278,8 @@ const handleViewHistory = useCallback(async (item: any) => {
         action: item.action,
         callType: item.call_type,
         tradeType: item.trade_type,
+        symbol: item.symbol || "SYM",
+        display_name: item.name || item.display_name || "",
         expiry: item.expiry_date || "",
         entry: item.entry?.ideal?.toString() || "",
         target: item.targets?.[0]?.toString() || "",
@@ -1816,6 +1826,7 @@ ${item.action || "N/A"} ${item.exchange || "N/A"} ${
       }
 
 Stock Name: ${item.name || item.symbol || "N/A"}
+Symbol: ${item.symbol || "N/A"}
 
 Call Type: ${item.trade_type || "N/A"}
 
@@ -2850,15 +2861,48 @@ sx={{
               disabled={isErrataMode}
               freeSolo
               options={matches}
+              getOptionLabel={(option) =>
+                typeof option === "string"
+                  ? option
+                  : `${option.name} (${option.symbol})`
+              }
+              loading={stockSearchLoading}
               inputValue={inputValue}
-              onInputChange={handleInputChange}
+              onInputChange={(event, value, reason) => {
+                handleInputChange(event, value);
+                if (reason === "input" || reason === "clear") {
+                  dispatch({
+                    type: "SET_FORM",
+                    payload: { symbol: "SYM", display_name: value },
+                  });
+                }
+              }}
               onKeyDown={handleKeyDown}
               onChange={(_, newValue) => {
                 if (typeof newValue === "string" && newValue) {
                   setDirectValue(newValue);
+                } else if (
+                  newValue &&
+                  typeof newValue === "object" &&
+                  "name" in newValue &&
+                  "symbol" in newValue
+                ) {
+                  setDirectValue(newValue.name);
+                  dispatch({
+                    type: "SET_FORM",
+                    payload: {
+                      symbol: newValue.symbol.slice(0, 30),
+                      display_name: newValue.name,
+                    },
+                  });
                 }
               }}
-              isOptionEqualToValue={(option, value) => option === value}
+              isOptionEqualToValue={(option, value) =>
+                typeof option === "string" || typeof value === "string"
+                  ? option === value
+                  : option.exchange === value.exchange &&
+                    option.symbol === value.symbol
+              }
               sx={{
                 flexGrow: 1,
                 zIndex: 1,

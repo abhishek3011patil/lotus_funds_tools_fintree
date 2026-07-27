@@ -63,7 +63,7 @@ const PriceSection = memo(
  const handleChange = useCallback(
   (
     field: MainPriceField,
-    event: ChangeEvent<HTMLInputElement>
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const value = event.target.value;
 

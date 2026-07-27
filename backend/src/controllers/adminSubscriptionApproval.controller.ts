@@ -458,6 +458,12 @@ export const approvePaidRegistration =
 
       const finalUserId =
         userResult.rows[0].id;
+  console.log("APPROVAL DEBUG", {
+  adminId,
+  entityId,
+  applicationId: registration.application_id,
+  subscriptionId: registration.subscription_id,
+});
 
       if (applicantType === "RA") {
         await db.query(

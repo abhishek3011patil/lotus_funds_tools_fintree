@@ -1,4 +1,5 @@
 import { Response } from "express";
+import { searchInstruments } from "../services/instrumentSearch.service";
 import { pool } from "../db";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { Router } from "express";
@@ -1463,6 +1464,35 @@ export const getMyRecommendationHistory = async (
     return res.status(500).json({
       success: false,
       message: "Unable to fetch recommendation history",
+    });
+  }
+};
+export const getInstruments = async (req: AuthRequest, res: Response) => {
+  const exchange = String(req.query.exchange || "").toUpperCase();
+  const search = String(req.query.search || "").trim();
+
+  if (exchange !== "NSE" && exchange !== "BSE") {
+    return res.status(400).json({
+      success: false,
+      message: "exchange must be NSE or BSE",
+    });
+  }
+
+  if (search.length < 2 || search.length > 100) {
+    return res.status(400).json({
+      success: false,
+      message: "search must contain between 2 and 100 characters",
+    });
+  }
+
+  try {
+    const data = await searchInstruments(exchange, search);
+    return res.json({ success: true, data });
+  } catch (error: any) {
+    console.error("Instrument search failed:", error?.message || error);
+    return res.status(502).json({
+      success: false,
+      message: "Instrument provider is temporarily unavailable",
     });
   }
 };

@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "test:integration": "vitest run --config vitest.config.ts",
+    "test:integration:watch": "vitest --config vitest.config.ts",
     "dev": "nodemon --exec ts-node src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js"
@@ -48,10 +50,13 @@
     "@types/node-telegram-bot-api": "^0.64.14",
     "@types/nodemailer": "^7.0.11",
     "@types/pg": "^8.16.0",
+    "@types/supertest": "^7.2.1",
     "nodemon": "^3.1.11",
     "prisma": "^7.8.0",
+    "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
   }
 }

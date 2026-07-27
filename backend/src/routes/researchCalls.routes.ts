@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createErrata, createResearchCall, getCallVersionHistory, getMyRecommendationHistory, getRAMessageProfile } from "../controllers/researchCalls.controller";
+import { createErrata, createResearchCall, getCallVersionHistory, getInstruments, getMyRecommendationHistory, getRAMessageProfile } from "../controllers/researchCalls.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 import {
     getResearchCalls,
@@ -12,6 +12,8 @@ import { requireActiveSubscription, requireSubscriptionFeature, reserveSubscript
 
 
 const router = Router();
+
+router.get("/research/instruments", authenticate, getInstruments);
 
 router.post(
   "/research/calls",

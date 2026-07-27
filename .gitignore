@@ -13,3 +13,8 @@ uploads/
 
 # Logs
 *.log
+
+# Test output (approved visual baselines under tests/ remain tracked)
+test-results/
+playwright-report/
+blob-report/

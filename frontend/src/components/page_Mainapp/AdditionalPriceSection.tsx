@@ -129,7 +129,7 @@ const [localToggles, setLocalToggles] =
 const handleChange = useCallback(
   (
     field: AdditionalPriceField,
-    event: ChangeEvent<HTMLInputElement>
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const value = event.target.value;
 

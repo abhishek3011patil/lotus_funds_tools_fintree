@@ -1,85 +1,185 @@
-import { useMemo, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import axios from "axios";
 import { STOCK_DATA } from "../assets/stocks";
 
 type ExchangeType = "NSE" | "BSE";
 
-// 🔥 PRECOMPUTE LOWERCASE ONCE (outside hook)
-const PREPARED_STOCK_DATA: Record<
-    ExchangeType,
-    { original: string; lower: string }[]
+export type StockOption = {
+  exchange: ExchangeType;
+  name: string;
+  symbol: string;
+};
+
+const LOCAL_OPTIONS: Record<ExchangeType, StockOption[]> = {
+  NSE: (STOCK_DATA.NSE || []).map((name) => ({
+    exchange: "NSE",
+    name,
+    symbol: name,
+  })),
+  BSE: (STOCK_DATA.BSE || []).map((name) => ({
+    exchange: "BSE",
+    name,
+    symbol: name,
+  })),
+};
+
+type PreparedStockOption = StockOption & {
+  normalizedName: string;
+  normalizedSymbol: string;
+};
+
+const buildLocalIndex = (exchange: ExchangeType) => {
+  const buckets = new Map<string, PreparedStockOption[]>();
+
+  for (const option of LOCAL_OPTIONS[exchange]) {
+    const prepared: PreparedStockOption = {
+      ...option,
+      normalizedName: option.name.toLowerCase(),
+      normalizedSymbol: option.symbol.toLowerCase(),
+    };
+
+    for (const key of new Set([
+      prepared.normalizedName.slice(0, 1),
+      prepared.normalizedName.slice(0, 2),
+      prepared.normalizedSymbol.slice(0, 1),
+      prepared.normalizedSymbol.slice(0, 2),
+    ])) {
+      if (!key) continue;
+      const bucket = buckets.get(key);
+      if (bucket) bucket.push(prepared);
+      else buckets.set(key, [prepared]);
+    }
+  }
+
+  return buckets;
+};
+
+const LOCAL_INDEX: Record<
+  ExchangeType,
+  Map<string, PreparedStockOption[]>
 > = {
-    NSE: (STOCK_DATA.NSE || []).map((s) => ({
-        original: s,
-        lower: s.toLowerCase(),
-    })),
-    BSE: (STOCK_DATA.BSE || []).map((s) => ({
-        original: s,
-        lower: s.toLowerCase(),
-    })),
+  NSE: buildLocalIndex("NSE"),
+  BSE: buildLocalIndex("BSE"),
 };
 
 export function useStockAutocomplete(exchangeType: ExchangeType) {
-    const [inputValue, setInputValue] = useState("");
-    const [suggestion, setSuggestion] = useState("");
+  const [inputValue, setInputValue] = useState("");
+  const [remoteResult, setRemoteResult] = useState<{
+    key: string;
+    matches: StockOption[];
+  }>({ key: "", matches: [] });
+  const [loadingKey, setLoadingKey] = useState<string | null>(null);
+  const resultCache = useRef(new Map<string, StockOption[]>());
 
-    // 🔥 No more mapping on every render
-    const options = PREPARED_STOCK_DATA[exchangeType];
+  const localMatches = useMemo(() => {
+    const query = inputValue.trim().toLowerCase();
+    if (!query) return [];
 
-    const matches = useMemo(() => {
-        if (!inputValue) return [];
+    const prefix = query.slice(0, Math.min(2, query.length));
+    const candidates = LOCAL_INDEX[exchangeType].get(prefix) || [];
 
-        const lowerInput = inputValue.toLowerCase();
+    return candidates
+      .filter(
+        (option) =>
+          option.normalizedName.startsWith(query) ||
+          option.normalizedSymbol.startsWith(query)
+      )
+      .slice(0, 20);
+  }, [exchangeType, inputValue]);
 
-        const results: string[] = [];
+  useEffect(() => {
+    const query = inputValue.trim();
 
-        for (let i = 0; i < options.length; i++) {
-            if (options[i].lower.startsWith(lowerInput)) {
-                results.push(options[i].original);
-                if (results.length === 20) break; // 🔥 stop early
-            }
+    if (query.length < 2) {
+      return;
+    }
+
+    const requestKey = `${exchangeType}:${query.toLowerCase()}`;
+    const cached = resultCache.current.get(requestKey);
+    if (cached) {
+      queueMicrotask(() => {
+        setRemoteResult({ key: requestKey, matches: cached });
+      });
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setLoadingKey(requestKey);
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/api/research/instruments`,
+          {
+            params: { exchange: exchangeType, search: query },
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            signal: controller.signal,
+          }
+        );
+        const nextMatches = Array.isArray(response.data?.data)
+          ? response.data.data
+          : [];
+        resultCache.current.set(requestKey, nextMatches);
+        startTransition(() => {
+          setRemoteResult({ key: requestKey, matches: nextMatches });
+        });
+      } catch (error) {
+        if (!axios.isCancel(error)) {
+          startTransition(() => {
+            setRemoteResult({ key: requestKey, matches: [] });
+          });
         }
-
-        return results;
-    }, [inputValue, options]);
-
-    const handleInputChange = (_: any, value: string) => {
-        setInputValue(value);
-
-        if (value.length > 0) {
-            const lowerValue = value.toLowerCase();
-
-            for (let i = 0; i < options.length; i++) {
-                if (options[i].lower.startsWith(lowerValue)) {
-                    setSuggestion(options[i].original);
-                    return;
-                }
-            }
-
-            setSuggestion("");
-        } else {
-            setSuggestion("");
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoadingKey((current) =>
+            current === requestKey ? null : current
+          );
         }
-    };
+      }
+    }, 300);
 
-    const setDirectValue = (value: string) => {
-        setInputValue(value);
-        setSuggestion("");
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
     };
+  }, [exchangeType, inputValue]);
 
-    const handleKeyDown = (event: React.KeyboardEvent) => {
-        if (event.key === "Tab" && suggestion) {
-            setInputValue(suggestion);
-            setSuggestion("");
-            event.preventDefault();
-        }
-    };
+  const currentKey = `${exchangeType}:${inputValue.trim().toLowerCase()}`;
+  const isLoading = loadingKey === currentKey;
+  const remoteMatches =
+    remoteResult.key === currentKey ? remoteResult.matches : [];
+  const matches = remoteMatches.length > 0 ? remoteMatches : localMatches;
+  const suggestion = matches[0]?.name || "";
 
-    return {
-        inputValue,
-        suggestion,
-        setDirectValue,
-        matches,
-        handleInputChange,
-        handleKeyDown,
-    };
+  const handleInputChange = useCallback((_: unknown, value: string) => {
+    setInputValue(value);
+  }, []);
+
+  const setDirectValue = useCallback((value: string) => {
+    setInputValue(value);
+  }, []);
+
+  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
+    if (event.key === "Tab" && matches[0]) {
+      setInputValue(matches[0].name);
+      event.preventDefault();
+    }
+  }, [matches]);
+
+  return {
+    inputValue,
+    suggestion,
+    setDirectValue,
+    matches,
+    isLoading,
+    handleInputChange,
+    handleKeyDown,
+  };
 }

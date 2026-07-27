@@ -8,6 +8,7 @@ import AdminLayout from "../components/layout_admin/AppLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import LoadingPage from "../common/LoadingPage";
 import ClientLayout from "../client_section/components/ClientLayout";
+import AdminAuditLogs from "../pages_admin/AdminAuditLogs";
 
 
 
@@ -188,7 +189,7 @@ const AppRoutes = () => {
           path="/broker"
           element={
             <ProtectedRoute allowedRoles={["BROKER"]}>
-              <BrokerLayout />
+              < MorningReportBuilder/>
             </ProtectedRoute>
           }
         >
