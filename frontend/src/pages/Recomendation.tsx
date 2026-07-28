@@ -58,6 +58,7 @@ import PriceSection, {
 } from "../components/page_Mainapp/PriceSection";
 import axios from "axios";
 import RemarksField from "../components/page_Mainapp/RemarksField";
+import { formatSavedResearchCallMessage } from "../utils/researchCallTemplate.utils";
 
 
 const BUY_COLOR = "#22c55e";
@@ -573,8 +574,7 @@ https://lotusfunds.com/disclaimer&disclosure
      * =========================================================
      */
 
-    const publishMessage = `
-Published On: ${new Date().toLocaleString("en-IN", {
+    const publishedAt = new Date().toLocaleString("en-IN", {
       day: "numeric",
       month: "long",
       year: "numeric",
@@ -582,7 +582,10 @@ Published On: ${new Date().toLocaleString("en-IN", {
       minute: "2-digit",
       second: "2-digit",
       hour12: true,
-    })}
+    });
+
+    const defaultPublishMessage = `
+Published On: ${publishedAt}
 
 ${form.action} ${form.exchange} ${form.callType} Expiry: ${
       form.expiry ? formatExpiry(form.expiry) : "N/A"
@@ -641,6 +644,53 @@ Email ID: ${raDetails?.email || "N/A"}
 Read Full Disclaimer / Disclosure at:
 https://lotusfunds.com/disclaimer&disclosure
 `.trim();
+
+    const publishMessage = formatSavedResearchCallMessage(
+      {
+        publishedAt,
+        instrument: finalDisplayName,
+        symbol: finalSymbol,
+        exchange: `${form.exchangeType} / ${form.exchange}`,
+        action: form.action,
+        callType: form.callType,
+        entry: form.rangeEnabled
+          ? `${form.entryLow} - ${form.entryUpper}`
+          : form.entry,
+        targets: [
+          form.target,
+          form.secondaryTargetEnabled ? form.target2 : null,
+          form.secondaryTargetEnabled ? form.target3 : null,
+        ],
+        stopLosses: [
+          form.stopLoss,
+          form.stopLoss2Enabled ? form.stopLoss2 : null,
+          form.stopLoss2Enabled ? form.stopLoss3 : null,
+        ],
+        expiry: form.expiry
+          ? formatExpiry(form.expiry)
+          : "N/A",
+        timeHorizon: form.tradeType,
+        holdingPeriod: form.holdingPeriod,
+        rationale: form.rationale,
+        underlyingStudy:
+          form.underlyingStudy
+            .map((study) => study.label)
+            .join(", ") || "N/A",
+        remarks: form.remark || "N/A",
+      },
+      {
+        fullName: raFullName || "N/A",
+        organizationName: raDetails?.org_name || "N/A",
+        sebiRegistrationNumber:
+          raDetails?.sebi_reg_no || "N/A",
+        contactNumber: raDetails?.mobile || "N/A",
+        email: raDetails?.email || "N/A",
+        disclaimer,
+        disclaimerLink:
+          "https://lotusfunds.com/disclaimer&disclosure",
+      },
+      () => defaultPublishMessage
+    );
 
     const payload = {
       status: "PUBLISHED",
