@@ -15,9 +15,15 @@ describe("OpenAPI documentation", () => {
   it("validates and resolves the bearer security scheme", async () => {
     const api = await SwaggerParser.validate(documentPath);
 
-    expect(api.openapi).toMatch(/^3\./);
+    expect("openapi" in api ? api.openapi : api.swagger).toMatch(
+      /^3\./
+    );
+    const securitySchemes =
+      "components" in api
+        ? api.components?.securitySchemes
+        : undefined;
     expect(
-      api.components?.securitySchemes?.bearerAuth
+      securitySchemes?.bearerAuth
     ).toMatchObject({
       type: "http",
       scheme: "bearer",
