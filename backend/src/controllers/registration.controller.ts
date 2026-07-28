@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 import { createAuditLog } from "../utils/auditLogger";
 import axios from "axios";
 import { createNotification } from "../utils/notification";
+import { emailService } from "../services/email";
 
 
 
@@ -983,6 +984,23 @@ await createNotification({
         sebiRegNo: data.sebi_reg_no || null,
       },
     });
+
+    try {
+      await emailService.send(
+        "RA_REGISTRATION_RECEIVED",
+        data.email,
+        {
+          name: `${data.first_name} ${data.surname}`.trim(),
+          applicationId:
+            result.rows[0].application_id,
+        }
+      );
+    } catch (emailError) {
+      console.error(
+        "RA REGISTRATION EMAIL ERROR:",
+        emailError
+      );
+    }
 
  return res.status(201).json({
   success: true,

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { pool } from "../db";
 import { createNotification } from "../utils/notification";
+import { emailService } from "../services/email";
 
 /* =========================================================
    REGISTER BROKER (POST /api/broker/register-broker)
@@ -184,6 +185,21 @@ await createNotification({
   referenceId: broker.id,
   referenceTable: "broker_details",
 });
+
+    try {
+      await emailService.send(
+        "BROKER_REGISTRATION_RECEIVED",
+        broker.email,
+        {
+          name: broker.legal_name,
+        }
+      );
+    } catch (emailError) {
+      console.error(
+        "BROKER REGISTRATION EMAIL ERROR:",
+        emailError
+      );
+    }
 
     return res.status(201).json({
       message: "Broker registered successfully",
