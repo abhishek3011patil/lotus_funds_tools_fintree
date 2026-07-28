@@ -159,12 +159,12 @@ export class EmailService {
       };
     }
 
-    const rendered = renderEmailTemplate(
-      templateName,
-      data
-    );
-
     try {
+      const rendered = renderEmailTemplate(
+        templateName,
+        data
+      );
+
       this.transport =
         this.transport ||
         this.createTransport(this.config);
