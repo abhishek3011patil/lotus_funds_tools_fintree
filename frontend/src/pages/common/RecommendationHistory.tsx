@@ -80,6 +80,7 @@ interface RecommendationHistoryProps {
   statusFilter?: string;
   enableAddNotification?: boolean;
   searchQuery?: string;
+  showAllRAs?: boolean;
 }
 
 const CLIENT_HISTORY_STORAGE_KEY = "clientRecommendationHistory";
@@ -90,6 +91,7 @@ export default function RecommendationHistory({
   statusFilter = "All",
   enableAddNotification = false,
   searchQuery = "",
+  showAllRAs = false,
 }: RecommendationHistoryProps) {
   const mapApiRowToHistory = (row: ApiHistoryRecord): HistoryRecord => ({
     dateTime: row.date_time || "",
@@ -152,8 +154,9 @@ const [customDateOpen, setCustomDateOpen] = useState(false);
           throw new Error("No auth token found");
         }
 
+     const historyPath = showAllRAs ? "/api/history/all" : "/api/history/my";
      const res = await fetch(
-  `${import.meta.env.VITE_API_URL}/api/history/my?page=${page}&limit=10&search=${searchQuery}`,
+  `${import.meta.env.VITE_API_URL}${historyPath}?page=${page}&limit=10&search=${searchQuery}`,
   {
     headers: {
       Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -189,7 +192,7 @@ const [customDateOpen, setCustomDateOpen] = useState(false);
     };
 
     fetchHistory();
-  }, [page, searchQuery]);
+  }, [page, searchQuery, showAllRAs]);
 
   useEffect(() => {
   setPage(1);

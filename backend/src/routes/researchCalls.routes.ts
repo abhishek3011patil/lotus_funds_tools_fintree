@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createErrata, createResearchCall, getCallVersionHistory, getInstruments, getMyRecommendationHistory, getRAMessageProfile } from "../controllers/researchCalls.controller";
+import { createErrata, createResearchCall, getCallVersionHistory, getInstruments, getMyRecommendationHistory, getRAMessageProfile, getRecommendationHistory } from "../controllers/researchCalls.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 import {
     getResearchCalls,
@@ -58,6 +58,12 @@ router.get("/test", (req, res) => {
     res.json({ ok: true });
 });
 
+
+router.get(
+  "/history/all",
+  authenticate,
+  getRecommendationHistory
+);
 
 router.get(
   "/history/my",

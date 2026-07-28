@@ -261,7 +261,7 @@ export const getRecommendationHistory = async (
 
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = Math.min(
-      Math.max(Number(req.query.limit) || 50, 1),
+      Math.max(Number(req.query.limit) || 10, 1),
       100
     );
 
@@ -271,38 +271,90 @@ export const getRecommendationHistory = async (
     const query = `
       SELECT
         rc.created_at AS date_time,
-        rc.action,
-        rc.exchange_type AS exchange,
-        rc.call_type AS type,
-        rc.trade_type AS category,
-        rc.display_name AS instrument,
-        rc.symbol,
+
+        COALESCE(rc.action, '-') AS action,
+        COALESCE(rc.exchange_type, '-') AS exchange,
+        COALESCE(rc.call_type, '-') AS type,
+        COALESCE(rc.trade_type, '-') AS category,
+
+        COALESCE(
+          rc.display_name,
+          rc.symbol,
+          '-'
+        ) AS instrument,
+
+        COALESCE(rc.symbol, '-') AS symbol,
+
         rc.expiry_date AS expiry,
-        rc.entry_price AS entry,
-        rc.version_type,
+
+        COALESCE(
+          rc.entry_price,
+          rc.entry_price_low,
+          rc.entry_price_upper
+        ) AS entry,
+
         rc.exit_price,
-        rc.status,
-        NULL AS profit_loss,
-        u.name AS researcher_name
+        COALESCE(rc.status, '-') AS status,
+        rc.version_type,
+
+        CASE
+          WHEN rc.exit_price IS NULL THEN 0
+
+          WHEN UPPER(COALESCE(rc.action, '')) = 'BUY' THEN
+            rc.exit_price -
+            COALESCE(
+              rc.entry_price,
+              rc.entry_price_low,
+              rc.entry_price_upper,
+              rc.exit_price
+            )
+
+          WHEN UPPER(COALESCE(rc.action, '')) = 'SELL' THEN
+            COALESCE(
+              rc.entry_price,
+              rc.entry_price_low,
+              rc.entry_price_upper,
+              rc.exit_price
+            ) - rc.exit_price
+
+          ELSE 0
+        END AS profit_loss,
+
+        COALESCE(
+          u.name,
+          rc.display_name,
+          '-'
+        ) AS researcher_name
+
       FROM research_calls rc
-      JOIN users u
+
+      LEFT JOIN users u
         ON u.id = rc.ra_user_id
-      WHERE rc.is_latest = true
-        AND rc.ra_user_id = $4
+
+      WHERE rc.is_latest IS TRUE
         AND (
-          rc.display_name ILIKE $3
-          OR rc.symbol ILIKE $3
-          OR u.name ILIKE $3
+          $1 = ''
+          OR COALESCE(rc.display_name, '') ILIKE $2
+          OR COALESCE(rc.symbol, '') ILIKE $2
+          OR COALESCE(rc.exchange_type, '') ILIKE $2
+          OR COALESCE(rc.call_type, '') ILIKE $2
+          OR COALESCE(rc.trade_type, '') ILIKE $2
+          OR COALESCE(rc.action, '') ILIKE $2
+          OR COALESCE(rc.status, '') ILIKE $2
+          OR COALESCE(u.name, '') ILIKE $2
         )
+
       ORDER BY rc.created_at DESC
-      LIMIT $1 OFFSET $2
+
+      LIMIT $3
+      OFFSET $4
     `;
 
     const { rows } = await pool.query(query, [
+      search,
+      `%${search}%`,
       limit,
       offset,
-      `%${search}%`,
-      req.user.id,
     ]);
 
     return res.status(200).json(rows);

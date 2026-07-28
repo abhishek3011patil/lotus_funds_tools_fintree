@@ -78,7 +78,7 @@ const Dashboard = () => {
       </Stack>
 
       {/* Passing searchQuery to the child component */}
-      <RecommendationHistory searchQuery={searchQuery} />
+      <RecommendationHistory searchQuery={searchQuery} showAllRAs />
 
       {/* =========================================================
        🔥 TELEGRAM CONNECT UI — moved to ../common/TelegramConnection.tsx
