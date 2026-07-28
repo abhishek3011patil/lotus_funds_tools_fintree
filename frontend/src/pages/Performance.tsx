@@ -443,7 +443,10 @@ return (
 
       {/* This now renders even when the performance API fails */}
       <Box sx={{ mt: 3 }}>
-        <RecommendationHistory />
+        <RecommendationHistory
+          enableExport
+          exportFileBaseName="ra-performance"
+        />
       </Box>
     </Box>
   </Box>
