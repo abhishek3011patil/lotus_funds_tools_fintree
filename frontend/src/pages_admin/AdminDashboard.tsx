@@ -371,9 +371,7 @@ const paginatedSuspendedRows = filteredSuspendedRows.slice(
 
   /* ================= EDIT ================= */
   const handleEdit = (id: string) => {
-    
-    navigate(`/admin/edit-ra/${id}`);
-    
+    navigate(`/admin/edit/RA/${id}`);
   };
 
   /* ================= TELEGRAM LINK ================= */
@@ -1202,7 +1200,7 @@ const handleDeleteWhatsAppParticipant = async () => {
                         setSelectedRA(row);
                       }}
                     >
-                      View
+                      View Details
                     </Button> 
                   </Box>
                 </TableCell> 
@@ -1427,6 +1425,17 @@ const handleDeleteWhatsAppParticipant = async () => {
               <Typography color="text.secondary">
                 Telegram: {selectedRA.telegram || ""}
               </Typography>
+
+              <Button
+                variant="outlined"
+                fullWidth
+                onClick={() =>
+                  handleEdit(selectedRA.id)
+                }
+                sx={{ mt: 2 }}
+              >
+                View Profile
+              </Button>
 
               <Box
                 sx={{

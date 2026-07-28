@@ -47,11 +47,22 @@ export const getMySubscriptionAccess =
             subscription.price_paise_snapshot,
             subscription.duration_days_snapshot,
             subscription.plan_version_snapshot,
-            plan.audience_type
+            plan.audience_type,
+            COALESCE(
+              payment_order.amount_paise,
+              subscription.price_paise_snapshot
+            ) AS amount_paid_paise,
+            COALESCE(
+              payment_order.currency,
+              plan.currency
+            ) AS currency
           FROM subscriptions subscription
           INNER JOIN subscription_plans plan
             ON plan.id =
                subscription.plan_id
+          LEFT JOIN payment_orders payment_order
+            ON payment_order.id =
+               subscription.payment_order_id
           WHERE subscription.user_id = $1
           ORDER BY
             CASE
@@ -270,6 +281,29 @@ export const getMySubscriptionAccess =
             subscription.plan_code_snapshot,
           planName:
             subscription.plan_name_snapshot,
+          amountPaid:
+            subscription.amount_paid_paise ===
+              null
+              ? null
+              : Number(
+                  subscription.amount_paid_paise
+                ) / 100,
+          currency:
+            subscription.currency,
+          daysRemaining:
+            subscription.expires_at ===
+              null
+              ? null
+              : Math.max(
+                  Math.ceil(
+                    (new Date(
+                      subscription.expires_at
+                    ).getTime() -
+                      Date.now()) /
+                      86_400_000
+                  ),
+                  0
+                ),
           tierCode:
             subscription.tier_code_snapshot,
           pricePaise: Number(
