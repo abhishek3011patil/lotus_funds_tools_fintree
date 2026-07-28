@@ -33,6 +33,11 @@ import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import TableExportMenu from "../../components/common/TableExportMenu";
+import {
+  formatExportDate,
+  type TableExportColumn,
+} from "../../utils/tableExport.utils";
 
 interface HistoryRecord {
   dateTime: string;
@@ -81,6 +86,8 @@ interface RecommendationHistoryProps {
   enableAddNotification?: boolean;
   searchQuery?: string;
   showAllRAs?: boolean;
+  enableExport?: boolean;
+  exportFileBaseName?: string;
 }
 
 const CLIENT_HISTORY_STORAGE_KEY = "clientRecommendationHistory";
@@ -92,6 +99,8 @@ export default function RecommendationHistory({
   enableAddNotification = false,
   searchQuery = "",
   showAllRAs = false,
+  enableExport = false,
+  exportFileBaseName = "ra-recommendation-history",
 }: RecommendationHistoryProps) {
   const mapApiRowToHistory = (row: ApiHistoryRecord): HistoryRecord => ({
     dateTime: row.date_time || "",
@@ -398,6 +407,43 @@ const handleReset = () => {
     "&:disabled": { opacity: 0.5 },
   };
 
+  const exportColumns: TableExportColumn<HistoryRecord>[] = [
+    {
+      header: "Created Date",
+      getValue: (row) => formatExportDate(row.dateTime),
+    },
+    { header: "Action", getValue: (row) => row.action },
+    { header: "Exchange", getValue: (row) => row.exchange },
+    { header: "Call Type", getValue: (row) => row.type },
+    { header: "Category", getValue: (row) => row.category },
+    {
+      header: "Instrument",
+      getValue: (row) => row.instrument,
+    },
+    { header: "Symbol", getValue: (row) => row.symbol },
+    {
+      header: "Expiry Date",
+      getValue: (row) => formatExportDate(row.expiry),
+    },
+    {
+      header: "Entry Price",
+      getValue: (row) => row.entry,
+    },
+    {
+      header: "Exit Price",
+      getValue: (row) => row.exit_price,
+    },
+    { header: "Status", getValue: (row) => row.status },
+    {
+      header: "Profit/Loss",
+      getValue: (row) => row.profitLoss,
+    },
+    {
+      header: "Researcher Name",
+      getValue: (row) => getResearcherName(row),
+    },
+  ];
+
   return (
     <Box sx={{ mt: 4 }}>
       <Paper
@@ -543,6 +589,15 @@ justifyContent: { xs: "center", md: "flex-start" },
     >
       Reset Filter
     </Button>
+    {enableExport && (
+      <TableExportMenu
+        rows={paginatedData}
+        columns={exportColumns}
+        fileBaseName={exportFileBaseName}
+        printTitle="RA Recommendation History"
+        loading={loading}
+      />
+    )}
   </Box>
 </Box>
           )}
