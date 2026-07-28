@@ -1,0 +1,2466 @@
+openapi: 3.0.3
+info:
+  title: Lotus Funds API
+  version: 1.0.0
+  description: |
+    Documentation for the existing Lotus Funds Express API.
+    Response envelopes intentionally differ where the implementation differs.
+servers:
+  - url: http://localhost:5000
+    description: Local development
+tags:
+  - name: Authentication
+  - name: RA Registration
+  - name: Broker Registration
+  - name: Research Calls
+  - name: Performance
+  - name: Notifications
+  - name: Telegram
+  - name: WhatsApp
+  - name: Subscriptions
+  - name: Payments
+  - name: Audit
+  - name: Admin
+  - name: Health
+
+paths:
+  /check:
+    get:
+      tags: [Health]
+      summary: Check API availability
+      security: []
+      responses:
+        "200":
+          description: Plain-text health response
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: APP WORKING
+
+  /api/auth/login:
+    post:
+      tags: [Authentication]
+      summary: Authenticate a user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: JWT and authenticated user details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Log out the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessMessage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/auth/me:
+    get:
+      tags: [Authentication]
+      summary: Return the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Authenticated user
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/auth/password-setup/validate:
+    get:
+      tags: [Authentication]
+      summary: Validate a password-setup token
+      security: []
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 64
+            maxLength: 64
+      responses:
+        "200":
+          description: Token validity details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  valid: { type: boolean }
+                  email: { type: string, format: email }
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/auth/password-setup:
+    post:
+      tags: [Authentication]
+      summary: Complete password setup
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, password]
+              properties:
+                token: { type: string }
+                password: { type: string, format: password }
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessMessage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /api/auth/request-otp:
+    post:
+      tags: [Authentication]
+      summary: Request an OTP through the legacy password flow
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessMessage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/auth/verify-otp-and-set-password:
+    post:
+      tags: [Authentication]
+      summary: Verify an OTP and set a password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, otp, password]
+              properties:
+                email: { type: string, format: email }
+                otp: { type: string }
+                password: { type: string, format: password }
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessMessage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/auth/admin/change-password:
+    post:
+      tags: [Authentication, Admin]
+      summary: Change the authenticated Admin password
+      description: Allowed roles are ADMIN and SUPERADMIN.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string, format: password }
+                newPassword: { type: string, format: password }
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessMessage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/registration/register-ra:
+    post:
+      tags: [RA Registration]
+      summary: Submit an RA registration
+      security: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/RARegistrationForm"
+      responses:
+        "201":
+          description: Registration submitted; the response includes the next subscription step
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistrationSubmission"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/registration/{applicationId}/select-plan:
+    post:
+      tags: [Subscriptions, RA Registration]
+      summary: Select a registration subscription plan
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - $ref: "#/components/parameters/RegistrationToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [planId]
+              properties:
+                planId: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Selected plan and registration status
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/registration/all-registrations:
+    get:
+      tags: [RA Registration, Admin]
+      summary: List paid RA registrations pending approval
+      description: Allowed roles are ADMIN and SUPERADMIN. Returns a bare JSON array.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Pending RA registrations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/registration/all-registrations-active-users:
+    get:
+      tags: [RA Registration, Admin]
+      summary: List active RA users
+      description: Allowed roles are ADMIN and SUPERADMIN. Returns a bare JSON array.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Active RA users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/registration/ra/{id}:
+    get:
+      tags: [RA Registration, Admin]
+      summary: Get an RA registration
+      description: Allowed roles are ADMIN and SUPERADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: RA registration details
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/registration/broker/{id}:
+    get:
+      tags: [Broker Registration, Admin]
+      summary: Get a Broker registration
+      description: Allowed roles are ADMIN and SUPERADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Broker registration details
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/registration/edit/ra/{id}:
+    put:
+      tags: [RA Registration, Admin]
+      summary: Update an RA registration
+      description: Allowed roles are ADMIN and SUPERADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/RARegistrationForm"
+      responses:
+        "200":
+          description: Updated RA registration
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/registration/edit/broker/{id}:
+    put:
+      tags: [Broker Registration, Admin]
+      summary: Update a Broker registration
+      description: Allowed roles are ADMIN and SUPERADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/BrokerRegistrationForm"
+      responses:
+        "200":
+          description: Updated Broker registration
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/registration/reject/{type}/{id}:
+    put:
+      tags: [RA Registration, Broker Registration, Admin]
+      summary: Reject a paid or unpaid registration and reconcile any refund
+      description: Allowed roles are ADMIN and SUPERADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [RA, BROKER]
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string }
+      responses:
+        "200":
+          description: Rejection or refund state
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "502":
+          description: Refund provider reconciliation is required
+
+  /api/registration/research/disclaimer:
+    get:
+      tags: [RA Registration]
+      summary: Get the authenticated RA disclaimer
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Disclaimer snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      tags: [RA Registration]
+      summary: Update the authenticated RA disclaimer
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [disclaimer]
+              properties:
+                disclaimer: { type: string }
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessMessage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/registration/ra/change-password:
+    post:
+      tags: [RA Registration]
+      summary: Change the authenticated RA password
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string, format: password }
+                newPassword: { type: string, format: password }
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessMessage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/registration/ra/profile-update-request:
+    post:
+      tags: [RA Registration]
+      summary: Submit an RA profile update request
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/RARegistrationForm"
+      responses:
+        "201":
+          description: Profile update request created
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/registration/ra-profile-update-requests:
+    get:
+      tags: [RA Registration, Admin]
+      summary: List RA profile update requests
+      description: Allowed roles are ADMIN and SUPERADMIN.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Bare array of update requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/registration/ra-profile-update-requests/{id}/approve:
+    put:
+      tags: [RA Registration, Admin]
+      summary: Approve an RA profile update request
+      description: Allowed roles are ADMIN and SUPERADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessMessage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/registration/ra-profile-update-requests/{id}/reject:
+    put:
+      tags: [RA Registration, Admin]
+      summary: Reject an RA profile update request
+      description: Allowed roles are ADMIN and SUPERADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessMessage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/registration/profile:
+    get:
+      tags: [RA Registration]
+      summary: Get the authenticated RA profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: RA profile
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/registration/ifsc/{ifsc}:
+    get:
+      tags: [RA Registration]
+      summary: Look up bank details by IFSC
+      security: []
+      parameters:
+        - name: ifsc
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Bank lookup result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "502":
+          description: IFSC provider error
+
+  /api/broker/register-broker:
+    post:
+      tags: [Broker Registration]
+      summary: Submit a Broker registration
+      security: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/BrokerRegistrationForm"
+      responses:
+        "201":
+          description: Broker registration and message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  broker:
+                    type: object
+                    additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/broker/all-brokers:
+    get:
+      tags: [Broker Registration]
+      summary: List Broker records
+      description: The existing route is public and returns a bare JSON array.
+      security: []
+      responses:
+        "200":
+          description: Broker records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /admin/approve-user:
+    post:
+      tags: [Admin]
+      summary: Approve a paid RA or Broker registration
+      description: Allowed roles are ADMIN and SUPERADMIN.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [applicantType, entityId]
+              properties:
+                applicantType:
+                  type: string
+                  enum: [RA, BROKER]
+                entityId:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Approval, subscription, user, and password-setup state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /admin/suspend-user:
+    post:
+      tags: [Admin]
+      summary: Suspend an RA or Broker user
+      description: Allowed roles are ADMIN and SUPERADMIN.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId: { type: string, format: uuid }
+                reason: { type: string }
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessMessage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/resend-password-link:
+    post:
+      tags: [Admin]
+      summary: Create and resend a password-setup link
+      description: Allowed roles are ADMIN and SUPERADMIN.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId: { type: string, format: uuid }
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessMessage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/activate/ra/{id}:
+    put:
+      tags: [Admin]
+      summary: Activate an RA
+      description: Allowed roles are ADMIN and SUPERADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessMessage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/history/{userId}:
+    get:
+      tags: [Admin]
+      summary: Get disclaimer history for an RA
+      description: Allowed roles are ADMIN and SUPERADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: RA identity and disclaimer history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    nullable: true
+                    additionalProperties: true
+                  history:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/research/instruments:
+    get:
+      tags: [Research Calls]
+      summary: Search instruments
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: exchange
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [NSE, BSE]
+        - name: search
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 100
+      responses:
+        "200":
+          description: Instrument search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          description: Instrument provider unavailable
+
+  /api/research/calls:
+    post:
+      tags: [Research Calls]
+      summary: Create a research call
+      description: Requires an authenticated user, active subscription, feature access, and available monthly event quota.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/ResearchCallForm"
+      responses:
+        "201":
+          description: Created research call
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/research/calls/my:
+    get:
+      tags: [Research Calls]
+      summary: List the authenticated RA's latest research calls
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Bare array of formatted calls
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ResearchCall"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/research/calls/published:
+    get:
+      tags: [Research Calls]
+      summary: List published-call data returned by the existing controller
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Bare array of formatted research calls
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ResearchCall"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/research/calls/errata:
+    post:
+      tags: [Research Calls]
+      summary: Create an Errata version for a research call
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [call_id, updates, errata_reason, message_text]
+              properties:
+                call_id: { type: string, format: uuid }
+                updates:
+                  type: object
+                  additionalProperties: true
+                errata_reason: { type: string }
+                message_text: { type: string }
+      responses:
+        "201":
+          description: Created Errata version
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/research/calls/{id}/publish:
+    patch:
+      tags: [Research Calls]
+      summary: Publish a draft research call
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message_text]
+              properties:
+                message_text: { type: string }
+      responses:
+        "200":
+          description: Published call
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/research/calls/{id}/exit:
+    patch:
+      tags: [Research Calls]
+      summary: Exit a research call
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [exit_price, exit_remark, message_text]
+              properties:
+                exit_price: { type: number }
+                exit_remark: { type: string }
+                message_text: { type: string }
+      responses:
+        "200":
+          description: Exited research call
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/research/calls/{callId}/versions:
+    get:
+      tags: [Research Calls]
+      summary: Get the authenticated RA's version history for a call
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: callId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Version history envelope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  versions:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/history/all:
+    get:
+      tags: [Research Calls]
+      summary: Get paginated latest recommendation history across RAs
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Bare array of recommendation-history rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HistoryRow"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/history/my:
+    get:
+      tags: [Research Calls]
+      summary: Get the authenticated RA's paginated recommendation history
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Bare array of recommendation-history rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HistoryRow"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/research/ra/message-profile:
+    get:
+      tags: [Research Calls]
+      summary: Get the authenticated RA profile fields used in research-call messages
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Message profile envelope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/performance:
+    get:
+      tags: [Performance]
+      summary: Calculate monthly performance for the authenticated RA
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: month
+          in: query
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}$'
+            example: "2026-07"
+      responses:
+        "200":
+          description: Performance metrics envelope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PerformanceResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /notifications:
+    get:
+      tags: [Notifications, Admin]
+      summary: List Admin notifications
+      description: Allowed roles are ADMIN and SUPERADMIN.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Notification data returned by the controller
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /notifications/{id}:
+    delete:
+      tags: [Notifications, Admin]
+      summary: Delete an Admin notification
+      description: Allowed roles are ADMIN and SUPERADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessMessage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /notifications/mark-all-read:
+    put:
+      tags: [Notifications, Admin]
+      summary: Mark all Admin notifications read
+      description: Allowed roles are ADMIN and SUPERADMIN.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessMessage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /notifications/unread-count:
+    get:
+      tags: [Notifications, Admin]
+      summary: Get unread Admin notification count
+      description: Allowed roles are ADMIN and SUPERADMIN.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Unread count
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/telegram/participants:
+    get:
+      tags: [Telegram]
+      summary: List Telegram participants
+      description: The existing route is public.
+      security: []
+      responses:
+        "200":
+          description: Participant data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+
+  /api/telegram/save-user:
+    post:
+      tags: [Telegram]
+      summary: Save a Telegram user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Saved Telegram user
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/telegram/participant/{id}:
+    put:
+      tags: [Telegram]
+      summary: Update a Telegram participant
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Updated participant
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Telegram]
+      summary: Delete a Telegram participant
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessMessage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/telegram/send-ra-message:
+    post:
+      tags: [Telegram]
+      summary: Send a research-call message to an RA's Telegram clients
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message: { type: string }
+      responses:
+        "200":
+          description: Telegram delivery result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          description: Telegram delivery error
+
+  /api/telegram/send-otp:
+    post:
+      tags: [Telegram]
+      summary: Start Telegram connection by sending an OTP
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone]
+              properties:
+                phone: { type: string }
+      responses:
+        "200":
+          description: OTP request state
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/telegram/verify-otp:
+    post:
+      tags: [Telegram]
+      summary: Verify a Telegram connection OTP
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [otp]
+              properties:
+                otp: { type: string }
+                password: { type: string, format: password }
+      responses:
+        "200":
+          description: Telegram connection state
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/telegram/ra/{raId}:
+    get:
+      tags: [Telegram]
+      summary: Get Telegram participants for an RA
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: raId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: RA participants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/telegram/my-participants:
+    get:
+      tags: [Telegram]
+      summary: Get the authenticated RA's Telegram participants
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Participant data
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/telegram/add-participant:
+    post:
+      tags: [Telegram]
+      summary: Add a Telegram participant for the authenticated RA
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "201":
+          description: Added participant
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/telegram/upload-excel:
+    post:
+      tags: [Telegram]
+      summary: Upload Telegram participants from Excel
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/telegram/download-template:
+    get:
+      tags: [Telegram]
+      summary: Download the Telegram participant template
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Excel workbook
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/telegram/status:
+    get:
+      tags: [Telegram]
+      summary: Get the authenticated user's Telegram connection status
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Connection status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [connected]
+                properties:
+                  connected: { type: boolean }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          description: Returns connected false on database failure
+
+  /api/whatsapp/participants:
+    get:
+      tags: [WhatsApp]
+      summary: Get the authenticated RA's WhatsApp participants
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: WhatsApp participant data
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [WhatsApp]
+      summary: Add a WhatsApp participant
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "201":
+          description: Added participant
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/whatsapp/participants/{id}:
+    put:
+      tags: [WhatsApp]
+      summary: Update a WhatsApp participant
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Updated participant
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [WhatsApp]
+      summary: Delete a WhatsApp participant
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessMessage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/whatsapp/ra/{raId}:
+    get:
+      tags: [WhatsApp]
+      summary: Get WhatsApp participants for a selected RA
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: raId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: RA participant data
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/whatsapp/test-message:
+    post:
+      tags: [WhatsApp]
+      summary: Send a WhatsApp test message
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Delivery test result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          description: WhatsApp provider error
+
+  /api/subscription-plans:
+    get:
+      tags: [Subscriptions]
+      summary: List public subscription plans
+      security: []
+      parameters:
+        - name: audienceType
+          in: query
+          schema:
+            type: string
+            enum: [RA, BROKER]
+      responses:
+        "200":
+          description: Subscription plans
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/subscription-plans/{planId}:
+    get:
+      tags: [Subscriptions]
+      summary: Get a public subscription plan
+      security: []
+      parameters:
+        - name: planId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Subscription plan
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/subscriptions/me:
+    get:
+      tags: [Subscriptions]
+      summary: Get authenticated user's subscription access
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Subscription and feature access
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/payments/create-order:
+    post:
+      tags: [Payments]
+      summary: Create a legacy payment order
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Razorpay order data
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/payments/verify:
+    post:
+      tags: [Payments]
+      summary: Verify a legacy payment
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/payments/activate-free-plan:
+    post:
+      tags: [Payments, Subscriptions]
+      summary: Activate a legacy free plan
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Activation result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/payments/registration-order:
+    post:
+      tags: [Payments, Subscriptions]
+      summary: Create a Razorpay registration order
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/RegistrationToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [applicationId, planId]
+              properties:
+                applicationId: { type: string, format: uuid }
+                planId: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Razorpay registration order and local order identifiers
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/payments/registration-verify:
+    post:
+      tags: [Payments, Subscriptions]
+      summary: Verify a captured Razorpay registration payment
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/RegistrationToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - applicationId
+                - razorpay_order_id
+                - razorpay_payment_id
+                - razorpay_signature
+              properties:
+                applicationId: { type: string, format: uuid }
+                razorpay_order_id: { type: string }
+                razorpay_payment_id: { type: string }
+                razorpay_signature: { type: string }
+      responses:
+        "200":
+          description: Payment, registration, and subscription transition result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Includes WAIT_FOR_PAYMENT_CAPTURE when the verified payment is not captured yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/payments/registration-failure:
+    post:
+      tags: [Payments, Subscriptions]
+      summary: Reconcile a failed or cancelled registration checkout
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/RegistrationToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [applicationId, razorpay_order_id]
+              properties:
+                applicationId: { type: string, format: uuid }
+                razorpay_order_id: { type: string }
+      responses:
+        "200":
+          description: Failed payment reconciliation result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Reconciliation is refused if an associated payment is captured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/payments/razorpay/webhook:
+    post:
+      tags: [Payments]
+      summary: Process Razorpay webhook events using the raw request body
+      security: []
+      parameters:
+        - name: x-razorpay-signature
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Webhook acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          description: Invalid webhook signature
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/audit-logs:
+    get:
+      tags: [Audit]
+      summary: Query audit logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Search"
+      responses:
+        "200":
+          description: Audit log query result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/audit-logs/export:
+    get:
+      tags: [Audit]
+      summary: Export audit logs
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Audit export returned by the existing controller
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ApplicationId:
+      name: applicationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    RegistrationToken:
+      name: x-registration-token
+      in: header
+      required: true
+      description: Registration-scoped token returned during registration
+      schema:
+        type: string
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+    Search:
+      name: search
+      in: query
+      schema:
+        type: string
+
+  responses:
+    SuccessMessage:
+      description: Successful operation
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success: { type: boolean }
+              message: { type: string }
+            additionalProperties: true
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Authentication is missing or invalid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Authenticated user does not have the required role or subscription access
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Requested resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Request conflicts with the current resource state
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    RateLimited:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        message: { type: string }
+        error: { type: string }
+        field: { type: string }
+        nextStep: { type: string }
+      additionalProperties: true
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: analyst@example.com
+        password:
+          type: string
+          format: password
+
+    LoginResponse:
+      type: object
+      properties:
+        token: { type: string }
+        user:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            email: { type: string, format: email }
+            role:
+              type: string
+              enum: [RESEARCH_ANALYST, BROKER, ADMIN, SUPERADMIN]
+            status: { type: string }
+          additionalProperties: true
+      additionalProperties: true
+
+    RegistrationSubmission:
+      type: object
+      required:
+        - success
+        - message
+        - ra_id
+        - application_id
+        - registration_token
+        - next_step
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        ra_id: { type: string, format: uuid }
+        application_id: { type: string, format: uuid }
+        registration_token: { type: string }
+        registration_token_expires_at:
+          type: string
+          format: date-time
+        next_step:
+          type: string
+          example: SELECT_SUBSCRIPTION_PLAN
+
+    ApprovalResponse:
+      type: object
+      required:
+        - success
+        - user_id
+        - application_id
+        - registration_status
+        - subscription_status
+        - email_sent
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        user_id: { type: string, format: uuid }
+        username: { type: string }
+        application_id: { type: string, format: uuid }
+        subscription_id: { type: string, format: uuid }
+        registration_status: { type: string }
+        subscription_status: { type: string }
+        user_status: { type: string }
+        email_sent: { type: boolean }
+        email_error:
+          type: string
+          nullable: true
+        next_step: { type: string }
+      additionalProperties: true
+
+    RARegistrationForm:
+      type: object
+      required:
+        - first_name
+        - surname
+        - email
+        - declare_info_true
+        - consent_verification
+        - no_guaranteed_returns
+        - conflict_of_interest
+        - personal_trading
+        - sebi_compliance
+        - platform_policy
+      properties:
+        salutation: { type: string }
+        first_name: { type: string }
+        middle_name: { type: string }
+        surname: { type: string }
+        org_name: { type: string }
+        designation: { type: string }
+        email: { type: string, format: email }
+        mobile: { type: string }
+        sebi_reg_no: { type: string }
+        nism_reg_no: { type: string }
+        pan_number: { type: string }
+        additional_comments: { type: string }
+        declare_info_true: { type: boolean }
+        consent_verification: { type: boolean }
+        no_guaranteed_returns: { type: boolean }
+        conflict_of_interest: { type: boolean }
+        personal_trading: { type: boolean }
+        sebi_compliance: { type: boolean }
+        platform_policy: { type: boolean }
+        profile_image: { type: string, format: binary }
+        pan_card: { type: string, format: binary }
+        address_proof_document: { type: string, format: binary }
+        sebi_certificate: { type: string, format: binary }
+        sebi_receipt: { type: string, format: binary }
+        nism_certificate: { type: string, format: binary }
+        cancelled_cheque: { type: string, format: binary }
+      additionalProperties: true
+
+    BrokerRegistrationForm:
+      type: object
+      required: [legal_name, email]
+      properties:
+        legal_name: { type: string }
+        trade_name: { type: string }
+        entity_type: { type: string }
+        email: { type: string, format: email }
+        mobile: { type: string }
+        pan: { type: string }
+        sebi_registration_no: { type: string }
+        sebi_certificate: { type: string, format: binary }
+        exchange_certificates:
+          type: array
+          items: { type: string, format: binary }
+        appointment_letter: { type: string, format: binary }
+        networth_certificate: { type: string, format: binary }
+        financial_statements: { type: string, format: binary }
+        ca_certificate: { type: string, format: binary }
+      additionalProperties: true
+
+    ResearchCallForm:
+      type: object
+      required:
+        - status
+        - exchange_type
+        - market_type
+        - symbol
+        - display_name
+        - action
+        - call_type
+        - trade_type
+        - entry_price
+        - target_price
+        - stop_loss
+      properties:
+        status: { type: string }
+        message_text: { type: string }
+        exchange_type: { type: string, enum: [NSE, BSE] }
+        market_type: { type: string }
+        symbol: { type: string }
+        display_name: { type: string }
+        action: { type: string, enum: [BUY, SELL] }
+        call_type: { type: string }
+        trade_type: { type: string }
+        expiry_date: { type: string, format: date }
+        entry_price: { type: number }
+        entry_price_low: { type: number }
+        entry_price_upper: { type: number }
+        target_price: { type: number }
+        target_price_2: { type: number }
+        target_price_3: { type: number }
+        stop_loss: { type: number }
+        stop_loss_2: { type: number }
+        stop_loss_3: { type: number }
+        holding_period: { type: string }
+        rationale: { type: string }
+        underlying_study: { type: string }
+        research_remarks: { type: string }
+        file: { type: string, format: binary }
+
+    ResearchCall:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string }
+        created_at: { type: string, format: date-time }
+        is_latest: { type: boolean }
+        version_type: { type: string }
+        exchange: { type: string }
+        instrument: { type: string }
+        symbol: { type: string }
+        name: { type: string }
+        action: { type: string }
+        call_type: { type: string }
+        trade_type: { type: string }
+        expiry_date:
+          type: string
+          nullable: true
+        entry:
+          type: object
+          properties:
+            low: { type: number, nullable: true }
+            ideal: { type: number, nullable: true }
+            high: { type: number, nullable: true }
+        targets:
+          type: array
+          items: { type: number }
+        stop_losses:
+          type: array
+          items: { type: number }
+      additionalProperties: true
+
+    HistoryRow:
+      type: object
+      properties:
+        date_time: { type: string, format: date-time }
+        action: { type: string }
+        exchange: { type: string }
+        type: { type: string }
+        category: { type: string }
+        instrument: { type: string }
+        symbol: { type: string }
+        expiry:
+          type: string
+          nullable: true
+        entry:
+          oneOf:
+            - { type: number }
+            - { type: string }
+        exit_price:
+          oneOf:
+            - { type: number }
+            - { type: string }
+          nullable: true
+        status: { type: string }
+        profit_loss: { type: number }
+        researcher_name: { type: string }
+
+    PerformanceResponse:
+      type: object
+      required: [success, month, metrics]
+      properties:
+        success: { type: boolean }
+        month: { type: string, example: "2026-07" }
+        metrics:
+          type: object
+          properties:
+            total: { type: number }
+            active: { type: number }
+            exited: { type: number }
+            accuracy: { type: number }
+            profit: { type: number }
+            adverse: { type: number }
+            strike: { type: number }
+            sl: { type: number }
+            early: { type: number }
+            rr:
+              type: number
+              nullable: true
+            last:
+              type: array
+              items:
+                type: string
+                enum: [g, r, n]
+          additionalProperties: true
