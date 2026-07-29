@@ -7,6 +7,10 @@ import {
     publishDraftCall
 } from "../controllers/researchCalls.controller";
 import { exitResearchCall } from "../controllers/exitResearchCall";
+import {
+  getResearchCallTemplates,
+  saveResearchCallTemplate,
+} from "../controllers/researchCallTemplate.controller";
 import { upload } from "../middlewares/upload";
 import { requireActiveSubscription, requireSubscriptionFeature, reserveSubscriptionEventLimit } from "../middlewares/subscriptionAccess.middleware";
 
@@ -14,6 +18,17 @@ import { requireActiveSubscription, requireSubscriptionFeature, reserveSubscript
 const router = Router();
 
 router.get("/research/instruments", authenticate, getInstruments);
+
+router.get(
+  "/research/message-templates",
+  authenticate,
+  getResearchCallTemplates
+);
+router.put(
+  "/research/message-templates/:messageType",
+  authenticate,
+  saveResearchCallTemplate
+);
 
 router.post(
   "/research/calls",

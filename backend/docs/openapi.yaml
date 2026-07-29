@@ -931,6 +931,85 @@ paths:
         "502":
           description: Instrument provider unavailable
 
+  /api/research/message-templates:
+    get:
+      tags: [Research Calls]
+      summary: Get the authenticated RA's New Call and Errata layouts
+      description: Returns only templates owned by the authenticated Research Analyst.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Per-RA message templates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      NEW_CALL:
+                        allOf:
+                          - $ref: "#/components/schemas/StoredResearchCallTemplate"
+                        nullable: true
+                      ERRATA:
+                        allOf:
+                          - $ref: "#/components/schemas/StoredResearchCallTemplate"
+                        nullable: true
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /api/research/message-templates/{messageType}:
+    put:
+      tags: [Research Calls]
+      summary: Save one message layout for the authenticated RA
+      description: Upserts a validated layout under the authenticated Research Analyst's user ID.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: messageType
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [NEW_CALL, ERRATA]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [template]
+              properties:
+                template:
+                  $ref: "#/components/schemas/ResearchCallMessageTemplate"
+      responses:
+        "200":
+          description: Saved per-RA message template
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data:
+                    $ref: "#/components/schemas/StoredResearchCallTemplate"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /api/research/calls:
     post:
       tags: [Research Calls]
@@ -1021,6 +1100,13 @@ paths:
                   additionalProperties: true
                 errata_reason: { type: string }
                 message_text: { type: string }
+                message_template_version:
+                  type: integer
+                  nullable: true
+                message_template_snapshot:
+                  allOf:
+                    - $ref: "#/components/schemas/ResearchCallMessageTemplate"
+                  nullable: true
       responses:
         "201":
           description: Created Errata version
@@ -2339,6 +2425,51 @@ components:
         ca_certificate: { type: string, format: binary }
       additionalProperties: true
 
+    ResearchCallTemplateBlock:
+      type: object
+      required: [id, type, enabled, locked]
+      properties:
+        id: { type: string }
+        type:
+          type: string
+          enum: [field, text, heading, separator]
+        fieldKey: { type: string }
+        text:
+          type: string
+          maxLength: 500
+        enabled: { type: boolean }
+        locked: { type: boolean }
+      additionalProperties: false
+
+    ResearchCallMessageTemplate:
+      type: object
+      required: [version, blocks]
+      properties:
+        version:
+          type: integer
+          enum: [1]
+        blocks:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ResearchCallTemplateBlock"
+      additionalProperties: false
+
+    StoredResearchCallTemplate:
+      type: object
+      properties:
+        messageType:
+          type: string
+          enum: [NEW_CALL, ERRATA]
+        templateVersion:
+          type: integer
+          minimum: 1
+        template:
+          $ref: "#/components/schemas/ResearchCallMessageTemplate"
+        updatedAt:
+          type: string
+          format: date-time
+
     ResearchCallForm:
       type: object
       required:
@@ -2356,6 +2487,13 @@ components:
       properties:
         status: { type: string }
         message_text: { type: string }
+        message_template_version:
+          type: integer
+          nullable: true
+        message_template_snapshot:
+          type: string
+          nullable: true
+          description: JSON-encoded validated template snapshot used for this multipart publication.
         exchange_type: { type: string, enum: [NSE, BSE] }
         market_type: { type: string }
         symbol: { type: string }
@@ -2409,6 +2547,17 @@ components:
         stop_losses:
           type: array
           items: { type: number }
+        published_message_text:
+          type: string
+          nullable: true
+          description: Exact message snapshot used when this version was published.
+        message_template_version:
+          type: integer
+          nullable: true
+        message_template_snapshot:
+          allOf:
+            - $ref: "#/components/schemas/ResearchCallMessageTemplate"
+          nullable: true
       additionalProperties: true
 
     HistoryRow:

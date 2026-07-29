@@ -50,6 +50,57 @@ describe("research-call template utilities", () => {
     ).toBe(true);
   });
 
+  it("creates a separate valid Errata layout with locked correction fields", () => {
+    const template =
+      createDefaultCallTemplate("ERRATA");
+
+    expect(
+      isValidCallTemplate(template, "ERRATA")
+    ).toBe(true);
+    expect(
+      template.blocks.some(
+        (block) =>
+          block.type === "field" &&
+          block.fieldKey === "errataHeading" &&
+          block.locked
+      )
+    ).toBe(true);
+    expect(
+      template.blocks.some(
+        (block) =>
+          block.type === "field" &&
+          block.fieldKey === "errataReason" &&
+          block.locked
+      )
+    ).toBe(true);
+    expect(
+      isValidCallTemplate(template, "NEW_CALL")
+    ).toBe(false);
+  });
+
+  it("formats Errata with its locked heading and reason", () => {
+    const message = formatResearchCallMessage(
+      createDefaultCallTemplate("ERRATA"),
+      {
+        ...callData,
+        errataReason: "Corrected entry range.",
+      },
+      raData,
+      "ERRATA"
+    );
+
+    expect(message).toContain("ERRATA / CORRECTION");
+    expect(message).toContain(
+      "Reason:\nCorrected entry range."
+    );
+    expect(message).toContain(
+      "SEBI Registration No: INH000000000"
+    );
+    expect(message).toContain(
+      "DISCLAIMER CUM DISCLOSURE:"
+    );
+  });
+
   it("reorders blocks without dropping fields", () => {
     const template = createDefaultCallTemplate();
     const first = template.blocks[0].id;
@@ -177,5 +228,28 @@ describe("research-call template utilities", () => {
         throwingStorage
       )
     ).toBe("ORIGINAL FORMATTER");
+  });
+
+  it("falls back safely for an invalid Errata template", () => {
+    const fallback = () => "ORIGINAL ERRATA FORMAT";
+    const invalidStorage = {
+      getItem: () =>
+        JSON.stringify(
+          createDefaultCallTemplate("NEW_CALL")
+        ),
+    };
+
+    expect(
+      formatSavedResearchCallMessage(
+        {
+          ...callData,
+          errataReason: "Correction reason",
+        },
+        raData,
+        fallback,
+        invalidStorage,
+        "ERRATA"
+      )
+    ).toBe("ORIGINAL ERRATA FORMAT");
   });
 });

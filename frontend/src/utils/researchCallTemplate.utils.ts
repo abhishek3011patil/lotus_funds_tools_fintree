@@ -1,7 +1,13 @@
 export const CALL_TEMPLATE_STORAGE_KEY =
   "lotusfunds.ra.call-template.v1";
+export const ERRATA_TEMPLATE_STORAGE_KEY =
+  "lotusfunds.ra.errata-template.v1";
 export const CALL_TEMPLATE_VERSION = 1 as const;
 export const MAX_CUSTOM_BLOCK_LENGTH = 500;
+
+export type ResearchCallMessageType =
+  | "NEW_CALL"
+  | "ERRATA";
 
 export const CALL_TEMPLATE_FIELDS = [
   {
@@ -126,8 +132,129 @@ export const CALL_TEMPLATE_FIELDS = [
   },
 ] as const;
 
+export const ERRATA_TEMPLATE_FIELDS = [
+  {
+    key: "errataHeading",
+    label: "ERRATA / CORRECTION heading",
+    locked: true,
+  },
+  {
+    key: "publishedAt",
+    label: "Correction date and time",
+    locked: true,
+  },
+  {
+    key: "instrument",
+    label: "Instrument / stock name",
+    locked: true,
+  },
+  {
+    key: "symbol",
+    label: "Symbol",
+    locked: true,
+  },
+  {
+    key: "exchange",
+    label: "Exchange",
+    locked: false,
+  },
+  {
+    key: "action",
+    label: "Action",
+    locked: true,
+  },
+  {
+    key: "callType",
+    label: "Call type",
+    locked: false,
+  },
+  {
+    key: "entry",
+    label: "Corrected entry / entry range",
+    locked: true,
+  },
+  {
+    key: "target1",
+    label: "Corrected Target 1",
+    locked: true,
+  },
+  {
+    key: "target2",
+    label: "Corrected Target 2",
+    locked: false,
+  },
+  {
+    key: "target3",
+    label: "Corrected Target 3",
+    locked: false,
+  },
+  {
+    key: "stopLoss1",
+    label: "Corrected Stop Loss 1",
+    locked: true,
+  },
+  {
+    key: "stopLoss2",
+    label: "Corrected Stop Loss 2",
+    locked: false,
+  },
+  {
+    key: "stopLoss3",
+    label: "Corrected Stop Loss 3",
+    locked: false,
+  },
+  {
+    key: "expiry",
+    label: "Expiry date",
+    locked: false,
+  },
+  {
+    key: "timeHorizon",
+    label: "Call type / holding period",
+    locked: true,
+  },
+  {
+    key: "errataReason",
+    label: "Reason for correction",
+    locked: true,
+  },
+  {
+    key: "raAttribution",
+    label: "Research Analyst attribution",
+    locked: true,
+  },
+  {
+    key: "sebiRegistration",
+    label: "SEBI registration number",
+    locked: true,
+  },
+  {
+    key: "contact",
+    label: "Contact number",
+    locked: false,
+  },
+  {
+    key: "email",
+    label: "Email",
+    locked: false,
+  },
+  {
+    key: "disclaimer",
+    label: "Mandatory disclaimer and link",
+    locked: true,
+  },
+] as const;
+
 export type CallTemplateFieldKey =
-  (typeof CALL_TEMPLATE_FIELDS)[number]["key"];
+  | (typeof CALL_TEMPLATE_FIELDS)[number]["key"]
+  | (typeof ERRATA_TEMPLATE_FIELDS)[number]["key"];
+
+export const getCallTemplateFields = (
+  messageType: ResearchCallMessageType
+) =>
+  messageType === "ERRATA"
+    ? ERRATA_TEMPLATE_FIELDS
+    : CALL_TEMPLATE_FIELDS;
 
 export type CallTemplateBlock =
   | {
@@ -179,6 +306,7 @@ export interface ResearchCallTemplateData {
   rationale?: string;
   underlyingStudy?: string;
   remarks?: string;
+  errataReason?: string;
 }
 
 export interface ResearchAnalystTemplateData {
@@ -191,25 +319,22 @@ export interface ResearchAnalystTemplateData {
   disclaimerLink?: string;
 }
 
-const fieldDefinitionByKey = new Map(
-  CALL_TEMPLATE_FIELDS.map((field) => [
-    field.key,
-    field,
-  ])
-);
-
 const cloneTemplate = (
   template: CallTemplate
 ): CallTemplate =>
   JSON.parse(JSON.stringify(template)) as CallTemplate;
 
-export const createDefaultCallTemplate = (): CallTemplate => ({
+export const createDefaultCallTemplate = (
+  messageType: ResearchCallMessageType = "NEW_CALL"
+): CallTemplate => ({
   version: CALL_TEMPLATE_VERSION,
-  blocks: CALL_TEMPLATE_FIELDS.map((field) => ({
+  blocks: getCallTemplateFields(messageType).map((field) => ({
     id: `field:${field.key}`,
     type: "field" as const,
     fieldKey: field.key,
-    enabled: field.key !== "recommendationHeading",
+    enabled:
+      messageType === "ERRATA" ||
+      field.key !== "recommendationHeading",
     locked: field.locked,
   })),
 });
@@ -230,7 +355,8 @@ export const normalizeCustomBlockText = (
     .trim();
 
 const isValidFieldBlock = (
-  block: Record<string, unknown>
+  block: Record<string, unknown>,
+  messageType: ResearchCallMessageType
 ): block is Extract<CallTemplateBlock, { type: "field" }> => {
   if (
     block.type !== "field" ||
@@ -242,8 +368,8 @@ const isValidFieldBlock = (
     return false;
   }
 
-  const definition = fieldDefinitionByKey.get(
-    block.fieldKey as CallTemplateFieldKey
+  const definition = getCallTemplateFields(messageType).find(
+    (field) => field.key === block.fieldKey
   );
 
   return Boolean(
@@ -285,13 +411,16 @@ const isValidCustomBlock = (
 };
 
 export const isValidCallTemplate = (
-  value: unknown
+  value: unknown,
+  messageType: ResearchCallMessageType = "NEW_CALL"
 ): value is CallTemplate => {
+  const fields = getCallTemplateFields(messageType);
+
   if (
     !isRecord(value) ||
     value.version !== CALL_TEMPLATE_VERSION ||
     !Array.isArray(value.blocks) ||
-    value.blocks.length < CALL_TEMPLATE_FIELDS.length ||
+    value.blocks.length < fields.length ||
     value.blocks.length > 100
   ) {
     return false;
@@ -308,7 +437,7 @@ export const isValidCallTemplate = (
     let block: CallTemplateBlock;
 
     if (candidate.type === "field") {
-      if (!isValidFieldBlock(candidate)) {
+      if (!isValidFieldBlock(candidate, messageType)) {
         return false;
       }
       block = candidate;
@@ -333,47 +462,57 @@ export const isValidCallTemplate = (
     }
   }
 
-  return CALL_TEMPLATE_FIELDS.every((field) =>
+  return fields.every((field) =>
     fieldKeys.has(field.key)
   );
 };
 
 export const parseStoredCallTemplate = (
-  rawValue: string | null
+  rawValue: string | null,
+  messageType: ResearchCallMessageType = "NEW_CALL"
 ): CallTemplate => {
   if (!rawValue) {
-    return createDefaultCallTemplate();
+    return createDefaultCallTemplate(messageType);
   }
 
   try {
     const parsed: unknown = JSON.parse(rawValue);
-    return isValidCallTemplate(parsed)
+    return isValidCallTemplate(parsed, messageType)
       ? cloneTemplate(parsed)
-      : createDefaultCallTemplate();
+      : createDefaultCallTemplate(messageType);
   } catch {
-    return createDefaultCallTemplate();
+    return createDefaultCallTemplate(messageType);
   }
 };
 
 export const loadCallTemplate = (
+  messageType: ResearchCallMessageType = "NEW_CALL",
   storage: Pick<Storage, "getItem"> = window.localStorage
 ): CallTemplate =>
   parseStoredCallTemplate(
-    storage.getItem(CALL_TEMPLATE_STORAGE_KEY)
+    storage.getItem(
+      messageType === "ERRATA"
+        ? ERRATA_TEMPLATE_STORAGE_KEY
+        : CALL_TEMPLATE_STORAGE_KEY
+    ),
+    messageType
   );
 
 export const saveCallTemplate = (
   template: CallTemplate,
+  messageType: ResearchCallMessageType = "NEW_CALL",
   storage: Pick<Storage, "setItem"> = window.localStorage
 ) => {
-  if (!isValidCallTemplate(template)) {
+  if (!isValidCallTemplate(template, messageType)) {
     throw new Error(
       "The template is invalid or is missing mandatory blocks."
     );
   }
 
   storage.setItem(
-    CALL_TEMPLATE_STORAGE_KEY,
+    messageType === "ERRATA"
+      ? ERRATA_TEMPLATE_STORAGE_KEY
+      : CALL_TEMPLATE_STORAGE_KEY,
     JSON.stringify(template)
   );
 };
@@ -449,6 +588,8 @@ const fieldValue = (
   switch (fieldKey) {
     case "recommendationHeading":
       return "RESEARCH RECOMMENDATION";
+    case "errataHeading":
+      return "ERRATA / CORRECTION";
     case "publishedAt":
       return `Published On: ${valueOrFallback(call.publishedAt)}`;
     case "instrument":
@@ -498,6 +639,11 @@ const fieldValue = (
       )}`;
     case "remarks":
       return `Remarks: ${valueOrFallback(call.remarks)}`;
+    case "errataReason":
+      return [
+        "Reason:",
+        valueOrFallback(call.errataReason),
+      ].join("\n");
     case "raAttribution":
       return `Research Analyst: ${valueOrFallback(
         ra.fullName
@@ -528,9 +674,10 @@ const fieldValue = (
 export const formatResearchCallMessage = (
   template: CallTemplate,
   call: ResearchCallTemplateData,
-  ra: ResearchAnalystTemplateData
+  ra: ResearchAnalystTemplateData,
+  messageType: ResearchCallMessageType = "NEW_CALL"
 ): string => {
-  if (!isValidCallTemplate(template)) {
+  if (!isValidCallTemplate(template, messageType)) {
     throw new Error(
       "The research-call template is invalid."
     );
@@ -558,11 +705,14 @@ export const formatSavedResearchCallMessage = (
   call: ResearchCallTemplateData,
   ra: ResearchAnalystTemplateData,
   fallback: () => string,
-  storage: Pick<Storage, "getItem"> = window.localStorage
+  storage: Pick<Storage, "getItem"> = window.localStorage,
+  messageType: ResearchCallMessageType = "NEW_CALL"
 ): string => {
   try {
     const rawTemplate = storage.getItem(
-      CALL_TEMPLATE_STORAGE_KEY
+      messageType === "ERRATA"
+        ? ERRATA_TEMPLATE_STORAGE_KEY
+        : CALL_TEMPLATE_STORAGE_KEY
     );
 
     if (!rawTemplate) {
@@ -570,11 +720,16 @@ export const formatSavedResearchCallMessage = (
     }
 
     const parsed: unknown = JSON.parse(rawTemplate);
-    if (!isValidCallTemplate(parsed)) {
+    if (!isValidCallTemplate(parsed, messageType)) {
       return fallback();
     }
 
-    return formatResearchCallMessage(parsed, call, ra);
+    return formatResearchCallMessage(
+      parsed,
+      call,
+      ra,
+      messageType
+    );
   } catch {
     return fallback();
   }

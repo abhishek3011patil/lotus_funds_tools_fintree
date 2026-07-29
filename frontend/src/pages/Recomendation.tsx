@@ -58,7 +58,8 @@ import PriceSection, {
 } from "../components/page_Mainapp/PriceSection";
 import axios from "axios";
 import RemarksField from "../components/page_Mainapp/RemarksField";
-import { formatSavedResearchCallMessage } from "../utils/researchCallTemplate.utils";
+import { formatResearchCallMessage } from "../utils/researchCallTemplate.utils";
+import { fetchResearchCallTemplates } from "../services/researchCallTemplate.service";
 
 
 const BUY_COLOR = "#22c55e";
@@ -330,14 +331,9 @@ const handleSubmit = async () => {
       alert("RA profile details are still loading. Please try again.");
       return;
     }
-
-    const finalDisplayName =
-      suggestion &&
-      suggestion
-        .toLowerCase()
-        .startsWith(inputValue.trim().toLowerCase())
-        ? suggestion.trim()
-        : inputValue.trim();
+const finalDisplayName =
+  form.display_name.trim() ||
+  inputValue.trim();
 
     if (!finalDisplayName) {
       alert("Stock name is required");
@@ -380,6 +376,34 @@ const handleSubmit = async () => {
     const disclaimer =
       raDetails?.additional_comments ||
       "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
+
+    const raTemplateData = {
+      fullName: raFullName || "N/A",
+      organizationName: raDetails?.org_name || "N/A",
+      sebiRegistrationNumber:
+        raDetails?.sebi_reg_no || "N/A",
+      contactNumber: raDetails?.mobile || "N/A",
+      email: raDetails?.email || "N/A",
+      disclaimer,
+      disclaimerLink:
+        "https://lotusfunds.com/disclaimer&disclosure",
+    };
+
+    let savedMessageTemplates = {
+      NEW_CALL: null,
+      ERRATA: null,
+    } as Awaited<
+      ReturnType<typeof fetchResearchCallTemplates>
+    >;
+
+    try {
+      savedMessageTemplates =
+        await fetchResearchCallTemplates(token);
+    } catch {
+      console.warn(
+        "RA message templates unavailable; using the existing message format."
+      );
+    }
 
     /*
      * =========================================================
@@ -441,7 +465,7 @@ const handleSubmit = async () => {
         research_remarks: trimmedRemark,
       };
 
-      const errataMessage = `
+      const defaultErrataMessage = `
 ERRATA / CORRECTION
 
 Published On: ${new Date().toLocaleString("en-IN", {
@@ -503,6 +527,68 @@ Read Full Disclaimer / Disclosure at:
 https://lotusfunds.com/disclaimer&disclosure
 `.trim();
 
+      let errataMessage = defaultErrataMessage;
+      const errataTemplate =
+        savedMessageTemplates.ERRATA;
+
+      if (errataTemplate) {
+        try {
+          errataMessage = formatResearchCallMessage(
+            errataTemplate,
+            {
+              publishedAt: new Date().toLocaleString(
+                "en-IN",
+                {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                  second: "2-digit",
+                  hour12: true,
+                }
+              ),
+              instrument: finalDisplayName,
+              symbol: finalSymbol,
+              exchange: `${form.exchange} ${form.callType}`,
+              action: form.action,
+              callType: form.tradeType,
+              entry: form.rangeEnabled
+                ? `${form.entryLow} - ${form.entryUpper}`
+                : form.entry,
+              targets: [
+                form.target,
+                form.secondaryTargetEnabled
+                  ? form.target2
+                  : null,
+                form.secondaryTargetEnabled
+                  ? form.target3
+                  : null,
+              ],
+              stopLosses: [
+                form.stopLoss,
+                form.stopLoss2Enabled
+                  ? form.stopLoss2
+                  : null,
+                form.stopLoss2Enabled
+                  ? form.stopLoss3
+                  : null,
+              ],
+              expiry: form.expiry
+                ? formatExpiry(form.expiry)
+                : "N/A",
+              timeHorizon: form.tradeType,
+              holdingPeriod: form.holdingPeriod,
+              errataReason: trimmedRemark,
+            },
+            raTemplateData,
+            "ERRATA"
+          );
+        } catch {
+          errataMessage = defaultErrataMessage;
+        }
+      }
+
       const errataResponse = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/research/calls/errata`,
         {
@@ -510,6 +596,10 @@ https://lotusfunds.com/disclaimer&disclosure
           updates,
           errata_reason: trimmedRemark,
           message_text: errataMessage,
+          message_template_version:
+            errataTemplate?.version ?? null,
+          message_template_snapshot:
+            errataTemplate ?? null,
         },
         {
           headers: {
@@ -645,56 +735,70 @@ Read Full Disclaimer / Disclosure at:
 https://lotusfunds.com/disclaimer&disclosure
 `.trim();
 
-    const publishMessage = formatSavedResearchCallMessage(
-      {
-        publishedAt,
-        instrument: finalDisplayName,
-        symbol: finalSymbol,
-        exchange: `${form.exchangeType} / ${form.exchange}`,
-        action: form.action,
-        callType: form.callType,
-        entry: form.rangeEnabled
-          ? `${form.entryLow} - ${form.entryUpper}`
-          : form.entry,
-        targets: [
-          form.target,
-          form.secondaryTargetEnabled ? form.target2 : null,
-          form.secondaryTargetEnabled ? form.target3 : null,
-        ],
-        stopLosses: [
-          form.stopLoss,
-          form.stopLoss2Enabled ? form.stopLoss2 : null,
-          form.stopLoss2Enabled ? form.stopLoss3 : null,
-        ],
-        expiry: form.expiry
-          ? formatExpiry(form.expiry)
-          : "N/A",
-        timeHorizon: form.tradeType,
-        holdingPeriod: form.holdingPeriod,
-        rationale: form.rationale,
-        underlyingStudy:
-          form.underlyingStudy
-            .map((study) => study.label)
-            .join(", ") || "N/A",
-        remarks: form.remark || "N/A",
-      },
-      {
-        fullName: raFullName || "N/A",
-        organizationName: raDetails?.org_name || "N/A",
-        sebiRegistrationNumber:
-          raDetails?.sebi_reg_no || "N/A",
-        contactNumber: raDetails?.mobile || "N/A",
-        email: raDetails?.email || "N/A",
-        disclaimer,
-        disclaimerLink:
-          "https://lotusfunds.com/disclaimer&disclosure",
-      },
-      () => defaultPublishMessage
-    );
+    let publishMessage = defaultPublishMessage;
+    const newCallTemplate =
+      savedMessageTemplates.NEW_CALL;
+
+    if (newCallTemplate) {
+      try {
+        publishMessage = formatResearchCallMessage(
+          newCallTemplate,
+          {
+            publishedAt,
+            instrument: finalDisplayName,
+            symbol: finalSymbol,
+            exchange: `${form.exchangeType} / ${form.exchange}`,
+            action: form.action,
+            callType: form.callType,
+            entry: form.rangeEnabled
+              ? `${form.entryLow} - ${form.entryUpper}`
+              : form.entry,
+            targets: [
+              form.target,
+              form.secondaryTargetEnabled
+                ? form.target2
+                : null,
+              form.secondaryTargetEnabled
+                ? form.target3
+                : null,
+            ],
+            stopLosses: [
+              form.stopLoss,
+              form.stopLoss2Enabled
+                ? form.stopLoss2
+                : null,
+              form.stopLoss2Enabled
+                ? form.stopLoss3
+                : null,
+            ],
+            expiry: form.expiry
+              ? formatExpiry(form.expiry)
+              : "N/A",
+            timeHorizon: form.tradeType,
+            holdingPeriod: form.holdingPeriod,
+            rationale: form.rationale,
+            underlyingStudy:
+              form.underlyingStudy
+                .map((study) => study.label)
+                .join(", ") || "N/A",
+            remarks: form.remark || "N/A",
+          },
+          raTemplateData,
+          "NEW_CALL"
+        );
+      } catch {
+        publishMessage = defaultPublishMessage;
+      }
+    }
 
     const payload = {
       status: "PUBLISHED",
       message_text: publishMessage,
+      message_template_version:
+        newCallTemplate?.version ?? null,
+      message_template_snapshot: newCallTemplate
+        ? JSON.stringify(newCallTemplate)
+        : null,
 
       exchange_type: form.exchangeType,
       market_type: form.exchange,
@@ -2038,10 +2142,8 @@ const handleTrack = async () => {
      */
 
     const finalDisplayName =
-  suggestion &&
-  suggestion.toLowerCase().startsWith(inputValue.trim().toLowerCase())
-    ? suggestion.trim()
-    : inputValue.trim();
+  form.display_name.trim() ||
+  inputValue.trim();
 
 if (!finalDisplayName) {
   alert("Stock name is required");
@@ -2911,42 +3013,76 @@ sx={{
               disabled={isErrataMode}
               freeSolo
               options={matches}
-              getOptionLabel={(option) =>
-                typeof option === "string"
-                  ? option
-                  : `${option.name} (${option.symbol})`
-              }
+           getOptionLabel={(option) => {
+  if (typeof option === "string") {
+    return option;
+  }
+
+  const name = option.name.trim();
+  const symbol = option.symbol.trim();
+
+  if (
+    !symbol ||
+    symbol.toLowerCase() === name.toLowerCase()
+  ) {
+    return name;
+  }
+
+  return `${name} (${symbol})`;
+}}
               loading={stockSearchLoading}
               inputValue={inputValue}
-              onInputChange={(event, value, reason) => {
-                handleInputChange(event, value);
-                if (reason === "input" || reason === "clear") {
-                  dispatch({
-                    type: "SET_FORM",
-                    payload: { symbol: "SYM", display_name: value },
-                  });
-                }
-              }}
+            onInputChange={(event, value, reason) => {
+  if (reason === "input" || reason === "clear") {
+    handleInputChange(event, value);
+
+    dispatch({
+      type: "SET_FORM",
+      payload: {
+        symbol: "SYM",
+        display_name: value,
+      },
+    });
+  }
+}}
               onKeyDown={handleKeyDown}
-              onChange={(_, newValue) => {
-                if (typeof newValue === "string" && newValue) {
-                  setDirectValue(newValue);
-                } else if (
-                  newValue &&
-                  typeof newValue === "object" &&
-                  "name" in newValue &&
-                  "symbol" in newValue
-                ) {
-                  setDirectValue(newValue.name);
-                  dispatch({
-                    type: "SET_FORM",
-                    payload: {
-                      symbol: newValue.symbol.slice(0, 30),
-                      display_name: newValue.name,
-                    },
-                  });
-                }
-              }}
+           onChange={(_, newValue) => {
+  if (typeof newValue === "string") {
+    const value = newValue.trim();
+
+    setDirectValue(value);
+
+    dispatch({
+      type: "SET_FORM",
+      payload: {
+        symbol: "SYM",
+        display_name: value,
+      },
+    });
+
+    return;
+  }
+
+  if (newValue) {
+    const selectedName = newValue.name.trim();
+    const selectedSymbol = newValue.symbol.trim();
+
+    setDirectValue(selectedName);
+
+    dispatch({
+      type: "SET_FORM",
+      payload: {
+        symbol:
+          selectedSymbol.toLowerCase() ===
+          selectedName.toLowerCase()
+            ? "SYM"
+            : selectedSymbol.slice(0, 30),
+
+        display_name: selectedName,
+      },
+    });
+  }
+}}
               isOptionEqualToValue={(option, value) =>
                 typeof option === "string" || typeof value === "string"
                   ? option === value
@@ -3485,6 +3621,52 @@ sx={{
                   <strong>Errata Reason:</strong>{" "}
                   {version.errata_reason}
                 </Typography>
+              </>
+            )}
+
+            {version.published_message_text && (
+              <>
+                <Divider sx={{ my: 1.5 }} />
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                    mb: 0.75,
+                  }}
+                >
+                  <Typography variant="body2" fontWeight={700}>
+                    Published Message
+                  </Typography>
+                  {version.message_template_version && (
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      color="primary"
+                      label={`Template v${version.message_template_version}`}
+                    />
+                  )}
+                </Box>
+                <Paper
+                  component="pre"
+                  variant="outlined"
+                  sx={{
+                    p: 1.5,
+                    m: 0,
+                    maxHeight: 260,
+                    overflow: "auto",
+                    whiteSpace: "pre-wrap",
+                    overflowWrap: "anywhere",
+                    fontFamily: "inherit",
+                    fontSize: "0.75rem",
+                    lineHeight: 1.55,
+                    backgroundColor: "#F8FAFF",
+                    borderColor: "#C7D2FE",
+                  }}
+                >
+                  {version.published_message_text}
+                </Paper>
               </>
             )}
 
