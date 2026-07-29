@@ -1,4 +1,5 @@
 import { Box, Typography } from "@mui/material";
+import ClientRecommendation from "./ClientRecommendations";
 
 const ClientDashboard = () => {
   return (

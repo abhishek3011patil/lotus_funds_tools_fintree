@@ -5,6 +5,7 @@ import { AuthRequest } from "../middlewares/auth.middleware";
 import { Router } from "express";
 import { createAuditLog } from "../utils/auditLogger";
 import { queueWhatsAppResearchCall } from "../services/deliveryQueue.service";
+import { createClientNotification } from "./clientNotification.controller";
 
 const getClientIp = (req: any): string => {
   let ip =
@@ -167,8 +168,42 @@ export const createResearchCall = async (
       disclaimerSnapshotAt,
     ];
 
-    const { rows } = await pool.query(query, values);
-    const createdCall = rows[0];
+const { rows } = await pool.query(query, values);
+const createdCall = rows[0];
+
+// Get RA name
+const raResult = await pool.query(
+  `
+  SELECT name
+  FROM users
+  WHERE id = $1
+  `,
+  [req.user!.id]
+);
+
+const raName = raResult.rows[0]?.name || "Research Analyst";
+
+// Temporary: notify all active clients
+// TODO: Replace this query with subscribed clients of this RA
+const clientResult = await pool.query(
+  `
+  SELECT id
+  FROM users
+  WHERE role = 'CLIENT'
+    AND is_active = true
+  `
+);
+
+for (const client of clientResult.rows) {
+  await createClientNotification({
+    userId: client.id,
+    type: "New Recommendation",
+    title: `${createdCall.action} Recommendation`,
+    message: `${raName} published a ${createdCall.action} call on ${createdCall.symbol}.`,
+    referenceId: createdCall.id,
+    referenceType: "research_call",
+  });
+}
     
 
     if (
@@ -260,12 +295,14 @@ export const getRecommendationHistory = async (
     }
 
     const page = Math.max(Number(req.query.page) || 1, 1);
+
     const limit = Math.min(
       Math.max(Number(req.query.limit) || 50, 1),
       100
     );
 
     const offset = (page - 1) * limit;
+
     const search = String(req.query.search || "").trim();
 
     const query = `
@@ -284,30 +321,49 @@ export const getRecommendationHistory = async (
         rc.status,
         NULL AS profit_loss,
         u.name AS researcher_name
+
       FROM research_calls rc
+
       JOIN users u
         ON u.id = rc.ra_user_id
+
       WHERE rc.is_latest = true
-        AND rc.ra_user_id = $4
+        AND rc.status = 'PUBLISHED'
         AND (
           rc.display_name ILIKE $3
           OR rc.symbol ILIKE $3
           OR u.name ILIKE $3
         )
+
       ORDER BY rc.created_at DESC
-      LIMIT $1 OFFSET $2
+
+      LIMIT $1
+      OFFSET $2
     `;
 
     const { rows } = await pool.query(query, [
       limit,
       offset,
       `%${search}%`,
-      req.user.id,
     ]);
 
+    console.log(
+      rows.map((r) => ({
+        researcher: r.researcher_name,
+        symbol: r.symbol,
+        date: r.date_time,
+      }))
+    );
+
+    console.log("API rows:", rows);
+
     return res.status(200).json(rows);
+
   } catch (err) {
-    console.error("RECOMMENDATION HISTORY API ERROR:", err);
+    console.error(
+      "RECOMMENDATION HISTORY API ERROR:",
+      err
+    );
 
     return res.status(500).json({
       success: false,
@@ -1353,6 +1409,21 @@ export const getMyRecommendationHistory = async (
       });
     }
 
+    // 👇 ADD THIS HERE
+    const check = await pool.query(`
+      SELECT
+        rc.created_at,
+        rc.symbol,
+        u.name
+      FROM research_calls rc
+      JOIN users u
+        ON u.id = rc.ra_user_id
+      ORDER BY rc.created_at DESC
+      LIMIT 5
+    `);
+
+    console.log("CHECK QUERY:", check.rows);
+
     const page = Math.max(Number(req.query.page) || 1, 1);
 
     const limit = Math.min(
@@ -1422,38 +1493,48 @@ export const getMyRecommendationHistory = async (
         ) AS researcher_name
 
       FROM research_calls rc
+LEFT JOIN users u
+  ON u.id = rc.ra_user_id
 
-      LEFT JOIN users u
-        ON u.id = rc.ra_user_id
+WHERE (
+    $1 = ''
+    OR COALESCE(rc.display_name, '') ILIKE $2
+    OR COALESCE(rc.symbol, '') ILIKE $2
+    OR COALESCE(rc.exchange_type, '') ILIKE $2
+    OR COALESCE(rc.call_type, '') ILIKE $2
+    OR COALESCE(rc.trade_type, '') ILIKE $2
+    OR COALESCE(rc.action, '') ILIKE $2
+    OR COALESCE(rc.status, '') ILIKE $2
+    OR COALESCE(u.name, '') ILIKE $2
+)
 
-      WHERE rc.ra_user_id = $1
-        AND rc.is_latest IS TRUE
-        AND (
-          $2 = ''
-          OR COALESCE(rc.display_name, '') ILIKE $3
-          OR COALESCE(rc.symbol, '') ILIKE $3
-          OR COALESCE(rc.exchange_type, '') ILIKE $3
-          OR COALESCE(rc.call_type, '') ILIKE $3
-          OR COALESCE(rc.trade_type, '') ILIKE $3
-          OR COALESCE(rc.action, '') ILIKE $3
-          OR COALESCE(rc.status, '') ILIKE $3
-          OR COALESCE(u.name, '') ILIKE $3
-        )
+ORDER BY rc.created_at DESC
 
-      ORDER BY rc.created_at DESC
-
-      LIMIT $4
-      OFFSET $5
+LIMIT $3
+OFFSET $4
     `;
 
-    const { rows } = await pool.query(query, [
-      raUserId,
-      search,
-      `%${search}%`,
-      limit,
-      offset,
-    ]);
+  console.log("raUserId:", raUserId);
+console.log("search:", search);
 
+const { rows } = await pool.query(query, [
+  search,
+  `%${search}%`,
+  limit,
+  offset,
+]);
+
+console.log("Returned rows:", rows.length);
+
+rows.forEach((r) => {
+  console.log(
+    r.date_time,
+    r.symbol,
+    r.researcher_name,
+    r.status,
+    r.version_type
+  );
+});
     return res.status(200).json(rows);
   } catch (error) {
     console.error(
@@ -1467,6 +1548,7 @@ export const getMyRecommendationHistory = async (
     });
   }
 };
+
 export const getInstruments = async (req: AuthRequest, res: Response) => {
   const exchange = String(req.query.exchange || "").toUpperCase();
   const search = String(req.query.search || "").trim();

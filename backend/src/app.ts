@@ -19,6 +19,8 @@ import performanceRoutes from "./routes/performance.routes";
 import subscriptionPlanRoutes from "./routes/subscriptionPlans.routes";
 import razorpayWebhookRoutes from "./routes/razorpayWebhook.routes";
 import subscriptionAccessRoutes from "./routes/subscriptionAccess.routes";
+import clientRecommendationRoutes from "./routes/clientRecommendation.routes";
+import clientNotificationRoutes from "./routes/clientNotification.routes";
 
 const app = express();
 
@@ -104,6 +106,8 @@ app.use(
   subscriptionPlanRoutes
 );
 
+app.use("/api/client/notifications", clientNotificationRoutes);
+
 app.get("/check", (_req, res) => {
   res.send("APP WORKING");
 });
@@ -111,6 +115,8 @@ app.get("/check", (_req, res) => {
 
 
 app.use("/api/whatsapp", whatsappRoutes);
+
+app.use( "/api/client/recommendations", clientRecommendationRoutes);
 
 app.use(
   "/api/subscriptions",

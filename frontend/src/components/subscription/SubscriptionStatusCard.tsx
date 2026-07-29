@@ -82,39 +82,159 @@ const SubscriptionStatusCard = ({
     );
   }
 
-  const status = getSubscriptionStatusPresentation(subscription.status);
+const status = getSubscriptionStatusPresentation(subscription.status);
 
   return (
-    <Stack spacing={2}>
-      <Typography variant="h6">{title}</Typography>
-      <Grid container spacing={{ xs: 2, sm: 3 }}>
-        <Detail label="Plan name">
-          {subscription.planName || "Not available"}
-        </Detail>
-        <Detail label="Subscription status">
-          <Chip
-            label={status.label}
-            color={status.color}
-            size="small"
-          />
-        </Detail>
-        <Detail label="Start date">
-          {formatSubscriptionDate(subscription.startsAt)}
-        </Detail>
-        <Detail label="Expiry date">
-          {formatSubscriptionDate(subscription.expiresAt)}
-        </Detail>
-        <Detail label="Days remaining">
-          {normalizeDaysRemaining(subscription.daysRemaining)}
-        </Detail>
-        <Detail label="Amount paid">
-          {formatSubscriptionAmount(
-            subscription.amountPaid,
-            subscription.currency
-          )}
-        </Detail>
+    <Box sx={{ width: "100%" }}>
+      {/* Title & Status Header */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 2.5,
+        }}
+      >
+        <Typography
+          variant="h6"
+          sx={{
+            fontSize: { xs: "17px", sm: "19px" },
+            fontWeight: 700,
+            color: "#0f172a",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          {title}
+        </Typography>
+
+        <Chip
+          label={status.label}
+          color={status.color}
+          size="small"
+          sx={{
+            fontWeight: 600,
+            fontSize: "12px",
+            px: 1,
+            height: "26px",
+            borderRadius: "6px",
+          }}
+        />
+      </Box>
+
+      {/* Grid of Clean Metric Cards */}
+      <Grid container spacing={2}>
+        {/* Card 1: Active Plan */}
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Box
+            sx={{
+              p: 2.5,
+              borderRadius: "12px",
+              backgroundColor: "#ffffff",
+              border: "1px solid #e2e8f0",
+              borderLeft: "4px solid #2563eb",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+              height: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            <Typography sx={{ fontSize: "12px", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", mb: 0.5 }}>
+              Current Plan
+            </Typography>
+            <Typography sx={{ fontSize: "18px", fontWeight: 700, color: "#0f172a" }}>
+              {subscription.planName || "Not available"}
+            </Typography>
+          </Box>
+        </Grid>
+
+        {/* Card 2: Amount Paid */}
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Box
+            sx={{
+              p: 2.5,
+              borderRadius: "12px",
+              backgroundColor: "#ffffff",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+              height: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            <Typography sx={{ fontSize: "12px", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", mb: 0.5 }}>
+              Amount Paid
+            </Typography>
+            <Typography sx={{ fontSize: "18px", fontWeight: 700, color: "#0f172a" }}>
+              {formatSubscriptionAmount(subscription.amountPaid, subscription.currency)}
+            </Typography>
+          </Box>
+        </Grid>
+
+        {/* Card 3: Days Remaining (Simple Text Only) */}
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Box
+            sx={{
+              p: 2.5,
+              borderRadius: "12px",
+              backgroundColor: "#ffffff",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+              height: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            <Typography sx={{ fontSize: "12px", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", mb: 0.5 }}>
+              Days Remaining
+            </Typography>
+            <Typography sx={{ fontSize: "18px", fontWeight: 700, color: "#16a34a" }}>
+              {normalizeDaysRemaining(subscription.daysRemaining)} Days
+            </Typography>
+          </Box>
+        </Grid>
+
+        {/* Card 4: Start Date */}
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <Box
+            sx={{
+              p: 2.5,
+              borderRadius: "12px",
+              backgroundColor: "#ffffff",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+              height: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            <Typography sx={{ fontSize: "12px", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", mb: 0.5 }}>
+              Start Date
+            </Typography>
+            <Typography sx={{ fontSize: "16px", fontWeight: 600, color: "#334155" }}>
+              {formatSubscriptionDate(subscription.startsAt)}
+            </Typography>
+          </Box>
+        </Grid>
+
+        {/* Card 5: Expiry Date */}
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <Box
+            sx={{
+              p: 2.5,
+              borderRadius: "12px",
+              backgroundColor: "#ffffff",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+              height: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            <Typography sx={{ fontSize: "12px", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", mb: 0.5 }}>
+              Expiry Date
+            </Typography>
+            <Typography sx={{ fontSize: "16px", fontWeight: 600, color: "#334155" }}>
+              {formatSubscriptionDate(subscription.expiresAt)}
+            </Typography>
+          </Box>
+        </Grid>
       </Grid>
-    </Stack>
+    </Box>
   );
 };
 

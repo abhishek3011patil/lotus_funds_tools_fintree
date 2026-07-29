@@ -125,8 +125,8 @@ const Settings = () => {
       <RASettingsDisclaimer />
     </Box>
 
-    {/* 5. Subscription Status Card */}
-    <Box sx={{ backgroundColor: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: { xs: "16px", sm: "24px" }, marginBottom: "24px", width: "100%", maxWidth: "1000px", boxSizing: "border-box" }}>
+  {/* 5. Subscription Status Card */}
+    <Box sx={{ backgroundColor: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: { xs: "20px", sm: "28px" }, marginBottom: "24px", width: "100%", maxWidth: "1000px", boxSizing: "border-box" }}>
       <RASubscriptionStatus />
     </Box>
 
