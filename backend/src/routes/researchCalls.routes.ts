@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createErrata, createResearchCall, getCallVersionHistory, getInstruments, getMyRecommendationHistory, getRAMessageProfile } from "../controllers/researchCalls.controller";
+import { createErrata, createResearchCall, getCallVersionHistory, getInstruments, getMyRecommendationHistory, getRAMessageProfile, getRecommendationHistory } from "../controllers/researchCalls.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 import {
     getResearchCalls,
@@ -7,6 +7,10 @@ import {
     publishDraftCall
 } from "../controllers/researchCalls.controller";
 import { exitResearchCall } from "../controllers/exitResearchCall";
+import {
+  getResearchCallTemplates,
+  saveResearchCallTemplate,
+} from "../controllers/researchCallTemplate.controller";
 import { upload } from "../middlewares/upload";
 import { requireActiveSubscription, requireSubscriptionFeature, reserveSubscriptionEventLimit } from "../middlewares/subscriptionAccess.middleware";
 
@@ -14,6 +18,17 @@ import { requireActiveSubscription, requireSubscriptionFeature, reserveSubscript
 const router = Router();
 
 router.get("/research/instruments", authenticate, getInstruments);
+
+router.get(
+  "/research/message-templates",
+  authenticate,
+  getResearchCallTemplates
+);
+router.put(
+  "/research/message-templates/:messageType",
+  authenticate,
+  saveResearchCallTemplate
+);
 
 router.post(
   "/research/calls",
@@ -58,6 +73,12 @@ router.get("/test", (req, res) => {
     res.json({ ok: true });
 });
 
+
+router.get(
+  "/history/all",
+  authenticate,
+  getRecommendationHistory
+);
 
 router.get(
   "/history/my",

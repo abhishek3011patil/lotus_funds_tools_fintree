@@ -16,20 +16,19 @@ export type StockOption = {
   name: string;
   symbol: string;
 };
-
 const LOCAL_OPTIONS: Record<ExchangeType, StockOption[]> = {
   NSE: (STOCK_DATA.NSE || []).map((name) => ({
     exchange: "NSE",
     name,
-    symbol: name,
+    symbol: "",
   })),
+
   BSE: (STOCK_DATA.BSE || []).map((name) => ({
     exchange: "BSE",
     name,
-    symbol: name,
+    symbol: "",
   })),
 };
-
 type PreparedStockOption = StockOption & {
   normalizedName: string;
   normalizedSymbol: string;
@@ -166,12 +165,14 @@ export function useStockAutocomplete(exchangeType: ExchangeType) {
     setInputValue(value);
   }, []);
 
-  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
+ const handleKeyDown = useCallback(
+  (event: React.KeyboardEvent) => {
     if (event.key === "Tab" && matches[0]) {
       setInputValue(matches[0].name);
-      event.preventDefault();
     }
-  }, [matches]);
+  },
+  [matches]
+);
 
   return {
     inputValue,

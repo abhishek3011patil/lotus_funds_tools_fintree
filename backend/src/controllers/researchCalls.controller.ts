@@ -5,6 +5,10 @@ import { AuthRequest } from "../middlewares/auth.middleware";
 import { Router } from "express";
 import { createAuditLog } from "../utils/auditLogger";
 import { queueWhatsAppResearchCall } from "../services/deliveryQueue.service";
+import {
+  getResearchCallTemplate,
+  parseResearchCallTemplateSnapshot,
+} from "../services/researchCallTemplate.service";
 import { createClientNotification } from "./clientNotification.controller";
 
 const getClientIp = (req: any): string => {
@@ -97,6 +101,38 @@ export const createResearchCall = async (
     const disclaimerSnapshotAt =
       disclaimerResult.rows[0]?.disclaimer_updated_at || null;
 
+    const publishedMessageText =
+      normalizedStatus === "PUBLISHED"
+        ? String(message_text || "").trim() || null
+        : null;
+    const storedMessageTemplate =
+      normalizedStatus === "PUBLISHED"
+        ? await getResearchCallTemplate(
+            pool,
+            req.user!.id,
+            "NEW_CALL"
+          )
+        : null;
+    const submittedMessageTemplate =
+      normalizedStatus === "PUBLISHED"
+        ? parseResearchCallTemplateSnapshot(
+            req.body?.message_template_snapshot,
+            "NEW_CALL"
+          )
+        : null;
+    const messageTemplateSnapshot =
+      submittedMessageTemplate ??
+      storedMessageTemplate?.template ??
+      null;
+
+      console.log("DISPLAY NAME DEBUG:", {
+  value: display_name,
+  length:
+    typeof display_name === "string"
+      ? display_name.length
+      : null,
+});
+
     const query = `
       INSERT INTO research_calls (
         ra_user_id,
@@ -126,12 +162,16 @@ export const createResearchCall = async (
         research_remarks,
         file_url,
         disclaimer_snapshot,
-        disclaimer_snapshot_at
+        disclaimer_snapshot_at,
+        published_message_text,
+        message_template_version,
+        message_template_snapshot
       )
       VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
         $11,$12,$13,$14,$15,$16,$17,$18,$19,
-        $20,$21,$22,$23,$24,$25,$26,$27,$28
+        $20,$21,$22,$23,$24,$25,$26,$27,$28,
+        $29,$30,$31
       )
       RETURNING *;
     `;
@@ -166,6 +206,13 @@ export const createResearchCall = async (
       filePath,
       disclaimerSnapshot,
       disclaimerSnapshotAt,
+      publishedMessageText,
+      messageTemplateSnapshot?.version ??
+        storedMessageTemplate?.templateVersion ??
+        null,
+      messageTemplateSnapshot
+        ? JSON.stringify(messageTemplateSnapshot)
+        : null,
     ];
 
 const { rows } = await pool.query(query, values);
@@ -297,7 +344,7 @@ export const getRecommendationHistory = async (
     const page = Math.max(Number(req.query.page) || 1, 1);
 
     const limit = Math.min(
-      Math.max(Number(req.query.limit) || 50, 1),
+      Math.max(Number(req.query.limit) || 10, 1),
       100
     );
 
@@ -308,54 +355,91 @@ export const getRecommendationHistory = async (
     const query = `
       SELECT
         rc.created_at AS date_time,
-        rc.action,
-        rc.exchange_type AS exchange,
-        rc.call_type AS type,
-        rc.trade_type AS category,
-        rc.display_name AS instrument,
-        rc.symbol,
+
+        COALESCE(rc.action, '-') AS action,
+        COALESCE(rc.exchange_type, '-') AS exchange,
+        COALESCE(rc.call_type, '-') AS type,
+        COALESCE(rc.trade_type, '-') AS category,
+
+        COALESCE(
+          rc.display_name,
+          rc.symbol,
+          '-'
+        ) AS instrument,
+
+        COALESCE(rc.symbol, '-') AS symbol,
+
         rc.expiry_date AS expiry,
-        rc.entry_price AS entry,
-        rc.version_type,
+
+        COALESCE(
+          rc.entry_price,
+          rc.entry_price_low,
+          rc.entry_price_upper
+        ) AS entry,
+
         rc.exit_price,
-        rc.status,
-        NULL AS profit_loss,
-        u.name AS researcher_name
+        COALESCE(rc.status, '-') AS status,
+        rc.version_type,
+
+        CASE
+          WHEN rc.exit_price IS NULL THEN 0
+
+          WHEN UPPER(COALESCE(rc.action, '')) = 'BUY' THEN
+            rc.exit_price -
+            COALESCE(
+              rc.entry_price,
+              rc.entry_price_low,
+              rc.entry_price_upper,
+              rc.exit_price
+            )
+
+          WHEN UPPER(COALESCE(rc.action, '')) = 'SELL' THEN
+            COALESCE(
+              rc.entry_price,
+              rc.entry_price_low,
+              rc.entry_price_upper,
+              rc.exit_price
+            ) - rc.exit_price
+
+          ELSE 0
+        END AS profit_loss,
+
+        COALESCE(
+          u.name,
+          rc.display_name,
+          '-'
+        ) AS researcher_name
 
       FROM research_calls rc
 
-      JOIN users u
+      LEFT JOIN users u
         ON u.id = rc.ra_user_id
 
-      WHERE rc.is_latest = true
-        AND rc.status = 'PUBLISHED'
+      WHERE rc.is_latest IS TRUE
         AND (
-          rc.display_name ILIKE $3
-          OR rc.symbol ILIKE $3
-          OR u.name ILIKE $3
+          $1 = ''
+          OR COALESCE(rc.display_name, '') ILIKE $2
+          OR COALESCE(rc.symbol, '') ILIKE $2
+          OR COALESCE(rc.exchange_type, '') ILIKE $2
+          OR COALESCE(rc.call_type, '') ILIKE $2
+          OR COALESCE(rc.trade_type, '') ILIKE $2
+          OR COALESCE(rc.action, '') ILIKE $2
+          OR COALESCE(rc.status, '') ILIKE $2
+          OR COALESCE(u.name, '') ILIKE $2
         )
 
       ORDER BY rc.created_at DESC
 
-      LIMIT $1
-      OFFSET $2
+      LIMIT $3
+      OFFSET $4
     `;
 
     const { rows } = await pool.query(query, [
+      search,
+      `%${search}%`,
       limit,
       offset,
-      `%${search}%`,
     ]);
-
-    console.log(
-      rows.map((r) => ({
-        researcher: r.researcher_name,
-        symbol: r.symbol,
-        date: r.date_time,
-      }))
-    );
-
-    console.log("API rows:", rows);
 
     return res.status(200).json(rows);
 
@@ -698,6 +782,23 @@ const versionResult = await client.query(
 const nextVersionNumber = Number(
   versionResult.rows[0].next_version
 );
+const publishedErrataMessage =
+  String(message_text || "").trim() || null;
+const storedErrataTemplate =
+  await getResearchCallTemplate(
+    client,
+    userId,
+    "ERRATA"
+  );
+const submittedErrataTemplate =
+  parseResearchCallTemplateSnapshot(
+    req.body?.message_template_snapshot,
+    "ERRATA"
+  );
+const errataTemplateSnapshot =
+  submittedErrataTemplate ??
+  storedErrataTemplate?.template ??
+  null;
     // =========================================================
     // 5️⃣ CREATE NEW ERRATA VERSION
     // =========================================================
@@ -748,6 +849,10 @@ const insertResult = await client.query(
     disclaimer_snapshot,
     disclaimer_snapshot_at,
 
+    published_message_text,
+    message_template_version,
+    message_template_snapshot,
+
     parent_call_id,
     is_latest
   )
@@ -797,7 +902,11 @@ const insertResult = await client.query(
     $31,
 
     $32,
-    $33
+    $33,
+    $34,
+
+    $35,
+    $36
   )
   RETURNING *
   `,
@@ -848,13 +957,21 @@ const insertResult = await client.query(
     existingCall.disclaimer_snapshot,
     existingCall.disclaimer_snapshot_at,
 
+    publishedErrataMessage,
+    errataTemplateSnapshot?.version ??
+      storedErrataTemplate?.templateVersion ??
+      null,
+    errataTemplateSnapshot
+      ? JSON.stringify(errataTemplateSnapshot)
+      : null,
+
     rootId,
     true,
   ]
 );
 
 const errataCall = insertResult.rows[0];
-const whatsappMessage = String(message_text || "").trim();
+const whatsappMessage = publishedErrataMessage || "";
 
 if (whatsappMessage) {
   await queueWhatsAppResearchCall({
@@ -998,7 +1115,10 @@ export const getCallVersionHistory = async (
 
     file_url,
     disclaimer_snapshot,
-    disclaimer_snapshot_at
+    disclaimer_snapshot_at,
+    published_message_text,
+    message_template_version,
+    message_template_snapshot
   FROM research_calls
   WHERE ra_user_id = $2
     AND (
@@ -1095,13 +1215,17 @@ export const publishDraftCall = async (
     const result = await pool.query(
       `
       UPDATE research_calls
-      SET status = 'PUBLISHED'
+      SET
+        status = 'PUBLISHED',
+        published_message_text = $3,
+        message_template_version = NULL,
+        message_template_snapshot = NULL
       WHERE id = $1
         AND status = 'DRAFT'
         AND ra_user_id = $2
       RETURNING *
       `,
-      [id, raUserId]
+      [id, raUserId, messageText]
     );
 
     if ((result.rowCount ?? 0) === 0) {

@@ -1,9 +1,9 @@
 import crypto from "crypto";
 import type { Response } from "express";
 import { pool } from "../db";
-import { sendApprovalMail } from "../config/mailer";
 import type { AuthRequest } from "../middlewares/auth.middleware";
 import { createAuditLog } from "../utils/auditLogger";
+import { emailService } from "../services/email";
 
 type ApplicantType = "RA" | "BROKER";
 
@@ -756,13 +756,32 @@ export const approvePaidRegistration =
      * must not roll back a valid financial/account approval.
      */
     try {
-      await sendApprovalMail(
-        approvedResult.email,
-        approvedResult.name,
-        passwordSetupLink
-      );
+      const emailResult =
+        applicantType === "RA"
+          ? await emailService.send(
+              "RA_APPROVED",
+              approvedResult.email,
+              {
+                name: approvedResult.name,
+                passwordSetupUrl:
+                  passwordSetupLink,
+              }
+            )
+          : await emailService.send(
+              "BROKER_APPROVED",
+              approvedResult.email,
+              {
+                name: approvedResult.name,
+                passwordSetupUrl:
+                  passwordSetupLink,
+              }
+            );
 
-      emailSent = true;
+      emailSent = emailResult.sent;
+      emailError = emailResult.sent
+        ? null
+        : emailResult.reason ||
+          "Unable to send approval email.";
     } catch (error) {
       emailError =
         error instanceof Error

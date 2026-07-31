@@ -3,7 +3,7 @@ import type { Response } from "express";
 import { pool } from "../db";
 import type { AuthRequest } from "../middlewares/auth.middleware";
 import { createAuditLog } from "../utils/auditLogger";
-import { sendRejectionRefundMail } from "../config/mailer";
+import { emailService } from "../services/email";
 
 type ApplicantType = "RA" | "BROKER";
 
@@ -309,6 +309,7 @@ const mapRefundState = (
 };
 
 const sendSafeRejectionEmail = async ({
+  applicantType,
   email,
   name,
   reason,
@@ -317,6 +318,7 @@ const sendSafeRejectionEmail = async ({
   amountPaise,
   currency,
 }: {
+  applicantType: ApplicantType;
   email: string;
   name: string;
   reason: string;
@@ -326,17 +328,28 @@ const sendSafeRejectionEmail = async ({
   currency?: string;
 }): Promise<boolean> => {
   try {
-    await sendRejectionRefundMail({
-      to: email,
+    const data = {
       name,
       reason,
       refundRequired,
       refundStatus,
       amountPaise,
       currency,
-    });
+    };
+    const result =
+      applicantType === "RA"
+        ? await emailService.send(
+            "RA_REJECTED",
+            email,
+            data
+          )
+        : await emailService.send(
+            "BROKER_REJECTED",
+            email,
+            data
+          );
 
-    return true;
+    return result.sent;
   } catch (error) {
     console.error(
       "REJECTION EMAIL ERROR:",
@@ -976,6 +989,7 @@ export const rejectRegistrationWithRefund =
     if (!prepared.refundRequired) {
       const emailSent =
         await sendSafeRejectionEmail({
+          applicantType,
           email: prepared.email,
           name: prepared.name,
           reason,
@@ -1345,6 +1359,7 @@ export const rejectRegistrationWithRefund =
 
     const emailSent =
       await sendSafeRejectionEmail({
+        applicantType,
         email: prepared.email,
         name: prepared.name,
         reason,

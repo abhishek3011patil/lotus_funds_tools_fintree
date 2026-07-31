@@ -1,0 +1,8 @@
+import { createEmailService } from "./email.service";
+
+export const emailService = createEmailService();
+
+export * from "./email.config";
+export * from "./email.service";
+export * from "./email.templates";
+export * from "./email.types";

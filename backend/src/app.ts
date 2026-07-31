@@ -19,6 +19,7 @@ import performanceRoutes from "./routes/performance.routes";
 import subscriptionPlanRoutes from "./routes/subscriptionPlans.routes";
 import razorpayWebhookRoutes from "./routes/razorpayWebhook.routes";
 import subscriptionAccessRoutes from "./routes/subscriptionAccess.routes";
+import { mountSwaggerDocs } from "./config/swagger";
 import clientRecommendationRoutes from "./routes/clientRecommendation.routes";
 import clientNotificationRoutes from "./routes/clientNotification.routes";
 
@@ -32,7 +33,8 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "https://ng52ddcn-5173.inc1.devtunnels.ms",
-  "https://ng52ddcn-5174.inc1.devtunnels.ms"
+  "https://ng52ddcn-5174.inc1.devtunnels.ms",
+  "https://hk6wgqc7-5173.inc1.devtunnels.ms"
 ].filter(Boolean) as string[];
 
 app.use(
@@ -86,6 +88,7 @@ app.use(
 
 app.use(express.json({ limit: "1mb" }));
 
+mountSwaggerDocs(app);
 
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
