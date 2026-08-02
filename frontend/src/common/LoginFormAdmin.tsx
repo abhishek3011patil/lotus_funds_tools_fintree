@@ -15,6 +15,7 @@ import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import LoadingPage from "./LoadingPage";
+import { getDefaultRouteForRole, normalizeRole } from "../utils/role.utils";
 
 
 const LoginFormAdmin: React.FC = () => {
@@ -54,7 +55,7 @@ const LoginFormAdmin: React.FC = () => {
     password: formData.password,
   }
 );
-      const { token, role, username } = res.data;
+      const { token, role } = res.data;
 
 
       //console.log("LOGIN RESPONSE:", res.data);
@@ -73,18 +74,22 @@ localStorage.setItem("username", res.data.username);
 
 localStorage.setItem("role", role);
 
-      // Redirect based on role
-      if (role === "ADMIN" || role === "SUPERADMIN") navigate("/admin");
-      if (role === "EMPLOYEE") navigate("/automation");
+      const normalizedRole = normalizeRole(role);
+      if (["ADMIN", "SUPERADMIN", "EMPLOYEE"].includes(normalizedRole ?? "")) {
+        navigate(getDefaultRouteForRole(normalizedRole), { replace: true });
+      } else {
+        setMessage("Please use the standard login page");
+        localStorage.clear();
+      }
 
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessage(
-        err.response?.data?.message ||
+        (axios.isAxiosError(err) && err.response?.data?.message) ||
         "Server error. Please try again."
 
       );
-      console.log(err.response?.data);
+      if (axios.isAxiosError(err)) console.log(err.response?.data);
     } finally {
       setLoading(false);
     }

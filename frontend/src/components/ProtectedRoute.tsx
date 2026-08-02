@@ -2,6 +2,7 @@ import { Navigate } from "react-router-dom";
 import { JSX, useEffect, useState } from "react";
 import axios from "axios";
 import LoadingPage from "../common/LoadingPage";
+import { getDefaultRouteForRole, normalizeRole } from "../utils/role.utils";
 
 interface Props {
   children: JSX.Element;
@@ -9,26 +10,27 @@ interface Props {
 }
 
 const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
+  const token = localStorage.getItem("token");
   const [status, setStatus] = useState<
     "loading" | "unauth" | "forbidden" | "allowed"
-  >("loading");
+  >(token ? "loading" : "unauth");
+  const [redirectPath, setRedirectPath] = useState("/");
+  const allowedRolesKey = allowedRoles?.join("|");
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-
     if (!token) {
-      setStatus("unauth");
       return;
     }
+    const normalizedAllowedRoles = allowedRolesKey?.split("|").map(normalizeRole);
 
     axios
       .get(`${import.meta.env.VITE_API_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
-        const userRole = res.data.role;
-
-        if (allowedRoles && !allowedRoles.includes(userRole)) {
+        const userRole = normalizeRole(res.data.role);
+        if (normalizedAllowedRoles && !normalizedAllowedRoles.includes(userRole)) {
+          setRedirectPath(getDefaultRouteForRole(userRole));
           setStatus("forbidden");
         } else {
           setStatus("allowed");
@@ -47,9 +49,15 @@ const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
 
   // ✅ Do NOT logout on CORS/network/dev tunnel error
   console.error("Auth check failed, but not logging out:", message || error.message);
-  setStatus("allowed");
+  const storedRole = normalizeRole(localStorage.getItem("role"));
+  if (normalizedAllowedRoles && !normalizedAllowedRoles.includes(storedRole)) {
+    setRedirectPath(getDefaultRouteForRole(storedRole));
+    setStatus("forbidden");
+  } else {
+    setStatus("allowed");
+  }
 });
-  }, [allowedRoles]);
+  }, [allowedRolesKey, token]);
 
   if (status === "loading") {
     return (
@@ -66,7 +74,7 @@ const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
   }
 
   if (status === "forbidden") {
-    return <Navigate to="/" replace />;
+    return <Navigate to={redirectPath} replace />;
   }
 
   return children;

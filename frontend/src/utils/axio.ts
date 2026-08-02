@@ -39,6 +39,7 @@ instance.interceptors.response.use(
 
             if (
                 role === "ADMIN" ||
+                role === "SUPERADMIN" ||
                 role === "SUPER_ADMIN" ||
                 role === "EMPLOYEE"
             ) {

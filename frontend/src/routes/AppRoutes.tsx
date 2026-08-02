@@ -4,7 +4,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 // --- Layouts (loaded eagerly — they wrap everything, no benefit from lazying) ---
 import AppLayout from "../components/layout/AppLayout";
 import AutomationLayout from "../components/layout_automation/AppLayout";
-import AdminLayout from "../components/layout_admin/AppLayout";
+import AdminLayout from "../components/admin/AdminLayout";
+import SuperAdminLayout from "../components/superAdmin/SuperAdminLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
 import LoadingPage from "../common/LoadingPage";
 import ClientLayout from "../client_section/components/ClientLayout";
@@ -64,7 +65,6 @@ const Weekly = lazy(() => import("../pages_automation/Weekly"));
 const ExceltoJSONTool = lazy(() => import("../tools/ExceltoJSONtool").then(m => ({ default: m.ExceltoJSONTool })));
 
 // --- Lazy: Admin ---
-const AdminDashboard = lazy(() => import("../pages_admin/AdminDashboard"));
 const AdminRecommendations = lazy(() => import("../pages_admin/AdminRecommendations"));
 const AdminApproval = lazy(() => import("../pages_admin/AdminApproval"));
 const AdminNotification = lazy(() => import("../pages_admin/Admin common/AdminNotification"));
@@ -96,6 +96,29 @@ const BrokerDashboard = lazy(() => import("../broker_section/pages/BrokerDashboa
 const BrokerRecommendations = lazy(() => import("../broker_section/pages/BrokerRecommendations"));
 const BrokerPerformance = lazy(() => import("../broker_section/pages/BrokerPerformance"));
 const BrokerSettings = lazy(() => import("../broker_section/pages/BrokerSettings"));
+const BrokerResearchCalls = lazy(() => import("../broker_section/pages/BrokerResearchCalls"));
+const BrokerResearchAnalysts = lazy(() => import("../broker_section/pages/BrokerResearchAnalysts"));
+const BrokerClients = lazy(() => import("../broker_section/pages/BrokerClients"));
+const BrokerAnnouncements = lazy(() => import("../broker_section/pages/BrokerAnnouncements"));
+const BrokerBranding = lazy(() => import("../broker_section/pages/BrokerBranding"));
+const BrokerSubscription = lazy(() => import("../broker_section/pages/BrokerSubscription"));
+const BrokerNotifications = lazy(() => import("../broker_section/pages/BrokerNotifications"));
+
+const AdminFrontendDashboard = lazy(() => import("../pages_admin/AdminFrontendDashboard"));
+const AdminRADocumentVerification = lazy(() => import("../pages_admin/AdminRADocumentVerification"));
+const AdminBrokerDocumentVerification = lazy(() => import("../pages_admin/AdminBrokerDocumentVerification"));
+const AdminBillingReview = lazy(() => import("../pages_admin/AdminBillingReview"));
+const AdminVerificationHistory = lazy(() => import("../pages_admin/AdminVerificationHistory"));
+
+const SuperAdminDashboard = lazy(() => import("../pages_super_admin/SuperAdminDashboard"));
+const SuperAdminRAManagement = lazy(() => import("../pages_super_admin/SuperAdminRAManagement"));
+const SuperAdminBrokerManagement = lazy(() => import("../pages_super_admin/SuperAdminBrokerManagement"));
+const SuperAdminManagement = lazy(() => import("../pages_super_admin/SuperAdminManagement"));
+const SuperAdminAuditLogs = lazy(() => import("../pages_super_admin/SuperAdminAuditLogs"));
+const SuperAdminRevenue = lazy(() => import("../pages_super_admin/SuperAdminRevenue"));
+const SuperAdminSettings = lazy(() => import("../pages_super_admin/SuperAdminSettings"));
+const SuperAdminNotifications = lazy(() => import("../pages_super_admin/SuperAdminNotifications"));
+const DisclaimerVersionList = lazy(() => import("../features/disclaimers/DisclaimerVersionList"));
 
 // --- Fallback UI shown while a lazy chunk is loading ---
 const PageLoader = () => (
@@ -150,7 +173,7 @@ const AppRoutes = () => {
         {/* 1. Main Layout — RESEARCH_ANALYST / BROKER */}
         <Route
           element={
-            <ProtectedRoute allowedRoles={["RESEARCH_ANALYST", "BROKER"]}>
+            <ProtectedRoute allowedRoles={["RESEARCH_ANALYST"]}>
               <AppLayout />
             </ProtectedRoute>
           }
@@ -192,14 +215,21 @@ const AppRoutes = () => {
           path="/broker"
           element={
             <ProtectedRoute allowedRoles={["BROKER"]}>
-              < MorningReportBuilder/>
+              <BrokerLayout />
             </ProtectedRoute>
           }
         >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<BrokerDashboard />} />
+          <Route path="research-calls" element={<BrokerResearchCalls />} />
+          <Route path="research-analysts" element={<BrokerResearchAnalysts />} />
+          <Route path="clients" element={<BrokerClients />} />
           <Route path="recommendations" element={<BrokerRecommendations />} />
           <Route path="performance" element={<BrokerPerformance />} />
+          <Route path="announcements" element={<BrokerAnnouncements />} />
+          <Route path="branding" element={<BrokerBranding />} />
+          <Route path="subscription" element={<BrokerSubscription />} />
+          <Route path="notifications" element={<BrokerNotifications />} />
           <Route path="settings" element={<BrokerSettings />} />
         </Route>
 
@@ -259,13 +289,17 @@ const AppRoutes = () => {
         <Route
           path="/admin"
           element={
-            <ProtectedRoute allowedRoles={["ADMIN","SUPERADMIN"]}>
+            <ProtectedRoute allowedRoles={["ADMIN"]}>
               <AdminLayout />
             </ProtectedRoute>
           }
         >
-          <Route index element={<AdminDashboard />} />
-          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<AdminFrontendDashboard />} />
+          <Route path="ra-verification" element={<AdminRADocumentVerification />} />
+          <Route path="broker-verification" element={<AdminBrokerDocumentVerification />} />
+          <Route path="billing" element={<AdminBillingReview />} />
+          <Route path="verification-history" element={<AdminVerificationHistory />} />
           <Route path="recommendations" element={<AdminRecommendations />} />
           <Route path="approval" element={<AdminApproval />} />
           <Route path="AdminAuditLogs" element={<AdminAuditLogs />} />
@@ -284,6 +318,26 @@ const AppRoutes = () => {
 
         {/* 5. Client Layout — CLIENT ONLY */}
 {/* 3. Client Section Layout — CLIENT ROLE ONLY */}
+        <Route
+          path="/super-admin"
+          element={
+            <ProtectedRoute allowedRoles={["SUPERADMIN"]}>
+              <SuperAdminLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<SuperAdminDashboard />} />
+          <Route path="research-analysts" element={<SuperAdminRAManagement />} />
+          <Route path="brokers" element={<SuperAdminBrokerManagement />} />
+          <Route path="admins" element={<SuperAdminManagement />} />
+          <Route path="audit-logs" element={<SuperAdminAuditLogs />} />
+          <Route path="revenue" element={<SuperAdminRevenue />} />
+          <Route path="disclaimers" element={<DisclaimerVersionList />} />
+          <Route path="notifications" element={<SuperAdminNotifications />} />
+          <Route path="settings" element={<SuperAdminSettings />} />
+        </Route>
+
         <Route
           path="/client"
           element={

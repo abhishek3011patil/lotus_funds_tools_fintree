@@ -1,38 +1,12 @@
 import { Box } from "@mui/material";
 import { Outlet } from "react-router-dom";
 import { useState } from "react";
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import FolderIcon from "@mui/icons-material/Folder";
-import ShowChartIcon from "@mui/icons-material/ShowChart";
-import SettingsIcon from "@mui/icons-material/Settings";
 
 // Adjust these relative imports according to your folder depth
 import Header from "../../components/layout/Header"; 
 import Sidebar from "../../components/page_Mainapp/Sidebar";
-import type { SidebarItem } from "../../types/sidebar";
-
-const brokerSidebarItems: SidebarItem[] = [
-  {
-    label: "Dashboard",
-    path: "/broker/dashboard",
-    icon: <DashboardIcon sx={{ mr: 1.5 }} />,
-  },
-  {
-    label: "Recommendations",
-    path: "/broker/recommendations",
-    icon: <FolderIcon sx={{ mr: 1.5 }} />,
-  },
-  {
-    label: "Performance",
-    path: "/broker/performance",
-    icon: <ShowChartIcon sx={{ mr: 1.5 }} />,
-  },
-  {
-    label: "Settings",
-    path: "/broker/settings",
-    icon: <SettingsIcon sx={{ mr: 1.5 }} />,
-  },
-];
+import { roleContentSx } from "../../components/layout/roleSurfaceStyles";
+import { brokerSidebarItems } from "./brokerNavigation";
 
 const BrokerLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -66,8 +40,9 @@ const BrokerLayout = () => {
         sx={{
           flexGrow: 1,
           mt: 8,
-          p: 3,
+          p: { xs: 2, md: 3 },
           width: { xs: "100%", sm: "calc(100% - 220px)" },
+          ...roleContentSx,
         }}
       >
         <Outlet />

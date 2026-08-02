@@ -19,6 +19,7 @@ function App() {
       // ✅ Redirect based on role
       if (
         role === "ADMIN" ||
+        role === "SUPERADMIN" ||
         role === "SUPER_ADMIN" ||
         role === "EMPLOYEE"
       ) {

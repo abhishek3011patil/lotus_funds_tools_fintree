@@ -81,7 +81,7 @@ const handleLogout = async () => {
     // clear storage AFTER audit log is saved
     localStorage.clear();
 
-    if (role === "ADMIN" || role === "EMPLOYEE") {
+    if (role === "ADMIN" || role === "SUPERADMIN" || role === "SUPER_ADMIN" || role === "EMPLOYEE") {
       navigate("/login-admin", { replace: true });
     } else {
       navigate("/login", { replace: true });

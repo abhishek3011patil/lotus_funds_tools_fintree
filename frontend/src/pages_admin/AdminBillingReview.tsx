@@ -1,0 +1,4 @@
+import { Chip, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
+import AdminPageShell from "../components/admin/AdminPageShell";
+const AdminBillingReview = () => <AdminPageShell title="Billing Review" subtitle="Read-only payment and subscription review foundation."><TableContainer component={Paper} variant="outlined"><Table size="small"><TableHead><TableRow><TableCell>Reference</TableCell><TableCell>Account type</TableCell><TableCell>Amount</TableCell><TableCell>Status</TableCell></TableRow></TableHead><TableBody><TableRow><TableCell>PAY-2048</TableCell><TableCell>Broker</TableCell><TableCell>₹48,000</TableCell><TableCell><Chip size="small" label="REVIEW" /></TableCell></TableRow></TableBody></Table></TableContainer></AdminPageShell>;
+export default AdminBillingReview;

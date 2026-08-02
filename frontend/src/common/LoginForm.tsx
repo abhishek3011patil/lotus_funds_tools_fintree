@@ -15,6 +15,7 @@ import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import LoadingPage from "./LoadingPage";
+import { getDefaultRouteForRole, normalizeRole } from "../utils/role.utils";
 
 const LoginForm: React.FC = () => {
 
@@ -69,27 +70,22 @@ localStorage.setItem("username", res.data.username);
 localStorage.setItem("role", role);
 
 
-      if (role === "ADMIN" || role === "EMPLOYEE") {
+      const normalizedRole = normalizeRole(role);
+      if (["ADMIN", "SUPERADMIN", "EMPLOYEE"].includes(normalizedRole ?? "")) {
         setMessage("Please use company login page");
         localStorage.clear();
         return;
       }
 
-     if (role === "RESEARCH_ANALYST") {
-  navigate("/recommendations", {
-    replace: true,
-  });
-} else if (role === "BROKER") {
-        navigate("/broker-dashboard");
-      } else if (role === "CLIENT") {
-        navigate("/client/dashboard", { replace: true });
+      if (normalizedRole) {
+        navigate(getDefaultRouteForRole(normalizedRole), { replace: true });
       } else {
         setMessage("Invalid role");
         localStorage.clear();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessage(
-        err.response?.data?.message ||
+        (axios.isAxiosError(err) && err.response?.data?.message) ||
         "Server error. Please try again."
       );
     } finally {
