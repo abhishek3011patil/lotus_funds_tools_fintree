@@ -120,7 +120,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
    ========================================================= */
 export const login = async (req: Request, res: Response) => {
   try {
-    let { loginId, password } = req.body;
+    let { loginId, password, otp } = req.body;
 
     // ✅ Normalize input
     loginId = loginId.trim().toLowerCase();
@@ -146,7 +146,7 @@ export const login = async (req: Request, res: Response) => {
 
     } else {
       /* ================= NORMAL USERS ================= */
-  const userRes = await pool.query(
+ const userRes = await pool.query(
   `
     SELECT
       id,
@@ -155,13 +155,14 @@ export const login = async (req: Request, res: Response) => {
       password_hash,
       role,
       status,
-      is_active
+      is_active,
+      otp,
+      otp_expiry
     FROM users
     WHERE LOWER(email) = $1
   `,
   [loginId]
 );
-
       if (userRes.rows.length === 0) {
         return res.status(400).json({ message: "Invalid credentials ❌" });
       }
@@ -202,11 +203,44 @@ if (
     /* ================= PASSWORD CHECK ================= */
     const match = await bcrypt.compare(password, user.password_hash);
 
-   
-
     if (!match) {
       return res.status(400).json({ message: "Invalid password ❌" });
     }
+
+    if (user.role === "RESEARCH_ANALYST") {
+
+    if (!otp) {
+        return res.status(400).json({
+            message: "OTP is required"
+        });
+    }
+
+    if (user.otp !== otp) {
+        return res.status(400).json({
+            message: "Invalid OTP"
+        });
+    }
+
+    if (
+        !user.otp_expiry ||
+        new Date(user.otp_expiry) < new Date()
+    ) {
+        return res.status(400).json({
+            message: "OTP expired"
+        });
+    }
+
+    await pool.query(
+        `
+        UPDATE users
+        SET
+            otp=NULL,
+            otp_expiry=NULL
+        WHERE id=$1
+        `,
+        [user.id]
+    );
+}
 
     /* ================= TOKEN ================= */
     const token = jwt.sign(
@@ -265,6 +299,103 @@ if (
     console.error("LOGIN ERROR:", error);
     return res.status(500).json({ message: "Server error" });
   }
+};
+
+export const sendLoginOtp = async (
+    req: Request,
+    res: Response
+) => {
+    try {
+
+        let { loginId } = req.body;
+
+        if (!loginId) {
+            return res.status(400).json({
+                message: "Email is required"
+            });
+        }
+
+        loginId = loginId.trim().toLowerCase();
+
+        const result = await pool.query(
+            `
+            SELECT
+                id,
+                email,
+                role,
+                status,
+                is_active
+            FROM users
+            WHERE LOWER(email)=$1
+            `,
+            [loginId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                message: "User not found"
+            });
+        }
+
+        const user = result.rows[0];
+
+        // Only RA
+        if (user.role !== "RESEARCH_ANALYST") {
+            return res.status(403).json({
+                message: "OTP login allowed only for Research Analysts."
+            });
+        }
+
+        if (
+            user.status.toLowerCase() !== "active" ||
+            user.is_active !== true
+        ) {
+            return res.status(403).json({
+                message: "Account inactive."
+            });
+        }
+
+        const otp = Math.floor(
+            100000 + Math.random() * 900000
+        ).toString();
+
+        const expiry = new Date(
+    Date.now() + 5 * 60 * 1000
+);
+
+        await pool.query(
+            `
+            UPDATE users
+            SET
+                otp=$1,
+                otp_expiry=$2
+            WHERE id=$3
+            `,
+            [
+                otp,
+                expiry,
+                user.id
+            ]
+        );
+
+        await sendOtpMail(
+            user.email,
+            otp
+        );
+
+        return res.json({
+            message: "OTP sent successfully."
+        });
+
+    } catch (error) {
+
+        console.error(error);
+
+        return res.status(500).json({
+            message: "Server error"
+        });
+
+    }
 };
 
 /* ================= LOGOUT ================= */

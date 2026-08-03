@@ -20,6 +20,8 @@ import subscriptionPlanRoutes from "./routes/subscriptionPlans.routes";
 import razorpayWebhookRoutes from "./routes/razorpayWebhook.routes";
 import subscriptionAccessRoutes from "./routes/subscriptionAccess.routes";
 import { mountSwaggerDocs } from "./config/swagger";
+import clientRecommendationRoutes from "./routes/clientRecommendation.routes";
+import clientNotificationRoutes from "./routes/clientNotification.routes";
 
 const app = express();
 
@@ -31,7 +33,8 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "https://ng52ddcn-5173.inc1.devtunnels.ms",
-  "https://ng52ddcn-5174.inc1.devtunnels.ms"
+  "https://ng52ddcn-5174.inc1.devtunnels.ms",
+  "https://hk6wgqc7-5173.inc1.devtunnels.ms"
 ].filter(Boolean) as string[];
 
 app.use(
@@ -106,6 +109,8 @@ app.use(
   subscriptionPlanRoutes
 );
 
+app.use("/api/client/notifications", clientNotificationRoutes);
+
 app.get("/check", (_req, res) => {
   res.send("APP WORKING");
 });
@@ -113,6 +118,8 @@ app.get("/check", (_req, res) => {
 
 
 app.use("/api/whatsapp", whatsappRoutes);
+
+app.use( "/api/client/recommendations", clientRecommendationRoutes);
 
 app.use(
   "/api/subscriptions",

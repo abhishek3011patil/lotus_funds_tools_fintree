@@ -9,6 +9,7 @@ export interface AuthRequest extends Request {
          name?: string;
         email?: string;
     };
+    allowedRAIds?: string[] | null;
 }
 
 export const authenticate = (
@@ -46,6 +47,10 @@ export const authenticate = (
     name?: string;
     email?: string;
 };
+
+console.log("JWT DECODED:", decoded);
+
+
        req.user = {
     id: decoded.id,
     role: decoded.role,

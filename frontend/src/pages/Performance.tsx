@@ -180,8 +180,11 @@ setMetrics({
 
 const BigCard = ({ title, value, icon: Icon, green = false, red = false }: any) => (
   <Paper sx={cardStyle}>
-    <Box display="flex" justifyContent="space-between" alignItems="center" gap={1}>
-      <Typography fontSize={{ xs: "0.8rem", sm: "0.875rem" }} noWrap>
+    <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1}>
+      <Typography 
+        fontSize={{ xs: "0.75rem", sm: "0.875rem" }} 
+        sx={{ lineHeight: 1.2, wordBreak: "break-word" }}
+      >
         {title}
       </Typography>
       {Icon && (
@@ -195,12 +198,12 @@ const BigCard = ({ title, value, icon: Icon, green = false, red = false }: any) 
       )}
     </Box>
 
-    <Box display="flex" justifyContent="space-between" alignItems="center" mt={2}>
+    <Box display="flex" justifyContent="space-between" alignItems="center" mt={1.5}>
       <Typography
-        fontSize={{ xs: "2.25rem", sm: "2.75rem", md: "3rem" }}
+        fontSize={{ xs: "1.75rem", sm: "2.5rem", md: "3rem" }}
         fontWeight={700}
         color={green ? "#16a34a" : red ? "#dc2626" : "#000"}
-        sx={{ wordBreak: "break-word" }}
+        sx={{ wordBreak: "break-word", lineHeight: 1 }}
       >
         {value}
       </Typography>
@@ -209,9 +212,12 @@ const BigCard = ({ title, value, icon: Icon, green = false, red = false }: any) 
 );
 
 const SmallCard = ({ title, value, icon: Icon, green = false, red = false }: any) => (
-  <Paper sx={{ ...cardStyle, minHeight: { xs: "85px", sm: "95px" } }}>
-    <Box display="flex" justifyContent="space-between" alignItems="center" gap={1}>
-      <Typography fontSize={{ xs: "0.75rem", sm: "0.8125rem" }} noWrap>
+  <Paper sx={{ ...cardStyle, minHeight: { xs: "80px", sm: "95px" } }}>
+    <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={0.5}>
+      <Typography 
+        fontSize={{ xs: "0.6875rem", sm: "0.8125rem" }} 
+        sx={{ lineHeight: 1.2, wordBreak: "break-word" }}
+      >
         {title}
       </Typography>
       {Icon && (
@@ -227,10 +233,10 @@ const SmallCard = ({ title, value, icon: Icon, green = false, red = false }: any
 
     <Box display="flex" justifyContent="space-between" alignItems="center" mt={1}>
       <Typography
-        fontSize={{ xs: "1.25rem", sm: "1.5rem", md: "1.625rem" }}
+        fontSize={{ xs: "1.125rem", sm: "1.5rem", md: "1.625rem" }}
         fontWeight={700}
         color={green ? "#16a34a" : red ? "#dc2626" : "#000"}
-        sx={{ whiteSpace: "nowrap" }}
+        sx={{ wordBreak: "break-word", lineHeight: 1 }}
       >
         {value}
       </Typography>
@@ -454,7 +460,7 @@ return (
 };
 
 const cardStyle = {
-  p: { xs: 1.5, sm: 2 },
+  p: { xs: 1, sm: 2 },
   borderRadius: "0.145rem",
   border: "1px solid #E9E9EE",
   backgroundColor: "#fff",

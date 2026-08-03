@@ -23,9 +23,13 @@ const LoginFormAdmin: React.FC = () => {
   const [formData, setFormData] = useState({
     username: "",
     password: "",
+    otp: "",
   });
 
   const [showPassword, setShowPassword] = useState(false);
+  const [showOtp, setShowOtp] = useState(false);
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -41,6 +45,36 @@ const LoginFormAdmin: React.FC = () => {
   const handleClickShowPassword = () =>
     setShowPassword((show) => !show);
 
+  const handleClickShowOtp = () =>
+    setShowOtp((show) => !show);
+
+  const handleSendOtp = async () => {
+  if (!formData.username) {
+    setMessage("Please enter your username first to get an OTP");
+    return;
+  }
+
+  setSendingOtp(true);
+  setMessage("");
+
+  try {
+    // Replace with your actual Send OTP backend endpoint
+    await axios.post(`${API_URL}/api/auth/send-otp`, {
+      loginId: formData.username,
+    });
+    
+    setIsOtpSent(true);
+    setMessage("OTP sent successfully!");
+  } catch (err: any) {
+    setMessage(
+      err.response?.data?.message || "Failed to send OTP. Please try again."
+    );
+  } finally {
+    setSendingOtp(false);
+  }
+};
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage("");
@@ -52,6 +86,7 @@ const LoginFormAdmin: React.FC = () => {
   {
     loginId: formData.username, // send loginId instead of username
     password: formData.password,
+    otp: formData.otp,
   }
 );
       const { token, role, username } = res.data;
@@ -176,6 +211,78 @@ localStorage.setItem("role", role);
             ),
           }}
         />
+
+      {/* Dynamic OTP Section */}
+        {/* Dynamic OTP Section */}
+        {!isOtpSent ? (
+          <Button
+            variant="outlined"
+            fullWidth
+            onClick={handleSendOtp}
+            disabled={sendingOtp}
+            sx={{
+              mb: 2,
+              py: 1.2,
+              borderRadius: 2,
+              textTransform: "none",
+              borderColor: "#4F6CF8",
+              color: "#4F6CF8",
+              fontWeight: 600,
+            }}
+          >
+            {sendingOtp ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : (
+              "Send OTP"
+            )}
+          </Button>
+        ) : (
+          <TextField
+            name="otp"
+            type={showOtp ? "text" : "password"}
+            placeholder="Enter OTP"
+            value={formData.otp}
+            onChange={handleChange}
+            fullWidth
+            required
+            sx={inputStyles}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end" sx={{ gap: 0.5 }}>
+                  <Button
+                    onClick={handleSendOtp}
+                    disabled={sendingOtp}
+                    size="small"
+                    sx={{
+                      textTransform: "none",
+                      color: "#4F6CF8",
+                      fontWeight: 600,
+                      minWidth: "auto",
+                      p: "2px 6px",
+                    }}
+                  >
+                    {sendingOtp ? (
+                      <CircularProgress size={14} color="inherit" />
+                    ) : (
+                      "Resend"
+                    )}
+                  </Button>
+                  <IconButton
+                    onClick={handleClickShowOtp}
+                    edge="end"
+                    size="small"
+                  >
+                    {showOtp ? (
+                      <VisibilityOff fontSize="small" />
+                    ) : (
+                      <Visibility fontSize="small" />
+                    )}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+        )}
 
         <Button
           type="submit"
