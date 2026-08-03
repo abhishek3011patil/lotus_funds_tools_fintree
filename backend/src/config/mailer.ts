@@ -82,18 +82,117 @@ export const sendApprovalMail = async (
 };
 
 /* ✅ ADD THIS FUNCTION */
-export const sendOtpMail = async (to: string, otp: string) => {
+export const sendOtpMail = async (
+  to: string,
+  otp: string
+) => {
   await transporter.sendMail({
-    from: emailUser,
+    from: `"Tarkashh" <${emailUser}>`,
     to,
-    subject: "Your OTP Code",
+    subject: "Tarkashh | Login Verification OTP",
     html: `
-      <h2>Your OTP is: ${otp}</h2>
-      <p>This OTP will expire in 5 minutes.</p>
-    `,
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+</head>
+
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:Arial,Helvetica,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0;background:#f4f6f9;">
+<tr>
+<td align="center">
+
+<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,0.08);">
+
+<tr>
+<td style="background:#2F5BEA;padding:25px;text-align:center;">
+<h1 style="margin:0;color:#ffffff;font-size:30px;">
+Tarkashh
+</h1>
+</td>
+</tr>
+
+<tr>
+<td style="padding:35px;">
+
+<h2 style="margin-top:0;color:#222;">
+Login Verification
+</h2>
+
+<p style="font-size:16px;color:#555;line-height:1.8;">
+Hello,
+</p>
+
+<p style="font-size:16px;color:#555;line-height:1.8;">
+We received a request to sign in to your
+<strong>Tarkashh</strong> account.
+To complete your login, please use the One-Time Password (OTP) below.
+</p>
+
+<div style="
+background:#EEF4FF;
+border:2px dashed #2F5BEA;
+padding:25px;
+border-radius:10px;
+text-align:center;
+margin:30px 0;
+">
+
+<p style="margin:0;font-size:15px;color:#666;">
+Your Verification Code
+</p>
+
+<h1 style="
+margin:15px 0;
+font-size:40px;
+letter-spacing:8px;
+color:#2F5BEA;
+">
+${otp}
+</h1>
+
+<p style="margin:0;font-size:14px;color:#777;">
+This OTP is valid for <strong>5 minutes</strong>.
+</p>
+
+</div>
+
+<p style="font-size:15px;color:#555;line-height:1.8;">
+For your security:
+</p>
+
+<ul style="color:#555;font-size:15px;line-height:1.8;padding-left:20px;">
+<li>Never share this OTP with anyone.</li>
+<li>Tarkashh will never ask for your OTP via phone, email, or message.</li>
+<li>If you did not request this login, please ignore this email. Your account will remain secure.</li>
+</ul>
+
+<p style="font-size:15px;color:#555;line-height:1.8;margin-top:30px;">
+Thank you,<br>
+<strong>Tarkashh Team</strong>
+</p>
+
+</td>
+</tr>
+
+<tr>
+<td style="background:#F7F8FA;padding:18px;text-align:center;color:#888;font-size:13px;">
+This is an automated email sent by <strong>Tarkashh</strong>. Please do not reply to this email.
+</td>
+</tr>
+
+</table>
+
+</td>
+</tr>
+</table>
+
+</body>
+</html>
+`,
   });
 };
-
 
 type RejectionRefundMailInput = {
   to: string;

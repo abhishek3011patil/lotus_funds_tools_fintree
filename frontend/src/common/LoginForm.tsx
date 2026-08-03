@@ -20,12 +20,18 @@ const LoginForm: React.FC = () => {
 
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [showOtp, setShowOtp] = useState(false);
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const API_URL = import.meta.env.VITE_API_URL;
 
   const [formData, setFormData] = useState({
     username: "",
     password: "",
+    otp: "",
   });
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -37,19 +43,46 @@ const LoginForm: React.FC = () => {
   const handleClickShowPassword = () =>
     setShowPassword((show) => !show);
 
+  const handleClickShowOtp = () =>
+  setShowOtp((show) => !show);
+
+  const handleSendOtp = async () => {
+  if (!formData.username) {
+    setMessage("Please enter your username first to get an OTP");
+    return;
+  }
+
+  setSendingOtp(true);
+  setMessage("");
+
+  try {
+    // Replace with your actual Send OTP backend endpoint
+    await axios.post(`${API_URL}/api/auth/send-otp`, {
+      loginId: formData.username,
+    });
+    
+    setIsOtpSent(true);
+    setMessage("OTP sent successfully!");
+  } catch (err: any) {
+    setMessage(
+      err.response?.data?.message || "Failed to send OTP. Please try again."
+    );
+  } finally {
+    setSendingOtp(false);
+  }
+};
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage("");
     setLoading(true);
-
-    const API_URL = import.meta.env.VITE_API_URL;
-
     try {
       const res = await axios.post(
         `${API_URL}/api/auth/login`,
         {
           loginId: formData.username,   // ✅ FIX HERE
           password: formData.password,
+          otp: formData.otp,
         }
       );
       const { token, role } = res.data;
@@ -69,11 +102,12 @@ localStorage.setItem("username", res.data.username);
 localStorage.setItem("role", role);
 
 
-      if (role === "ADMIN" || role === "EMPLOYEE") {
-        setMessage("Please use company login page");
-        localStorage.clear();
-        return;
-      }
+      if (role === "ADMIN" || role === "EMPLOYEE" || role === "SUPERADMIN") {
+  setMessage("Please use company login page");
+  localStorage.clear();
+
+  return;
+}
 
      if (role === "RESEARCH_ANALYST") {
   navigate("/recommendations", {
@@ -187,8 +221,78 @@ localStorage.setItem("role", role);
           }}
         />
 
+{/* Dynamic OTP Section */}
+        {!isOtpSent ? (
+          <Button
+            variant="outlined"
+            fullWidth
+            onClick={handleSendOtp}
+            disabled={sendingOtp}
+            sx={{
+              mb: 2,
+              py: 1.2,
+              borderRadius: 2,
+              textTransform: "none",
+              borderColor: "#4F6CF8",
+              color: "#4F6CF8",
+              fontWeight: 600,
+            }}
+          >
+            {sendingOtp ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : (
+              "Send OTP"
+            )}
+          </Button>
+        ) : (
+          <TextField
+            name="otp"
+            type={showOtp ? "text" : "password"}
+            placeholder="Enter OTP"
+            value={formData.otp}
+            onChange={handleChange}
+            fullWidth
+            required
+            sx={inputStyles}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end" sx={{ gap: 0.5 }}>
+                  <Button
+                    onClick={handleSendOtp}
+                    disabled={sendingOtp}
+                    size="small"
+                    sx={{
+                      textTransform: "none",
+                      color: "#4F6CF8",
+                      fontWeight: 600,
+                      minWidth: "auto",
+                      p: "2px 6px",
+                    }}
+                  >
+                    {sendingOtp ? (
+                      <CircularProgress size={14} color="inherit" />
+                    ) : (
+                      "Resend"
+                    )}
+                  </Button>
+                  <IconButton
+                    onClick={handleClickShowOtp}
+                    edge="end"
+                    size="small"
+                  >
+                    {showOtp ? (
+                      <VisibilityOff fontSize="small" />
+                    ) : (
+                      <Visibility fontSize="small" />
+                    )}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+        )}
 
-
+        {/* Submit Button */}
         <Button
           type="submit"
           variant="contained"
@@ -231,20 +335,32 @@ localStorage.setItem("role", role);
           </Link>
         </Typography>
 
-        {message && (
-          <Typography
-            sx={{
-              mt: 2,
-              textAlign: "center",
-              color: "#4F6CF8",
-              bgcolor: "#EEF2FF",
-              p: 1,
-              borderRadius: 1,
-            }}
-          >
-            {message}
-          </Typography>
-        )}
+       {message && (
+  <Typography
+    sx={{
+      mt: 2,
+      textAlign: "center",
+      bgcolor: "#EEF2FF",
+      p: 1,
+      borderRadius: 1,
+    }}
+  >
+    {message === "Please use company login page" ? (
+      <Link
+        component="button"
+        underline="hover"
+        onClick={() => navigate("/login-admin")} // Your company login route
+        sx={{ color: "#4F6CF8", fontWeight: 600 }}
+      >
+        Please use company login page
+      </Link>
+    ) : (
+      <Typography component="span" sx={{ color: "#4F6CF8" }}>
+        {message}
+      </Typography>
+    )}
+  </Typography>
+)}
       </Box>
     </Box>
   );
