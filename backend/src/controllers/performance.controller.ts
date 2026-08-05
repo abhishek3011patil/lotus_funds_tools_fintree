@@ -40,10 +40,20 @@ export const getResearchPerformance   = async (
       });
     }
 
-    const month =
-      typeof req.query.month === "string"
-        ? req.query.month
-        : new Date().toISOString().slice(0, 7);
+const period =
+  req.query.period === "yearly"
+    ? "yearly"
+    : "monthly";
+
+const month =
+  typeof req.query.month === "string"
+    ? req.query.month
+    : new Date().toISOString().slice(0, 7);
+
+const year =
+  typeof req.query.year === "string"
+    ? req.query.year
+    : new Date().getFullYear().toString();
 
     if (!/^\d{4}-\d{2}$/.test(month)) {
       return res.status(400).json({
