@@ -4,6 +4,10 @@ import {
   Grid,
   Paper,
   Typography,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
@@ -43,7 +47,7 @@ const Performance: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
 const [error, setError] = useState("");
-
+const [period, setPeriod] = useState<"monthly" | "yearly">("monthly");
 
 
 
@@ -63,16 +67,22 @@ useEffect(() => {
         return;
       }
 
-      const now = new Date();
+const now = new Date();
 
 const currentMonth = `${now.getFullYear()}-${String(
   now.getMonth() + 1
 ).padStart(2, "0")}`;
 
-   const res = await axios.get(
+const currentYear = now.getFullYear();
+
+const res = await axios.get(
   `${import.meta.env.VITE_API_URL}/api/performance`,
   {
-    params: { month: currentMonth },
+    params: {
+      period,
+      month: currentMonth,
+      year: currentYear,
+    },
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -141,7 +151,7 @@ setMetrics({
   fetchPerformance();
 
   return () => controller.abort();
-}, []);
+}, [period]);
 
 
 
@@ -294,10 +304,38 @@ const Last10 = () => (
 return (
   <Box>
     <Box sx={{ p: 3, backgroundColor: "#fff" }}>
-      <Typography fontSize="1.625rem" fontWeight={700} mb={3}>
-        Performance
-      </Typography>
+      <Box
+  sx={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    mb: 3,
+    flexWrap: "wrap",
+    gap: 2,
+  }}
+>
+  <Typography
+    fontSize="1.625rem"
+    fontWeight={700}
+  >
+    Performance
+  </Typography>
 
+  <FormControl size="small" sx={{ minWidth: 180 }}>
+    <InputLabel>View</InputLabel>
+
+    <Select
+      value={period}
+      label="View"
+      onChange={(e) =>
+        setPeriod(e.target.value as "monthly" | "yearly")
+      }
+    >
+      <MenuItem value="monthly">Monthly</MenuItem>
+      <MenuItem value="yearly">Yearly</MenuItem>
+    </Select>
+  </FormControl>
+</Box>
       {loading ? (
         <Paper sx={cardStyle}>
           <Typography color="text.secondary">

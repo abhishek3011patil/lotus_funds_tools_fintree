@@ -157,7 +157,8 @@ export const login = async (req: Request, res: Response) => {
       status,
       is_active,
       otp,
-      otp_expiry
+      otp_expiry,
+      otp_verified_until
     FROM users
     WHERE LOWER(email) = $1
   `,
@@ -207,11 +208,17 @@ if (
       return res.status(400).json({ message: "Invalid password ❌" });
     }
 
-    if (user.role === "RESEARCH_ANALYST") {
+    const otpSessionExpired =
+    !user.otp_verified_until ||
+    new Date(user.otp_verified_until) < new Date();
+
+   if (user.role === "RESEARCH_ANALYST" && otpSessionExpired) {
+
+    // User needs OTP only if previous verification expired
 
     if (!otp) {
-        return res.status(400).json({
-            message: "OTP is required"
+        return res.json({
+            requireOtp: true
         });
     }
 
@@ -234,14 +241,14 @@ if (
         `
         UPDATE users
         SET
-            otp=NULL,
-            otp_expiry=NULL
-        WHERE id=$1
+            otp = NULL,
+            otp_expiry = NULL,
+            otp_verified_until = NOW() + INTERVAL '30 minutes'
+        WHERE id = $1
         `,
         [user.id]
     );
 }
-
     /* ================= TOKEN ================= */
     const token = jwt.sign(
       {
@@ -302,100 +309,105 @@ if (
 };
 
 export const sendLoginOtp = async (
-    req: Request,
-    res: Response
+  req: Request,
+  res: Response
 ) => {
-    try {
+  try {
+    let { loginId } = req.body;
 
-        let { loginId } = req.body;
-
-        if (!loginId) {
-            return res.status(400).json({
-                message: "Email is required"
-            });
-        }
-
-        loginId = loginId.trim().toLowerCase();
-
-        const result = await pool.query(
-            `
-            SELECT
-                id,
-                email,
-                role,
-                status,
-                is_active
-            FROM users
-            WHERE LOWER(email)=$1
-            `,
-            [loginId]
-        );
-
-        if (result.rows.length === 0) {
-            return res.status(404).json({
-                message: "User not found"
-            });
-        }
-
-        const user = result.rows[0];
-
-        // Only RA
-        if (user.role !== "RESEARCH_ANALYST") {
-            return res.status(403).json({
-                message: "OTP login allowed only for Research Analysts."
-            });
-        }
-
-        if (
-            user.status.toLowerCase() !== "active" ||
-            user.is_active !== true
-        ) {
-            return res.status(403).json({
-                message: "Account inactive."
-            });
-        }
-
-        const otp = Math.floor(
-            100000 + Math.random() * 900000
-        ).toString();
-
-        const expiry = new Date(
-    Date.now() + 5 * 60 * 1000
-);
-
-        await pool.query(
-            `
-            UPDATE users
-            SET
-                otp=$1,
-                otp_expiry=$2
-            WHERE id=$3
-            `,
-            [
-                otp,
-                expiry,
-                user.id
-            ]
-        );
-
-        await sendOtpMail(
-            user.email,
-            otp
-        );
-
-        return res.json({
-            message: "OTP sent successfully."
-        });
-
-    } catch (error) {
-
-        console.error(error);
-
-        return res.status(500).json({
-            message: "Server error"
-        });
-
+    if (!loginId) {
+      return res.status(400).json({
+        message: "Email is required",
+      });
     }
+
+    loginId = loginId.trim().toLowerCase();
+
+    const result = await pool.query(
+      `
+      SELECT
+          id,
+          email,
+          role,
+          status,
+          is_active,
+          otp,
+          otp_expiry
+      FROM users
+      WHERE LOWER(email) = $1
+      `,
+      [loginId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Only RA
+    if (user.role !== "RESEARCH_ANALYST") {
+      return res.status(403).json({
+        message: "OTP login allowed only for Research Analysts.",
+      });
+    }
+
+    if (
+      user.status.toLowerCase() !== "active" ||
+      user.is_active !== true
+    ) {
+      return res.status(403).json({
+        message: "Account inactive.",
+      });
+    }
+
+    // Don't generate a new OTP if the current one is still valid
+    if (
+      user.otp &&
+      user.otp_expiry &&
+      new Date(user.otp_expiry) > new Date()
+    ) {
+      return res.status(200).json({
+        message:
+          "An OTP has already been sent to your registered email. Please use it or wait for it to expire before requesting a new one.",
+      });
+    }
+
+    const otp = Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
+
+    // 🧪 Testing: 5 minutes
+    const expiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    // 🚀 Production:
+    // const expiry = new Date(Date.now() + 5 * 60 * 1000);
+
+    await pool.query(
+      `
+      UPDATE users
+      SET
+          otp = $1,
+          otp_expiry = $2
+      WHERE id = $3
+      `,
+      [otp, expiry, user.id]
+    );
+
+    await sendOtpMail(user.email, otp);
+
+    return res.status(200).json({
+      message: "OTP sent successfully.",
+    });
+  } catch (error) {
+    console.error("SEND OTP ERROR:", error);
+
+    return res.status(500).json({
+      message: "Server error",
+    });
+  }
 };
 
 /* ================= LOGOUT ================= */

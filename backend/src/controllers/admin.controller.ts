@@ -206,6 +206,7 @@ if (existingUser.rows.length > 0) {
     // ================= SEND EMAIL AGAIN =================
    const link = `${process.env.FRONTEND_URL}/set-password?token=${token}`;
 
+
     await sendApprovalMail(email, name, link);
 
     return res.status(200).json({
