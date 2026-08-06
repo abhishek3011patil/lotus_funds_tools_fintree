@@ -52,7 +52,7 @@ export const createResearchCall = async (
     const filePath = file ? file.path : null;
 
     const {
-      status = "PUBLISHED",
+      status = "DRAFT",
       message_text,
       exchange_type,
       market_type,
@@ -80,9 +80,19 @@ export const createResearchCall = async (
     } = req.body;
 
     const normalizedStatus =
-      String(status).toUpperCase() === "DRAFT"
-        ? "DRAFT"
-        : "PUBLISHED";
+      String(status).trim().toUpperCase();
+
+    if (
+      normalizedStatus !== "DRAFT" &&
+      normalizedStatus !== "PUBLISHED"
+    ) {
+      return res.status(400).json({
+        success: false,
+        code: "INVALID_RESEARCH_CALL_STATUS",
+        message:
+          "Status must be DRAFT or PUBLISHED.",
+      });
+    }
 
     const disclaimerResult = await pool.query(
       `

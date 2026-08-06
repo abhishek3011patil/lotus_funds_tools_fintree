@@ -555,11 +555,7 @@ export const rejectRegistrationWithRefund =
           ORDER BY application.created_at DESC
           LIMIT 1
 
-          FOR UPDATE OF
-            details,
-            application,
-            subscription,
-            payment_order
+          FOR UPDATE OF details
         `,
         [entityId, applicantType]
       );

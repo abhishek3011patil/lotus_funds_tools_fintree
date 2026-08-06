@@ -1,0 +1,744 @@
+
+
+===== PAGE 1 =====
+SOFTWARE REQUIREMENTS
+SPECIFICATION (SRS) – PHASE 1
+Lotus Funds – Research & Broker Distribution Platform
+1. INTRODUCTION
+1.1 Purpose
+This document defines the software requirements, system actors, role hierarchy, permissions,
+workflows, and operational boundaries for the Lotus Funds Research & Broker Distribution
+Platform.
+The platform is designed for live production usage in the financial research domain,
+ensuring:
+● Regulatory separation between research and non-research content
+● Independence of SEBI-registered Research Analysts (RAs)
+● Broker-neutral research distribution
+● Compliance-safe white-label content delivery
+● Clear liability demarcation
+1.2 Scope
+The Lotus Funds platform enables:
+● Distribution of SEBI-registered Research Analyst research calls
+● Publishing of RA-authored articles and content with mandatory disclaimers
+● Broker-facilitated delivery of research and content to end clients
+
+===== PAGE 2 =====
+● White-label distribution of Lotus Funds–created non-research content
+● Subscription-based access for platform users
+Explicit Exclusions
+● The platform does not execute trades
+● The platform does not guarantee returns
+● The platform does not approve, edit, delay, or suppress research calls
+● The platform does not assume research liability for third-party RAs
+
+===== PAGE 3 =====
+2. SYSTEM ACTORS & ROLE MODEL
+Core Principle
+Research Analysts are regulated, independent system actors.
+Research generation and non-research content creation are explicitly separated.
+Actor Overview
+● Super Admin (Platform Governance)
+● Admin (Broker Entity)
+● Research Analyst (SEBI-Registered)
+○ External RA (Independent / Broker-Hired)
+○ Lotus Funds RA (Organizational)
+● Content & Design Roles (Non-Regulated)
+● End Users (Platform Client, Broker-Only Client, Guest User)
+
+===== PAGE 4 =====
+3. PLATFORM GOVERNANCE ROLES
+3.1 Super Admin (Platform Governance)
+Role: Platform owner, compliance authority, and system controller
+Permissions
+● Add / remove Admins (Brokers)
+● Approve / suspend Research Analysts
+● Approve / suspend Brokers
+● Manage system-level configurations
+● View platform-wide audit logs
+● View subscription and revenue dashboards
+● Enforce compliance (non-research only)
+Restrictions
+● Cannot modify or interfere with RA research logic
+● Cannot alter published research calls
+3.2 Admin (Broker Entity)
+Role: Research distribution and broker client management
+Permissions
+● Subscribe to Research Analysts
+● Manage broker client lists
+● Manage broker-level subscriptions
+● View analytics and performance reports (read-only)
+
+===== PAGE 5 =====
+● Apply broker branding to white-label content
+● Publish broker announcements and advertisements
+Restrictions
+● Research calls are visible in read-only mode
+● Cannot edit, approve, delay, suppress, or hide research calls
+● Cannot modify research content, disclaimers, or timestamps
+● Cannot manage RAs or platform configurations
+
+===== PAGE 6 =====
+4. RESEARCH ANALYST (SEBI-REGISTERED ENTITY)
+4.1 Research Analyst – Core Definition
+A Research Analyst (RA) is a SEBI-registered regulated entity authorized to publish research
+calls and research-related content.
+Common Rules
+● Must be SEBI-registered and verified
+● Cannot operate anonymously
+● Mandatory disclaimer required on all research and articles
+● Responsible for accuracy, logic, and compliance of research
+● Cannot manage platform users or system settings
+4.2 External Research Analyst
+Includes:
+● Independent RAs
+● Broker-Hired RAs
+Permissions
+● Generate and publish research calls
+● Publish their own articles, blogs, and market commentary
+● Distribute research:
+○ Directly to platform clients
+○ Via subscribed brokers
+Liability
+
+===== PAGE 7 =====
+● Full liability for research and content rests with the RA or Broker
+● Lotus Funds provides distribution infrastructure only
+● Lotus Funds holds no liability for RA-authored research or articles
+4.3 Lotus Funds Research Analyst (Organizational RA)
+● SEBI-registered RAs operating under Lotus Funds
+Permissions
+● Publish research calls under Lotus Funds RA identity
+● Distribute research directly or via subscribed brokers
+Liability
+● Research liability lies with Lotus Funds as an RA entity
+
+===== PAGE 8 =====
+5. CONTENT & DESIGN ROLES (NON-REGULATED)
+5.1 External RA – Content Publishing (Non-Research)
+External RAs may publish:
+● Articles
+● Market views
+● Educational posts
+Conditions
+● Mandatory RA disclaimer
+● Clear RA attribution
+● Content must not be classified as a research call
+Liability
+● Entirely borne by the RA / Broker
+● Lotus Funds has no content liability
+5.2 Lotus Funds Internal Content & Design Team
+Role: Creation of non-research white-label content
+Permissions
+● Design banners, reports, infographics, educational material
+● Upload content to platform
+● Apply broker-specific branding (logo, colors)
+● Distribute non-research content to broker clients
+
+===== PAGE 9 =====
+Restrictions
+● Cannot create research calls
+● Cannot modify RA research
+● Cannot add investment recommendations
+
+===== PAGE 10 =====
+6. RESEARCH CALL LIFECYCLE & DISTRIBUTION
+6.1 Call Creation
+● Only SEBI-registered RAs can create research calls
+● Mandatory fields:
+○ Instrument / Symbol
+○ Buy / Sell
+○ Entry, Target, Stop-Loss, Lot Size
+○ Time horizon
+○ Automatically calculated Risk-Reward ratio
+○ Mandatory disclaimer
+6.2 Call Failure & Rejection Handling
+A research call shall be automatically rejected if:
+● A network or server issue prevents message registration
+● RA or Broker subscription has expired or payment is overdue
+Rejected calls
+● Are not published
+● Are not visible to any user
+● Do not enter the published research audit trail
+● Trigger a notification to the originating RA
+
+===== PAGE 11 =====
+6.3 Call Immutability & Errata Mechanism
+● Published research calls are immutable and cannot be edited or deleted
+● If an RA identifies an error in published values, the RA may issue an Errata
+Errata Rules
+● Errata can be generated only by the originating RA
+● Errata references the original call
+● Original and corrected messages are permanently stored
+● All users who received the original call are notified
+● Errata is immutable once published
+Performance Calculation
+● Performance sheets ignore the original call
+● Profit / loss is calculated only using Errata values
+6.4 Call Targeting
+At creation, RA must explicitly select the audience:
+● One specific broker
+● Multiple selected brokers
+● All subscribers of that RA
+6.5 Broker Visibility Rules
+Broker CAN:
+
+===== PAGE 12 =====
+● View calls sent to their clients
+● View RA performance metrics
+Broker CANNOT:
+● Edit or approve calls
+● Delay or suppress calls
+● Modify disclaimers or research logic
+6.6 White-Labelling Rules
+Allowed
+● Broker logo
+● Broker contact details
+Not Allowed
+● Editing research text
+● Editing entry / target / SL
+● Editing timestamps
+● Editing disclaimers
+● Removing RA attribution
+
+===== PAGE 13 =====
+7. END USERS (CONSUMPTION LAYER)
+7.1 Platform Client
+● Registered on Lotus Funds platform
+● Can subscribe to:
+○ Research Analysts
+○ Brokers
+○ Premium content
+● Receives research and content within the platform
+7.2 Broker-Only Client
+● Exists outside platform ecosystem
+● Receives:
+○ Research calls from assigned RA
+○ White-label non-research content
+● Lotus Funds does not manage delivery delays on third-party apps
+7.3 Public / Guest User
+● No registration required
+● Access to limited educational content
+● Research performance visibility subject to SEBI guidelines
+
+===== PAGE 14 =====
+
+
+===== PAGE 15 =====
+8. DISCLAIMER & VERSION MANAGEMENT
+● RAs and Brokers submit disclaimers during onboarding
+● Disclaimer version is locked per call or content item
+● Updated disclaimers apply only to future publications
+● Historical content retains original disclaimer version
+
+===== PAGE 16 =====
+9. CONSENT & DISTRIBUTION RESPONSIBILITY
+Platform-delivered research requires no external consent
+For WhatsApp / Telegram distribution:
+● Consent collection is responsibility of RA / Broker
+● Lotus Funds does not store or verify such consent
+
+===== PAGE 17 =====
+10. AUDIT, COMPLIANCE & LIABILITY
+● All published research and Errata entries are fully auditable
+● Disclaimer version ID is logged per call
+● Full audit logs maintained for:
+○ Creation
+○ Distribution
+○ Access
+Platform Neutrality
+● Lotus Funds does not provide investment advice
+● Lotus Funds does not influence research decisions
+
+===== PAGE 18 =====
+11. SUSPENSION & ENFORCEMENT
+● On RA or Broker suspension:
+○ Subscriptions are placed on hold
+○ Clients are notified
+○ Active calls are frozen from performance tracking
+● Reinstatement requires compliance/accounting clearance
+
+===== PAGE 19 =====
+12. CONSTRAINTS & ASSUMPTIONS
+● Lotus Funds does not execute trades
+● Lotus Funds does not guarantee returns
+● Brokers retain ownership of broker-hired RA research
+● Research and content are strictly separated
+● Broker-only clients exist outside platform liability
+
+===== PAGE 20 =====
+II. FUNCTIONAL REQUIREMENTS
+3.1 Authentication & Authorization
+The platform shall implement a secure authentication and authorization framework based
+on Role-Based Access Control (RBAC).
+Authentication Capabilities
+● Secure user login using:
+○ Username and password
+○ OTP-based verification where applicable
+● Session management including:
+○ Automatic session timeout after inactivity
+○ Activity-based logout for security enforcement
+Authorization Model
+● Hierarchical role enforcement across the platform:
+○ Super Admin (Platform Governance)
+○ Admin (Broker Entity)
+○ Research Analyst (SEBI-Registered)
+○ Content & Design Roles (Non-Regulated)
+○ End Users (Platform Client / Broker-Only Client / Guest User)
+Authorization Rules
+● Every system request shall undergo role and permission validation.
+
+===== PAGE 21 =====
+● Users shall only access features explicitly permitted to their assigned role.
+● Permissions related to research and non-research content shall be strictly segregated.
+● Unauthorized access attempts shall be logged for audit and security review.
+3.2 Content Management (Non-Research Content)
+The platform shall provide a content management system exclusively for non-research
+content.
+Authorized Roles
+● Content Admin
+● Admin (Broker Entity)
+● Super Admin
+● Lotus Funds Internal Content & Design Team
+Supported Content Types
+● Educational articles
+● Market updates (non-call content)
+● Blogs
+● Newsletters
+● White-label informational banners
+Functional Behavior
+● Authorized users may create, edit, publish, archive, or unpublish non-research content.
+● All content must be explicitly classified as non-research at the time of creation.
+
+===== PAGE 22 =====
+● Mandatory attribution (Author and/or Organization) shall be displayed on all content.
+● Version history and edit logs shall be maintained for all content items.
+Restrictions
+● Content Admins and design teams cannot create or publish research calls.
+● Non-research content shall not contain explicit buy/sell/hold recommendations or price
+levels.
+3.3 Research Call Management
+The platform shall support the creation, distribution, and tracking of research calls authored
+exclusively by SEBI-registered Research Analysts (RAs).
+Authorized Roles
+● Research Analyst (SEBI-Registered)
+● Super Admin (only if registered as a Research Analyst)
+Mandatory Research Call Fields
+Each research call shall include:
+● Instrument / Symbol name
+● Action (Buy / Sell / Hold)
+● Entry price
+● Target price
+● Stop-loss
+● Time horizon
+
+===== PAGE 23 =====
+● Mandatory risk disclaimer
+● Research ownership classification:
+○ Independent RA
+○ Broker-Hired RA
+○ Organizational RA (Lotus Funds)
+Research Call Lifecycle
+● Research calls shall follow a controlled lifecycle:
+○ Draft → Publish
+● Once published:
+○ Research calls become immutable
+○ Editing or deletion is not permitted
+Errata Mechanism (Correction Handling)
+● In case of factual or input error, the originating RA may issue an Errata:
+○ Errata references the original call
+○ Original and corrected calls are permanently preserved
+○ Errata is immutable once published
+○ All recipients of the original call are notified
+● Performance calculations shall ignore the original call and consider only the Errata
+values.
+Audit & Traceability
+
+===== PAGE 24 =====
+● All research call actions (creation, publication, errata issuance) shall be recorded in an
+immutable audit trail.
+Distribution Rules
+● At the time of creation, the RA must explicitly select the target audience:
+○ One or more specific brokers
+○ Direct platform subscribers
+○ All subscribers of the RA
+● Brokers shall not be able to edit, approve, delay, suppress, or modify research calls.
+3.4 Broker Management
+The platform shall support broker onboarding, approval, and lifecycle management.
+Functional Capabilities
+● Broker onboarding request submission
+● Broker type selection:
+○ API Broker (future scope)
+○ Non-API Broker (current scope)
+● Document submission and compliance verification
+● Broker approval, suspension, or reactivation
+Controls
+● Broker access shall be enabled only after Super Admin approval.
+● Suspended brokers shall lose access to:
+
+===== PAGE 25 =====
+○ Research distribution
+○ Subscription management
+● All broker activities shall be logged for audit purposes.
+3.5 Research Analyst Management
+The platform shall support Research Analyst onboarding, verification, and publishing
+control.
+Functional Capabilities
+● RA onboarding with SEBI registration verification
+● RA classification:
+○ Independent Research Analyst
+○ Broker-Hired Research Analyst
+○ Organizational Research Analyst (Lotus Funds)
+● Assignment to broker(s) where applicable
+● Publishing scope enforcement based on RA classification
+Enforcement Rules
+● Only verified and active RAs may publish research calls.
+● Broker-hired RAs are restricted to their assigned broker scope.
+● RA publishing rights shall be automatically suspended upon SEBI registration expiry or
+account suspension.
+
+===== PAGE 26 =====
+3.6 Subscription Management
+The platform shall manage subscription-based access to research and non-research content.
+Subscription Types
+● Platform client subscriptions
+● Broker-specific subscriptions
+● Research Analyst-specific subscriptions
+Functional Rules
+● Subscription start and expiry dates shall be strictly enforced.
+● Access to content and research shall be automatically revoked upon subscription expiry.
+● Users shall receive automated reminders prior to subscription expiration.
+● Payment gateway integration shall support:
+○ Subscription purchase
+○ Renewal
+○ Cancellation (where applicable)
+3.7 Notifications
+The platform shall provide a centralized notification system.
+Notification Types
+● Research call alerts and Errata notifications
+● Content publication updates
+
+===== PAGE 27 =====
+● Subscription expiry reminders
+● Platform and broker announcements
+Delivery Channels
+● In-platform notifications
+● Email notifications
+● Messaging channels where integrated
+
+===== PAGE 28 =====
+4. NON-FUNCTIONAL REQUIREMENTS
+4.1 Security
+● All data shall be encrypted:
+○ At rest
+○ In transit
+● Permission checks shall be enforced on every system request.
+● Full activity logs shall be maintained for:
+○ User authentication events
+○ Content actions
+○ Research call publishing and Errata issuance
+4.2 Performance
+● Research call publishing latency shall be less than 2 seconds under normal operating
+conditions.
+● The system shall scale to support peak market-hour usage.
+4.3 Availability
+● Platform uptime target: 99.5%
+● Regular backups and disaster recovery mechanisms shall be implemented.
+
+===== PAGE 29 =====
+4.4 Compliance & Legal
+● Mandatory disclaimers shall be enforced on:
+○ Research calls
+○ RA-authored content
+● Clear separation shall be maintained between:
+○ Research content
+○ Non-research content
+● Explicit attribution shall be displayed for:
+○ Research Analyst
+○ Broker (where applicable)
+○ Organization
+4.5 CONSTRAINTS & ASSUMPTIONS
+● Lotus Funds does not execute trades
+● Lotus Funds does not guarantee returns
+● Brokers retain ownership of broker-hired RA research
+● Research and content are strictly separated
+● Broker-only clients exist outside platform liability
+
+===== PAGE 30 =====
+6. UML Diagram
+6.1 Use case Diagram
+Who creates research?
+Who distributes it?
+Who consumes it?
+Who controls the
+platform?
+
+===== PAGE 31 =====
+6.2 Sequence Diagram
+Purpose
+● Explain research flow
+● Show clear responsibility & liability
+● Medium WhatsApp / Telegram as external
+
+===== PAGE 32 =====
+6.3 Activity Diagram
+
+===== PAGE 33 =====
+6.4 Internal
+class Diagram
+
+===== PAGE 34 =====
+6.5 ER Diagram(database)
+
+===== PAGE 35 =====
+RA APPROVAL FORM
+1. Personal Details
+Salutation, First Name, Middle Name, Last
+1 Full Name Text
+Name
+2 Profile Photo Passport Size Photograph Upload
+3 Designation Text
+4 Years of Experience Number of Years in Trading/Analysis Numeric
+5 Description Short Bio Text
+2. Contact Details
+Salutation, First Name, Middle Name, Last
+1 Email Address Email ID
+Name
+2 Mobile Number Passport Size Photograph Phone
+3 City Text
+4 State Number of Years in Trading/Analysis Dropdown
+5 Country Short Bio Dropdown
+
+===== PAGE 36 =====
+1. Email Address (email input)
+2. Mobile Number (phone input)
+3. City (text)
+4. State (dropdown)
+5. Country (dropdown)
+Section: SEBI Registration
+● SEBI Registration Number
+● SEBI Registration Certificate
+● SEBI Registration Receipt
+● Registration Start Date
+● Registration Expiry Date
+● NISM Certificate
+Section: Identity Verification
+● PAN Number (text)
+● PAN Card Upload (file upload – image/PDF)
+● Address Proof Type (dropdown)
+● Aadhaar (masked)
+● Passport
+● Utility Bill
+● Address Proof Upload (file upload)
+Section: Bank Information
+Bank Name (text)
+Account Holder Name (text)
+Account Number (text)
+IFSC Code (text)
+Cancelled Cheque / Bank Statement Upload (file upload)
+Section: Professional Information
+Highest Qualification (text)
+
+===== PAGE 37 =====
+Certifications (text / multi-input)
+Areas of Expertise (multi-select)
+Equity
+F&O
+Commodity
+Currency
+Markets Covered (multi-select)
+NSE
+BSE
+MCX
+NSECD
+Section: Recommendation Setup
+Instruments Allowed (multi-select)
+Equity Cash
+Futures
+Options
+Call Types Allowed (multi-select)
+Buy
+Sell
+Hold
+Time Horizon Options (multi-select)
+Intraday
+
+===== PAGE 38 =====
+Short Term
+Positional
+Long Term
+Risk Level Labels (dropdown)
+Low
+Medium
+High
+Section: Declarations (Checkboxes)
+No Guaranteed Returns Declaration (checkbox)
+Conflict of Interest Disclosure (checkbox)
+Personal Trading Disclosure (checkbox)
+SEBI Compliance Acceptance (checkbox)
+Platform Content Policy Acceptance (checkbox)
+Section: Consent
+Digital Signature / Consent Checkbox
+Date & Time (auto-captured, read-only)
+Section: Public Visibility
+Website URL (text)
+LinkedIn Profile (URL)
+Twitter / X Profile (URL)
+
+===== PAGE 39 =====
+Changes to implement:
+terms and conditions
+Super Admin - website admin - all access - add new RA - delete RA - suspend RA
+(also a text box where Super Admin can write the reason for suspension and
+deletion)
+Admin - Verification of Documents, Billing
+TPBRA - Ext RA in Phase 2 (Third Party Broker RA)
+Users (7/14 Days Trial Users)
+Broker is a different entity
+Handshake functionality - for Research Call sending and server.. take timestamp
+from receivers' end
+Call Targeting - no options given
+White Labelling -
+Broker Display Name
+
+===== PAGE 40 =====
+2 types of brokers who are subscribing for lotus media - Premium, Automated
+Auto Publish Time
+### VERSION MANAGEMENT ### Always match the latest version. android and
+ios
+30 Days cookies and login OTP functionality
+Subscription Management rework and expansion
+Design Notification Panel - emails
+➕
+Querries
+if the account of an RA is hacked and the hacker starts generating calls with
+DDOS then what?
+
+===== PAGE 41 =====
+New Drop Down Menu
+"Underlying Study”
+Fundamental & General Analysis
+1. Sentiment analysis
+2. Techno Funda
+3. Debt ratio
+4. Return on equity
+5. Dividend yield
+6. Earnings per share
+7. Qualitative research
+8. Financial statements
+9. Industry analysis
+10. Quantitative analysis
+11. Trend
+12. Chart patterns
+13. Current ratio
+14. Financial strength
+15. Profit margins
+Technical Indicators
+1. Accumulation Distribution
+2. Aroon Oscillator
+3. Average Directional Index (ADX)
+4. Average True Range (ATR)
+5. Average True Range (ATR) Bands
+6. Average True Range (ATR) Trailing Stops
+7. Bollinger Bands
+8. Bollinger Bandwidth
+9. Bollinger Percentage B
+10. Chaikin Money Flow
+11. Chaikin Oscillator
+12. Chaikin Volatility
+13. Chande Momentum Oscillator
+14. Chandelier Exits
+15. Choppiness Index
+16. Commodity Channel Index
+17. Compare Prices on Classic Stock Charts
+18. Comparisons on Indigo for Browser
+
+===== PAGE 42 =====
+19. Coppock Indicator
+20. Detrended Price Oscillator
+21. Directional Movement Index
+22. Donchian Channels
+23. Ease of Movement
+24. Elder Ray Index
+25. Fibonacci Retracements & Extensions
+26. Force Index
+27. Heikin Ashi
+28. Ichimoku Cloud
+29. Keltner Channels
+30. KST Indicator
+31. Linear Regression Indicator
+32. MA Oscillator
+33. MACD
+34. MACD Histogram
+35. MACD Percentage Price Oscillator
+36. Mass Index
+37. Median Price
+38. Momentum Indicator
+39. Money Flow Index
+40. Moving Averages (MA)
+41. Displaced Moving Average (DMA)
+42. Exponential Moving Average (EMA)
+43. Hull Moving Average (HMA)
+44. Simple Moving Average (SMA)
+45. Weighted Moving Average (WMA)
+46. Wilder Moving Average (WWMA)
+47. Moving Average Systems
+48. Multiple Moving Averages (MMA)
+49. Rainbow 3D MA
+50. Two Moving Averages
+51. Three Moving Averages
+52. Negative Volume Index
+53. On Balance Volume
+54. Parabolic SAR
+55. Percentage Bands
+56. Percentage Trailing Stops
+57. Pivot Points
+58. Positive Volume Index (PVI)
+
+===== PAGE 43 =====
+59. Price Comparison (Classic Stock Charts)
+60. Price Differential
+61. Price Envelope
+62. Price Ratio
+63. Price Volume Trend
+64. Rate of Change (Price)
+65. Rate of Change (Volume)
+66. Relative Strength (Compare)
+67. Relative Strength Index (RSI)
+68. Safezone
+69. Slow Stochastic
+70. Smoothed Rate of Change (SROC)
+71. Standard Deviation Channels
+72. Stochastic Oscillator
+73. Stochastic RSI
+74. Trendlines
+75. TRIX
+76. True Range
+77. Twiggs ® Momentum Oscillator
+78. Twiggs ® Money Flow
+79. Twiggs ® Smoothed Momentum
+80. Twiggs ® Trend Index
+81. Twiggs ® Volatility
+82. Typical Price
+83. Ultimate Oscillator
+84. Vertical Horizontal Filter
+85. Volatility
+86. Volatility Ratio
+87. Volatility Stops
+88. Volume
+89. Volume Oscillator
+90. Weighted Close
+91. Williams Percent R
+92. Williams Accumulate Distribute
+93. Williams Accumulation Distribution
+Indicator Categories
+1. Momentum technical indicators
+2. Trend technical indicators
+3. Volume technical indicators
+
+===== PAGE 44 =====
+4. Oscillators technical indicators
+5. Volatility technical indicators
+6. Discussions about technical indicators
+the user can scroll down or type the name and the autofill will work. also after
+some time the user will start to see the options that he uses frequenty or last 5
+options selected.
