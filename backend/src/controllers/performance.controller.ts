@@ -62,43 +62,62 @@ const year =
       });
     }
 
-    const monthStart = `${month}-01`;
+    console.log("Query:", req.query);
+console.log("Period:", period);
+console.log("Month:", month);
+console.log("Year:", year);
 
-    const callsResult = await pool.query<PerformanceCall>(
-      `
-        SELECT
-          id,
-          action,
-          entry_price,
-          target_price,
-          stop_loss,
-          exit_price,
-          status,
-          created_at,
-          closed_at
-        FROM research_calls
-        WHERE ra_user_id = $1
-          AND is_latest = true
-          AND (
-            (
-              created_at >= $2::date
-              AND created_at < $2::date + INTERVAL '1 month'
-            )
-            OR
-            (
-              closed_at >= $2::date
-              AND closed_at < $2::date + INTERVAL '1 month'
-            )
-          )
-      `,
-      [req.user.id, monthStart]
-    );
+   let startDate: string;
+let interval: string;
+
+if (period === "yearly") {
+  startDate = `${year}-01-01`;
+  interval = "1 year";
+} else {
+  startDate = `${month}-01`;
+  interval = "1 month";
+}
+
+const callsResult = await pool.query<PerformanceCall>(
+  `
+    SELECT
+      id,
+      action,
+      entry_price,
+      target_price,
+      stop_loss,
+      exit_price,
+      status,
+      created_at,
+      closed_at
+    FROM research_calls
+    WHERE ra_user_id = $1
+      AND is_latest = true
+      AND (
+        (
+          created_at >= $2::date
+         AND created_at < $2::date + $3::interval
+        )
+        OR
+        (
+          closed_at >= $2::date
+          AND closed_at < $2::date + $3::interval
+        )
+      )
+  `,
+  [req.user.id, startDate, interval]
+);
 
     const rows = callsResult.rows;
 
-    const start = new Date(`${monthStart}T00:00:00`);
-    const end = new Date(start);
-    end.setMonth(end.getMonth() + 1);
+const start = new Date(`${startDate}T00:00:00`);
+const end = new Date(start);
+
+if (period === "yearly") {
+  end.setFullYear(end.getFullYear() + 1);
+} else {
+  end.setMonth(end.getMonth() + 1);
+}
 
    const createdThisMonth = rows.filter((call) => {
   const createdAt = new Date(call.created_at);
@@ -319,7 +338,9 @@ const metrics = calculatePerformanceMetrics({
 //  
 return res.status(200).json({
   success: true,
+  period,
   month,
+  year,
   metrics,
 });
   } catch (error) {

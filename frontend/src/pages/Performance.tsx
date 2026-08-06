@@ -49,6 +49,10 @@ const Performance: React.FC = () => {
 const [error, setError] = useState("");
 const [period, setPeriod] = useState<"monthly" | "yearly">("monthly");
 
+useEffect(() => {
+  console.log("Selected Period:", period);
+}, [period]);
+
 
 
 useEffect(() => {
@@ -89,6 +93,12 @@ const res = await axios.get(
     signal: controller.signal,
   }
 );
+
+console.log("Sending params:", {
+  period,
+  month: currentMonth,
+  year: currentYear,
+});
 
 console.log("STATUS:", res.status);
 console.log("FULL RESPONSE:", res.data);
