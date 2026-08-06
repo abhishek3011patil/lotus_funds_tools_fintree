@@ -333,7 +333,7 @@ const [customDateOpen, setCustomDateOpen] = useState(false);
   customFromDate,
   customToDate,]);
 
- const totalPages = filteredData.length === rowsPerPage ? page + 1 : page;
+const hasNextPage = filteredData.length === rowsPerPage;
 
 const paginatedData = filteredData;
 
@@ -791,8 +791,12 @@ justifyContent: { xs: "center", md: "flex-start" },
 
             <IconButton
               size="small"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages || totalPages === 0}
+              onClick={() => {
+  if (hasNextPage) {
+    setPage((p) => p + 1);
+  }
+}}
+              disabled={!hasNextPage}
               sx={historyPageButtonStyle}
             >
               <ChevronRightIcon fontSize="small" />

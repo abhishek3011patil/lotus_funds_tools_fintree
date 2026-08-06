@@ -8,6 +8,7 @@ import {
   sendOtp,
   verifyOtp,
   changeAdminPassword,
+  sendLoginOtp 
 } from "../controllers/auth.controller";
 
 import {
@@ -68,6 +69,11 @@ router.post(
   "/logout",
   authenticate,
   logout
+);
+
+router.post(
+    "/send-otp",
+    sendLoginOtp
 );
 
 router.get(

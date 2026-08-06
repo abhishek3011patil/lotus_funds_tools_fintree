@@ -10,7 +10,8 @@ import LoadingPage from "../common/LoadingPage";
 import ClientLayout from "../client_section/components/ClientLayout";
 import BrokerLayout from "../broker_section/components/BrokerLayout";
 import AdminAuditLogs from "../pages_admin/AdminAuditLogs";
-
+import LoginFormClient from "../client_section/pages/LoginFormClient";
+import LoginFormBroker from "../broker_section/pages/LoginFormBroker";
 
 // --- Lazy: Auth & Public ---
 const LoginForm = lazy(() => import("../common/LoginForm"));
@@ -188,6 +189,7 @@ const AppRoutes = () => {
         </Route>
 
         {/* 2. BROKER SECTION LAYOUT — BROKER ROLE ONLY */}
+        <Route path="/broker/login" element={<LoginFormBroker />} />
         <Route
           path="/broker"
           element={
@@ -282,8 +284,9 @@ const AppRoutes = () => {
 />
         </Route>
 
-        {/* 5. Client Layout — CLIENT ONLY */}
 {/* 3. Client Section Layout — CLIENT ROLE ONLY */}
+
+<Route path="/client/login" element={<LoginFormClient />} />
         <Route
           path="/client"
           element={
