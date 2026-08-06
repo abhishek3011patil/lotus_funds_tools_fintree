@@ -117,7 +117,7 @@ const LoginFormBroker: React.FC = () => {
       }
 
       if (role === "BROKER") {
-        navigate("/broker-dashboard");
+        navigate("/broker/dashboard");
       } else {
         setMessage("Invalid role for Broker login");
         localStorage.clear();

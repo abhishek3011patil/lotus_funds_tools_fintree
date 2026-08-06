@@ -131,7 +131,7 @@ localStorage.setItem("role", role);
     replace: true,
   });
 } else if (role === "BROKER") {
-        navigate("/broker-dashboard");
+        navigate("/broker/dashboard");
       } else if (role === "CLIENT") {
         navigate("/client/dashboard", { replace: true });
       } else {

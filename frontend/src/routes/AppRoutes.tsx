@@ -194,7 +194,7 @@ const AppRoutes = () => {
           path="/broker"
           element={
             <ProtectedRoute allowedRoles={["BROKER"]}>
-              < MorningReportBuilder/>
+              <BrokerLayout />
             </ProtectedRoute>
           }
         >
