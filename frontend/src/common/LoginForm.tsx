@@ -15,6 +15,8 @@ import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import LoadingPage from "./LoadingPage";
+import BusinessIcon from "@mui/icons-material/Business";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
 const LoginForm: React.FC = () => {
 
@@ -81,15 +83,19 @@ const handleSendOtp = async () => {
   }
 };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage("");
     setLoading(true);
+
+    // Give React a micro-tick to render the LoadingPage UI before executing the heavy request
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
     try {
       const res = await axios.post(
         `${API_URL}/api/auth/login`,
         {
-          loginId: formData.username,   // ✅ FIX HERE
+          loginId: formData.username,
           password: formData.password,
           otp: formData.otp,
         }
@@ -131,7 +137,7 @@ localStorage.setItem("role", role);
     replace: true,
   });
 } else if (role === "BROKER") {
-        navigate("/broker-dashboard");
+        navigate("/broker/dashboard");
       } else if (role === "CLIENT") {
         navigate("/client/dashboard", { replace: true });
       } else {
@@ -311,32 +317,48 @@ localStorage.setItem("role", role);
             Register Now
           </Link>
         </Typography>
-
-       {message && (
-  <Typography
-    sx={{
-      mt: 2,
-      textAlign: "center",
-      bgcolor: "#EEF2FF",
-      p: 1,
-      borderRadius: 1,
-    }}
-  >
+{message && (
+  <Box sx={{ mt: 2.5 }}>
     {message === "Please use company login page" ? (
-      <Link
-        component="button"
-        underline="hover"
-        onClick={() => navigate("/login-admin")} // Your company login route
-        sx={{ color: "#4F6CF8", fontWeight: 600 }}
+      <Button
+        fullWidth
+        variant="outlined"
+        startIcon={<BusinessIcon />}
+        endIcon={<ArrowForwardIcon />}
+        onClick={() => navigate("/login-admin")}
+        sx={{
+          py: 1.2,
+          color: "#4F6CF8",
+          borderColor: "#4F6CF8",
+          backgroundColor: "#EEF2FF",
+          fontWeight: 600,
+          borderRadius: 2,
+          textTransform: "none",
+          fontSize: "14px",
+          "&:hover": {
+            backgroundColor: "#E0E7FF",
+            borderColor: "#3B52D4",
+          },
+        }}
       >
-        Please use company login page
-      </Link>
+        Go to Company Login
+      </Button>
     ) : (
-      <Typography component="span" sx={{ color: "#4F6CF8" }}>
+      <Typography
+        sx={{
+          textAlign: "center",
+          bgcolor: "#FEF2F2",
+          color: "#EF4444",
+          p: 1.5,
+          borderRadius: 2,
+          fontSize: "14px",
+          fontWeight: 500,
+        }}
+      >
         {message}
       </Typography>
     )}
-  </Typography>
+  </Box>
 )}
       </Box>
     </Box>

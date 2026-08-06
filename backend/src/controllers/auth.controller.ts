@@ -243,7 +243,7 @@ if (
         SET
             otp = NULL,
             otp_expiry = NULL,
-            otp_verified_until = NOW() + INTERVAL '30 minutes'
+            otp_verified_until = NOW() + INTERVAL '30 days'
         WHERE id = $1
         `,
         [user.id]
@@ -380,7 +380,7 @@ export const sendLoginOtp = async (
     ).toString();
 
     // 🧪 Testing: 5 minutes
-    const expiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const expiry = new Date(Date.now() + 5 * 60 * 1000);
 
     // 🚀 Production:
     // const expiry = new Date(Date.now() + 5 * 60 * 1000);

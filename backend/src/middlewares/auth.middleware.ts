@@ -19,6 +19,7 @@ export const authenticate = (
 ) => {
     try {
         const authHeader = req.headers.authorization;
+        console.log("Authorization Header:", authHeader);
 
         // 1️⃣ No header
         if (!authHeader) {

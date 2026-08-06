@@ -1426,16 +1426,19 @@ const handleDeleteWhatsAppParticipant = async () => {
                 Telegram: {selectedRA.telegram || ""}
               </Typography>
 
-              <Button
-                variant="outlined"
-                fullWidth
-                onClick={() =>
-                  handleEdit(selectedRA.id)
-                }
-                sx={{ mt: 2 }}
-              >
-                View Profile
-              </Button>
+             <Button
+  variant="text"
+  fullWidth
+  onClick={() => openFile(selectedRA?.profile)}
+  sx={{
+    color: "#1e40af", // Standard Material UI link blue
+    textTransform: "none",
+    fontWeight: 500,
+    py: 1,
+  }}
+>
+  View Profile
+</Button>
 
               <Box
                 sx={{
