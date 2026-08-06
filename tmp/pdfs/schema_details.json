@@ -1,0 +1,2367 @@
+[
+  {
+    "table": "audit_logs",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "timestamp",
+        "definition": "timestamp without time zone DEFAULT now()"
+      },
+      {
+        "name": "admin_name",
+        "definition": "character varying(255)"
+      },
+      {
+        "name": "admin_id",
+        "definition": "uuid"
+      },
+      {
+        "name": "admin_role",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "action",
+        "definition": "character varying(100) NOT NULL"
+      },
+      {
+        "name": "module",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "target_entity",
+        "definition": "character varying(255)"
+      },
+      {
+        "name": "target_type",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "description",
+        "definition": "text"
+      },
+      {
+        "name": "status",
+        "definition": "character varying(50) DEFAULT 'SUCCESS'::character varying"
+      },
+      {
+        "name": "reason",
+        "definition": "text"
+      },
+      {
+        "name": "ip_address",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "device",
+        "definition": "text"
+      },
+      {
+        "name": "old_value",
+        "definition": "jsonb"
+      },
+      {
+        "name": "new_value",
+        "definition": "jsonb"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp without time zone DEFAULT now()"
+      }
+    ]
+  },
+  {
+    "table": "broker_details",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "user_id",
+        "definition": "uuid"
+      },
+      {
+        "name": "legal_name",
+        "definition": "character varying(255) NOT NULL"
+      },
+      {
+        "name": "trade_name",
+        "definition": "character varying(255)"
+      },
+      {
+        "name": "entity_type",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "incorporation_date",
+        "definition": "date"
+      },
+      {
+        "name": "pan",
+        "definition": "character varying(10)"
+      },
+      {
+        "name": "cin",
+        "definition": "character varying(30)"
+      },
+      {
+        "name": "gstin",
+        "definition": "character varying(20)"
+      },
+      {
+        "name": "registered_address",
+        "definition": "text"
+      },
+      {
+        "name": "correspondence_address",
+        "definition": "text"
+      },
+      {
+        "name": "email",
+        "definition": "character varying(150)"
+      },
+      {
+        "name": "mobile",
+        "definition": "character varying(20)"
+      },
+      {
+        "name": "website",
+        "definition": "character varying(255)"
+      },
+      {
+        "name": "sebi_registration_no",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "registration_category",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "registration_date",
+        "definition": "date"
+      },
+      {
+        "name": "registration_validity",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "membership_code",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "exchange_nse",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "exchange_bse",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "exchange_smi",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "exchange_ncdex",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "segment_cash",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "segment_fo",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "segment_currency",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "sebi_certificate",
+        "definition": "text"
+      },
+      {
+        "name": "exchange_certificates",
+        "definition": "text[]"
+      },
+      {
+        "name": "compliance_officer_name",
+        "definition": "character varying(255)"
+      },
+      {
+        "name": "compliance_designation",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "compliance_pan",
+        "definition": "character varying(10)"
+      },
+      {
+        "name": "compliance_mobile",
+        "definition": "character varying(20)"
+      },
+      {
+        "name": "net_worth",
+        "definition": "numeric"
+      },
+      {
+        "name": "auditor_name",
+        "definition": "character varying(255)"
+      },
+      {
+        "name": "auditor_membership",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "appointment_letter",
+        "definition": "text"
+      },
+      {
+        "name": "networth_certificate",
+        "definition": "text"
+      },
+      {
+        "name": "financial_statements",
+        "definition": "text"
+      },
+      {
+        "name": "ca_certificate",
+        "definition": "text"
+      },
+      {
+        "name": "authorized_person_name",
+        "definition": "character varying(255)"
+      },
+      {
+        "name": "authorized_person_pan",
+        "definition": "character varying(10)"
+      },
+      {
+        "name": "authorized_person_designation",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "authorized_person_email",
+        "definition": "character varying(150)"
+      },
+      {
+        "name": "authorized_person_aadhaar",
+        "definition": "character varying(20)"
+      },
+      {
+        "name": "authorized_person_mobile",
+        "definition": "character varying(20)"
+      },
+      {
+        "name": "no_disciplinary_action",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "no_suspension",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "no_criminal_case",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "agree_sebi_circulars",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "agree_code_of_conduct",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "status",
+        "definition": "character varying(20) DEFAULT 'pending'::character varying"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp without time zone DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "updated_at",
+        "definition": "timestamp without time zone DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "rejection_reason",
+        "definition": "text"
+      },
+      {
+        "name": "approved_by",
+        "definition": "uuid"
+      },
+      {
+        "name": "approved_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "broker_details_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('approved'::character varying)::text, ('rejected'::character varying)::text, ('suspended'::character varying)::text])))"
+      }
+    ]
+  },
+  {
+    "table": "company_users",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "username",
+        "definition": "character varying(100) NOT NULL"
+      },
+      {
+        "name": "email",
+        "definition": "character varying(255) NOT NULL"
+      },
+      {
+        "name": "password_hash",
+        "definition": "text NOT NULL"
+      },
+      {
+        "name": "role",
+        "definition": "character varying(50) NOT NULL"
+      },
+      {
+        "name": "status",
+        "definition": "character varying(20) DEFAULT 'ACTIVE'::character varying"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp without time zone DEFAULT now()"
+      },
+      {
+        "name": "updated_at",
+        "definition": "timestamp without time zone DEFAULT now()"
+      }
+    ]
+  },
+  {
+    "table": "disclaimer_history",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "ra_user_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "disclaimer_text",
+        "definition": "text NOT NULL"
+      },
+      {
+        "name": "version_number",
+        "definition": "integer NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp without time zone DEFAULT now()"
+      }
+    ]
+  },
+  {
+    "table": "notifications",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "source",
+        "definition": "character varying(100) NOT NULL"
+      },
+      {
+        "name": "title",
+        "definition": "character varying(255) NOT NULL"
+      },
+      {
+        "name": "description",
+        "definition": "text NOT NULL"
+      },
+      {
+        "name": "notification_type",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "reference_id",
+        "definition": "text"
+      },
+      {
+        "name": "reference_table",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "is_read",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "is_deleted",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp without time zone DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "updated_at",
+        "definition": "timestamp without time zone DEFAULT CURRENT_TIMESTAMP"
+      }
+    ]
+  },
+  {
+    "table": "password_setup_tokens",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "user_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "registration_application_id",
+        "definition": "uuid"
+      },
+      {
+        "name": "token_hash",
+        "definition": "text NOT NULL"
+      },
+      {
+        "name": "expires_at",
+        "definition": "timestamp with time zone NOT NULL"
+      },
+      {
+        "name": "used_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "revoked_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "chk_password_setup_expiry CHECK ((expires_at > created_at))"
+      }
+    ]
+  },
+  {
+    "table": "payment_orders",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "registration_application_id",
+        "definition": "uuid"
+      },
+      {
+        "name": "plan_selection_id",
+        "definition": "uuid"
+      },
+      {
+        "name": "user_id",
+        "definition": "uuid"
+      },
+      {
+        "name": "provider",
+        "definition": "character varying(30) DEFAULT 'RAZORPAY'::character varying NOT NULL"
+      },
+      {
+        "name": "provider_order_id",
+        "definition": "character varying(255)"
+      },
+      {
+        "name": "amount_paise",
+        "definition": "integer NOT NULL"
+      },
+      {
+        "name": "currency",
+        "definition": "character(3) DEFAULT 'INR'::bpchar NOT NULL"
+      },
+      {
+        "name": "status",
+        "definition": "character varying(30) DEFAULT 'CREATED'::character varying NOT NULL"
+      },
+      {
+        "name": "idempotency_key",
+        "definition": "character varying(255) NOT NULL"
+      },
+      {
+        "name": "receipt",
+        "definition": "character varying(255)"
+      },
+      {
+        "name": "notes",
+        "definition": "jsonb DEFAULT '{}'::jsonb NOT NULL"
+      },
+      {
+        "name": "paid_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "failed_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "failure_reason",
+        "definition": "text"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "refund_idempotency_key",
+        "definition": "character varying(255)"
+      },
+      {
+        "name": "refunded_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "payment_orders_amount_paise_check CHECK ((amount_paise >= 0))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "payment_orders_provider_check CHECK (((provider)::text = 'RAZORPAY'::text))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "payment_orders_status_check CHECK (((status)::text = ANY ((ARRAY['CREATED'::character varying, 'PENDING'::character varying, 'PAID'::character varying, 'FAILED'::character varying, 'CANCELLED'::character varying, 'REFUND_PENDING'::character varying, 'REFUNDED'::character varying, 'PARTIALLY_REFUNDED'::character varying])::text[])))"
+      }
+    ]
+  },
+  {
+    "table": "payment_transactions",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "payment_order_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "provider_payment_id",
+        "definition": "character varying(255)"
+      },
+      {
+        "name": "provider_signature",
+        "definition": "text"
+      },
+      {
+        "name": "transaction_type",
+        "definition": "character varying(30) NOT NULL"
+      },
+      {
+        "name": "status",
+        "definition": "character varying(40) NOT NULL"
+      },
+      {
+        "name": "amount_paise",
+        "definition": "integer NOT NULL"
+      },
+      {
+        "name": "currency",
+        "definition": "character(3) DEFAULT 'INR'::bpchar NOT NULL"
+      },
+      {
+        "name": "failure_code",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "failure_description",
+        "definition": "text"
+      },
+      {
+        "name": "provider_payload",
+        "definition": "jsonb DEFAULT '{}'::jsonb NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "provider_refund_id",
+        "definition": "character varying(255)"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "payment_transactions_amount_paise_check CHECK ((amount_paise >= 0))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "payment_transactions_transaction_type_check CHECK (((transaction_type)::text = ANY ((ARRAY['PAYMENT'::character varying, 'REFUND'::character varying, 'CHARGEBACK'::character varying])::text[])))"
+      }
+    ]
+  },
+  {
+    "table": "ra_details",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "user_id",
+        "definition": "uuid"
+      },
+      {
+        "name": "salutation",
+        "definition": "character varying(10)"
+      },
+      {
+        "name": "first_name",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "middle_name",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "surname",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "org_name",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "designation",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "short_bio",
+        "definition": "text"
+      },
+      {
+        "name": "email",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "mobile",
+        "definition": "character varying(20)"
+      },
+      {
+        "name": "telephone",
+        "definition": "character varying(20)"
+      },
+      {
+        "name": "country",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "state",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "city",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "pincode",
+        "definition": "character varying(10)"
+      },
+      {
+        "name": "address_line1",
+        "definition": "text"
+      },
+      {
+        "name": "address_line2",
+        "definition": "text"
+      },
+      {
+        "name": "profile_image",
+        "definition": "text"
+      },
+      {
+        "name": "sebi_reg_no",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "sebi_start_date",
+        "definition": "date"
+      },
+      {
+        "name": "sebi_expiry_date",
+        "definition": "date"
+      },
+      {
+        "name": "sebi_certificate",
+        "definition": "text"
+      },
+      {
+        "name": "sebi_receipt",
+        "definition": "text"
+      },
+      {
+        "name": "nism_reg_no",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "nism_valid_till",
+        "definition": "date"
+      },
+      {
+        "name": "nism_certificate",
+        "definition": "text"
+      },
+      {
+        "name": "academic_qualification",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "professional_qualification",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "market_experience",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "expertise",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "markets",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "bank_name",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "account_holder",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "account_number",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "ifsc_code",
+        "definition": "character varying(20)"
+      },
+      {
+        "name": "cancelled_cheque",
+        "definition": "text"
+      },
+      {
+        "name": "pan_number",
+        "definition": "character varying(20)"
+      },
+      {
+        "name": "pan_card",
+        "definition": "text"
+      },
+      {
+        "name": "address_proof_type",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "address_proof_document",
+        "definition": "text"
+      },
+      {
+        "name": "declare_info_true",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "consent_verification",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "no_guaranteed_returns",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "conflict_of_interest",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "personal_trading",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "sebi_compliance",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "platform_policy",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "status",
+        "definition": "character varying(20) DEFAULT 'pending'::character varying"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp without time zone DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "additional_comments",
+        "definition": "text"
+      },
+      {
+        "name": "rejection_reason",
+        "definition": "text"
+      },
+      {
+        "name": "disclaimer_updated_at",
+        "definition": "timestamp without time zone DEFAULT now()"
+      },
+      {
+        "name": "approved_by",
+        "definition": "uuid"
+      },
+      {
+        "name": "approved_at",
+        "definition": "timestamp without time zone"
+      },
+      {
+        "name": "bank_branch",
+        "definition": "character varying(255)"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "ra_details_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('approved'::character varying)::text, ('rejected'::character varying)::text, ('suspended'::character varying)::text])))"
+      }
+    ]
+  },
+  {
+    "table": "ra_message_templates",
+    "columns": [
+      {
+        "name": "ra_user_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "message_type",
+        "definition": "character varying(20) NOT NULL"
+      },
+      {
+        "name": "template_version",
+        "definition": "integer DEFAULT 1 NOT NULL"
+      },
+      {
+        "name": "template_data",
+        "definition": "jsonb NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "ra_message_templates_message_type_check CHECK (((message_type)::text = ANY ((ARRAY['NEW_CALL'::character varying, 'ERRATA'::character varying])::text[])))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "ra_message_templates_template_version_check CHECK ((template_version > 0))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "ra_message_templates_valid_data CHECK (((jsonb_typeof(template_data) = 'object'::text) AND (template_data ? 'version'::text) AND (template_data ? 'blocks'::text) AND (jsonb_typeof((template_data -> 'blocks'::text)) = 'array'::text)))"
+      }
+    ]
+  },
+  {
+    "table": "ra_profile_update_requests",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "integer NOT NULL"
+      },
+      {
+        "name": "ra_user_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "requested_changes",
+        "definition": "jsonb NOT NULL"
+      },
+      {
+        "name": "status",
+        "definition": "character varying(20) DEFAULT 'PENDING'::character varying"
+      },
+      {
+        "name": "admin_remark",
+        "definition": "text"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp without time zone DEFAULT now()"
+      },
+      {
+        "name": "reviewed_at",
+        "definition": "timestamp without time zone"
+      }
+    ]
+  },
+  {
+    "table": "razorpay_webhook_events",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "provider_event_id",
+        "definition": "character varying(255)"
+      },
+      {
+        "name": "event_type",
+        "definition": "character varying(100) NOT NULL"
+      },
+      {
+        "name": "signature",
+        "definition": "text"
+      },
+      {
+        "name": "payload",
+        "definition": "jsonb NOT NULL"
+      },
+      {
+        "name": "processing_status",
+        "definition": "character varying(20) DEFAULT 'RECEIVED'::character varying NOT NULL"
+      },
+      {
+        "name": "error_message",
+        "definition": "text"
+      },
+      {
+        "name": "received_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "processed_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "attempt_count",
+        "definition": "integer DEFAULT 0 NOT NULL"
+      },
+      {
+        "name": "last_attempt_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "razorpay_webhook_events_processing_status_check CHECK (((processing_status)::text = ANY ((ARRAY['RECEIVED'::character varying, 'PROCESSED'::character varying, 'IGNORED'::character varying, 'FAILED'::character varying])::text[])))"
+      }
+    ]
+  },
+  {
+    "table": "registration_applications",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "applicant_type",
+        "definition": "character varying(30) NOT NULL"
+      },
+      {
+        "name": "entity_id",
+        "definition": "uuid"
+      },
+      {
+        "name": "user_id",
+        "definition": "uuid"
+      },
+      {
+        "name": "email",
+        "definition": "character varying(150) NOT NULL"
+      },
+      {
+        "name": "mobile",
+        "definition": "character varying(20)"
+      },
+      {
+        "name": "status",
+        "definition": "character varying(40) DEFAULT 'FORM_SUBMITTED'::character varying NOT NULL"
+      },
+      {
+        "name": "submitted_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "paid_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "approved_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "approved_by",
+        "definition": "uuid"
+      },
+      {
+        "name": "rejected_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "rejected_by",
+        "definition": "uuid"
+      },
+      {
+        "name": "rejection_reason",
+        "definition": "text"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "registration_token_hash",
+        "definition": "text"
+      },
+      {
+        "name": "registration_token_expires_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "registration_applications_applicant_type_check CHECK (((applicant_type)::text = ANY ((ARRAY['RA'::character varying, 'BROKER'::character varying, 'CLIENT'::character varying])::text[])))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "registration_applications_status_check CHECK (((status)::text = ANY ((ARRAY['DRAFT'::character varying, 'FORM_SUBMITTED'::character varying, 'PLAN_SELECTED'::character varying, 'PAYMENT_PENDING'::character varying, 'PAYMENT_FAILED'::character varying, 'PAID_PENDING_APPROVAL'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying, 'REFUND_PENDING'::character varying, 'REFUNDED'::character varying])::text[])))"
+      }
+    ]
+  },
+  {
+    "table": "registration_plan_selections",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "registration_application_id",
+        "definition": "uuid CONSTRAINT registration_plan_selection_registration_application_i_not_null NOT NULL"
+      },
+      {
+        "name": "plan_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "plan_code_snapshot",
+        "definition": "character varying(80) NOT NULL"
+      },
+      {
+        "name": "plan_name_snapshot",
+        "definition": "character varying(150) NOT NULL"
+      },
+      {
+        "name": "audience_type_snapshot",
+        "definition": "character varying(20) NOT NULL"
+      },
+      {
+        "name": "tier_code_snapshot",
+        "definition": "character varying(20) NOT NULL"
+      },
+      {
+        "name": "price_paise_snapshot",
+        "definition": "integer NOT NULL"
+      },
+      {
+        "name": "currency_snapshot",
+        "definition": "character(3) NOT NULL"
+      },
+      {
+        "name": "duration_days_snapshot",
+        "definition": "integer NOT NULL"
+      },
+      {
+        "name": "plan_version_snapshot",
+        "definition": "integer NOT NULL"
+      },
+      {
+        "name": "selected_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "replaced_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "registration_plan_selections_duration_days_snapshot_check CHECK ((duration_days_snapshot > 0))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "registration_plan_selections_price_paise_snapshot_check CHECK ((price_paise_snapshot >= 0))"
+      }
+    ]
+  },
+  {
+    "table": "research_call_exits",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "research_call_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "exit_time",
+        "definition": "timestamp without time zone NOT NULL"
+      },
+      {
+        "name": "exit_message",
+        "definition": "character varying(500)"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp without time zone DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "exit_price",
+        "definition": "numeric(12,2)"
+      }
+    ]
+  },
+  {
+    "table": "research_call_modifications",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "research_call_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "modify_time",
+        "definition": "timestamp without time zone NOT NULL"
+      },
+      {
+        "name": "modify_message",
+        "definition": "character varying(500)"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp without time zone DEFAULT CURRENT_TIMESTAMP"
+      }
+    ]
+  },
+  {
+    "table": "research_calls",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "ra_user_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "status",
+        "definition": "character varying(20) DEFAULT 'PUBLISHED'::character varying NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp without time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "exchange_type",
+        "definition": "character varying(10)"
+      },
+      {
+        "name": "market_type",
+        "definition": "character varying(10)"
+      },
+      {
+        "name": "symbol",
+        "definition": "character varying(30) NOT NULL"
+      },
+      {
+        "name": "display_name",
+        "definition": "character varying(100)"
+      },
+      {
+        "name": "action",
+        "definition": "character varying(10) NOT NULL"
+      },
+      {
+        "name": "call_type",
+        "definition": "character varying(20) NOT NULL"
+      },
+      {
+        "name": "trade_type",
+        "definition": "character varying(20) NOT NULL"
+      },
+      {
+        "name": "expiry_date",
+        "definition": "date"
+      },
+      {
+        "name": "entry_price",
+        "definition": "numeric NOT NULL"
+      },
+      {
+        "name": "entry_price_upper",
+        "definition": "numeric"
+      },
+      {
+        "name": "target_price",
+        "definition": "numeric NOT NULL"
+      },
+      {
+        "name": "target_price_2",
+        "definition": "numeric"
+      },
+      {
+        "name": "target_price_3",
+        "definition": "numeric"
+      },
+      {
+        "name": "stop_loss",
+        "definition": "numeric NOT NULL"
+      },
+      {
+        "name": "stop_loss_2",
+        "definition": "numeric"
+      },
+      {
+        "name": "stop_loss_3",
+        "definition": "numeric"
+      },
+      {
+        "name": "holding_period",
+        "definition": "character varying(30)"
+      },
+      {
+        "name": "rationale",
+        "definition": "character varying(255)"
+      },
+      {
+        "name": "underlying_study",
+        "definition": "character varying(255)"
+      },
+      {
+        "name": "is_algo",
+        "definition": "boolean DEFAULT false NOT NULL"
+      },
+      {
+        "name": "has_vested_interest",
+        "definition": "boolean DEFAULT false NOT NULL"
+      },
+      {
+        "name": "research_remarks",
+        "definition": "text"
+      },
+      {
+        "name": "entry_price_low",
+        "definition": "numeric"
+      },
+      {
+        "name": "parent_call_id",
+        "definition": "uuid"
+      },
+      {
+        "name": "version_type",
+        "definition": "character varying(20) DEFAULT 'ORIGINAL'::character varying"
+      },
+      {
+        "name": "exit_price",
+        "definition": "numeric DEFAULT 0"
+      },
+      {
+        "name": "closed_at",
+        "definition": "timestamp without time zone"
+      },
+      {
+        "name": "is_latest",
+        "definition": "boolean DEFAULT true"
+      },
+      {
+        "name": "file_url",
+        "definition": "text"
+      },
+      {
+        "name": "disclaimer_snapshot",
+        "definition": "text"
+      },
+      {
+        "name": "disclaimer_snapshot_at",
+        "definition": "timestamp without time zone DEFAULT now()"
+      },
+      {
+        "name": "exit_remark",
+        "definition": "text"
+      },
+      {
+        "name": "errata_reason",
+        "definition": "text"
+      },
+      {
+        "name": "version_number",
+        "definition": "integer DEFAULT 1 NOT NULL"
+      },
+      {
+        "name": "published_message_text",
+        "definition": "text"
+      },
+      {
+        "name": "message_template_version",
+        "definition": "integer"
+      },
+      {
+        "name": "message_template_snapshot",
+        "definition": "jsonb"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "research_calls_action_check CHECK (((action)::text = ANY (ARRAY[('BUY'::character varying)::text, ('SELL'::character varying)::text])))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "research_calls_call_type_check CHECK (((call_type)::text = ANY (ARRAY[('Cash'::character varying)::text, ('Futures'::character varying)::text, ('Option Call'::character varying)::text, ('Option Put'::character varying)::text])))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "research_calls_exchange_type_check CHECK (((exchange_type)::text = ANY (ARRAY[('NSE'::character varying)::text, ('BSE'::character varying)::text])))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "research_calls_market_type_check CHECK (((market_type)::text = ANY (ARRAY[('STOCK'::character varying)::text, ('INDEX'::character varying)::text])))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "research_calls_message_template_snapshot_check CHECK (((message_template_snapshot IS NULL) OR ((jsonb_typeof(message_template_snapshot) = 'object'::text) AND (message_template_snapshot ? 'version'::text) AND (message_template_snapshot ? 'blocks'::text) AND (jsonb_typeof((message_template_snapshot -> 'blocks'::text)) = 'array'::text))))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "research_calls_message_template_version_check CHECK (((message_template_version IS NULL) OR (message_template_version > 0)))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "research_calls_trade_type_check CHECK (((trade_type)::text = ANY (ARRAY[('Intraday'::character varying)::text, ('BTST'::character varying)::text, ('STBT'::character varying)::text, ('Short Term'::character varying)::text, ('Long Term'::character varying)::text])))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "research_calls_version_number_positive CHECK ((version_number > 0))"
+      }
+    ]
+  },
+  {
+    "table": "subscription_events",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "subscription_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "event_type",
+        "definition": "character varying(80) NOT NULL"
+      },
+      {
+        "name": "previous_status",
+        "definition": "character varying(40)"
+      },
+      {
+        "name": "new_status",
+        "definition": "character varying(40)"
+      },
+      {
+        "name": "actor_user_id",
+        "definition": "uuid"
+      },
+      {
+        "name": "reason",
+        "definition": "text"
+      },
+      {
+        "name": "metadata",
+        "definition": "jsonb DEFAULT '{}'::jsonb NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      }
+    ]
+  },
+  {
+    "table": "subscription_features",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "feature_key",
+        "definition": "character varying(100) NOT NULL"
+      },
+      {
+        "name": "display_name",
+        "definition": "character varying(150) NOT NULL"
+      },
+      {
+        "name": "description",
+        "definition": "text"
+      },
+      {
+        "name": "value_type",
+        "definition": "character varying(20) DEFAULT 'BOOLEAN'::character varying NOT NULL"
+      },
+      {
+        "name": "is_active",
+        "definition": "boolean DEFAULT true NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "subscription_features_value_type_check CHECK (((value_type)::text = ANY ((ARRAY['BOOLEAN'::character varying, 'NUMBER'::character varying, 'TEXT'::character varying])::text[])))"
+      }
+    ]
+  },
+  {
+    "table": "subscription_plan_features",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "plan_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "feature_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "is_enabled",
+        "definition": "boolean DEFAULT true NOT NULL"
+      },
+      {
+        "name": "numeric_value",
+        "definition": "numeric"
+      },
+      {
+        "name": "text_value",
+        "definition": "text"
+      },
+      {
+        "name": "display_order",
+        "definition": "integer DEFAULT 0 NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      }
+    ]
+  },
+  {
+    "table": "subscription_plan_limits",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "plan_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "limit_key",
+        "definition": "character varying(100) NOT NULL"
+      },
+      {
+        "name": "display_name",
+        "definition": "character varying(150) NOT NULL"
+      },
+      {
+        "name": "limit_value",
+        "definition": "bigint"
+      },
+      {
+        "name": "is_unlimited",
+        "definition": "boolean DEFAULT false NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "enforcement_mode",
+        "definition": "character varying(30) DEFAULT 'RESOURCE_COUNT'::character varying NOT NULL"
+      },
+      {
+        "name": "reset_period",
+        "definition": "character varying(30) DEFAULT 'SUBSCRIPTION'::character varying NOT NULL"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "chk_plan_limit_value CHECK (((is_unlimited = true) OR ((limit_value IS NOT NULL) AND (limit_value >= 0))))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "subscription_plan_limits_enforcement_mode_check CHECK (((enforcement_mode)::text = ANY ((ARRAY['EVENT_COUNT'::character varying, 'RESOURCE_COUNT'::character varying, 'INFORMATIONAL'::character varying])::text[])))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "subscription_plan_limits_reset_period_check CHECK (((reset_period)::text = ANY ((ARRAY['DAILY'::character varying, 'MONTHLY'::character varying, 'SUBSCRIPTION'::character varying, 'LIFETIME'::character varying])::text[])))"
+      }
+    ]
+  },
+  {
+    "table": "subscription_plans",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "plan_code",
+        "definition": "character varying(80) NOT NULL"
+      },
+      {
+        "name": "audience_type",
+        "definition": "character varying(20) NOT NULL"
+      },
+      {
+        "name": "tier_code",
+        "definition": "character varying(20) NOT NULL"
+      },
+      {
+        "name": "display_name",
+        "definition": "character varying(150) NOT NULL"
+      },
+      {
+        "name": "short_description",
+        "definition": "text"
+      },
+      {
+        "name": "full_description",
+        "definition": "text"
+      },
+      {
+        "name": "price_paise",
+        "definition": "integer DEFAULT 0 NOT NULL"
+      },
+      {
+        "name": "currency",
+        "definition": "character(3) DEFAULT 'INR'::bpchar NOT NULL"
+      },
+      {
+        "name": "billing_period",
+        "definition": "character varying(20) DEFAULT 'YEARLY'::character varying NOT NULL"
+      },
+      {
+        "name": "duration_days",
+        "definition": "integer DEFAULT 365 NOT NULL"
+      },
+      {
+        "name": "trial_days",
+        "definition": "integer DEFAULT 0 NOT NULL"
+      },
+      {
+        "name": "is_active",
+        "definition": "boolean DEFAULT true NOT NULL"
+      },
+      {
+        "name": "is_popular",
+        "definition": "boolean DEFAULT false NOT NULL"
+      },
+      {
+        "name": "display_order",
+        "definition": "integer DEFAULT 0 NOT NULL"
+      },
+      {
+        "name": "version",
+        "definition": "integer DEFAULT 1 NOT NULL"
+      },
+      {
+        "name": "effective_from",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "effective_until",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "created_by",
+        "definition": "uuid"
+      },
+      {
+        "name": "updated_by",
+        "definition": "uuid"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "chk_subscription_plan_effective_dates CHECK (((effective_until IS NULL) OR (effective_until > effective_from)))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "subscription_plans_audience_type_check CHECK (((audience_type)::text = ANY ((ARRAY['RA'::character varying, 'BROKER'::character varying, 'CLIENT'::character varying])::text[])))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "subscription_plans_billing_period_check CHECK (((billing_period)::text = ANY ((ARRAY['MONTHLY'::character varying, 'QUARTERLY'::character varying, 'HALF_YEARLY'::character varying, 'YEARLY'::character varying, 'CUSTOM'::character varying])::text[])))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "subscription_plans_duration_days_check CHECK ((duration_days > 0))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "subscription_plans_price_paise_check CHECK ((price_paise >= 0))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "subscription_plans_tier_code_check CHECK (((tier_code)::text = ANY ((ARRAY['TIER_1'::character varying, 'TIER_2'::character varying, 'TIER_3'::character varying])::text[])))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "subscription_plans_trial_days_check CHECK ((trial_days >= 0))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "subscription_plans_version_check CHECK ((version > 0))"
+      }
+    ]
+  },
+  {
+    "table": "subscription_usage_events",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "subscription_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "limit_key",
+        "definition": "character varying(100) NOT NULL"
+      },
+      {
+        "name": "period_start",
+        "definition": "timestamp with time zone NOT NULL"
+      },
+      {
+        "name": "period_end",
+        "definition": "timestamp with time zone NOT NULL"
+      },
+      {
+        "name": "idempotency_key",
+        "definition": "character varying(255) NOT NULL"
+      },
+      {
+        "name": "status",
+        "definition": "character varying(20) DEFAULT 'RESERVED'::character varying NOT NULL"
+      },
+      {
+        "name": "units",
+        "definition": "integer DEFAULT 1 NOT NULL"
+      },
+      {
+        "name": "reserved_until",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "consumed_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "released_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "metadata",
+        "definition": "jsonb DEFAULT '{}'::jsonb NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "chk_subscription_usage_period CHECK ((period_end > period_start))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "subscription_usage_events_status_check CHECK (((status)::text = ANY ((ARRAY['RESERVED'::character varying, 'CONSUMED'::character varying, 'RELEASED'::character varying])::text[])))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "subscription_usage_events_units_check CHECK ((units > 0))"
+      }
+    ]
+  },
+  {
+    "table": "subscriptions",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "user_id",
+        "definition": "uuid"
+      },
+      {
+        "name": "registration_application_id",
+        "definition": "uuid"
+      },
+      {
+        "name": "plan_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "payment_order_id",
+        "definition": "uuid"
+      },
+      {
+        "name": "status",
+        "definition": "character varying(40) DEFAULT 'PAID_PENDING_APPROVAL'::character varying NOT NULL"
+      },
+      {
+        "name": "starts_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "expires_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "approved_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "approved_by",
+        "definition": "uuid"
+      },
+      {
+        "name": "cancelled_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "cancellation_reason",
+        "definition": "text"
+      },
+      {
+        "name": "suspended_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "suspension_reason",
+        "definition": "text"
+      },
+      {
+        "name": "auto_renew",
+        "definition": "boolean DEFAULT false NOT NULL"
+      },
+      {
+        "name": "plan_code_snapshot",
+        "definition": "character varying(80) NOT NULL"
+      },
+      {
+        "name": "plan_name_snapshot",
+        "definition": "character varying(150) NOT NULL"
+      },
+      {
+        "name": "tier_code_snapshot",
+        "definition": "character varying(20) NOT NULL"
+      },
+      {
+        "name": "price_paise_snapshot",
+        "definition": "integer NOT NULL"
+      },
+      {
+        "name": "duration_days_snapshot",
+        "definition": "integer NOT NULL"
+      },
+      {
+        "name": "plan_version_snapshot",
+        "definition": "integer NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "chk_subscription_period CHECK (((expires_at IS NULL) OR (starts_at IS NULL) OR (expires_at > starts_at)))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "subscriptions_duration_days_snapshot_check CHECK ((duration_days_snapshot > 0))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "subscriptions_price_paise_snapshot_check CHECK ((price_paise_snapshot >= 0))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "subscriptions_status_check CHECK (((status)::text = ANY ((ARRAY['PENDING_PAYMENT'::character varying, 'PAID_PENDING_APPROVAL'::character varying, 'ACTIVE'::character varying, 'CANCELLED'::character varying, 'EXPIRED'::character varying, 'SUSPENDED'::character varying, 'ON_HOLD'::character varying, 'REJECTED'::character varying, 'REFUND_PENDING'::character varying, 'REFUNDED'::character varying])::text[])))"
+      }
+    ]
+  },
+  {
+    "table": "telegram_message_jobs",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "ra_user_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "message",
+        "definition": "text NOT NULL"
+      },
+      {
+        "name": "status",
+        "definition": "character varying(20) DEFAULT 'PENDING'::character varying"
+      },
+      {
+        "name": "attempts",
+        "definition": "integer DEFAULT 0"
+      },
+      {
+        "name": "error",
+        "definition": "text"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp without time zone DEFAULT now()"
+      },
+      {
+        "name": "processed_at",
+        "definition": "timestamp without time zone"
+      }
+    ]
+  },
+  {
+    "table": "telegram_messages",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "ra_user_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "message_text",
+        "definition": "text NOT NULL"
+      },
+      {
+        "name": "action",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "symbol",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "call_type",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "trade_type",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "entry_price",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "target_price",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "stop_loss",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "rationale",
+        "definition": "text"
+      },
+      {
+        "name": "holding_period",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp without time zone DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "entry_low",
+        "definition": "numeric"
+      },
+      {
+        "name": "entry_upper",
+        "definition": "numeric"
+      },
+      {
+        "name": "target_price_2",
+        "definition": "numeric"
+      },
+      {
+        "name": "target_price_3",
+        "definition": "numeric"
+      },
+      {
+        "name": "stop_loss_2",
+        "definition": "numeric"
+      },
+      {
+        "name": "stop_loss_3",
+        "definition": "numeric"
+      }
+    ]
+  },
+  {
+    "table": "telegram_users",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "telegram_user_id",
+        "definition": "bigint NOT NULL"
+      },
+      {
+        "name": "telegram_client_name",
+        "definition": "character varying(255)"
+      },
+      {
+        "name": "phone_number",
+        "definition": "character varying(20)"
+      },
+      {
+        "name": "user_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "entity_type",
+        "definition": "character varying(20) DEFAULT 'USER'::character varying"
+      }
+    ]
+  },
+  {
+    "table": "user_sessions",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "user_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "session_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "ip_address",
+        "definition": "text"
+      },
+      {
+        "name": "user_agent",
+        "definition": "text"
+      },
+      {
+        "name": "login_at",
+        "definition": "timestamp without time zone DEFAULT now()"
+      },
+      {
+        "name": "last_seen",
+        "definition": "timestamp without time zone DEFAULT now()"
+      },
+      {
+        "name": "is_active",
+        "definition": "boolean DEFAULT true"
+      }
+    ]
+  },
+  {
+    "table": "users",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "name",
+        "definition": "character varying(100) NOT NULL"
+      },
+      {
+        "name": "email",
+        "definition": "character varying(150) NOT NULL"
+      },
+      {
+        "name": "password_hash",
+        "definition": "text"
+      },
+      {
+        "name": "role",
+        "definition": "character varying(30) NOT NULL"
+      },
+      {
+        "name": "status",
+        "definition": "character varying(20) DEFAULT 'inactive'::character varying NOT NULL"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp without time zone DEFAULT now()"
+      },
+      {
+        "name": "updated_at",
+        "definition": "timestamp without time zone DEFAULT now()"
+      },
+      {
+        "name": "username",
+        "definition": "text DEFAULT 'guest'::text NOT NULL"
+      },
+      {
+        "name": "reset_token",
+        "definition": "text"
+      },
+      {
+        "name": "token_expiry",
+        "definition": "timestamp without time zone"
+      },
+      {
+        "name": "is_active",
+        "definition": "boolean DEFAULT false"
+      },
+      {
+        "name": "otp",
+        "definition": "text"
+      },
+      {
+        "name": "otp_expiry",
+        "definition": "timestamp without time zone"
+      },
+      {
+        "name": "telegram_session",
+        "definition": "text"
+      },
+      {
+        "name": "payment_status",
+        "definition": "character varying(20) DEFAULT 'pending'::character varying"
+      },
+      {
+        "name": "razorpay_order_id",
+        "definition": "text"
+      },
+      {
+        "name": "plan_selected",
+        "definition": "character varying(50)"
+      },
+      {
+        "name": "amount_paid",
+        "definition": "numeric(10,2)"
+      },
+      {
+        "name": "suspended_at",
+        "definition": "timestamp without time zone"
+      },
+      {
+        "name": "suspended_reason",
+        "definition": "text"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "users_role_check CHECK (((role)::text = ANY (ARRAY['RESEARCH_ANALYST'::text, 'BROKER'::text, 'CLIENT'::text])))"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "users_status_check CHECK (((status)::text = ANY (ARRAY[('active'::character varying)::text, ('inactive'::character varying)::text, ('suspended'::character varying)::text])))"
+      }
+    ]
+  },
+  {
+    "table": "whatsapp_business_accounts",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "owner_user_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "business_name",
+        "definition": "character varying(150)"
+      },
+      {
+        "name": "whatsapp_business_account_id",
+        "definition": "character varying(100) CONSTRAINT whatsapp_business_accounts_whatsapp_business_account_i_not_null NOT NULL"
+      },
+      {
+        "name": "phone_number_id",
+        "definition": "character varying(100) NOT NULL"
+      },
+      {
+        "name": "display_phone_number",
+        "definition": "character varying(40)"
+      },
+      {
+        "name": "verified_name",
+        "definition": "character varying(150)"
+      },
+      {
+        "name": "access_token_encrypted",
+        "definition": "text NOT NULL"
+      },
+      {
+        "name": "status",
+        "definition": "character varying(20) DEFAULT 'CONNECTED'::character varying NOT NULL"
+      },
+      {
+        "name": "connected_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "disconnected_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "last_verified_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "last_error",
+        "definition": "text"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "whatsapp_business_accounts_status_check CHECK (((status)::text = ANY (ARRAY[('CONNECTED'::character varying)::text, ('DISCONNECTED'::character varying)::text, ('ERROR'::character varying)::text])))"
+      }
+    ]
+  },
+  {
+    "table": "whatsapp_message_jobs",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "research_call_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "original_call_id",
+        "definition": "uuid"
+      },
+      {
+        "name": "ra_user_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "participant_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "phone_number",
+        "definition": "character varying(20) NOT NULL"
+      },
+      {
+        "name": "event_type",
+        "definition": "character varying(50) NOT NULL"
+      },
+      {
+        "name": "status",
+        "definition": "character varying(20) DEFAULT 'PENDING'::character varying NOT NULL"
+      },
+      {
+        "name": "attempts",
+        "definition": "integer DEFAULT 0 NOT NULL"
+      },
+      {
+        "name": "error_message",
+        "definition": "text"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "message",
+        "definition": "text"
+      }
+    ]
+  },
+  {
+    "table": "whatsapp_messages",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "research_call_id",
+        "definition": "uuid"
+      },
+      {
+        "name": "participant_id",
+        "definition": "uuid"
+      },
+      {
+        "name": "phone_number",
+        "definition": "character varying(20)"
+      },
+      {
+        "name": "whatsapp_message_id",
+        "definition": "text"
+      },
+      {
+        "name": "message_text",
+        "definition": "text"
+      },
+      {
+        "name": "sent_at",
+        "definition": "timestamp with time zone DEFAULT now()"
+      }
+    ]
+  },
+  {
+    "table": "whatsapp_participants",
+    "columns": [
+      {
+        "name": "id",
+        "definition": "uuid DEFAULT gen_random_uuid() NOT NULL"
+      },
+      {
+        "name": "ra_user_id",
+        "definition": "uuid NOT NULL"
+      },
+      {
+        "name": "participant_name",
+        "definition": "character varying(150) NOT NULL"
+      },
+      {
+        "name": "phone_number",
+        "definition": "character varying(20) NOT NULL"
+      },
+      {
+        "name": "consent_confirmed",
+        "definition": "boolean DEFAULT false NOT NULL"
+      },
+      {
+        "name": "consent_source",
+        "definition": "character varying(30)"
+      },
+      {
+        "name": "consent_confirmed_at",
+        "definition": "timestamp with time zone"
+      },
+      {
+        "name": "is_active",
+        "definition": "boolean DEFAULT true NOT NULL"
+      },
+      {
+        "name": "created_by",
+        "definition": "uuid"
+      },
+      {
+        "name": "created_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "updated_at",
+        "definition": "timestamp with time zone DEFAULT now() NOT NULL"
+      },
+      {
+        "name": "CONSTRAINT",
+        "definition": "whatsapp_participant_phone_format CHECK (((phone_number)::text ~ '^[1-9][0-9]{9,14}$'::text))"
+      }
+    ]
+  }
+]

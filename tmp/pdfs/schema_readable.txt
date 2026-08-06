@@ -1,0 +1,616 @@
+
+[audit_logs]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  timestamp :: timestamp without time zone DEFAULT now()
+  admin_name :: character varying(255)
+  admin_id :: uuid
+  admin_role :: character varying(50)
+  action :: character varying(100) NOT NULL
+  module :: character varying(100)
+  target_entity :: character varying(255)
+  target_type :: character varying(100)
+  description :: text
+  status :: character varying(50) DEFAULT 'SUCCESS'::character varying
+  reason :: text
+  ip_address :: character varying(100)
+  device :: text
+  old_value :: jsonb
+  new_value :: jsonb
+  created_at :: timestamp without time zone DEFAULT now()
+
+[broker_details]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  user_id :: uuid
+  legal_name :: character varying(255) NOT NULL
+  trade_name :: character varying(255)
+  entity_type :: character varying(100)
+  incorporation_date :: date
+  pan :: character varying(10)
+  cin :: character varying(30)
+  gstin :: character varying(20)
+  registered_address :: text
+  correspondence_address :: text
+  email :: character varying(150)
+  mobile :: character varying(20)
+  website :: character varying(255)
+  sebi_registration_no :: character varying(50)
+  registration_category :: character varying(100)
+  registration_date :: date
+  registration_validity :: character varying(100)
+  membership_code :: character varying(50)
+  exchange_nse :: boolean DEFAULT false
+  exchange_bse :: boolean DEFAULT false
+  exchange_smi :: boolean DEFAULT false
+  exchange_ncdex :: boolean DEFAULT false
+  segment_cash :: boolean DEFAULT false
+  segment_fo :: boolean DEFAULT false
+  segment_currency :: boolean DEFAULT false
+  sebi_certificate :: text
+  exchange_certificates :: text[]
+  compliance_officer_name :: character varying(255)
+  compliance_designation :: character varying(100)
+  compliance_pan :: character varying(10)
+  compliance_mobile :: character varying(20)
+  net_worth :: numeric
+  auditor_name :: character varying(255)
+  auditor_membership :: character varying(100)
+  appointment_letter :: text
+  networth_certificate :: text
+  financial_statements :: text
+  ca_certificate :: text
+  authorized_person_name :: character varying(255)
+  authorized_person_pan :: character varying(10)
+  authorized_person_designation :: character varying(100)
+  authorized_person_email :: character varying(150)
+  authorized_person_aadhaar :: character varying(20)
+  authorized_person_mobile :: character varying(20)
+  no_disciplinary_action :: boolean DEFAULT false
+  no_suspension :: boolean DEFAULT false
+  no_criminal_case :: boolean DEFAULT false
+  agree_sebi_circulars :: boolean DEFAULT false
+  agree_code_of_conduct :: boolean DEFAULT false
+  status :: character varying(20) DEFAULT 'pending'::character varying
+  created_at :: timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  updated_at :: timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  rejection_reason :: text
+  approved_by :: uuid
+  approved_at :: timestamp with time zone
+  CONSTRAINT :: broker_details_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('approved'::character varying)::text, ('rejected'::character varying)::text, ('suspended'::character varying)::text])))
+
+[company_users]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  username :: character varying(100) NOT NULL
+  email :: character varying(255) NOT NULL
+  password_hash :: text NOT NULL
+  role :: character varying(50) NOT NULL
+  status :: character varying(20) DEFAULT 'ACTIVE'::character varying
+  created_at :: timestamp without time zone DEFAULT now()
+  updated_at :: timestamp without time zone DEFAULT now()
+
+[disclaimer_history]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  ra_user_id :: uuid NOT NULL
+  disclaimer_text :: text NOT NULL
+  version_number :: integer NOT NULL
+  created_at :: timestamp without time zone DEFAULT now()
+
+[notifications]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  source :: character varying(100) NOT NULL
+  title :: character varying(255) NOT NULL
+  description :: text NOT NULL
+  notification_type :: character varying(50)
+  reference_id :: text
+  reference_table :: character varying(100)
+  is_read :: boolean DEFAULT false
+  is_deleted :: boolean DEFAULT false
+  created_at :: timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  updated_at :: timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+
+[password_setup_tokens]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  user_id :: uuid NOT NULL
+  registration_application_id :: uuid
+  token_hash :: text NOT NULL
+  expires_at :: timestamp with time zone NOT NULL
+  used_at :: timestamp with time zone
+  revoked_at :: timestamp with time zone
+  created_at :: timestamp with time zone DEFAULT now() NOT NULL
+  CONSTRAINT :: chk_password_setup_expiry CHECK ((expires_at > created_at))
+
+[payment_orders]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  registration_application_id :: uuid
+  plan_selection_id :: uuid
+  user_id :: uuid
+  provider :: character varying(30) DEFAULT 'RAZORPAY'::character varying NOT NULL
+  provider_order_id :: character varying(255)
+  amount_paise :: integer NOT NULL
+  currency :: character(3) DEFAULT 'INR'::bpchar NOT NULL
+  status :: character varying(30) DEFAULT 'CREATED'::character varying NOT NULL
+  idempotency_key :: character varying(255) NOT NULL
+  receipt :: character varying(255)
+  notes :: jsonb DEFAULT '{}'::jsonb NOT NULL
+  paid_at :: timestamp with time zone
+  failed_at :: timestamp with time zone
+  failure_reason :: text
+  created_at :: timestamp with time zone DEFAULT now() NOT NULL
+  updated_at :: timestamp with time zone DEFAULT now() NOT NULL
+  refund_idempotency_key :: character varying(255)
+  refunded_at :: timestamp with time zone
+  CONSTRAINT :: payment_orders_amount_paise_check CHECK ((amount_paise >= 0))
+  CONSTRAINT :: payment_orders_provider_check CHECK (((provider)::text = 'RAZORPAY'::text))
+  CONSTRAINT :: payment_orders_status_check CHECK (((status)::text = ANY ((ARRAY['CREATED'::character varying, 'PENDING'::character varying, 'PAID'::character varying, 'FAILED'::character varying, 'CANCELLED'::character varying, 'REFUND_PENDING'::character varying, 'REFUNDED'::character varying, 'PARTIALLY_REFUNDED'::character varying])::text[])))
+
+[payment_transactions]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  payment_order_id :: uuid NOT NULL
+  provider_payment_id :: character varying(255)
+  provider_signature :: text
+  transaction_type :: character varying(30) NOT NULL
+  status :: character varying(40) NOT NULL
+  amount_paise :: integer NOT NULL
+  currency :: character(3) DEFAULT 'INR'::bpchar NOT NULL
+  failure_code :: character varying(100)
+  failure_description :: text
+  provider_payload :: jsonb DEFAULT '{}'::jsonb NOT NULL
+  created_at :: timestamp with time zone DEFAULT now() NOT NULL
+  provider_refund_id :: character varying(255)
+  CONSTRAINT :: payment_transactions_amount_paise_check CHECK ((amount_paise >= 0))
+  CONSTRAINT :: payment_transactions_transaction_type_check CHECK (((transaction_type)::text = ANY ((ARRAY['PAYMENT'::character varying, 'REFUND'::character varying, 'CHARGEBACK'::character varying])::text[])))
+
+[ra_details]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  user_id :: uuid
+  salutation :: character varying(10)
+  first_name :: character varying(50)
+  middle_name :: character varying(50)
+  surname :: character varying(50)
+  org_name :: character varying(100)
+  designation :: character varying(100)
+  short_bio :: text
+  email :: character varying(100)
+  mobile :: character varying(20)
+  telephone :: character varying(20)
+  country :: character varying(50)
+  state :: character varying(50)
+  city :: character varying(50)
+  pincode :: character varying(10)
+  address_line1 :: text
+  address_line2 :: text
+  profile_image :: text
+  sebi_reg_no :: character varying(50)
+  sebi_start_date :: date
+  sebi_expiry_date :: date
+  sebi_certificate :: text
+  sebi_receipt :: text
+  nism_reg_no :: character varying(50)
+  nism_valid_till :: date
+  nism_certificate :: text
+  academic_qualification :: character varying(100)
+  professional_qualification :: character varying(100)
+  market_experience :: character varying(50)
+  expertise :: character varying(50)
+  markets :: character varying(50)
+  bank_name :: character varying(100)
+  account_holder :: character varying(100)
+  account_number :: character varying(50)
+  ifsc_code :: character varying(20)
+  cancelled_cheque :: text
+  pan_number :: character varying(20)
+  pan_card :: text
+  address_proof_type :: character varying(50)
+  address_proof_document :: text
+  declare_info_true :: boolean DEFAULT false
+  consent_verification :: boolean DEFAULT false
+  no_guaranteed_returns :: boolean DEFAULT false
+  conflict_of_interest :: boolean DEFAULT false
+  personal_trading :: boolean DEFAULT false
+  sebi_compliance :: boolean DEFAULT false
+  platform_policy :: boolean DEFAULT false
+  status :: character varying(20) DEFAULT 'pending'::character varying
+  created_at :: timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  additional_comments :: text
+  rejection_reason :: text
+  disclaimer_updated_at :: timestamp without time zone DEFAULT now()
+  approved_by :: uuid
+  approved_at :: timestamp without time zone
+  bank_branch :: character varying(255)
+  CONSTRAINT :: ra_details_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('approved'::character varying)::text, ('rejected'::character varying)::text, ('suspended'::character varying)::text])))
+
+[ra_message_templates]
+  ra_user_id :: uuid NOT NULL
+  message_type :: character varying(20) NOT NULL
+  template_version :: integer DEFAULT 1 NOT NULL
+  template_data :: jsonb NOT NULL
+  created_at :: timestamp with time zone DEFAULT now() NOT NULL
+  updated_at :: timestamp with time zone DEFAULT now() NOT NULL
+  CONSTRAINT :: ra_message_templates_message_type_check CHECK (((message_type)::text = ANY ((ARRAY['NEW_CALL'::character varying, 'ERRATA'::character varying])::text[])))
+  CONSTRAINT :: ra_message_templates_template_version_check CHECK ((template_version > 0))
+  CONSTRAINT :: ra_message_templates_valid_data CHECK (((jsonb_typeof(template_data) = 'object'::text) AND (template_data ? 'version'::text) AND (template_data ? 'blocks'::text) AND (jsonb_typeof((template_data -> 'blocks'::text)) = 'array'::text)))
+
+[ra_profile_update_requests]
+  id :: integer NOT NULL
+  ra_user_id :: uuid NOT NULL
+  requested_changes :: jsonb NOT NULL
+  status :: character varying(20) DEFAULT 'PENDING'::character varying
+  admin_remark :: text
+  created_at :: timestamp without time zone DEFAULT now()
+  reviewed_at :: timestamp without time zone
+
+[razorpay_webhook_events]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  provider_event_id :: character varying(255)
+  event_type :: character varying(100) NOT NULL
+  signature :: text
+  payload :: jsonb NOT NULL
+  processing_status :: character varying(20) DEFAULT 'RECEIVED'::character varying NOT NULL
+  error_message :: text
+  received_at :: timestamp with time zone DEFAULT now() NOT NULL
+  processed_at :: timestamp with time zone
+  attempt_count :: integer DEFAULT 0 NOT NULL
+  last_attempt_at :: timestamp with time zone
+  CONSTRAINT :: razorpay_webhook_events_processing_status_check CHECK (((processing_status)::text = ANY ((ARRAY['RECEIVED'::character varying, 'PROCESSED'::character varying, 'IGNORED'::character varying, 'FAILED'::character varying])::text[])))
+
+[registration_applications]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  applicant_type :: character varying(30) NOT NULL
+  entity_id :: uuid
+  user_id :: uuid
+  email :: character varying(150) NOT NULL
+  mobile :: character varying(20)
+  status :: character varying(40) DEFAULT 'FORM_SUBMITTED'::character varying NOT NULL
+  submitted_at :: timestamp with time zone
+  paid_at :: timestamp with time zone
+  approved_at :: timestamp with time zone
+  approved_by :: uuid
+  rejected_at :: timestamp with time zone
+  rejected_by :: uuid
+  rejection_reason :: text
+  created_at :: timestamp with time zone DEFAULT now() NOT NULL
+  updated_at :: timestamp with time zone DEFAULT now() NOT NULL
+  registration_token_hash :: text
+  registration_token_expires_at :: timestamp with time zone
+  CONSTRAINT :: registration_applications_applicant_type_check CHECK (((applicant_type)::text = ANY ((ARRAY['RA'::character varying, 'BROKER'::character varying, 'CLIENT'::character varying])::text[])))
+  CONSTRAINT :: registration_applications_status_check CHECK (((status)::text = ANY ((ARRAY['DRAFT'::character varying, 'FORM_SUBMITTED'::character varying, 'PLAN_SELECTED'::character varying, 'PAYMENT_PENDING'::character varying, 'PAYMENT_FAILED'::character varying, 'PAID_PENDING_APPROVAL'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying, 'REFUND_PENDING'::character varying, 'REFUNDED'::character varying])::text[])))
+
+[registration_plan_selections]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  registration_application_id :: uuid CONSTRAINT registration_plan_selection_registration_application_i_not_null NOT NULL
+  plan_id :: uuid NOT NULL
+  plan_code_snapshot :: character varying(80) NOT NULL
+  plan_name_snapshot :: character varying(150) NOT NULL
+  audience_type_snapshot :: character varying(20) NOT NULL
+  tier_code_snapshot :: character varying(20) NOT NULL
+  price_paise_snapshot :: integer NOT NULL
+  currency_snapshot :: character(3) NOT NULL
+  duration_days_snapshot :: integer NOT NULL
+  plan_version_snapshot :: integer NOT NULL
+  selected_at :: timestamp with time zone DEFAULT now() NOT NULL
+  replaced_at :: timestamp with time zone
+  CONSTRAINT :: registration_plan_selections_duration_days_snapshot_check CHECK ((duration_days_snapshot > 0))
+  CONSTRAINT :: registration_plan_selections_price_paise_snapshot_check CHECK ((price_paise_snapshot >= 0))
+
+[research_call_exits]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  research_call_id :: uuid NOT NULL
+  exit_time :: timestamp without time zone NOT NULL
+  exit_message :: character varying(500)
+  created_at :: timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  exit_price :: numeric(12,2)
+
+[research_call_modifications]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  research_call_id :: uuid NOT NULL
+  modify_time :: timestamp without time zone NOT NULL
+  modify_message :: character varying(500)
+  created_at :: timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+
+[research_calls]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  ra_user_id :: uuid NOT NULL
+  status :: character varying(20) DEFAULT 'PUBLISHED'::character varying NOT NULL
+  created_at :: timestamp without time zone DEFAULT now() NOT NULL
+  exchange_type :: character varying(10)
+  market_type :: character varying(10)
+  symbol :: character varying(30) NOT NULL
+  display_name :: character varying(100)
+  action :: character varying(10) NOT NULL
+  call_type :: character varying(20) NOT NULL
+  trade_type :: character varying(20) NOT NULL
+  expiry_date :: date
+  entry_price :: numeric NOT NULL
+  entry_price_upper :: numeric
+  target_price :: numeric NOT NULL
+  target_price_2 :: numeric
+  target_price_3 :: numeric
+  stop_loss :: numeric NOT NULL
+  stop_loss_2 :: numeric
+  stop_loss_3 :: numeric
+  holding_period :: character varying(30)
+  rationale :: character varying(255)
+  underlying_study :: character varying(255)
+  is_algo :: boolean DEFAULT false NOT NULL
+  has_vested_interest :: boolean DEFAULT false NOT NULL
+  research_remarks :: text
+  entry_price_low :: numeric
+  parent_call_id :: uuid
+  version_type :: character varying(20) DEFAULT 'ORIGINAL'::character varying
+  exit_price :: numeric DEFAULT 0
+  closed_at :: timestamp without time zone
+  is_latest :: boolean DEFAULT true
+  file_url :: text
+  disclaimer_snapshot :: text
+  disclaimer_snapshot_at :: timestamp without time zone DEFAULT now()
+  exit_remark :: text
+  errata_reason :: text
+  version_number :: integer DEFAULT 1 NOT NULL
+  published_message_text :: text
+  message_template_version :: integer
+  message_template_snapshot :: jsonb
+  CONSTRAINT :: research_calls_action_check CHECK (((action)::text = ANY (ARRAY[('BUY'::character varying)::text, ('SELL'::character varying)::text])))
+  CONSTRAINT :: research_calls_call_type_check CHECK (((call_type)::text = ANY (ARRAY[('Cash'::character varying)::text, ('Futures'::character varying)::text, ('Option Call'::character varying)::text, ('Option Put'::character varying)::text])))
+  CONSTRAINT :: research_calls_exchange_type_check CHECK (((exchange_type)::text = ANY (ARRAY[('NSE'::character varying)::text, ('BSE'::character varying)::text])))
+  CONSTRAINT :: research_calls_market_type_check CHECK (((market_type)::text = ANY (ARRAY[('STOCK'::character varying)::text, ('INDEX'::character varying)::text])))
+  CONSTRAINT :: research_calls_message_template_snapshot_check CHECK (((message_template_snapshot IS NULL) OR ((jsonb_typeof(message_template_snapshot) = 'object'::text) AND (message_template_snapshot ? 'version'::text) AND (message_template_snapshot ? 'blocks'::text) AND (jsonb_typeof((message_template_snapshot -> 'blocks'::text)) = 'array'::text))))
+  CONSTRAINT :: research_calls_message_template_version_check CHECK (((message_template_version IS NULL) OR (message_template_version > 0)))
+  CONSTRAINT :: research_calls_trade_type_check CHECK (((trade_type)::text = ANY (ARRAY[('Intraday'::character varying)::text, ('BTST'::character varying)::text, ('STBT'::character varying)::text, ('Short Term'::character varying)::text, ('Long Term'::character varying)::text])))
+  CONSTRAINT :: research_calls_version_number_positive CHECK ((version_number > 0))
+
+[subscription_events]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  subscription_id :: uuid NOT NULL
+  event_type :: character varying(80) NOT NULL
+  previous_status :: character varying(40)
+  new_status :: character varying(40)
+  actor_user_id :: uuid
+  reason :: text
+  metadata :: jsonb DEFAULT '{}'::jsonb NOT NULL
+  created_at :: timestamp with time zone DEFAULT now() NOT NULL
+
+[subscription_features]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  feature_key :: character varying(100) NOT NULL
+  display_name :: character varying(150) NOT NULL
+  description :: text
+  value_type :: character varying(20) DEFAULT 'BOOLEAN'::character varying NOT NULL
+  is_active :: boolean DEFAULT true NOT NULL
+  created_at :: timestamp with time zone DEFAULT now() NOT NULL
+  updated_at :: timestamp with time zone DEFAULT now() NOT NULL
+  CONSTRAINT :: subscription_features_value_type_check CHECK (((value_type)::text = ANY ((ARRAY['BOOLEAN'::character varying, 'NUMBER'::character varying, 'TEXT'::character varying])::text[])))
+
+[subscription_plan_features]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  plan_id :: uuid NOT NULL
+  feature_id :: uuid NOT NULL
+  is_enabled :: boolean DEFAULT true NOT NULL
+  numeric_value :: numeric
+  text_value :: text
+  display_order :: integer DEFAULT 0 NOT NULL
+  created_at :: timestamp with time zone DEFAULT now() NOT NULL
+  updated_at :: timestamp with time zone DEFAULT now() NOT NULL
+
+[subscription_plan_limits]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  plan_id :: uuid NOT NULL
+  limit_key :: character varying(100) NOT NULL
+  display_name :: character varying(150) NOT NULL
+  limit_value :: bigint
+  is_unlimited :: boolean DEFAULT false NOT NULL
+  created_at :: timestamp with time zone DEFAULT now() NOT NULL
+  updated_at :: timestamp with time zone DEFAULT now() NOT NULL
+  enforcement_mode :: character varying(30) DEFAULT 'RESOURCE_COUNT'::character varying NOT NULL
+  reset_period :: character varying(30) DEFAULT 'SUBSCRIPTION'::character varying NOT NULL
+  CONSTRAINT :: chk_plan_limit_value CHECK (((is_unlimited = true) OR ((limit_value IS NOT NULL) AND (limit_value >= 0))))
+  CONSTRAINT :: subscription_plan_limits_enforcement_mode_check CHECK (((enforcement_mode)::text = ANY ((ARRAY['EVENT_COUNT'::character varying, 'RESOURCE_COUNT'::character varying, 'INFORMATIONAL'::character varying])::text[])))
+  CONSTRAINT :: subscription_plan_limits_reset_period_check CHECK (((reset_period)::text = ANY ((ARRAY['DAILY'::character varying, 'MONTHLY'::character varying, 'SUBSCRIPTION'::character varying, 'LIFETIME'::character varying])::text[])))
+
+[subscription_plans]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  plan_code :: character varying(80) NOT NULL
+  audience_type :: character varying(20) NOT NULL
+  tier_code :: character varying(20) NOT NULL
+  display_name :: character varying(150) NOT NULL
+  short_description :: text
+  full_description :: text
+  price_paise :: integer DEFAULT 0 NOT NULL
+  currency :: character(3) DEFAULT 'INR'::bpchar NOT NULL
+  billing_period :: character varying(20) DEFAULT 'YEARLY'::character varying NOT NULL
+  duration_days :: integer DEFAULT 365 NOT NULL
+  trial_days :: integer DEFAULT 0 NOT NULL
+  is_active :: boolean DEFAULT true NOT NULL
+  is_popular :: boolean DEFAULT false NOT NULL
+  display_order :: integer DEFAULT 0 NOT NULL
+  version :: integer DEFAULT 1 NOT NULL
+  effective_from :: timestamp with time zone DEFAULT now() NOT NULL
+  effective_until :: timestamp with time zone
+  created_by :: uuid
+  updated_by :: uuid
+  created_at :: timestamp with time zone DEFAULT now() NOT NULL
+  updated_at :: timestamp with time zone DEFAULT now() NOT NULL
+  CONSTRAINT :: chk_subscription_plan_effective_dates CHECK (((effective_until IS NULL) OR (effective_until > effective_from)))
+  CONSTRAINT :: subscription_plans_audience_type_check CHECK (((audience_type)::text = ANY ((ARRAY['RA'::character varying, 'BROKER'::character varying, 'CLIENT'::character varying])::text[])))
+  CONSTRAINT :: subscription_plans_billing_period_check CHECK (((billing_period)::text = ANY ((ARRAY['MONTHLY'::character varying, 'QUARTERLY'::character varying, 'HALF_YEARLY'::character varying, 'YEARLY'::character varying, 'CUSTOM'::character varying])::text[])))
+  CONSTRAINT :: subscription_plans_duration_days_check CHECK ((duration_days > 0))
+  CONSTRAINT :: subscription_plans_price_paise_check CHECK ((price_paise >= 0))
+  CONSTRAINT :: subscription_plans_tier_code_check CHECK (((tier_code)::text = ANY ((ARRAY['TIER_1'::character varying, 'TIER_2'::character varying, 'TIER_3'::character varying])::text[])))
+  CONSTRAINT :: subscription_plans_trial_days_check CHECK ((trial_days >= 0))
+  CONSTRAINT :: subscription_plans_version_check CHECK ((version > 0))
+
+[subscription_usage_events]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  subscription_id :: uuid NOT NULL
+  limit_key :: character varying(100) NOT NULL
+  period_start :: timestamp with time zone NOT NULL
+  period_end :: timestamp with time zone NOT NULL
+  idempotency_key :: character varying(255) NOT NULL
+  status :: character varying(20) DEFAULT 'RESERVED'::character varying NOT NULL
+  units :: integer DEFAULT 1 NOT NULL
+  reserved_until :: timestamp with time zone
+  consumed_at :: timestamp with time zone
+  released_at :: timestamp with time zone
+  metadata :: jsonb DEFAULT '{}'::jsonb NOT NULL
+  created_at :: timestamp with time zone DEFAULT now() NOT NULL
+  updated_at :: timestamp with time zone DEFAULT now() NOT NULL
+  CONSTRAINT :: chk_subscription_usage_period CHECK ((period_end > period_start))
+  CONSTRAINT :: subscription_usage_events_status_check CHECK (((status)::text = ANY ((ARRAY['RESERVED'::character varying, 'CONSUMED'::character varying, 'RELEASED'::character varying])::text[])))
+  CONSTRAINT :: subscription_usage_events_units_check CHECK ((units > 0))
+
+[subscriptions]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  user_id :: uuid
+  registration_application_id :: uuid
+  plan_id :: uuid NOT NULL
+  payment_order_id :: uuid
+  status :: character varying(40) DEFAULT 'PAID_PENDING_APPROVAL'::character varying NOT NULL
+  starts_at :: timestamp with time zone
+  expires_at :: timestamp with time zone
+  approved_at :: timestamp with time zone
+  approved_by :: uuid
+  cancelled_at :: timestamp with time zone
+  cancellation_reason :: text
+  suspended_at :: timestamp with time zone
+  suspension_reason :: text
+  auto_renew :: boolean DEFAULT false NOT NULL
+  plan_code_snapshot :: character varying(80) NOT NULL
+  plan_name_snapshot :: character varying(150) NOT NULL
+  tier_code_snapshot :: character varying(20) NOT NULL
+  price_paise_snapshot :: integer NOT NULL
+  duration_days_snapshot :: integer NOT NULL
+  plan_version_snapshot :: integer NOT NULL
+  created_at :: timestamp with time zone DEFAULT now() NOT NULL
+  updated_at :: timestamp with time zone DEFAULT now() NOT NULL
+  CONSTRAINT :: chk_subscription_period CHECK (((expires_at IS NULL) OR (starts_at IS NULL) OR (expires_at > starts_at)))
+  CONSTRAINT :: subscriptions_duration_days_snapshot_check CHECK ((duration_days_snapshot > 0))
+  CONSTRAINT :: subscriptions_price_paise_snapshot_check CHECK ((price_paise_snapshot >= 0))
+  CONSTRAINT :: subscriptions_status_check CHECK (((status)::text = ANY ((ARRAY['PENDING_PAYMENT'::character varying, 'PAID_PENDING_APPROVAL'::character varying, 'ACTIVE'::character varying, 'CANCELLED'::character varying, 'EXPIRED'::character varying, 'SUSPENDED'::character varying, 'ON_HOLD'::character varying, 'REJECTED'::character varying, 'REFUND_PENDING'::character varying, 'REFUNDED'::character varying])::text[])))
+
+[telegram_message_jobs]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  ra_user_id :: uuid NOT NULL
+  message :: text NOT NULL
+  status :: character varying(20) DEFAULT 'PENDING'::character varying
+  attempts :: integer DEFAULT 0
+  error :: text
+  created_at :: timestamp without time zone DEFAULT now()
+  processed_at :: timestamp without time zone
+
+[telegram_messages]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  ra_user_id :: uuid NOT NULL
+  message_text :: text NOT NULL
+  action :: character varying(50)
+  symbol :: character varying(50)
+  call_type :: character varying(50)
+  trade_type :: character varying(50)
+  entry_price :: character varying(50)
+  target_price :: character varying(50)
+  stop_loss :: character varying(50)
+  rationale :: text
+  holding_period :: character varying(50)
+  created_at :: timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+  entry_low :: numeric
+  entry_upper :: numeric
+  target_price_2 :: numeric
+  target_price_3 :: numeric
+  stop_loss_2 :: numeric
+  stop_loss_3 :: numeric
+
+[telegram_users]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  telegram_user_id :: bigint NOT NULL
+  telegram_client_name :: character varying(255)
+  phone_number :: character varying(20)
+  user_id :: uuid NOT NULL
+  entity_type :: character varying(20) DEFAULT 'USER'::character varying
+
+[user_sessions]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  user_id :: uuid NOT NULL
+  session_id :: uuid NOT NULL
+  ip_address :: text
+  user_agent :: text
+  login_at :: timestamp without time zone DEFAULT now()
+  last_seen :: timestamp without time zone DEFAULT now()
+  is_active :: boolean DEFAULT true
+
+[users]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  name :: character varying(100) NOT NULL
+  email :: character varying(150) NOT NULL
+  password_hash :: text
+  role :: character varying(30) NOT NULL
+  status :: character varying(20) DEFAULT 'inactive'::character varying NOT NULL
+  created_at :: timestamp without time zone DEFAULT now()
+  updated_at :: timestamp without time zone DEFAULT now()
+  username :: text DEFAULT 'guest'::text NOT NULL
+  reset_token :: text
+  token_expiry :: timestamp without time zone
+  is_active :: boolean DEFAULT false
+  otp :: text
+  otp_expiry :: timestamp without time zone
+  telegram_session :: text
+  payment_status :: character varying(20) DEFAULT 'pending'::character varying
+  razorpay_order_id :: text
+  plan_selected :: character varying(50)
+  amount_paid :: numeric(10,2)
+  suspended_at :: timestamp without time zone
+  suspended_reason :: text
+  CONSTRAINT :: users_role_check CHECK (((role)::text = ANY (ARRAY['RESEARCH_ANALYST'::text, 'BROKER'::text, 'CLIENT'::text])))
+  CONSTRAINT :: users_status_check CHECK (((status)::text = ANY (ARRAY[('active'::character varying)::text, ('inactive'::character varying)::text, ('suspended'::character varying)::text])))
+
+[whatsapp_business_accounts]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  owner_user_id :: uuid NOT NULL
+  business_name :: character varying(150)
+  whatsapp_business_account_id :: character varying(100) CONSTRAINT whatsapp_business_accounts_whatsapp_business_account_i_not_null NOT NULL
+  phone_number_id :: character varying(100) NOT NULL
+  display_phone_number :: character varying(40)
+  verified_name :: character varying(150)
+  access_token_encrypted :: text NOT NULL
+  status :: character varying(20) DEFAULT 'CONNECTED'::character varying NOT NULL
+  connected_at :: timestamp with time zone
+  disconnected_at :: timestamp with time zone
+  last_verified_at :: timestamp with time zone
+  last_error :: text
+  created_at :: timestamp with time zone DEFAULT now() NOT NULL
+  updated_at :: timestamp with time zone DEFAULT now() NOT NULL
+  CONSTRAINT :: whatsapp_business_accounts_status_check CHECK (((status)::text = ANY (ARRAY[('CONNECTED'::character varying)::text, ('DISCONNECTED'::character varying)::text, ('ERROR'::character varying)::text])))
+
+[whatsapp_message_jobs]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  research_call_id :: uuid NOT NULL
+  original_call_id :: uuid
+  ra_user_id :: uuid NOT NULL
+  participant_id :: uuid NOT NULL
+  phone_number :: character varying(20) NOT NULL
+  event_type :: character varying(50) NOT NULL
+  status :: character varying(20) DEFAULT 'PENDING'::character varying NOT NULL
+  attempts :: integer DEFAULT 0 NOT NULL
+  error_message :: text
+  created_at :: timestamp with time zone DEFAULT now() NOT NULL
+  updated_at :: timestamp with time zone DEFAULT now() NOT NULL
+  message :: text
+
+[whatsapp_messages]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  research_call_id :: uuid
+  participant_id :: uuid
+  phone_number :: character varying(20)
+  whatsapp_message_id :: text
+  message_text :: text
+  sent_at :: timestamp with time zone DEFAULT now()
+
+[whatsapp_participants]
+  id :: uuid DEFAULT gen_random_uuid() NOT NULL
+  ra_user_id :: uuid NOT NULL
+  participant_name :: character varying(150) NOT NULL
+  phone_number :: character varying(20) NOT NULL
+  consent_confirmed :: boolean DEFAULT false NOT NULL
+  consent_source :: character varying(30)
+  consent_confirmed_at :: timestamp with time zone
+  is_active :: boolean DEFAULT true NOT NULL
+  created_by :: uuid
+  created_at :: timestamp with time zone DEFAULT now() NOT NULL
+  updated_at :: timestamp with time zone DEFAULT now() NOT NULL
+  CONSTRAINT :: whatsapp_participant_phone_format CHECK (((phone_number)::text ~ '^[1-9][0-9]{9,14}$'::text))

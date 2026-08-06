@@ -614,7 +614,24 @@ const handleSuspend = async (
   </Button>
 </Box>
 
-
+{selectedRA.status.toLowerCase() !== "approved" && (
+  <TextField
+    fullWidth
+    multiline
+    minRows={2}
+    label="Rejection reason"
+    placeholder="Enter the reason for rejecting this registration"
+    value={rejectReason}
+    onChange={(event) => setRejectReason(event.target.value)}
+    inputProps={{ maxLength: 1000 }}
+    helperText={`${rejectReason.trim().length}/1000 characters`}
+    error={
+      rejectReason.length > 0 &&
+      rejectReason.trim().length < 5
+    }
+    sx={{ mt: 2 }}
+  />
+)}
        <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
 
             <Button

@@ -13,6 +13,7 @@ import {
 } from "../controllers/researchCallTemplate.controller";
 import { upload } from "../middlewares/upload";
 import { requireActiveSubscription, requireSubscriptionFeature, reserveSubscriptionEventLimit } from "../middlewares/subscriptionAccess.middleware";
+import { requireResearchPublishingAuthorization } from "../middlewares/researchPublishingPolicy.middleware";
 
 
 const router = Router();
@@ -33,6 +34,7 @@ router.put(
 router.post(
   "/research/calls",
   authenticate,
+  requireResearchPublishingAuthorization,
   requireActiveSubscription,
   requireSubscriptionFeature(
     "RA_RESEARCH_CALLS"
@@ -45,7 +47,16 @@ router.post(
   createResearchCall
 );
 router.get("/research/calls/my", authenticate, getResearchCalls);
-router.post("/research/calls/errata", authenticate, createErrata);
+router.post(
+  "/research/calls/errata",
+  authenticate,
+  requireResearchPublishingAuthorization,
+  requireActiveSubscription,
+  requireSubscriptionFeature(
+    "RA_RESEARCH_CALLS"
+  ),
+  createErrata
+);
 router.get(
   "/calls/:callId/versions",
   authenticate,
@@ -62,6 +73,11 @@ router.patch("/research/calls/:id/exit", authenticate, exitResearchCall);
 router.patch(
     "/research/calls/:id/publish",
     authenticate,
+    requireResearchPublishingAuthorization,
+    requireActiveSubscription,
+    requireSubscriptionFeature(
+      "RA_RESEARCH_CALLS"
+    ),
     publishDraftCall
 );
 // 🔹 Dashboard (already created)
