@@ -385,6 +385,16 @@ setErrorMsg("");
     { key: "ca_certificate", label: "CA Certificate" },
   ];
 
+  // Replace the Set with a plain string array
+const DATE_FIELDS = [
+  "sebi_start_date",
+  "sebi_expiry_date",
+  "nism_valid_till",
+  "incorporation_date",
+  "registration_date",
+  "registration_validity",
+];
+
   const isRA = type?.toUpperCase() === "RA";
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -430,12 +440,18 @@ setErrorMsg("");
                 <Grid item xs={12} sm={6} key={field}>
                   <TextField
                     fullWidth
+                    type={DATE_FIELDS.includes(field) ? "date" : "text"}
                     label={field.replace(/_/g, " ").toUpperCase()}
                     name={field}
                     value={fields[field] ?? ""}
                     onChange={handleChange}
                     error={!!serverErrors[field]}
   helperText={serverErrors[field] || ""}
+                    slotProps={{
+    inputLabel: {
+      shrink: DATE_FIELDS.includes(field) ? true : undefined,
+    },
+  }}
                   />
                 </Grid>
               ))}
@@ -476,12 +492,18 @@ setErrorMsg("");
                 <Grid item xs={12} sm={6} key={field}>
                   <TextField
                     fullWidth
+                    type={DATE_FIELDS.includes(field) ? "date" : "text"}
                     label={field.replace(/_/g, " ").toUpperCase()}
                     name={field}
                     value={fields[field] ?? ""}
                     onChange={handleChange}
                     error={!!serverErrors[field]}
                     helperText={serverErrors[field] || ""}
+                    slotProps={{
+    inputLabel: {
+      shrink: DATE_FIELDS.includes(field) ? true : undefined,
+    },
+  }}
                   />
                 </Grid>
               ))}
@@ -500,12 +522,18 @@ setErrorMsg("");
                   <Grid item xs={12} sm={6} key={field}>
                     <TextField
                       fullWidth
+                      type={DATE_FIELDS.includes(field) ? "date" : "text"}
                       label={field.replace(/_/g, " ").toUpperCase()}
                       name={field}
                       value={fields[field] ?? ""}
                       onChange={handleChange}
                       error={!!serverErrors[field]}
                       helperText={serverErrors[field] || ""}
+                                        slotProps={{
+    inputLabel: {
+      shrink: DATE_FIELDS.includes(field) ? true : undefined,
+    },
+  }}
                     />
                   </Grid>
                 ))}
