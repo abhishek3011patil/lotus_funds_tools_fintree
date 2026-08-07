@@ -1426,54 +1426,55 @@ const handleDeleteWhatsAppParticipant = async () => {
                 Telegram: {selectedRA.telegram || ""}
               </Typography>
 
-             <Button
+<Button
   variant="text"
   fullWidth
-  onClick={() => openFile(selectedRA?.profile)}
+  onClick={() => handleEdit(selectedRA.id)}
   sx={{
-    color: "#1e40af", // Standard Material UI link blue
+    color: "#1e40af",
     textTransform: "none",
     fontWeight: 500,
-    py: 1,
+    py: 0.5,
+    minHeight: "32px",
   }}
 >
   View Profile
 </Button>
 
-              <Box
-                sx={{
-                  mt: 2,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 1,
-                }}
-              >
-                <Button
-                  onClick={() =>
-                    selectedRA?.userId &&
-                    navigate(`/admin/disclaimer-history/${selectedRA.userId}`)
-                  }
-                >
-                  View Disclaimer History
-                </Button>
-                
-                <Button
-                  onClick={() =>
-                    selectedRA?.userId &&
-                    handleResendPasswordLink((selectedRA.userId))
-                  }
-                >
-                  Resend Password Link
-                </Button>
+<Box
+  sx={{
+    mt: 0.5,
+    display: "flex",
+    flexDirection: "column",
+    gap: 1,
+  }}
+>
+  <Button
+    onClick={() =>
+      selectedRA?.userId &&
+      navigate(`/admin/disclaimer-history/${selectedRA.userId}`)
+    }
+  >
+    View Disclaimer History
+  </Button>
 
-                <Button
-                  onClick={() =>
-                    navigate("/admin/ra-profile-update-requests")
-                  }
-                >
-                  Profile Update Requests
-                </Button>
-              </Box>
+  <Button
+    onClick={() =>
+      selectedRA?.userId &&
+      handleResendPasswordLink(selectedRA.userId)
+    }
+  >
+    Resend Password Link
+  </Button>
+
+  <Button
+    onClick={() =>
+      navigate("/admin/ra-profile-update-requests")
+    }
+  >
+    Profile Update Requests
+  </Button>
+</Box>
 
               {/* APPROVE / EDIT */}
               <Box
