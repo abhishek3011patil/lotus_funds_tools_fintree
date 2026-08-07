@@ -47,7 +47,7 @@ const Performance: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
 const [error, setError] = useState("");
-const [period, setPeriod] = useState<"monthly" | "yearly">("monthly");
+const [period, setPeriod] = useState<"weekly" | "monthly" | "yearly">("monthly");
 
 useEffect(() => {
   console.log("Selected Period:", period);
@@ -331,20 +331,22 @@ return (
     Performance
   </Typography>
 
-  <FormControl size="small" sx={{ minWidth: 180 }}>
-    <InputLabel>View</InputLabel>
+<FormControl size="small" sx={{ minWidth: 180 }}>
+  <InputLabel id="performance-view-label">View</InputLabel>
 
-    <Select
-      value={period}
-      label="View"
-      onChange={(e) =>
-        setPeriod(e.target.value as "monthly" | "yearly")
-      }
-    >
-      <MenuItem value="monthly">Monthly</MenuItem>
-      <MenuItem value="yearly">Yearly</MenuItem>
-    </Select>
-  </FormControl>
+  <Select
+    labelId="performance-view-label"
+    value={period}
+    label="View"
+    onChange={(e) =>
+      setPeriod(e.target.value as "weekly" | "monthly" | "yearly")
+    }
+  >
+    <MenuItem value="weekly">Weekly</MenuItem>
+    <MenuItem value="monthly">Monthly</MenuItem>
+    <MenuItem value="yearly">Yearly</MenuItem>
+  </Select>
+</FormControl>
 </Box>
       {loading ? (
         <Paper sx={cardStyle}>

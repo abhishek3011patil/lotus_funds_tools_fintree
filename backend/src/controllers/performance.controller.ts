@@ -41,7 +41,9 @@ export const getResearchPerformance   = async (
     }
 
 const period =
-  req.query.period === "yearly"
+  req.query.period === "weekly"
+    ? "weekly"
+    : req.query.period === "yearly"
     ? "yearly"
     : "monthly";
 
@@ -67,15 +69,28 @@ console.log("Period:", period);
 console.log("Month:", month);
 console.log("Year:", year);
 
-   let startDate: string;
+let startDate: string;
 let interval: string;
 
 if (period === "yearly") {
   startDate = `${year}-01-01`;
   interval = "1 year";
-} else {
+} else if (period === "monthly") {
   startDate = `${month}-01`;
   interval = "1 month";
+} else {
+  // Weekly: Monday to Sunday
+  const now = new Date();
+
+  const day = now.getDay(); // Sunday = 0, Monday = 1
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diffToMonday);
+  monday.setHours(0, 0, 0, 0);
+
+  startDate = monday.toISOString().slice(0, 10);
+  interval = "7 days";
 }
 
 const callsResult = await pool.query<PerformanceCall>(
@@ -115,8 +130,10 @@ const end = new Date(start);
 
 if (period === "yearly") {
   end.setFullYear(end.getFullYear() + 1);
-} else {
+} else if (period === "monthly") {
   end.setMonth(end.getMonth() + 1);
+} else {
+  end.setDate(end.getDate() + 7);
 }
 
    const createdThisMonth = rows.filter((call) => {
