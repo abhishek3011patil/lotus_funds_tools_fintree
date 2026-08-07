@@ -12,6 +12,7 @@ import RASettingsDisclaimer from "../common/RASettingsDisclaimer";
 import RemoveParticipant from "../components/setting/RA_setting_component/ManageParticipants";
 import WhatsAppParticipants from "../components/setting/WhatsAppParticipants";
 import RASubscriptionStatus from "../components/setting/RA_setting_component/RASubscriptionStatus";
+import RASubscriptionHistory from "../components/setting/RA_setting_component/RASubscriptionHistory";
 import ResearchCallTemplateBuilder from "../components/setting/ResearchCallTemplateBuilder";
 
 import { useNavigate } from "react-router-dom";
@@ -89,6 +90,12 @@ const Settings = () => {
       </Button>
     </Box>
 
+    {/* Subscription section: kept together directly below View Profile */}
+    <Box sx={{ backgroundColor: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: { xs: "16px", sm: "24px" }, marginBottom: "24px", width: "100%", maxWidth: "1000px", boxSizing: "border-box" }}>
+      <RASubscriptionStatus />
+      <RASubscriptionHistory />
+    </Box>
+
     {/* 2. Notification Alert Container */}
     <Box sx={{ width: "100%", maxWidth: "1000px" }}>
       {telegramDisconnected && (
@@ -129,11 +136,6 @@ const Settings = () => {
     {/* 5. Research Call Message Template Card */}
     <Box sx={{ backgroundColor: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: { xs: "16px", sm: "24px" }, marginBottom: "24px", width: "100%", maxWidth: "1000px", boxSizing: "border-box" }}>
       <ResearchCallTemplateBuilder />
-    </Box>
-
-    {/* 6. Subscription Status Card */}
-    <Box sx={{ backgroundColor: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: { xs: "16px", sm: "24px" }, marginBottom: "24px", width: "100%", maxWidth: "1000px", boxSizing: "border-box" }}>
-      <RASubscriptionStatus />
     </Box>
 
     {/* 7. WhatsApp Participants Card */}

@@ -1,7 +1,23 @@
 import type {
   RazorpaySuccessResponse,
-  RegistrationPaymentOrderResponse,
 } from "./types";
+
+export interface RazorpayCheckoutOrderResponse {
+  order: {
+    razorpayOrderId: string;
+    amountPaise: number;
+    currency: string;
+  };
+  checkout: {
+    keyId: string;
+    businessName: string;
+    description: string;
+    prefill: {
+      email: string;
+      contact: string;
+    };
+  };
+}
 
 const RAZORPAY_CHECKOUT_URL =
   "https://checkout.razorpay.com/v1/checkout.js";
@@ -197,7 +213,7 @@ export const loadRazorpayCheckout =
   };
 
 export const openRARegistrationCheckout = async (
-  orderResponse: RegistrationPaymentOrderResponse,
+  orderResponse: RazorpayCheckoutOrderResponse,
   reconcilePaymentFailure?: ReconcilePaymentFailure
 ): Promise<RazorpaySuccessResponse> => {
   if (checkoutInProgress) {

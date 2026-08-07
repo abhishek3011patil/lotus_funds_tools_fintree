@@ -22,6 +22,7 @@ import subscriptionAccessRoutes from "./routes/subscriptionAccess.routes";
 import { mountSwaggerDocs } from "./config/swagger";
 import clientRecommendationRoutes from "./routes/clientRecommendation.routes";
 import clientNotificationRoutes from "./routes/clientNotification.routes";
+import subscriptionNotificationRoutes from "./routes/subscriptionNotification.routes";
 
 const app = express();
 
@@ -110,6 +111,10 @@ app.use(
 );
 
 app.use("/api/client/notifications", clientNotificationRoutes);
+app.use(
+  "/api/subscription-notifications",
+  subscriptionNotificationRoutes
+);
 
 app.get("/check", (_req, res) => {
   res.send("APP WORKING");

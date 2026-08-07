@@ -1,6 +1,9 @@
 import {
   expireDueSubscriptions,
 } from "./subscriptionAccess.service";
+import {
+  processDueSubscriptionNotifications,
+} from "../controllers/subscriptionNotification.controller";
 
 let timer:
   | NodeJS.Timeout
@@ -44,6 +47,21 @@ const runExpiryPass =
           );
         }
       } while (expired === 500);
+
+      const notifications =
+        await processDueSubscriptionNotifications({
+          batchSize: 500,
+        });
+
+      if (
+        notifications.remindersAttempted > 0 ||
+        notifications.expiryNotificationsAttempted > 0
+      ) {
+        console.log(
+          "Subscription notification pass:",
+          notifications
+        );
+      }
     } catch (error) {
       console.error(
         "SUBSCRIPTION EXPIRY WORKER ERROR:",

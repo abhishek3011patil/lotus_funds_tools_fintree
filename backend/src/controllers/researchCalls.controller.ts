@@ -1658,28 +1658,30 @@ export const getMyRecommendationHistory = async (
 LEFT JOIN users u
   ON u.id = rc.ra_user_id
 
-WHERE (
-    $1 = ''
-    OR COALESCE(rc.display_name, '') ILIKE $2
-    OR COALESCE(rc.symbol, '') ILIKE $2
-    OR COALESCE(rc.exchange_type, '') ILIKE $2
-    OR COALESCE(rc.call_type, '') ILIKE $2
-    OR COALESCE(rc.trade_type, '') ILIKE $2
-    OR COALESCE(rc.action, '') ILIKE $2
-    OR COALESCE(rc.status, '') ILIKE $2
-    OR COALESCE(u.name, '') ILIKE $2
+WHERE rc.ra_user_id = $1
+  AND (
+    $2 = ''
+    OR COALESCE(rc.display_name, '') ILIKE $3
+    OR COALESCE(rc.symbol, '') ILIKE $3
+    OR COALESCE(rc.exchange_type, '') ILIKE $3
+    OR COALESCE(rc.call_type, '') ILIKE $3
+    OR COALESCE(rc.trade_type, '') ILIKE $3
+    OR COALESCE(rc.action, '') ILIKE $3
+    OR COALESCE(rc.status, '') ILIKE $3
+    OR COALESCE(u.name, '') ILIKE $3
 )
 
 ORDER BY rc.created_at DESC
 
-LIMIT $3
-OFFSET $4
+LIMIT $4
+OFFSET $5
     `;
 
   console.log("raUserId:", raUserId);
 console.log("search:", search);
 
 const { rows } = await pool.query(query, [
+  raUserId,
   search,
   `%${search}%`,
   limit,

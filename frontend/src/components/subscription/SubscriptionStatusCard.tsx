@@ -21,6 +21,12 @@ export type SubscriptionStatusCardProps = {
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  onRenew?: () => void;
+  onCancel?: () => void;
+  renewing?: boolean;
+  cancelling?: boolean;
+  renewalMessage?: string | null;
+  renewalError?: string | null;
   title?: string;
 };
 
@@ -47,6 +53,12 @@ const SubscriptionStatusCard = ({
   loading = false,
   error = null,
   onRetry,
+  onRenew,
+  onCancel,
+  renewing = false,
+  cancelling = false,
+  renewalMessage = null,
+  renewalError = null,
   title = "Subscription Status",
 }: SubscriptionStatusCardProps) => {
   if (loading) return <SubscriptionStatusSkeleton />;
@@ -234,6 +246,74 @@ const status = getSubscriptionStatusPresentation(subscription.status);
           </Box>
         </Grid>
       </Grid>
+
+      {(renewalMessage || renewalError) && (
+        <Alert
+          severity={renewalError ? "error" : "success"}
+          sx={{ mt: 2 }}
+        >
+          {renewalError || renewalMessage}
+        </Alert>
+      )}
+
+      {["ACTIVE", "EXPIRED", "CANCELLED"].includes(
+        subscription.status.toUpperCase()
+      ) && (onRenew || onCancel) && (
+        <Box
+          sx={{
+            mt: 2.5,
+            display: "flex",
+            alignItems: { xs: "stretch", sm: "flex-end" },
+            flexDirection: "column",
+            gap: 0.75,
+          }}
+        >
+          {!subscription.canRenew &&
+            subscription.renewalAvailableAt && (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                textAlign={{ xs: "left", sm: "right" }}
+              >
+                Renewal will be available from{" "}
+                {formatSubscriptionDate(
+                  subscription.renewalAvailableAt
+                )}.
+              </Typography>
+            )}
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            justifyContent="flex-end"
+          >
+            {subscription.canCancel && onCancel && (
+              <Button
+                color="error"
+                variant="outlined"
+                onClick={onCancel}
+                disabled={renewing || cancelling}
+              >
+                Cancel subscription
+              </Button>
+            )}
+            {onRenew && (
+              <Button
+                variant="contained"
+                onClick={onRenew}
+                disabled={
+                  renewing ||
+                  cancelling ||
+                  !subscription.canRenew
+                }
+              >
+                {renewing
+                  ? "Processing renewal..."
+                  : "Renew subscription"}
+              </Button>
+            )}
+          </Stack>
+        </Box>
+      )}
     </Box>
   );
 };

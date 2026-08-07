@@ -8,6 +8,7 @@ export type EmailTemplateName =
   | "BROKER_REJECTED"
   | "SUBSCRIPTION_EXPIRY_REMINDER"
   | "SUBSCRIPTION_EXPIRED"
+  | "SUBSCRIPTION_CANCELLED"
   | "PAYMENT_SUCCESSFUL"
   | "PAYMENT_FAILED"
   | "RESEARCH_CALL_DELIVERY_FAILURE"
@@ -42,6 +43,13 @@ export interface SubscriptionTemplateData {
   expiryDate: string;
 }
 
+export interface SubscriptionCancellationTemplateData {
+  name: string;
+  planName: string;
+  cancelledAt: string;
+  reason: string;
+}
+
 export interface PaymentTemplateData {
   name: string;
   amount: string;
@@ -74,6 +82,8 @@ export interface EmailTemplateDataMap {
   SUBSCRIPTION_EXPIRY_REMINDER:
     SubscriptionTemplateData;
   SUBSCRIPTION_EXPIRED: SubscriptionTemplateData;
+  SUBSCRIPTION_CANCELLED:
+    SubscriptionCancellationTemplateData;
   PAYMENT_SUCCESSFUL: PaymentTemplateData;
   PAYMENT_FAILED: PaymentTemplateData;
   RESEARCH_CALL_DELIVERY_FAILURE:
