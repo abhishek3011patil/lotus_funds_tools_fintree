@@ -46,6 +46,7 @@ const Dashboard = lazy(() => import("../pages/Dashboard"));
 const Performance = lazy(() => import("../pages/Performance"));
 const Settings = lazy(() => import("../pages/Settings"));
 const Recommendations = lazy(() => import("../pages/Recomendation"));
+const RANotification = lazy(() => import("../pages/common/RANotification"));
 const EditPage = lazy(() => import("../pages/EditPage"));
 
 
@@ -159,6 +160,8 @@ const AppRoutes = () => {
           <Route path="/" element={<Dashboard />} />
 <Route path="/performance" element={<Performance />} />
 <Route path="/settings" element={<Settings />} />
+
+<Route path="/notifications" element={<RANotification />} />
 
 <Route
   path="/ra/profile"

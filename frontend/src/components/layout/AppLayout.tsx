@@ -6,6 +6,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import FolderIcon from "@mui/icons-material/Folder";
+import NotificationsIcon from "@mui/icons-material/Notifications";
 
 import Header from "./Header";
 import Sidebar from "../page_Mainapp/Sidebar";
@@ -47,6 +48,11 @@ const AppLayout = () => {
       label: "Performance",
       path: "/performance",
       icon: <FolderIcon sx={{ mr: 1.5 }} />,
+    },
+    {
+      label: "Notifications",
+      path: "/notifications",
+      icon: <NotificationsIcon sx={{ mr: 1.5 }} />,
     },
     {
       label: "Settings",
