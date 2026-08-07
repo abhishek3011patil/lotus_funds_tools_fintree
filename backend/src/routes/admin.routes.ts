@@ -4,6 +4,7 @@ import { authenticate } from "../middlewares/auth.middleware";
 import { requireAdmin } from "../middlewares/admin.middleware";
 import whatsappRoutes from "./whatsapp.routes";
 import { approvePaidRegistration } from "../controllers/adminSubscriptionApproval.controller";
+import { runSubscriptionNotificationPass } from "../controllers/subscriptionNotification.controller";
 
 
 const router = Router();
@@ -14,6 +15,11 @@ router.use(authenticate, requireAdmin);
 router.post("/approve-user", approvePaidRegistration);
 
 router.post("/suspend-user", suspendUser);
+
+router.post(
+  "/subscription-notifications/run",
+  runSubscriptionNotificationPass
+);
 
 router.get("/test", (req, res) => {
   res.send("ADMIN ROUTE WORKING");

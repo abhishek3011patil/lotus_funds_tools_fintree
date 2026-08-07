@@ -1,6 +1,6 @@
 import { Box } from "@mui/material";
 import { Outlet } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import SettingsIcon from "@mui/icons-material/Settings";
 import DashboardIcon from "@mui/icons-material/Dashboard";
@@ -16,9 +16,12 @@ import type { SidebarItem } from "../../types/sidebar";
 import Badge from "@mui/material/Badge";
 
 import { useTelegramNotification } from "../../hooks/useTelegramNotification";
+import api from "../../utils/axio";
 
 const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [subscriptionUnreadCount, setSubscriptionUnreadCount] =
+    useState(0);
 
   // ✅ MUST BE INSIDE COMPONENT
   const { telegramDisconnected } =
@@ -31,6 +34,41 @@ const AppLayout = () => {
   const handleSidebarClose = () => {
     setSidebarOpen(false);
   };
+
+  useEffect(() => {
+    const loadUnreadCount = async () => {
+      try {
+        const response = await api.get<{
+          success: boolean;
+          count: number;
+        }>("/subscription-notifications/unread-count");
+        setSubscriptionUnreadCount(
+          Number(response.data.count || 0)
+        );
+      } catch {
+        setSubscriptionUnreadCount(0);
+      }
+    };
+
+    void loadUnreadCount();
+    const intervalId = window.setInterval(
+      () => void loadUnreadCount(),
+      60_000
+    );
+    const handleUpdate = () => void loadUnreadCount();
+    window.addEventListener(
+      "subscription:notifications-updated",
+      handleUpdate
+    );
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener(
+        "subscription:notifications-updated",
+        handleUpdate
+      );
+    };
+  }, []);
 
   // ✅ ITEMS INSIDE COMPONENT
   const appSidebarItems: SidebarItem[] = [
@@ -52,7 +90,15 @@ const AppLayout = () => {
     {
       label: "Notifications",
       path: "/notifications",
-      icon: <NotificationsIcon sx={{ mr: 1.5 }} />,
+      icon: (
+        <Badge
+          color="error"
+          badgeContent={subscriptionUnreadCount}
+          max={99}
+        >
+          <NotificationsIcon sx={{ mr: 1.5 }} />
+        </Badge>
+      ),
     },
     {
       label: "Settings",

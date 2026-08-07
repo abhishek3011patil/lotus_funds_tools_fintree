@@ -224,6 +224,25 @@ const renderers: TemplateRendererMap = {
       ),
     };
   },
+  SUBSCRIPTION_CANCELLED: (data) => {
+    const subject = "Subscription cancelled";
+    const text = `Hello ${data.name},\n\nYour ${data.planName} subscription was cancelled on ${data.cancelledAt}.\nReason: ${data.reason}\n\nYour account remains available, but subscription-protected features are disabled. You can renew again from Settings.`;
+    return {
+      subject,
+      text,
+      html: brandedLayout(
+        subject,
+        paragraph(`Hello ${data.name},`) +
+          paragraph(
+            `Your ${data.planName} subscription was cancelled on ${data.cancelledAt}.`
+          ) +
+          paragraph(`Reason: ${data.reason}`) +
+          paragraph(
+            "Your account remains available, but subscription-protected features are disabled. You can renew again from Settings."
+          )
+      ),
+    };
+  },
   PAYMENT_SUCCESSFUL: (data) => {
     const subject = "Payment successful";
     return {

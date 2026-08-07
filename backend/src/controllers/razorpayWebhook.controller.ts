@@ -327,6 +327,230 @@ const insertOrLockPaymentTransaction =
     return inserted.rows[0].id;
   };
 
+const processRenewalPaymentCaptured = async (
+  db: PoolClient,
+  payload: RazorpayWebhookPayload,
+  providerEventId: string,
+  payment: RazorpayPaymentEntity,
+  providerOrderId: string,
+  amountPaise: number,
+  currency: string
+): Promise<ProcessingResult | null> => {
+  const renewalResult = await db.query(
+    `
+      SELECT
+        payment_order.id AS payment_order_id,
+        payment_order.status AS payment_order_status,
+        payment_order.amount_paise,
+        payment_order.currency,
+        payment_order.user_id,
+        payment_order.notes,
+        subscription.id AS subscription_id,
+        subscription.status AS subscription_status,
+        subscription.starts_at,
+        subscription.expires_at,
+        subscription.cancelled_at,
+        payment_order.created_at AS payment_order_created_at,
+        user_account.status AS user_status
+      FROM payment_orders payment_order
+      INNER JOIN subscriptions subscription
+        ON subscription.id::text =
+           payment_order.notes ->> 'subscriptionId'
+      INNER JOIN users user_account
+        ON user_account.id = payment_order.user_id
+      WHERE payment_order.provider_order_id = $1
+        AND payment_order.notes ->> 'purpose' =
+            'SUBSCRIPTION_RENEWAL'
+      FOR UPDATE OF payment_order, subscription
+    `,
+    [providerOrderId]
+  );
+
+  if (renewalResult.rows.length === 0) {
+    return null;
+  }
+
+  const renewal = renewalResult.rows[0];
+
+  if (
+    Number(renewal.amount_paise) !== amountPaise ||
+    normalizeCurrency(renewal.currency) !== currency
+  ) {
+    throw new NonRetryableWebhookError(
+      "Captured renewal payment does not match the local payment order."
+    );
+  }
+
+  if (renewal.payment_order_status === "PAID") {
+    return {
+      status: "PROCESSED",
+      message: "Subscription renewal was already applied.",
+    };
+  }
+
+  if (
+    String(renewal.user_status || "").toLowerCase() !==
+      "active" ||
+    !["ACTIVE", "EXPIRED", "CANCELLED"].includes(
+      renewal.subscription_status
+    )
+  ) {
+    throw new NonRetryableWebhookError(
+      "The account or subscription is no longer eligible for renewal."
+    );
+  }
+
+  if (
+    renewal.subscription_status === "CANCELLED" &&
+    renewal.cancelled_at &&
+    new Date(renewal.payment_order_created_at).getTime() <=
+      new Date(renewal.cancelled_at).getTime()
+  ) {
+    throw new NonRetryableWebhookError(
+      "Renewal order predates subscription cancellation and cannot reactivate it."
+    );
+  }
+
+  const durationDays = Number(
+    renewal.notes?.durationDays
+  );
+
+  if (
+    !Number.isSafeInteger(durationDays) ||
+    durationDays < 1
+  ) {
+    throw new NonRetryableWebhookError(
+      "Renewal order contains an invalid duration."
+    );
+  }
+
+  const previousExpiresAt =
+    renewal.expires_at;
+  const wasStillActive =
+    renewal.subscription_status === "ACTIVE" &&
+    previousExpiresAt &&
+    new Date(previousExpiresAt).getTime() >
+      Date.now();
+  const renewalBase = wasStillActive
+    ? new Date(previousExpiresAt)
+    : new Date();
+  const newExpiresAt = new Date(renewalBase);
+  newExpiresAt.setUTCDate(
+    newExpiresAt.getUTCDate() + durationDays
+  );
+
+  const paymentTransactionId =
+    await insertOrLockPaymentTransaction({
+      db,
+      paymentOrderId:
+        renewal.payment_order_id,
+      payment,
+      rawPayload: payload,
+      status: "CAPTURED",
+    });
+
+  await db.query(
+    `
+      UPDATE payment_orders
+      SET status = 'PAID',
+          paid_at = COALESCE(paid_at, NOW()),
+          failed_at = NULL,
+          failure_reason = NULL,
+          updated_at = NOW()
+      WHERE id = $1
+    `,
+    [renewal.payment_order_id]
+  );
+
+  await db.query(
+    `
+      UPDATE subscriptions
+      SET status = 'ACTIVE',
+          starts_at = CASE
+            WHEN $2::boolean THEN starts_at
+            ELSE NOW()
+          END,
+          expires_at = $3,
+          payment_order_id = $4,
+          price_paise_snapshot = $5,
+          duration_days_snapshot = $6,
+          plan_id = $7,
+          plan_code_snapshot = $8,
+          plan_name_snapshot = $9,
+          tier_code_snapshot = $10,
+          plan_version_snapshot = $11,
+          cancelled_at = NULL,
+          cancellation_reason = NULL,
+          updated_at = NOW()
+      WHERE id = $1
+    `,
+    [
+      renewal.subscription_id,
+      Boolean(wasStillActive),
+      newExpiresAt,
+      renewal.payment_order_id,
+      amountPaise,
+      durationDays,
+      renewal.notes.planId,
+      renewal.notes.planCode,
+      renewal.notes.planName,
+      renewal.notes.tierCode,
+      Number(renewal.notes.planVersion),
+    ]
+  );
+
+  await db.query(
+    `
+      INSERT INTO subscription_events (
+        subscription_id,
+        event_type,
+        previous_status,
+        new_status,
+        actor_user_id,
+        reason,
+        metadata
+      )
+      VALUES (
+        $1,
+        $2,
+        $3,
+        'ACTIVE',
+        $4,
+        $5,
+        $6::jsonb
+      )
+    `,
+    [
+      renewal.subscription_id,
+      renewal.subscription_status === "CANCELLED"
+        ? "SUBSCRIPTION_REACTIVATED_BY_RENEWAL"
+        : "SUBSCRIPTION_RENEWED",
+      renewal.subscription_status,
+      renewal.user_id,
+      renewal.subscription_status === "CANCELLED"
+        ? "Cancelled subscription reactivated from captured Razorpay webhook"
+        : "Subscription renewed from captured Razorpay webhook",
+      JSON.stringify({
+        providerEventId,
+        paymentOrderId:
+          renewal.payment_order_id,
+        paymentTransactionId,
+        razorpayOrderId: providerOrderId,
+        razorpayPaymentId: payment.id,
+        previousExpiresAt,
+        newExpiresAt:
+          newExpiresAt.toISOString(),
+        durationDays,
+      }),
+    ]
+  );
+
+  return {
+    status: "PROCESSED",
+    message: "Subscription renewal payment captured and applied.",
+  };
+};
+
 const processPaymentCaptured =
   async (
     db: PoolClient,
@@ -363,6 +587,21 @@ const processPaymentCaptured =
       throw new NonRetryableWebhookError(
         "payment.captured webhook does not contain a captured payment."
       );
+    }
+
+    const renewalResult =
+      await processRenewalPaymentCaptured(
+        db,
+        payload,
+        providerEventId,
+        payment,
+        providerOrderId,
+        amountPaise,
+        currency
+      );
+
+    if (renewalResult) {
+      return renewalResult;
     }
 
     const orderResult = await db.query(

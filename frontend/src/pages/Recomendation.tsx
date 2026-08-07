@@ -25,6 +25,8 @@ import {
  
 } from "@mui/material";
 
+
+
 import RecommendationsPanel from "../components/page_Mainapp/RecommendationsPanel";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 
@@ -50,8 +52,11 @@ import { useExpiryDates } from "../hooks/useExpiryDates";
 import { useStockAutocomplete } from "../hooks/useStockAutocomplete";
 import {
   UNDERLYING_STUDIES,
-  getRecentStudies,
+  buildPersonalizedStudyOptions,
+  getStudiesByValues,
 } from "../assets/UnderlyingStudy";
+
+import { fetchUnderlyingStudyPreferences } from "../services/underlyingStudyPreferences.service";
 import type { StudyOption } from "../assets/UnderlyingStudy";
 import PriceSection, {
   type MainPriceField,
@@ -81,16 +86,6 @@ const getActionStyles = (current: "BUY" | "SELL", button: "BUY" | "SELL") => {
     },
   };
 };
-
-
-const FLAT_STUDY_OPTIONS = UNDERLYING_STUDIES.flatMap((g) =>
-  g.options.map((opt) => ({
-    ...opt,
-    group: g.group,
-  }))
-);
-
-
 
 const NewRecommendation = () => {
     const [raDetails, setRaDetails] = useState<any>(null);
@@ -156,7 +151,6 @@ const fetchRAMessageProfile = async () => {
 
   //console.log("RENDER");
   const [underlyingStudyInput, setUnderlyingStudyInput] = useState("");
-  const [recentStudyOptions, setRecentStudyOptions] = useState<StudyOption[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -171,6 +165,16 @@ const [historyLoading, setHistoryLoading] = useState(false);
 
 
 const submittingRef = useRef(false);
+
+const [
+  recentStudyOptions,
+  setRecentStudyOptions,
+] = useState<StudyOption[]>([]);
+
+const [
+  frequentStudyOptions,
+  setFrequentStudyOptions,
+] = useState<StudyOption[]>([]);
 
 
 const handleFileChange = (
@@ -594,6 +598,10 @@ https://lotusfunds.com/disclaimer&disclosure
         {
           call_id: errataSourceId,
           updates,
+          underlying_study_values:
+      form.underlyingStudy.map(
+        (study) => study.value
+      ),
           errata_reason: trimmedRemark,
           message_text: errataMessage,
           message_template_version:
@@ -850,6 +858,13 @@ https://lotusfunds.com/disclaimer&disclosure
           .map((study) => study.label)
           .join(", ") || null,
 
+      underlying_study_values:
+        JSON.stringify(
+          form.underlyingStudy.map(
+            (study) => study.value
+          )
+        ),
+
       is_algo: false,
       has_vested_interest: false,
       research_remarks: form.remark.trim() || null,
@@ -981,35 +996,97 @@ https://lotusfunds.com/disclaimer&disclosure
   type StudyAutocompleteOption = StudyOption & { group: string };
 
   // Load recent selections from localStorage (if any)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+useEffect(() => {
+  let cancelled = false;
+
+  const loadPreferences = async () => {
+    const token =
+      localStorage.getItem("token");
+
     try {
-      const stored = window.localStorage.getItem("recentUnderlyingStudies");
-      if (!stored) return;
-      const values: string[] = JSON.parse(stored);
-      setRecentStudyOptions(getRecentStudies(values));
+      if (!token) {
+        throw new Error("No token");
+      }
+
+      const preferences =
+        await fetchUnderlyingStudyPreferences(
+          token
+        );
+
+      if (cancelled) {
+        return;
+      }
+
+      setRecentStudyOptions(
+        getStudiesByValues(
+          preferences.recent.map(
+            (item) => item.value
+          )
+        )
+      );
+
+      setFrequentStudyOptions(
+        getStudiesByValues(
+          preferences.frequent.map(
+            (item) => item.value
+          )
+        )
+      );
     } catch {
-      // ignore malformed storage
+      // Browser fallback.
+      try {
+        const stored =
+          localStorage.getItem(
+            "recentUnderlyingStudies"
+          );
+
+        const values = stored
+          ? JSON.parse(stored)
+          : [];
+
+        if (
+          !cancelled &&
+          Array.isArray(values)
+        ) {
+          setRecentStudyOptions(
+            getStudiesByValues(
+              values.slice(0, 5)
+            )
+          );
+        }
+      } catch {
+        // Ignore malformed local storage.
+      }
     }
-  }, []);
+  };
+
+  void loadPreferences();
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
   // Build options with 4 logical groups, including "Recently Selected"
-  const studyOptions: StudyAutocompleteOption[] = useMemo(() => {
-    const recentValues = new Set(recentStudyOptions.map((o) => o.value));
+const studyOptions:
+  StudyAutocompleteOption[] =
+  useMemo(() => {
+    return buildPersonalizedStudyOptions({
+      frequentValues:
+        frequentStudyOptions.map(
+          (study) => study.value
+        ),
+      recentValues:
+        recentStudyOptions.map(
+          (study) => study.value
+        ),
+    });
+  }, [
+    frequentStudyOptions,
+    recentStudyOptions,
+  ]);
 
-    const recent = recentStudyOptions.map((o) => ({
-      ...o,
-      group: "Recently Selected",
-    }));
-
-    const base = FLAT_STUDY_OPTIONS.filter(
-      (opt) => !recentValues.has(opt.value)
-    );
-
-    return [...recent, ...base];
-  }, [recentStudyOptions]);
-
- const handleUnderlyingStudyChange = (
+const handleUnderlyingStudyChange = (
   _: unknown,
   newValue: StudyOption[]
 ) => {
@@ -1019,24 +1096,37 @@ https://lotusfunds.com/disclaimer&disclosure
     value: newValue,
   });
 
-  if (!newValue.length) return;
+  if (!newValue.length) {
+    return;
+  }
 
-  setRecentStudyOptions((prev) => {
-    const existingValues = prev.map((p) => p.value);
+  setRecentStudyOptions((previous) => {
+    const selectedValues =
+      newValue.map(
+        (study) => study.value
+      );
 
-    const selectedValues = newValue.map((v) => v.value);
+    const previousValues =
+      previous.map(
+        (study) => study.value
+      );
 
     const mergedValues = [
       ...selectedValues,
-      ...existingValues.filter((v) => !selectedValues.includes(v)),
-    ].slice(0, 10);
+      ...previousValues.filter(
+        (value) =>
+          !selectedValues.includes(value)
+      ),
+    ].slice(0, 5);
 
-    window.localStorage.setItem(
+    localStorage.setItem(
       "recentUnderlyingStudies",
       JSON.stringify(mergedValues)
     );
 
-    return getRecentStudies(mergedValues);
+    return getStudiesByValues(
+      mergedValues
+    );
   });
 };
 
@@ -2205,6 +2295,12 @@ const finalSymbol = String(
       holding_period: form.holdingPeriod || null,
       rationale: form.rationale || null,
       underlying_study: underlyingStudy || null,
+      underlying_study_values:
+        JSON.stringify(
+          form.underlyingStudy.map(
+            (study) => study.value
+          )
+        ),
 
       is_algo: false,
       has_vested_interest: false,

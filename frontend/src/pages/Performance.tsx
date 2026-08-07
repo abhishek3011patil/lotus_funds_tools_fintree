@@ -501,6 +501,7 @@ return (
       <Box sx={{ mt: 3 }}>
         <RecommendationHistory
           enableExport
+          showAllRAs={false}
           exportFileBaseName="ra-performance"
         />
       </Box>

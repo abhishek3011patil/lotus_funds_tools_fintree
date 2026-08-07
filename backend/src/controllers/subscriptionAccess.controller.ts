@@ -40,6 +40,8 @@ export const getMySubscriptionAccess =
             subscription.status,
             subscription.starts_at,
             subscription.expires_at,
+            subscription.cancelled_at,
+            subscription.cancellation_reason,
             subscription.plan_id,
             subscription.plan_code_snapshot,
             subscription.plan_name_snapshot,
@@ -259,6 +261,44 @@ export const getMySubscriptionAccess =
         });
       }
 
+      const renewalWindowDays = Math.min(
+        Math.max(
+          Number(
+            process.env
+              .SUBSCRIPTION_RENEWAL_WINDOW_DAYS ||
+              30
+          ) || 30,
+          1
+        ),
+        365
+      );
+      const expiryTime =
+        subscription.expires_at === null
+          ? null
+          : new Date(
+              subscription.expires_at
+            ).getTime();
+      const canRenew =
+        ["ACTIVE", "EXPIRED", "CANCELLED"].includes(
+          subscription.status
+        ) &&
+        (["EXPIRED", "CANCELLED"].includes(
+          subscription.status
+        ) ||
+          (expiryTime !== null &&
+            expiryTime - Date.now() <=
+              renewalWindowDays *
+                86_400_000));
+      const renewalAvailableAt =
+        subscription.status === "ACTIVE" &&
+        expiryTime !== null
+          ? new Date(
+              expiryTime -
+                renewalWindowDays *
+                  86_400_000
+            ).toISOString()
+          : null;
+
       res.status(200).json({
         success: true,
         hasSubscription: true,
@@ -319,6 +359,14 @@ export const getMySubscriptionAccess =
             subscription.starts_at,
           expiresAt:
             subscription.expires_at,
+          canRenew,
+          renewalAvailableAt,
+          canCancel:
+            subscription.status === "ACTIVE",
+          cancelledAt:
+            subscription.cancelled_at || null,
+          cancellationReason:
+            subscription.cancellation_reason || null,
         },
 
         features:
@@ -348,8 +396,9 @@ export const getMySubscriptionAccess =
         limits,
 
         nextStep:
-          subscription.status ===
-          "EXPIRED"
+          ["EXPIRED", "CANCELLED"].includes(
+            subscription.status
+          )
             ? "RENEW_SUBSCRIPTION"
             : null,
       });

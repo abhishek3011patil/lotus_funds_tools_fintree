@@ -10,6 +10,7 @@ import {
   parseResearchCallTemplateSnapshot,
 } from "../services/researchCallTemplate.service";
 import { createClientNotification } from "./clientNotification.controller";
+import { recordUnderlyingStudySelections } from "../services/underlyingStudyPreferences.service";
 
 const getClientIp = (req: any): string => {
   let ip =
@@ -54,6 +55,7 @@ export const createResearchCall = async (
     const {
       status = "DRAFT",
       message_text,
+      underlying_study_values,
       exchange_type,
       market_type,
       symbol,
@@ -228,6 +230,19 @@ export const createResearchCall = async (
 const { rows } = await pool.query(query, values);
 const createdCall = rows[0];
 
+
+try {
+  await recordUnderlyingStudySelections({
+    raUserId: req.user!.id,
+    studyValues: underlying_study_values,
+  });
+} catch (preferenceError) {
+  // Personalization failure must not fail call creation.
+  console.error(
+    "RECORD STUDY PREFERENCES ERROR:",
+    preferenceError
+  );
+}
 // Get RA name
 const raResult = await pool.query(
   `
@@ -668,6 +683,7 @@ export const createErrata = async (
   updates,
   message_text,
   errata_reason,
+   underlying_study_values,
 } = req.body;
 
 
@@ -1000,6 +1016,18 @@ if (whatsappMessage) {
 }
 
   await client.query("COMMIT");
+
+  try {
+  await recordUnderlyingStudySelections({
+    raUserId: userId,
+    studyValues: underlying_study_values,
+  });
+} catch (preferenceError) {
+  console.error(
+    "RECORD ERRATA STUDY PREFERENCES ERROR:",
+    preferenceError
+  );
+}
 
 try {
   await createAuditLog({
@@ -1630,28 +1658,30 @@ export const getMyRecommendationHistory = async (
 LEFT JOIN users u
   ON u.id = rc.ra_user_id
 
-WHERE (
-    $1 = ''
-    OR COALESCE(rc.display_name, '') ILIKE $2
-    OR COALESCE(rc.symbol, '') ILIKE $2
-    OR COALESCE(rc.exchange_type, '') ILIKE $2
-    OR COALESCE(rc.call_type, '') ILIKE $2
-    OR COALESCE(rc.trade_type, '') ILIKE $2
-    OR COALESCE(rc.action, '') ILIKE $2
-    OR COALESCE(rc.status, '') ILIKE $2
-    OR COALESCE(u.name, '') ILIKE $2
+WHERE rc.ra_user_id = $1
+  AND (
+    $2 = ''
+    OR COALESCE(rc.display_name, '') ILIKE $3
+    OR COALESCE(rc.symbol, '') ILIKE $3
+    OR COALESCE(rc.exchange_type, '') ILIKE $3
+    OR COALESCE(rc.call_type, '') ILIKE $3
+    OR COALESCE(rc.trade_type, '') ILIKE $3
+    OR COALESCE(rc.action, '') ILIKE $3
+    OR COALESCE(rc.status, '') ILIKE $3
+    OR COALESCE(u.name, '') ILIKE $3
 )
 
 ORDER BY rc.created_at DESC
 
-LIMIT $3
-OFFSET $4
+LIMIT $4
+OFFSET $5
     `;
 
   console.log("raUserId:", raUserId);
 console.log("search:", search);
 
 const { rows } = await pool.query(query, [
+  raUserId,
   search,
   `%${search}%`,
   limit,

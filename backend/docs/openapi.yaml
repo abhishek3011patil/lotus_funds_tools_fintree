@@ -931,6 +931,44 @@ paths:
         "502":
           description: Instrument provider unavailable
 
+  /api/research/underlying-studies/preferences:
+    get:
+      tags: [Research Calls]
+      summary: Get the authenticated RA's underlying-study personalization
+      description: Returns up to five recent and five frequent canonical study values owned by the authenticated active Research Analyst.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Recent and frequent underlying-study preferences
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, data]
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    required: [recent, frequent]
+                    properties:
+                      recent:
+                        type: array
+                        maxItems: 5
+                        items:
+                          $ref: "#/components/schemas/UnderlyingStudyPreference"
+                      frequent:
+                        type: array
+                        maxItems: 5
+                        items:
+                          $ref: "#/components/schemas/UnderlyingStudyPreference"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /api/research/message-templates:
     get:
       tags: [Research Calls]
@@ -1098,6 +1136,10 @@ paths:
                 updates:
                   type: object
                   additionalProperties: true
+                underlying_study_values:
+                  type: array
+                  items: { type: string }
+                  maxItems: 20
                 errata_reason: { type: string }
                 message_text: { type: string }
                 message_template_version:
@@ -2470,6 +2512,20 @@ components:
           type: string
           format: date-time
 
+    UnderlyingStudyPreference:
+      type: object
+      required: [value, selectionCount, lastSelectedAt]
+      properties:
+        value:
+          type: string
+          pattern: "^[a-z0-9_]+$"
+        selectionCount:
+          type: integer
+          minimum: 1
+        lastSelectedAt:
+          type: string
+          format: date-time
+
     ResearchCallForm:
       type: object
       required:
@@ -2514,6 +2570,9 @@ components:
         holding_period: { type: string }
         rationale: { type: string }
         underlying_study: { type: string }
+        underlying_study_values:
+          type: string
+          description: JSON-encoded array of canonical underlying-study values for multipart submission.
         research_remarks: { type: string }
         file: { type: string, format: binary }
 

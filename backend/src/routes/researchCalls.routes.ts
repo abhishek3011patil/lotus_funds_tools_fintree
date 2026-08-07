@@ -14,6 +14,7 @@ import {
 import { upload } from "../middlewares/upload";
 import { requireActiveSubscription, requireSubscriptionFeature, reserveSubscriptionEventLimit } from "../middlewares/subscriptionAccess.middleware";
 import { requireResearchPublishingAuthorization } from "../middlewares/researchPublishingPolicy.middleware";
+import { getMyUnderlyingStudyPreferences } from "../controllers/underlyingStudyPreferences.controller";
 
 
 const router = Router();
@@ -107,6 +108,14 @@ router.get(
   "/ra/message-profile",
   authenticate,
   getRAMessageProfile
+);
+
+
+
+router.get(
+  "/research/underlying-studies/preferences",
+  authenticate,
+  getMyUnderlyingStudyPreferences
 );
 
 export default router;
