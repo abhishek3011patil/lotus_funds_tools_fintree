@@ -9,6 +9,10 @@ export type StudyGroup = {
   options: StudyOption[];
 };
 
+export type GroupedStudyOption = StudyOption & {
+  group: string;
+};
+
 export const UNDERLYING_STUDIES: StudyGroup[] = [
 
   {
@@ -107,5 +111,72 @@ export const UNDERLYING_STUDIES: StudyGroup[] = [
 
 export const FLAT_STUDIES = UNDERLYING_STUDIES.flatMap(g => g.options);
 
-export const getRecentStudies = (recentValues: string[]) =>
-  FLAT_STUDIES.filter(o => recentValues.includes(o.value));
+const STUDY_BY_VALUE = new Map(
+  FLAT_STUDIES.map((study) => [
+    study.value,
+    study,
+  ])
+);
+
+export const getStudiesByValues = (
+  values: string[]
+): StudyOption[] =>
+  values
+    .map((value) =>
+      STUDY_BY_VALUE.get(value)
+    )
+    .filter(
+      (study): study is StudyOption =>
+        Boolean(study)
+    );
+
+// Kept for the client recommendation page while both screens
+// share the same underlying-study catalog.
+export const getRecentStudies = getStudiesByValues;
+
+export const buildPersonalizedStudyOptions = ({
+  frequentValues,
+  recentValues,
+}: {
+  frequentValues: string[];
+  recentValues: string[];
+}): GroupedStudyOption[] => {
+  const frequent = getStudiesByValues(
+    frequentValues
+  ).slice(0, 5);
+  const frequentSet = new Set(
+    frequent.map((study) => study.value)
+  );
+
+  const recent = getStudiesByValues(
+    recentValues
+  )
+    .filter(
+      (study) => !frequentSet.has(study.value)
+    )
+    .slice(0, 5);
+
+  const personalizedSet = new Set([
+    ...frequentSet,
+    ...recent.map((study) => study.value),
+  ]);
+
+  return [
+    ...frequent.map((study) => ({
+      ...study,
+      group: "Frequently Used",
+    })),
+    ...recent.map((study) => ({
+      ...study,
+      group: "Recently Used",
+    })),
+    ...UNDERLYING_STUDIES.flatMap(({ group, options }) =>
+      options
+        .filter(
+          (study) =>
+            !personalizedSet.has(study.value)
+        )
+        .map((study) => ({ ...study, group }))
+    ),
+  ];
+};
