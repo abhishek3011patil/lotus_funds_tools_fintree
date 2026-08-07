@@ -8,7 +8,10 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import RecommendationHistory from "./common/RecommendationHistory";
@@ -48,6 +51,7 @@ const Performance: React.FC = () => {
   const [loading, setLoading] = useState(true);
 const [error, setError] = useState("");
 const [period, setPeriod] = useState<"weekly" | "monthly" | "yearly">("monthly");
+const [search, setSearch] = useState("");
 
 useEffect(() => {
   console.log("Selected Period:", period);
@@ -312,42 +316,57 @@ const Last10 = () => (
 );
 
 return (
-  <Box>
-    <Box sx={{ p: 3, backgroundColor: "#fff" }}>
+  <Box sx={{ backgroundColor: "#f7f8fa", minHeight: "100vh" }}>
+
+    {/* WHITE PERFORMANCE CARD */}
+    <Box
+      sx={{
+        mx: 3,
+        p: 3,
+        backgroundColor: "#fff",
+        borderRadius: "8px",
+      }}
+    >
+      {/* Performance Header */}
       <Box
-  sx={{
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    mb: 3,
-    flexWrap: "wrap",
-    gap: 2,
-  }}
->
-  <Typography
-    fontSize="1.625rem"
-    fontWeight={700}
-  >
-    Performance
-  </Typography>
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 3,
+          flexWrap: "wrap",
+          gap: 2,
+        }}
+      >
+        <Typography
+          fontSize="1.625rem"
+          fontWeight={700}
+        >
+          Performance
+        </Typography>
 
-<FormControl size="small" sx={{ minWidth: 180 }}>
-  <InputLabel id="performance-view-label">View</InputLabel>
+        <FormControl size="small" sx={{ minWidth: 180 }}>
+          <InputLabel id="performance-view-label">
+            View
+          </InputLabel>
 
-  <Select
-    labelId="performance-view-label"
-    value={period}
-    label="View"
-    onChange={(e) =>
-      setPeriod(e.target.value as "weekly" | "monthly" | "yearly")
-    }
-  >
-    <MenuItem value="weekly">Weekly</MenuItem>
-    <MenuItem value="monthly">Monthly</MenuItem>
-    <MenuItem value="yearly">Yearly</MenuItem>
-  </Select>
-</FormControl>
-</Box>
+          <Select
+            labelId="performance-view-label"
+            value={period}
+            label="View"
+            onChange={(e) =>
+              setPeriod(
+                e.target.value as "weekly" | "monthly" | "yearly"
+              )
+            }
+          >
+            <MenuItem value="weekly">Weekly</MenuItem>
+            <MenuItem value="monthly">Monthly</MenuItem>
+            <MenuItem value="yearly">Yearly</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+
       {loading ? (
         <Paper sx={cardStyle}>
           <Typography color="text.secondary">
@@ -498,7 +517,30 @@ return (
       )}
 
       {/* This now renders even when the performance API fails */}
-      <Box sx={{ mt: 3 }}>
+      {/* Search Bar - Above Recommendation History */}
+<Box sx={{ mt: 3, mb: 2 }}>
+  <TextField
+    fullWidth
+    size="small"
+    placeholder="Search by name or mobile"
+    value={search}
+    onChange={(e) => setSearch(e.target.value)}
+    sx={{
+      "& .MuiOutlinedInput-root": {
+        borderRadius: "8px",
+        backgroundColor: "#fff",
+      },
+    }}
+    InputProps={{
+      startAdornment: (
+        <InputAdornment position="start">
+          <SearchIcon sx={{ color: "#666" }} />
+        </InputAdornment>
+      ),
+    }}
+  />
+</Box>
+            <Box sx={{ mt: 3 }}>
         <RecommendationHistory
           enableExport
           showAllRAs={false}
