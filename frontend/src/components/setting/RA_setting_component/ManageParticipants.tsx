@@ -14,6 +14,7 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Switch,
   Typography,
 } from "@mui/material";
 
@@ -29,6 +30,7 @@ interface Participant {
   telegram_client_name?: string;
   telegram_user_id?: string | number;
   entity_type?: "USER" | "GROUP" | "CHANNEL";
+  is_active?: boolean;
 }
 
 const ManageParticipants: React.FC = () => {
@@ -196,6 +198,30 @@ alert(message || "Upload completed");
   }
 
   e.target.value = "";
+};
+
+const handleToggleStatus = async (id: string, currentStatus: boolean) => {
+  try {
+    const token = localStorage.getItem("token");
+    const newStatus = !currentStatus;
+
+    // Optimistically update local UI state
+    setParticipants((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, is_active: newStatus } : p))
+    );
+
+    // Update backend
+    await axios.patch(
+      `${import.meta.env.VITE_API_URL}/api/telegram/participant/${id}/status`,
+      { is_active: newStatus },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+  } catch (err: any) {
+    console.error("TOGGLE STATUS ERROR:", err);
+    alert("Failed to update status");
+    // Revert if API call fails
+    fetchParticipants();
+  }
 };
 
   const filteredParticipants = participants.filter((participant) => {
@@ -395,6 +421,7 @@ return (
                     <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Username / Name</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Telegram ID</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 600 }}>Action</TableCell>
                   </TableRow>
                 </TableHead>
@@ -446,6 +473,23 @@ return (
                           <TableCell>
                             {participant.telegram_user_id || "N/A"}
                           </TableCell>
+
+                          <TableCell>
+  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+    <Switch
+      size="small"
+      color="info"
+      checked={Boolean(participant.is_active)}
+      onChange={() => handleToggleStatus(participant.id, Boolean(participant.is_active))}
+    />
+    <Chip
+      size="small"
+      label={participant.is_active ? "Active" : "Inactive"}
+      color={participant.is_active ? "info" : "default"}
+      sx={{ fontWeight: 600, fontSize: "12px" }}
+    />
+  </Box>
+</TableCell>
 
                           <TableCell align="right">
                             <Button
@@ -562,6 +606,21 @@ return (
                             {type === "USER" ? participant.phone_number || "N/A" : type}
                           </Typography>
                         </Box>
+
+                        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <Typography variant="caption" color="text.secondary">Status:</Typography>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+      <Switch
+        size="small"
+        color="info"
+        checked={Boolean(participant.is_active)}
+        onChange={() => handleToggleStatus(participant.id, Boolean(participant.is_active))}
+      />
+      <Typography variant="caption" fontWeight={600}>
+        {participant.is_active ? "Active" : "Inactive"}
+      </Typography>
+    </Box>
+  </Box>
                       </Box>
                     </Paper>
                   );
