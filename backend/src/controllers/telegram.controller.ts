@@ -464,6 +464,98 @@ if (role === "ADMIN") {
   }
 };
 
+/* =========================================================
+   UPDATE TELEGRAM PARTICIPANT STATUS
+   PATCH /api/telegram/participant/:id/status
+   ========================================================= */
+export const updateParticipantStatus = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const userId = req.user?.id;
+    const role = req.user?.role;
+    const { id } = req.params;
+    const { is_active } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (!id || id === "undefined") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid participant ID",
+      });
+    }
+
+    if (typeof is_active !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "is_active must be true or false",
+      });
+    }
+
+    let query: string;
+    let values: any[];
+
+    // ADMIN can update any participant
+    if (role === "ADMIN") {
+      query = `
+        UPDATE telegram_users
+        SET is_active = $1
+        WHERE id = $2
+        RETURNING *
+      `;
+
+      values = [is_active, id];
+    }
+
+    // RA can update only their own participant
+    else {
+      query = `
+        UPDATE telegram_users
+        SET is_active = $1
+        WHERE id = $2
+          AND user_id = $3
+        RETURNING *
+      `;
+
+      values = [is_active, id, userId];
+    }
+
+    const result = await pool.query(query, values);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Participant not found",
+      });
+    }
+
+    console.log(
+      `Telegram participant ${id} status changed to ${is_active ? "ACTIVE" : "INACTIVE"}`
+    );
+
+    return res.json({
+      success: true,
+      message: `Participant ${is_active ? "activated" : "deactivated"} successfully`,
+      data: result.rows[0],
+    });
+
+  } catch (error: any) {
+    console.error("UPDATE PARTICIPANT STATUS ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update participant status",
+    });
+  }
+};
+
 // DELETE /api/telegram/participant/:telegram_user_id
 
 /* =========================================================
@@ -587,7 +679,8 @@ export const getParticipantsByRA = async (
         telegram_user_id,
         telegram_client_name,
         phone_number,
-        entity_type
+        entity_type,
+         is_active
       FROM telegram_users
       WHERE user_id = $1
       ORDER BY telegram_client_name ASC
@@ -668,9 +761,11 @@ export const sendMessageToRAClients = async (
         SELECT
           telegram_user_id,
           telegram_client_name,
-          entity_type
+          entity_type,
+          is_active
         FROM telegram_users
         WHERE user_id = $1
+         AND is_active = TRUE
         `,
         [raId]
       ),
@@ -725,12 +820,20 @@ export const sendMessageToRAClients = async (
               `📨 Sending to ${u.entity_type}:`,
               u.telegram_client_name || u.telegram_user_id
             );
+let entity: any;
 
-            const entity = await client.getEntity(u.telegram_user_id);
+if (
+  u.entity_type === "GROUP" ||
+  u.entity_type === "CHANNEL"
+) {
+  entity = await client.getEntity(u.telegram_client_name);
+} else {
+  entity = await client.getEntity(u.telegram_user_id);
+}
 
-            await client.sendMessage(entity, {
-              message: finalMessage,
-            });
+await client.sendMessage(entity, {
+  message: finalMessage,
+});
 
             console.log(
               `✅ Sent to ${u.entity_type}:`,
@@ -1160,9 +1263,9 @@ console.log("Phone:", phone);
         telegram_client_name,
         phone_number,
         user_id,
-        entity_type
+        entity_type,  is_active
       )
-      VALUES ($1, $2, $3, $4, $5)
+      VALUES ($1, $2, $3, $4, $5, TRUE)
 
       ON CONFLICT (
         telegram_user_id,
@@ -1259,19 +1362,20 @@ export const getMyParticipants = async (
     }
 
     const result = await pool.query(
-      `
-      SELECT
-        id,
-        telegram_user_id,
-        telegram_client_name,
-        phone_number,
-        entity_type
-      FROM telegram_users
-      WHERE user_id = $1
-      ORDER BY telegram_client_name ASC
-      `,
-      [userId]
-    );
+  `
+  SELECT
+    id,
+    telegram_user_id,
+    telegram_client_name,
+    phone_number,
+    entity_type,
+    is_active
+  FROM telegram_users
+  WHERE user_id = $1
+  ORDER BY telegram_client_name ASC
+  `,
+  [userId]
+);
 
     return res.status(200).json({
       success: true,
@@ -1533,10 +1637,11 @@ if (!entity) {
             telegram_client_name,
             phone_number,
             user_id,
-            entity_type
+            entity_type,
+            is_active
           )
 
-          VALUES($1,$2,$3,$4,$5)
+          VALUES($1,$2,$3,$4,$5,TRUE)
 
           ON CONFLICT
           (
