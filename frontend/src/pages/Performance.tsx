@@ -544,6 +544,7 @@ return (
         <RecommendationHistory
           enableExport
           showAllRAs={false}
+          searchQuery={search}
           exportFileBaseName="ra-performance"
         />
       </Box>

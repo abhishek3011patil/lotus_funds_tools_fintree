@@ -189,7 +189,7 @@ const RASubscriptionStatus = () => {
         cancelling={cancelling}
         renewalMessage={renewalMessage}
         renewalError={renewalError}
-        title="5. Subscription Status"
+        title="Subscription Status"
       />
       <SubscriptionCancellationDialog
         open={cancellationOpen}
