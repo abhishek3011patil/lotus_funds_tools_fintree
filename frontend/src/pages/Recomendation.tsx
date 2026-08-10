@@ -69,6 +69,13 @@ import { fetchResearchCallTemplates } from "../services/researchCallTemplate.ser
 
 const BUY_COLOR = "#22c55e";
 const SELL_COLOR = "#ef4444";
+const PUBLISH_PREVIEW_SESSION_KEY = "researchCallShowPublishPreview";
+
+type PreparedResearchCallMessage = {
+  message: string;
+  templateVersion: number | null;
+  templateSnapshot: unknown | null;
+};
 
 
 
@@ -158,6 +165,17 @@ const fetchRAMessageProfile = async () => {
   const [errataSourceId, setErrataSourceId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 const [isSubmitting, setIsSubmitting] = useState(false);
+const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+const [previewLoading, setPreviewLoading] = useState(false);
+const [preparedPreview, setPreparedPreview] =
+  useState<PreparedResearchCallMessage | null>(null);
+const [showPublishPreview, setShowPublishPreview] = useState(() => {
+  try {
+    return sessionStorage.getItem(PUBLISH_PREVIEW_SESSION_KEY) !== "false";
+  } catch {
+    return true;
+  }
+});
 
 const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
 const [versionHistory, setVersionHistory] = useState<any[]>([]);
@@ -165,6 +183,8 @@ const [historyLoading, setHistoryLoading] = useState(false);
 
 
 const submittingRef = useRef(false);
+const previewRequestRef = useRef(0);
+const previewLoadingRef = useRef(false);
 
 const [
   recentStudyOptions,
@@ -302,6 +322,8 @@ function formReducer(
   
 
  const resetForm = () => {
+  previewRequestRef.current += 1;
+  previewLoadingRef.current = false;
   dispatch({ type: "RESET" });
 
   setIsErrataMode(false);
@@ -310,14 +332,310 @@ function formReducer(
 
   // Reset uploaded media
   setSelectedFile(null);
+  setPreviewDialogOpen(false);
+  setPreparedPreview(null);
+  setPreviewLoading(false);
 
   if (fileInputRef.current) {
     fileInputRef.current.value = "";
   }
 };
 
+const prepareResearchCallMessage = async (
+  token: string
+): Promise<PreparedResearchCallMessage> => {
+  if (!raDetails) {
+    throw new Error("RA profile details are still loading. Please try again.");
+  }
 
-const handleSubmit = async () => {
+  const finalDisplayName = form.display_name.trim() || inputValue.trim();
+
+  if (!finalDisplayName) {
+    throw new Error("Stock name is required");
+  }
+
+  const finalSymbol =
+    form.symbol && form.symbol !== "SYM"
+      ? form.symbol.trim()
+      : finalDisplayName.slice(0, 30);
+
+  const formatExpiry = (date: string) => {
+    const d = new Date(date);
+    const day = d.getDate();
+    const suffix =
+      day % 10 === 1 && day !== 11
+        ? "st"
+        : day % 10 === 2 && day !== 12
+          ? "nd"
+          : day % 10 === 3 && day !== 13
+            ? "rd"
+            : "th";
+
+    return `${day}${suffix} ${d.toLocaleString("en-IN", {
+      month: "long",
+      year: "numeric",
+    })}`;
+  };
+
+  const publishedAt = new Date().toLocaleString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
+  const raFullName = [
+    raDetails?.salutation,
+    raDetails?.first_name,
+    raDetails?.middle_name,
+    raDetails?.surname,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const disclaimer =
+    raDetails?.additional_comments ||
+    "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
+  const raTemplateData = {
+    fullName: raFullName || "N/A",
+    organizationName: raDetails?.org_name || "N/A",
+    sebiRegistrationNumber: raDetails?.sebi_reg_no || "N/A",
+    contactNumber: raDetails?.mobile || "N/A",
+    email: raDetails?.email || "N/A",
+    disclaimer,
+    disclaimerLink: "https://lotusfunds.com/disclaimer&disclosure",
+  };
+  let savedMessageTemplates = {
+    NEW_CALL: null,
+    ERRATA: null,
+  } as Awaited<ReturnType<typeof fetchResearchCallTemplates>>;
+
+  try {
+    savedMessageTemplates = await fetchResearchCallTemplates(token);
+  } catch {
+    console.warn(
+      "RA message templates unavailable; using the existing message format."
+    );
+  }
+
+  if (isErrataMode) {
+    const trimmedRemark = form.remark.trim();
+    const defaultErrataMessage = `
+ERRATA / CORRECTION
+
+Published On: ${publishedAt}
+
+Stock Name: ${finalDisplayName}
+Symbol: ${finalSymbol}
+
+${form.action} ${form.exchange} ${form.callType} Expiry: ${
+      form.expiry ? formatExpiry(form.expiry) : "N/A"
+    }
+
+Call Type: ${form.tradeType}
+
+Entry: ${
+      form.rangeEnabled
+        ? `${form.entryLow} - ${form.entryUpper}`
+        : form.entry
+    }
+
+Target: ${form.target}${
+      form.secondaryTargetEnabled
+        ? `
+T2: ${form.target2}
+T3: ${form.target3}`
+        : ""
+    }
+
+SL: ${form.stopLoss}${
+      form.stopLoss2Enabled
+        ? `
+SL 2: ${form.stopLoss2}
+SL 3: ${form.stopLoss3}`
+        : ""
+    }
+
+Reason:
+${trimmedRemark}
+
+DISCLAIMER CUM DISCLOSURE:
+
+${disclaimer}
+
+Research Analyst: ${raFullName || "N/A"} (${raDetails?.org_name || "N/A"})
+SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
+Contact No: ${raDetails?.mobile || "N/A"}
+Email ID: ${raDetails?.email || "N/A"}
+
+Read Full Disclaimer / Disclosure at:
+https://lotusfunds.com/disclaimer&disclosure
+`.trim();
+    const errataTemplate = savedMessageTemplates.ERRATA;
+
+    if (errataTemplate) {
+      try {
+        return {
+          message: formatResearchCallMessage(
+            errataTemplate,
+            {
+              publishedAt,
+              instrument: finalDisplayName,
+              symbol: finalSymbol,
+              exchange: `${form.exchange} ${form.callType}`,
+              action: form.action,
+              callType: form.tradeType,
+              entry: form.rangeEnabled
+                ? `${form.entryLow} - ${form.entryUpper}`
+                : form.entry,
+              targets: [
+                form.target,
+                form.secondaryTargetEnabled ? form.target2 : null,
+                form.secondaryTargetEnabled ? form.target3 : null,
+              ],
+              stopLosses: [
+                form.stopLoss,
+                form.stopLoss2Enabled ? form.stopLoss2 : null,
+                form.stopLoss2Enabled ? form.stopLoss3 : null,
+              ],
+              expiry: form.expiry ? formatExpiry(form.expiry) : "N/A",
+              timeHorizon: form.tradeType,
+              holdingPeriod: form.holdingPeriod,
+              errataReason: trimmedRemark,
+            },
+            raTemplateData,
+            "ERRATA"
+          ),
+          templateVersion: errataTemplate.version,
+          templateSnapshot: errataTemplate,
+        };
+      } catch {
+        // Preserve the existing fallback when a saved template cannot be formatted.
+      }
+    }
+
+    return {
+      message: defaultErrataMessage,
+      templateVersion: null,
+      templateSnapshot: null,
+    };
+  }
+
+  const defaultPublishMessage = `
+Published On: ${publishedAt}
+
+${form.action} ${form.exchange} ${form.callType} Expiry: ${
+    form.expiry ? formatExpiry(form.expiry) : "N/A"
+  }
+
+Stock Name: ${finalDisplayName}
+Symbol: ${finalSymbol}
+
+Call Type: ${form.tradeType}
+
+Entry: ${
+    form.rangeEnabled
+      ? `${form.entryLow} - ${form.entryUpper}`
+      : form.entry
+  }
+
+Target: ${form.target}${
+    form.secondaryTargetEnabled
+      ? `
+T2: ${form.target2}
+T3: ${form.target3}`
+      : ""
+  }
+
+SL: ${form.stopLoss}${
+    form.stopLoss2Enabled
+      ? `
+SL 2: ${form.stopLoss2}
+SL 3: ${form.stopLoss3}`
+      : ""
+  }
+
+Holding Period: ${form.holdingPeriod || "N/A"}
+
+Rationale: ${form.rationale}
+
+Underlying Study: ${
+    form.underlyingStudy.map((study) => study.label).join(", ") || "N/A"
+  }
+
+Remarks: ${form.remark || "N/A"}
+
+DISCLAIMER CUM DISCLOSURE:
+
+${disclaimer}
+
+Research Analyst: ${raFullName || "N/A"} (${raDetails?.org_name || "N/A"})
+SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
+Contact No: ${raDetails?.mobile || "N/A"}
+Email ID: ${raDetails?.email || "N/A"}
+
+Read Full Disclaimer / Disclosure at:
+https://lotusfunds.com/disclaimer&disclosure
+`.trim();
+  const newCallTemplate = savedMessageTemplates.NEW_CALL;
+
+  if (newCallTemplate) {
+    try {
+      return {
+        message: formatResearchCallMessage(
+          newCallTemplate,
+          {
+            publishedAt,
+            instrument: finalDisplayName,
+            symbol: finalSymbol,
+            exchange: `${form.exchangeType} / ${form.exchange}`,
+            action: form.action,
+            callType: form.callType,
+            entry: form.rangeEnabled
+              ? `${form.entryLow} - ${form.entryUpper}`
+              : form.entry,
+            targets: [
+              form.target,
+              form.secondaryTargetEnabled ? form.target2 : null,
+              form.secondaryTargetEnabled ? form.target3 : null,
+            ],
+            stopLosses: [
+              form.stopLoss,
+              form.stopLoss2Enabled ? form.stopLoss2 : null,
+              form.stopLoss2Enabled ? form.stopLoss3 : null,
+            ],
+            expiry: form.expiry ? formatExpiry(form.expiry) : "N/A",
+            timeHorizon: form.tradeType,
+            holdingPeriod: form.holdingPeriod,
+            rationale: form.rationale,
+            underlyingStudy:
+              form.underlyingStudy.map((study) => study.label).join(", ") ||
+              "N/A",
+            remarks: form.remark || "N/A",
+          },
+          raTemplateData,
+          "NEW_CALL"
+        ),
+        templateVersion: newCallTemplate.version,
+        templateSnapshot: JSON.stringify(newCallTemplate),
+      };
+    } catch {
+      // Preserve the existing fallback when a saved template cannot be formatted.
+    }
+  }
+
+  return {
+    message: defaultPublishMessage,
+    templateVersion: null,
+    templateSnapshot: null,
+  };
+};
+
+
+const handleSubmit = async (
+  preparedMessage?: PreparedResearchCallMessage
+) => {
   if (submittingRef.current) return;
 
   submittingRef.current = true;
@@ -348,66 +666,8 @@ const finalDisplayName =
       form.symbol && form.symbol !== "SYM"
         ? form.symbol.trim()
         : finalDisplayName.slice(0, 30);
-
-    const formatExpiry = (date: string) => {
-      const d = new Date(date);
-      const day = d.getDate();
-
-      const suffix =
-        day % 10 === 1 && day !== 11
-          ? "st"
-          : day % 10 === 2 && day !== 12
-            ? "nd"
-            : day % 10 === 3 && day !== 13
-              ? "rd"
-              : "th";
-
-      return `${day}${suffix} ${d.toLocaleString("en-IN", {
-        month: "long",
-        year: "numeric",
-      })}`;
-    };
-
-    const raFullName = [
-      raDetails?.salutation,
-      raDetails?.first_name,
-      raDetails?.middle_name,
-      raDetails?.surname,
-    ]
-      .filter(Boolean)
-      .join(" ");
-
-    const disclaimer =
-      raDetails?.additional_comments ||
-      "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
-
-    const raTemplateData = {
-      fullName: raFullName || "N/A",
-      organizationName: raDetails?.org_name || "N/A",
-      sebiRegistrationNumber:
-        raDetails?.sebi_reg_no || "N/A",
-      contactNumber: raDetails?.mobile || "N/A",
-      email: raDetails?.email || "N/A",
-      disclaimer,
-      disclaimerLink:
-        "https://lotusfunds.com/disclaimer&disclosure",
-    };
-
-    let savedMessageTemplates = {
-      NEW_CALL: null,
-      ERRATA: null,
-    } as Awaited<
-      ReturnType<typeof fetchResearchCallTemplates>
-    >;
-
-    try {
-      savedMessageTemplates =
-        await fetchResearchCallTemplates(token);
-    } catch {
-      console.warn(
-        "RA message templates unavailable; using the existing message format."
-      );
-    }
+    const finalPreparedMessage =
+      preparedMessage ?? await prepareResearchCallMessage(token);
 
     /*
      * =========================================================
@@ -469,130 +729,6 @@ const finalDisplayName =
         research_remarks: trimmedRemark,
       };
 
-      const defaultErrataMessage = `
-ERRATA / CORRECTION
-
-Published On: ${new Date().toLocaleString("en-IN", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      })}
-
-Stock Name: ${finalDisplayName}
-Symbol: ${finalSymbol}
-
-${form.action} ${form.exchange} ${form.callType} Expiry: ${
-        form.expiry ? formatExpiry(form.expiry) : "N/A"
-      }
-
-Call Type: ${form.tradeType}
-
-Entry: ${
-        form.rangeEnabled
-          ? `${form.entryLow} - ${form.entryUpper}`
-          : form.entry
-      }
-
-Target: ${form.target}${
-        form.secondaryTargetEnabled
-          ? `
-T2: ${form.target2}
-T3: ${form.target3}`
-          : ""
-      }
-
-SL: ${form.stopLoss}${
-        form.stopLoss2Enabled
-          ? `
-SL 2: ${form.stopLoss2}
-SL 3: ${form.stopLoss3}`
-          : ""
-      }
-
-Reason:
-${trimmedRemark}
-
-DISCLAIMER CUM DISCLOSURE:
-
-${disclaimer}
-
-Research Analyst: ${raFullName || "N/A"} (${
-        raDetails?.org_name || "N/A"
-      })
-SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
-Contact No: ${raDetails?.mobile || "N/A"}
-Email ID: ${raDetails?.email || "N/A"}
-
-Read Full Disclaimer / Disclosure at:
-https://lotusfunds.com/disclaimer&disclosure
-`.trim();
-
-      let errataMessage = defaultErrataMessage;
-      const errataTemplate =
-        savedMessageTemplates.ERRATA;
-
-      if (errataTemplate) {
-        try {
-          errataMessage = formatResearchCallMessage(
-            errataTemplate,
-            {
-              publishedAt: new Date().toLocaleString(
-                "en-IN",
-                {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                  second: "2-digit",
-                  hour12: true,
-                }
-              ),
-              instrument: finalDisplayName,
-              symbol: finalSymbol,
-              exchange: `${form.exchange} ${form.callType}`,
-              action: form.action,
-              callType: form.tradeType,
-              entry: form.rangeEnabled
-                ? `${form.entryLow} - ${form.entryUpper}`
-                : form.entry,
-              targets: [
-                form.target,
-                form.secondaryTargetEnabled
-                  ? form.target2
-                  : null,
-                form.secondaryTargetEnabled
-                  ? form.target3
-                  : null,
-              ],
-              stopLosses: [
-                form.stopLoss,
-                form.stopLoss2Enabled
-                  ? form.stopLoss2
-                  : null,
-                form.stopLoss2Enabled
-                  ? form.stopLoss3
-                  : null,
-              ],
-              expiry: form.expiry
-                ? formatExpiry(form.expiry)
-                : "N/A",
-              timeHorizon: form.tradeType,
-              holdingPeriod: form.holdingPeriod,
-              errataReason: trimmedRemark,
-            },
-            raTemplateData,
-            "ERRATA"
-          );
-        } catch {
-          errataMessage = defaultErrataMessage;
-        }
-      }
-
       const errataResponse = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/research/calls/errata`,
         {
@@ -603,11 +739,9 @@ https://lotusfunds.com/disclaimer&disclosure
         (study) => study.value
       ),
           errata_reason: trimmedRemark,
-          message_text: errataMessage,
-          message_template_version:
-            errataTemplate?.version ?? null,
-          message_template_snapshot:
-            errataTemplate ?? null,
+          message_text: finalPreparedMessage.message,
+          message_template_version: finalPreparedMessage.templateVersion,
+          message_template_snapshot: finalPreparedMessage.templateSnapshot,
         },
         {
           headers: {
@@ -640,7 +774,7 @@ https://lotusfunds.com/disclaimer&disclosure
         await axios.post(
           `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
           {
-            message: errataMessage,
+            message: finalPreparedMessage.message,
           },
           {
             headers: {
@@ -672,141 +806,11 @@ https://lotusfunds.com/disclaimer&disclosure
      * =========================================================
      */
 
-    const publishedAt = new Date().toLocaleString("en-IN", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-    });
-
-    const defaultPublishMessage = `
-Published On: ${publishedAt}
-
-${form.action} ${form.exchange} ${form.callType} Expiry: ${
-      form.expiry ? formatExpiry(form.expiry) : "N/A"
-    }
-
-Stock Name: ${finalDisplayName}
-Symbol: ${finalSymbol}
-
-Call Type: ${form.tradeType}
-
-Entry: ${
-      form.rangeEnabled
-        ? `${form.entryLow} - ${form.entryUpper}`
-        : form.entry
-    }
-
-Target: ${form.target}${
-      form.secondaryTargetEnabled
-        ? `
-T2: ${form.target2}
-T3: ${form.target3}`
-        : ""
-    }
-
-SL: ${form.stopLoss}${
-      form.stopLoss2Enabled
-        ? `
-SL 2: ${form.stopLoss2}
-SL 3: ${form.stopLoss3}`
-        : ""
-    }
-
-Holding Period: ${form.holdingPeriod || "N/A"}
-
-Rationale: ${form.rationale}
-
-Underlying Study: ${
-      form.underlyingStudy
-        .map((study) => study.label)
-        .join(", ") || "N/A"
-    }
-
-Remarks: ${form.remark || "N/A"}
-
-DISCLAIMER CUM DISCLOSURE:
-
-${disclaimer}
-
-Research Analyst: ${raFullName || "N/A"} (${
-      raDetails?.org_name || "N/A"
-    })
-SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
-Contact No: ${raDetails?.mobile || "N/A"}
-Email ID: ${raDetails?.email || "N/A"}
-
-Read Full Disclaimer / Disclosure at:
-https://lotusfunds.com/disclaimer&disclosure
-`.trim();
-
-    let publishMessage = defaultPublishMessage;
-    const newCallTemplate =
-      savedMessageTemplates.NEW_CALL;
-
-    if (newCallTemplate) {
-      try {
-        publishMessage = formatResearchCallMessage(
-          newCallTemplate,
-          {
-            publishedAt,
-            instrument: finalDisplayName,
-            symbol: finalSymbol,
-            exchange: `${form.exchangeType} / ${form.exchange}`,
-            action: form.action,
-            callType: form.callType,
-            entry: form.rangeEnabled
-              ? `${form.entryLow} - ${form.entryUpper}`
-              : form.entry,
-            targets: [
-              form.target,
-              form.secondaryTargetEnabled
-                ? form.target2
-                : null,
-              form.secondaryTargetEnabled
-                ? form.target3
-                : null,
-            ],
-            stopLosses: [
-              form.stopLoss,
-              form.stopLoss2Enabled
-                ? form.stopLoss2
-                : null,
-              form.stopLoss2Enabled
-                ? form.stopLoss3
-                : null,
-            ],
-            expiry: form.expiry
-              ? formatExpiry(form.expiry)
-              : "N/A",
-            timeHorizon: form.tradeType,
-            holdingPeriod: form.holdingPeriod,
-            rationale: form.rationale,
-            underlyingStudy:
-              form.underlyingStudy
-                .map((study) => study.label)
-                .join(", ") || "N/A",
-            remarks: form.remark || "N/A",
-          },
-          raTemplateData,
-          "NEW_CALL"
-        );
-      } catch {
-        publishMessage = defaultPublishMessage;
-      }
-    }
-
     const payload = {
       status: "PUBLISHED",
-      message_text: publishMessage,
-      message_template_version:
-        newCallTemplate?.version ?? null,
-      message_template_snapshot: newCallTemplate
-        ? JSON.stringify(newCallTemplate)
-        : null,
+      message_text: finalPreparedMessage.message,
+      message_template_version: finalPreparedMessage.templateVersion,
+      message_template_snapshot: finalPreparedMessage.templateSnapshot,
 
       exchange_type: form.exchangeType,
       market_type: form.exchange,
@@ -914,7 +918,7 @@ https://lotusfunds.com/disclaimer&disclosure
       await axios.post(
         `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
         {
-          message: publishMessage,
+          message: finalPreparedMessage.message,
         },
         {
           headers: {
@@ -1557,44 +1561,129 @@ const handleViewHistory = useCallback(async (item: any) => {
   const [wasValidated, setWasValidated] = useState(false);
 
 
-const validateAndPublish = async (
-  event: MouseEvent<HTMLButtonElement>
-) => {
-  event.preventDefault();
-
-  if (isSubmitting) return;
-
+const validatePublishForm = () => {
   setWasValidated(true);
-
   const missingFields = getMissingFields();
 
-if (missingFields.length > 0) {
-  alert(`Please fill required fields:\n\n${missingFields.join(", ")}`);
-  return;
-}
+  if (missingFields.length > 0) {
+    alert(`Please fill required fields:\n\n${missingFields.join(", ")}`);
+    return false;
+  }
 
- const priceErr =
-  getPriceError("entry", form) ||
-  getPriceError("target", form) ||
-  getPriceError("stopLoss", form) ||
-  getPriceError("entryLow", form) ||
-  getPriceError("entryUpper", form) ||
-  getPriceError("target2", form) ||
-  getPriceError("target3", form) ||
-  getPriceError("stopLoss2", form) ||
-  getPriceError("stopLoss3", form);
-
+  const priceErr =
+    getPriceError("entry", form) ||
+    getPriceError("target", form) ||
+    getPriceError("stopLoss", form) ||
+    getPriceError("entryLow", form) ||
+    getPriceError("entryUpper", form) ||
+    getPriceError("target2", form) ||
+    getPriceError("target3", form) ||
+    getPriceError("stopLoss2", form) ||
+    getPriceError("stopLoss3", form);
 
   if (priceErr) {
     const priceRow = document.getElementById("prices-row");
     if (priceRow) {
       priceRow.scrollIntoView({ behavior: "smooth", block: "center" });
     }
+    return false;
+  }
+
+  if (isErrataMode && !errataSourceId) {
+    alert("Original research call ID is missing");
+    return false;
+  }
+
+  if (isErrataMode && !form.remark.trim()) {
+    alert("Research Analyst Remark is required for Errata");
+    return false;
+  }
+
+  return true;
+};
+
+const prepareAndOpenPreview = async () => {
+  if (previewLoadingRef.current || isSubmitting) return;
+
+  const token = localStorage.getItem("token");
+  if (!token) {
+    alert("Please login again");
+    return;
+  }
+
+  const requestId = previewRequestRef.current + 1;
+  previewRequestRef.current = requestId;
+  previewLoadingRef.current = true;
+  setPreviewLoading(true);
+  setPreparedPreview(null);
+
+  try {
+    const preparedMessage = await prepareResearchCallMessage(token);
+    if (previewRequestRef.current !== requestId) return;
+
+    setPreparedPreview(preparedMessage);
+    setPreviewDialogOpen(true);
+    setWasValidated(false);
+  } catch (error) {
+    if (previewRequestRef.current !== requestId) return;
+    alert(
+      error instanceof Error
+        ? error.message
+        : "Unable to prepare message preview"
+    );
+  } finally {
+    if (previewRequestRef.current === requestId) {
+      previewLoadingRef.current = false;
+      setPreviewLoading(false);
+    }
+  }
+};
+
+const validateAndPublish = async (
+  event: MouseEvent<HTMLButtonElement>
+) => {
+  event.preventDefault();
+  if (isSubmitting || previewLoading || !validatePublishForm()) return;
+
+  if (showPublishPreview) {
+    await prepareAndOpenPreview();
     return;
   }
 
   await handleSubmit();
   setWasValidated(false);
+};
+
+const validateAndPreview = async (
+  event: MouseEvent<HTMLButtonElement>
+) => {
+  event.preventDefault();
+  if (isSubmitting || previewLoading || !validatePublishForm()) return;
+
+  await prepareAndOpenPreview();
+};
+
+const handleClosePreview = () => {
+  if (isSubmitting) return;
+  setPreviewDialogOpen(false);
+  setPreparedPreview(null);
+};
+
+const handleConfirmPreview = async () => {
+  if (!preparedPreview || isSubmitting) return;
+  await handleSubmit(preparedPreview);
+};
+
+const handleShowPublishPreviewChange = (
+  event: ChangeEvent<HTMLInputElement>
+) => {
+  const checked = event.target.checked;
+  setShowPublishPreview(checked);
+  try {
+    sessionStorage.setItem(PUBLISH_PREVIEW_SESSION_KEY, String(checked));
+  } catch {
+    // Keep the in-memory preference if session storage is unavailable.
+  }
 };
 
 
@@ -3527,7 +3616,7 @@ sx={{
 >
    <Button
   type="button"
-  disabled={isSubmitting}
+  disabled={isSubmitting || previewLoading}
   variant="contained"
   onClick={validateAndPublish}
  sx={{
@@ -3539,13 +3628,34 @@ sx={{
   },
 }}
 >
-  {isSubmitting
+  {previewLoading
+    ? "Preparing Preview..."
+    : isSubmitting
     ? isErrataMode
       ? "Creating Errata..."
       : "Publishing..."
     : isErrataMode
       ? "Create Errata"
       : "Publish Call"}
+</Button>
+
+<Button
+  type="button"
+  disabled={isSubmitting || previewLoading}
+  variant="outlined"
+  onClick={validateAndPreview}
+  sx={{
+    width: {
+      xs: "100%",
+      sm: "auto",
+    },
+  }}
+>
+  {previewLoading
+    ? "Preparing Preview..."
+    : isErrataMode
+      ? "Preview Errata"
+      : "Preview Message"}
 </Button>
 
 <Button
@@ -3594,6 +3704,68 @@ sx={{
   onViewHistory={handleViewHistory}
 />
       {/* RIGHT PANEL */}
+
+<Dialog
+  open={previewDialogOpen}
+  onClose={handleClosePreview}
+  fullWidth
+  maxWidth="sm"
+>
+  <DialogTitle>
+    {isErrataMode
+      ? "Errata Message Preview"
+      : "Research Call Message Preview"}
+  </DialogTitle>
+  <DialogContent dividers>
+    <Paper
+      component="pre"
+      variant="outlined"
+      sx={{
+        p: 2,
+        m: 0,
+        maxHeight: 420,
+        overflow: "auto",
+        whiteSpace: "pre-wrap",
+        overflowWrap: "anywhere",
+        fontFamily: "inherit",
+        fontSize: "0.85rem",
+        lineHeight: 1.6,
+        backgroundColor: "#F8FAFF",
+        borderColor: "#C7D2FE",
+      }}
+    >
+      {preparedPreview?.message || ""}
+    </Paper>
+    <FormControlLabel
+      sx={{ mt: 1.5 }}
+      control={
+        <Checkbox
+          checked={showPublishPreview}
+          onChange={handleShowPublishPreviewChange}
+        />
+      }
+      label="Show preview before publishing"
+    />
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={handleClosePreview} disabled={isSubmitting}>
+      Back
+    </Button>
+    <Button
+      variant="contained"
+      onClick={handleConfirmPreview}
+      disabled={isSubmitting || !preparedPreview}
+    >
+      {isSubmitting
+        ? isErrataMode
+          ? "Creating Errata..."
+          : "Publishing..."
+        : isErrataMode
+          ? "Create Errata"
+          : "Publish Call"}
+    </Button>
+  </DialogActions>
+</Dialog>
 
      <Dialog
   open={historyDialogOpen}
