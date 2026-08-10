@@ -75,7 +75,7 @@ const Settings = () => {
       </Typography>
       <Button 
         variant="contained" 
-        onClick={() => navigate("/ra/profile")}
+        onClick={() => navigate("/ra/profile/edit")}
      
         sx={{ 
           textTransform: "none", 
