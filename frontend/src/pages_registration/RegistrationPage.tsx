@@ -203,43 +203,151 @@ const handleSelect = (e: SelectChangeEvent) => {
 };
   
 
-  const validateStep = () => {
-    const newErrors: { [key: string]: boolean } = {};
-    const step1Fields = ['salutation', 'first_name', 'middle_name', 'surname', 'org_name', 'designation', 'short_bio', 'email', 'mobile', 'telephone', 'country', 'state', 'city', 'pincode', 'address_line1', 'address_line2'];
-    const step2Fields = ['sebi_reg_no', 'sebi_start_date', 'sebi_expiry_date', 'nism_reg_no', 'nism_valid_till', 'academic_qualification', 'professional_qualification', 'expertise', 'markets', 'market_experience'];
-    const step3Fields = ['bank_name', 'account_holder', 'account_number', 'ifsc_code', 'pan_number', 'address_proof_type'];
+ const validateStep = () => {
+  const newErrors: { [key: string]: boolean } = {};
 
-    let fieldsToValidate = currentStep === 1 ? step1Fields : currentStep === 2 ? step2Fields : step3Fields;
-    fieldsToValidate.forEach(field => {
-      const val = formData[field as keyof typeof formData];
-      if (!val || (typeof val === 'string' && val.trim() === "")) newErrors[field] = true;
-    });
+  const step1Fields = [
+    "salutation",
+    "first_name",
+    "middle_name",
+    "surname",
+    "org_name",
+    "designation",
+    "short_bio",
+    "email",
+    "mobile",
+    "telephone",
+    "country",
+    "state",
+    "city",
+    "pincode",
+    "address_line1",
+    "address_line2",
+  ];
 
-    if (currentStep === 1) {
-  if (formData.mobile.length !== 10) {
-    newErrors.mobile = true;
-  }
+  const step2Fields = [
+    "sebi_reg_no",
+    "sebi_start_date",
+    "sebi_expiry_date",
+    "nism_reg_no",
+    "nism_valid_till",
+    "academic_qualification",
+    "professional_qualification",
+    "expertise",
+    "markets",
+    "market_experience",
+  ];
 
-  if (formData.pincode.length !== 6) {
-    newErrors.pincode = true;
-  }
-}
+  const step3Fields = [
+    "bank_name",
+    "account_holder",
+    "account_number",
+    "ifsc_code",
+    "pan_number",
+    "address_proof_type",
+  ];
 
-    if (currentStep === 3) {
-      if (!formData.declare_info_true) newErrors.declare1 = true;
-      if (!formData.consent_verification) newErrors.consent_verification = true;
+  const fieldsToValidate =
+    currentStep === 1
+      ? step1Fields
+      : currentStep === 2
+      ? step2Fields
+      : step3Fields;
+
+  // ================= NORMAL FIELD VALIDATION =================
+
+  fieldsToValidate.forEach((field) => {
+    const val = formData[field as keyof typeof formData];
+
+    if (
+      !val ||
+      (typeof val === "string" && val.trim() === "")
+    ) {
+      newErrors[field] = true;
+    }
+  });
+
+  // ================= STEP 1 VALIDATION =================
+
+  if (currentStep === 1) {
+    if (formData.mobile.length !== 10) {
+      newErrors.mobile = true;
     }
 
-    if (currentStep === 4) {
-  if (!formData.no_guaranteed_returns) newErrors.no_guaranteed_returns = true;
-  if (!formData.conflict_of_interest) newErrors.conflict_of_interest = true;
-  if (!formData.personal_trading) newErrors.personal_trading = true;
-  if (!formData.sebi_compliance) newErrors.sebi_compliance = true;
-  if (!formData.platform_policy) newErrors.platform_policy = true;
-}
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    if (formData.pincode.length !== 6) {
+      newErrors.pincode = true;
+    }
+  }
+
+  // ================= STEP 2 FILE VALIDATION =================
+
+  if (currentStep === 2) {
+    if (!files.sebiCert) {
+      newErrors.sebiCert = true;
+    }
+
+    if (!files.sebiReceipt) {
+      newErrors.sebiReceipt = true;
+    }
+
+    if (!files.nismCert) {
+      newErrors.nismCert = true;
+    }
+  }
+
+  // ================= STEP 3 FILE VALIDATION =================
+
+  if (currentStep === 3) {
+    if (!files.cancelledCheque) {
+      newErrors.cancelledCheque = true;
+    }
+
+    if (!files.panCard) {
+      newErrors.panCard = true;
+    }
+
+    if (!files.addressProofDoc) {
+      newErrors.addressProofDoc = true;
+    }
+
+    // Declarations
+    if (!formData.declare_info_true) {
+      newErrors.declare1 = true;
+    }
+
+    if (!formData.consent_verification) {
+      newErrors.consent_verification = true;
+    }
+  }
+
+  // ================= STEP 4 VALIDATION =================
+
+  if (currentStep === 4) {
+    if (!formData.no_guaranteed_returns) {
+      newErrors.no_guaranteed_returns = true;
+    }
+
+    if (!formData.conflict_of_interest) {
+      newErrors.conflict_of_interest = true;
+    }
+
+    if (!formData.personal_trading) {
+      newErrors.personal_trading = true;
+    }
+
+    if (!formData.sebi_compliance) {
+      newErrors.sebi_compliance = true;
+    }
+
+    if (!formData.platform_policy) {
+      newErrors.platform_policy = true;
+    }
+  }
+
+  setErrors(newErrors);
+
+  return Object.keys(newErrors).length === 0;
+};
 
  
 
@@ -360,12 +468,20 @@ if (response.data.success) {
         [backendData.field]: backendData.message,
       });
 
-      const fieldStepMap: { [key: string]: number } = {
-        mobile: 1,
-        sebi_reg_no: 2,
-        nism_reg_no: 2,
-        pan_number: 3,
-      };
+const fieldStepMap: { [key: string]: number } = {
+  mobile: 1,
+
+  sebi_reg_no: 2,
+  sebi_certificate: 2,
+  sebi_receipt: 2,
+  nism_reg_no: 2,
+  nism_certificate: 2,
+
+  pan_number: 3,
+  cancelled_cheque: 3,
+  pan_card: 3,
+  address_proof_document: 3,
+};
 
       if (fieldStepMap[backendData.field]) {
         setCurrentStep(fieldStepMap[backendData.field]);
@@ -408,30 +524,44 @@ if (response.data.success) {
     }
   };
 
-  const handleDocUpload = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    key: keyof typeof fileLabels
-  ) => {
-    const file = e.target.files?.[0];
+ const handleDocUpload = (
+  e: React.ChangeEvent<HTMLInputElement>,
+  key: keyof typeof fileLabels
+) => {
+  const file = e.target.files?.[0];
 
-    if (file) {
-      setFileLabels(prev => ({ ...prev, [key]: file.name }));
+  if (!file) return;
 
-      setFiles((prev: any) => ({
-        ...prev,
-        [key]: file
-      }));
-    }
-  };
+  setFileLabels((prev) => ({
+    ...prev,
+    [key]: file.name,
+  }));
 
-  const getDynamicUploadStyle = (fileName: string) => {
+  setFiles((prev: any) => ({
+    ...prev,
+    [key]: file,
+  }));
+
+  // Clear validation error once file is uploaded
+  setErrors((prev) => ({
+    ...prev,
+    [key]: false,
+  }));
+};
+
+const getDynamicUploadStyle = (fileName: string, hasError: boolean = false) => {
     const isUploaded = fileName !== "No file chosen";
     return {
-      bgcolor: isUploaded ? "#2E7D32" : "#F0F2F5",
-      color: isUploaded ? "#ffffff" : "#444",
-      borderColor: isUploaded ? "#1B5E20" : "#C4C4C4",
-      "&:hover": { bgcolor: isUploaded ? "#1B5E20" : "#E0E0E0" },
-      border: "1px solid #C4C4C4", textTransform: "none", borderRadius: 2, fontSize: '0.9rem', fontWeight: 600, px: 2, py: 1
+      bgcolor: hasError ? "#FDE8E8" : isUploaded ? "#2E7D32" : "#F0F2F5",
+      color: isUploaded ? "#ffffff" : "#333333",
+      border: hasError ? "2px solid #d32f2f" : isUploaded ? "2px solid #1B5E20" : "1px solid #C4C4C4",
+      "&:hover": { bgcolor: hasError ? "#FBD5D5" : isUploaded ? "#1B5E20" : "#E0E0E0" },
+      textTransform: "none",
+      borderRadius: 2,
+      fontSize: '0.9rem',
+      fontWeight: 600,
+      px: 2,
+      py: 1
     };
   };
 
@@ -595,8 +725,6 @@ const selectedState = states.find(
 const cities = selectedState
   ? City.getCitiesOfState("IN", selectedState.isoCode)
   : [];
-
-
 
   return (
 
@@ -1064,58 +1192,79 @@ helperText={
       SEBI Certificate
     </Typography>
 
-    <Button
-      component="label"
-      variant="contained"
-      startIcon={
-        fileLabels.sebiCert !== "No file chosen"
-          ? <CheckCircleIcon />
-          : <CloudUploadIcon />
-      }
-      sx={getDynamicUploadStyle(fileLabels.sebiCert)}
-    >
-      {fileLabels.sebiCert !== "No file chosen" ? "Uploaded" : "Upload Media"}
+<Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+      <Button
+        component="label"
+        variant="contained"
+        startIcon={
+          fileLabels.sebiCert !== "No file chosen"
+            ? <CheckCircleIcon />
+            : <CloudUploadIcon />
+        }
+        sx={getDynamicUploadStyle(fileLabels.sebiCert, !!errors.sebiCert)}
+      >
+        {fileLabels.sebiCert !== "No file chosen" ? "Uploaded" : "Upload Media"}
 
-      <input
-        type="file"
-        hidden
-        onChange={(e) => handleDocUpload(e, "sebiCert")}
-      />
-    </Button>
+        <input
+          type="file"
+          hidden
+          onChange={(e) => handleDocUpload(e, "sebiCert")}
+        />
+      </Button>
 
-    <Typography variant="caption">
-      {fileLabels.sebiCert}
-    </Typography>
+      <Typography
+        variant="caption"
+        sx={{
+          color: errors.sebiCert ? "#d32f2f" : "#666666",
+          fontWeight: errors.sebiCert ? 600 : 400,
+          mt: 0.5,
+          ml: 0.5
+        }}
+      >
+        {errors.sebiCert ? "Required" : fileLabels.sebiCert}
+      </Typography>
+    </Box>
   </Grid>
 
   {/* SEBI RECEIPT */}
+{/* SEBI RECEIPT */}
   <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
     <Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>
       SEBI Receipt
     </Typography>
 
-    <Button
-      component="label"
-      variant="contained"
-      startIcon={
-        fileLabels.sebiReceipt !== "No file chosen"
-          ? <CheckCircleIcon />
-          : <CloudUploadIcon />
-      }
-      sx={getDynamicUploadStyle(fileLabels.sebiReceipt)}
-    >
-      {fileLabels.sebiReceipt !== "No file chosen" ? "Uploaded" : "Upload Media"}
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+      <Button
+        component="label"
+        variant="contained"
+        startIcon={
+          fileLabels.sebiReceipt !== "No file chosen"
+            ? <CheckCircleIcon />
+            : <CloudUploadIcon />
+        }
+        sx={getDynamicUploadStyle(fileLabels.sebiReceipt, !!errors.sebiReceipt)}
+      >
+        {fileLabels.sebiReceipt !== "No file chosen" ? "Uploaded" : "Upload Media"}
 
-      <input
-        type="file"
-        hidden
-        onChange={(e) => handleDocUpload(e, "sebiReceipt")}
-      />
-    </Button>
+        <input
+          type="file"
+          hidden
+          onChange={(e) => handleDocUpload(e, "sebiReceipt")}
+        />
+      </Button>
 
-    <Typography variant="caption">
-      {fileLabels.sebiReceipt}
-    </Typography>
+      <Typography
+        variant="caption"
+        sx={{
+          color: errors.sebiReceipt ? "#d32f2f" : "#666666",
+          fontWeight: errors.sebiReceipt ? 600 : 400,
+          mt: 0.5,
+          ml: 0.5
+        }}
+      >
+        {errors.sebiReceipt ? "Required" : fileLabels.sebiReceipt}
+      </Typography>
+    </Box>
   </Grid>
 
 </Grid>
@@ -1160,33 +1309,44 @@ helperText={
     />
   </Grid>
 
+  {/* NISM CERTIFICATE */}
   <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
     <Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>
       NISM Certificate
     </Typography>
 
-    <Button
-      component="label"
-      variant="contained"
-      startIcon={
-        fileLabels.nismCert !== "No file chosen"
-          ? <CheckCircleIcon />
-          : <CloudUploadIcon />
-      }
-      sx={getDynamicUploadStyle(fileLabels.nismCert)}
-    >
-      {fileLabels.nismCert !== "No file chosen" ? "Uploaded" : "Upload Media"}
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+      <Button
+        component="label"
+        variant="contained"
+        startIcon={
+          fileLabels.nismCert !== "No file chosen"
+            ? <CheckCircleIcon />
+            : <CloudUploadIcon />
+        }
+        sx={getDynamicUploadStyle(fileLabels.nismCert, !!errors.nismCert)}
+      >
+        {fileLabels.nismCert !== "No file chosen" ? "Uploaded" : "Upload Media"}
 
-      <input
-        type="file"
-        hidden
-        onChange={(e) => handleDocUpload(e, "nismCert")}
-      />
-    </Button>
+        <input
+          type="file"
+          hidden
+          onChange={(e) => handleDocUpload(e, "nismCert")}
+        />
+      </Button>
 
-    <Typography variant="caption">
-      {fileLabels.nismCert}
-    </Typography>
+      <Typography
+        variant="caption"
+        sx={{
+          color: errors.nismCert ? "#d32f2f" : "#666666",
+          fontWeight: errors.nismCert ? 600 : 400,
+          mt: 0.5,
+          ml: 0.5
+        }}
+      >
+        {errors.nismCert ? "Required" : fileLabels.nismCert}
+      </Typography>
+    </Box>
   </Grid>
 
 </Grid>
@@ -1356,43 +1516,54 @@ helperText={
       </Grid>
 
       {/* CANCELLED CHEQUE */}
+     {/* CANCELLED CHEQUE */}
       <Grid 
-  size={{ xs: 12, md: 6 }} 
-  sx={{ 
-    display: 'flex', 
-    flexDirection: { xs: 'column', sm: 'row' }, 
-    alignItems: { xs: 'flex-start', sm: 'center' }, 
-    gap: 2 
-  }}
->
+        size={{ xs: 12, md: 6 }} 
+        sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' }, 
+          alignItems: { xs: 'flex-start', sm: 'center' }, 
+          gap: 2 
+        }}
+      >
         <Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>
           Cancelled Cheque
         </Typography>
 
-        <Button
-          component="label"
-          variant="contained"
-          startIcon={
-            fileLabels.cancelledCheque !== "No file chosen"
-              ? <CheckCircleIcon />
-              : <CloudUploadIcon />
-          }
-          sx={getDynamicUploadStyle(fileLabels.cancelledCheque)}
-        >
-          {fileLabels.cancelledCheque !== "No file chosen"
-            ? "Uploaded"
-            : "Upload Media"}
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+          <Button
+            component="label"
+            variant="contained"
+            startIcon={
+              fileLabels.cancelledCheque !== "No file chosen"
+                ? <CheckCircleIcon />
+                : <CloudUploadIcon />
+            }
+            sx={getDynamicUploadStyle(fileLabels.cancelledCheque, !!errors.cancelledCheque)}
+          >
+            {fileLabels.cancelledCheque !== "No file chosen"
+              ? "Uploaded"
+              : "Upload Media"}
 
-          <input
-            type="file"
-            hidden
-            onChange={(e) => handleDocUpload(e, "cancelledCheque")}
-          />
-        </Button>
+            <input
+              type="file"
+              hidden
+              onChange={(e) => handleDocUpload(e, "cancelledCheque")}
+            />
+          </Button>
 
-        <Typography variant="caption">
-          {fileLabels.cancelledCheque}
-        </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: errors.cancelledCheque ? "#d32f2f" : "#666666",
+              fontWeight: errors.cancelledCheque ? 600 : 400,
+              mt: 0.5,
+              ml: 0.5
+            }}
+          >
+            {errors.cancelledCheque ? "Required" : fileLabels.cancelledCheque}
+          </Typography>
+        </Box>
       </Grid>
     </Grid>
 
@@ -1421,41 +1592,54 @@ helperText={
       </Grid>
 
       {/* PAN CARD */}
+    {/* PAN CARD */}
       <Grid 
-  size={{ xs: 12, md: 6 }} 
-  sx={{ 
-    display: 'flex', 
-    flexDirection: { xs: 'column', sm: 'row' }, 
-    alignItems: { xs: 'flex-start', sm: 'center' }, 
-    gap: 2 
-  }}
->
+        size={{ xs: 12, md: 6 }} 
+        sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' }, 
+          alignItems: { xs: 'flex-start', sm: 'center' }, 
+          gap: 2 
+        }}
+      >
         <Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>
           PAN Card Upload
         </Typography>
 
-        <Button
-          component="label"
-          variant="contained"
-          startIcon={
-            fileLabels.panCard !== "No file chosen"
-              ? <CheckCircleIcon />
-              : <CloudUploadIcon />
-          }
-          sx={getDynamicUploadStyle(fileLabels.panCard)}
-        >
-          {fileLabels.panCard !== "No file chosen"
-            ? "Uploaded"
-            : "Upload Media"}
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+          <Button
+            component="label"
+            variant="contained"
+            startIcon={
+              fileLabels.panCard !== "No file chosen"
+                ? <CheckCircleIcon />
+                : <CloudUploadIcon />
+            }
+            sx={getDynamicUploadStyle(fileLabels.panCard, !!errors.panCard)}
+          >
+            {fileLabels.panCard !== "No file chosen"
+              ? "Uploaded"
+              : "Upload Media"}
 
-          <input
-            type="file"
-            hidden
-            onChange={(e) => handleDocUpload(e, "panCard")}
-          />
-        </Button>
+            <input
+              type="file"
+              hidden
+              onChange={(e) => handleDocUpload(e, "panCard")}
+            />
+          </Button>
 
-        <Typography variant="caption">{fileLabels.panCard}</Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: errors.panCard ? "#d32f2f" : "#666666",
+              fontWeight: errors.panCard ? 600 : 400,
+              mt: 0.5,
+              ml: 0.5
+            }}
+          >
+            {errors.panCard ? "Required" : fileLabels.panCard}
+          </Typography>
+        </Box>
       </Grid>
     </Grid>
 
@@ -1482,43 +1666,54 @@ helperText={
       </Grid>
 
       {/* ADDRESS PROOF FILE */}
+     {/* ADDRESS PROOF FILE */}
       <Grid 
-  size={{ xs: 12, md: 6 }} 
-  sx={{ 
-    display: 'flex', 
-    flexDirection: { xs: 'column', sm: 'row' }, 
-    alignItems: { xs: 'flex-start', sm: 'center' }, 
-    gap: 2 
-  }}
->
+        size={{ xs: 12, md: 6 }} 
+        sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' }, 
+          alignItems: { xs: 'flex-start', sm: 'center' }, 
+          gap: 2 
+        }}
+      >
         <Typography sx={{ fontSize: '0.95rem', fontWeight: 700 }}>
           Address Proof Upload
         </Typography>
 
-        <Button
-          component="label"
-          variant="contained"
-          startIcon={
-            fileLabels.addressProofDoc !== "No file chosen"
-              ? <CheckCircleIcon />
-              : <CloudUploadIcon />
-          }
-          sx={getDynamicUploadStyle(fileLabels.addressProofDoc)}
-        >
-          {fileLabels.addressProofDoc !== "No file chosen"
-            ? "Uploaded"
-            : "Upload Media"}
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+          <Button
+            component="label"
+            variant="contained"
+            startIcon={
+              fileLabels.addressProofDoc !== "No file chosen"
+                ? <CheckCircleIcon />
+                : <CloudUploadIcon />
+            }
+            sx={getDynamicUploadStyle(fileLabels.addressProofDoc, !!errors.addressProofDoc)}
+          >
+            {fileLabels.addressProofDoc !== "No file chosen"
+              ? "Uploaded"
+              : "Upload Media"}
 
-          <input
-            type="file"
-            hidden
-            onChange={(e) => handleDocUpload(e, "addressProofDoc")}
-          />
-        </Button>
+            <input
+              type="file"
+              hidden
+              onChange={(e) => handleDocUpload(e, "addressProofDoc")}
+            />
+          </Button>
 
-        <Typography variant="caption">
-          {fileLabels.addressProofDoc}
-        </Typography>
+          <Typography
+            variant="caption"
+            sx={{
+              color: errors.addressProofDoc ? "#d32f2f" : "#666666",
+              fontWeight: errors.addressProofDoc ? 600 : 400,
+              mt: 0.5,
+              ml: 0.5
+            }}
+          >
+            {errors.addressProofDoc ? "Required" : fileLabels.addressProofDoc}
+          </Typography>
+        </Box>
       </Grid>
     </Grid>
 
