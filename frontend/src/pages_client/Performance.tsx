@@ -29,14 +29,22 @@ const Performance: React.FC = () => {
   const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null);
 
   useEffect(() => {
-    fetch("/PerformanceData.json")
-      .then((res) => res.json())
-      .then((json) => {
-        const incoming = json.metrics ?? json;
-        setMetrics(incoming);
-      })
-      .catch((err) => console.error("Error fetching performance data:", err));
-  }, []);
+  const token = localStorage.getItem("token");
+
+  fetch(
+    `${import.meta.env.VITE_API_URL}/api/performance?period=monthly&month=2026-08`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  )
+    .then((res) => res.json())
+    .then((data) => {
+      setMetrics(data.metrics);
+    })
+    .catch((err) => console.error(err));
+}, []);
 
   const BigCard = ({ title, value, green = false, red = false }: any) => (
     <Paper sx={cardStyle}>

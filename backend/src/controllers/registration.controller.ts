@@ -773,6 +773,47 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
       }
     }
     
+    // ================= REQUIRED FILE VALIDATION =================
+
+const requiredFiles = [
+  {
+    key: "sebi_certificate",
+    label: "SEBI Certificate",
+  },
+  {
+    key: "sebi_receipt",
+    label: "SEBI Receipt",
+  },
+  {
+    key: "nism_certificate",
+    label: "NISM Certificate",
+  },
+  {
+    key: "cancelled_cheque",
+    label: "Cancelled Cheque",
+  },
+  {
+    key: "pan_card",
+    label: "PAN Card",
+  },
+  {
+    key: "address_proof_document",
+    label: "Address Proof",
+  },
+];
+
+for (const file of requiredFiles) {
+  const uploadedFile = files?.[file.key]?.[0];
+
+  if (!uploadedFile) {
+    return res.status(400).json({
+      success: false,
+      field: file.key,
+      message: `${file.label} is required.`,
+    });
+  }
+}
+
 const registrationToken = crypto.randomBytes(32).toString("hex");
 
 const registrationTokenHash = crypto

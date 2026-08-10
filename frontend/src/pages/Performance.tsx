@@ -315,6 +315,7 @@ const Last10 = () => (
   </Paper>
 );
 
+
 return (
   <Box sx={{ backgroundColor: "#f7f8fa", minHeight: "100vh" }}>
 
@@ -517,37 +518,52 @@ return (
       )}
 
       {/* This now renders even when the performance API fails */}
-      {/* Search Bar - Above Recommendation History */}
-<Box sx={{ mt: 3, mb: 2 }}>
+{/* Search Bar Block */}
+<Box
+  sx={{
+    mt: 4,
+    mb: 2,
+    display: "flex",
+    justifyContent: "flex-end", // Aligns search bar to the right
+    alignItems: "center",
+  }}
+>
   <TextField
-    fullWidth
     size="small"
-    placeholder="Search by name or mobile"
+    placeholder="Search symbol, action..."
     value={search}
     onChange={(e) => setSearch(e.target.value)}
     sx={{
+      width: { xs: "100%", sm: "260px" },
       "& .MuiOutlinedInput-root": {
+        height: "38px",
         borderRadius: "8px",
         backgroundColor: "#fff",
+        fontSize: "0.875rem",
+        "& fieldset": { borderColor: "#E5E7EB" },
+        "&:hover fieldset": { borderColor: "#D1D5DB" },
+        "&.Mui-focused fieldset": { borderColor: "#2563EB", borderWidth: "1px" },
       },
     }}
     InputProps={{
       startAdornment: (
         <InputAdornment position="start">
-          <SearchIcon sx={{ color: "#666" }} />
+          <SearchIcon sx={{ color: "#9CA3AF", fontSize: 18 }} />
         </InputAdornment>
       ),
     }}
   />
 </Box>
-            <Box sx={{ mt: 3 }}>
-        <RecommendationHistory
-          enableExport
-          showAllRAs={false}
-          searchQuery={search}
-          exportFileBaseName="ra-performance"
-        />
-      </Box>
+
+{/* Recommendation History Table Component */}
+<Box sx={{ mt: 1 }}>
+  <RecommendationHistory
+    enableExport
+    showAllRAs={false}
+    exportFileBaseName="ra-performance"
+    searchQuery={search}
+  />
+</Box>
     </Box>
   </Box>
 );
