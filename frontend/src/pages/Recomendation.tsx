@@ -1241,7 +1241,12 @@ const handleExit = useCallback(
   async (
     item: any,
     exitPrice: number,
-    exitRemark: string
+    exitRemark: string,
+    options?: {
+      previewOnly?: boolean;
+      preparedMessage?: string;
+      onPreview?: (message: string) => void;
+    }
   ) => {
      const token = localStorage.getItem("token");
 
@@ -1331,7 +1336,7 @@ const handleExit = useCallback(
 const exitHeader 
   = "EXIT Recommendation";
 
-  const exitMessage = `
+  const generatedExitMessage = `
   ${exitHeader}
 Exit Message Published On : ${formatIndianDateTime(new Date())}
 
@@ -1368,6 +1373,14 @@ Email ID: ${raDetails.email || "N/A"}
 Read Full Disclaimer / Disclosure at:
 https://lotusfunds.com/disclaimer&disclosure
 `.trim();
+
+  if (options?.previewOnly) {
+    options.onPreview?.(generatedExitMessage);
+    return;
+  }
+
+  const exitMessage =
+    options?.preparedMessage?.trim() || generatedExitMessage;
 
   const response = await axios.patch(
     `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/exit`,
