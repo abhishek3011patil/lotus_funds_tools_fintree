@@ -24,6 +24,11 @@ import SearchIcon from "@mui/icons-material/Search";
 import TelegramIcon from "@mui/icons-material/Telegram";
 import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
+import BoltRoundedIcon from "@mui/icons-material/BoltRounded";
+import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
+import TrendingUpRoundedIcon from "@mui/icons-material/TrendingUpRounded";
 import { useNavigate } from "react-router-dom";
 import RecommendationHistory from "./common/RecommendationHistory";
 import api from "../utils/axio";
@@ -138,6 +143,40 @@ const statusPresentation = (value?: string | null) => {
   };
 };
 
+const callStatusChipStyles = (value?: string | null) => {
+  const status = String(value || "").trim().toUpperCase();
+
+  if (["ACTIVE", "PUBLISHED"].includes(status)) {
+    return {
+      bgcolor: "#E8F8EE",
+      color: "#187346",
+      borderColor: "#B9E8CA",
+    };
+  }
+
+  if (status === "CLOSED") {
+    return {
+      bgcolor: "#FFF6DB",
+      color: "#8A5A0A",
+      borderColor: "#F2D98C",
+    };
+  }
+
+  if (status === "OPEN") {
+    return {
+      bgcolor: "#EEF3FF",
+      color: "#2952B3",
+      borderColor: "#CAD7F7",
+    };
+  }
+
+  return {
+    bgcolor: "#F5F7FA",
+    color: "#526075",
+    borderColor: "#DDE3EC",
+  };
+};
+
 const DashboardStatusCard = ({
   title,
   icon,
@@ -150,32 +189,56 @@ const DashboardStatusCard = ({
   onAction,
 }: DashboardStatusCardProps) => (
   <Paper
-    variant="outlined"
+    elevation={0}
     sx={{
-      p: 2,
+      p: 2.25,
       minWidth: 0,
       height: "100%",
-      borderColor: "#E2E8F0",
-      borderRadius: 2,
+      border: "1px solid #E7ECF4",
+      borderRadius: 3,
       boxSizing: "border-box",
+      background: "linear-gradient(145deg, #FFFFFF 0%, #FBFCFF 100%)",
+      boxShadow: "0 8px 24px rgba(15, 23, 42, 0.045)",
+      transition: "transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease",
+      "&:hover": {
+        transform: "translateY(-2px)",
+        boxShadow: "0 14px 30px rgba(30, 64, 175, 0.09)",
+        borderColor: "#C9D5F2",
+      },
     }}
   >
     <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
       <Stack direction="row" alignItems="center" spacing={1} minWidth={0}>
-        <Box sx={{ color: "primary.main", display: "grid", placeItems: "center" }}>
+        <Box
+          sx={{
+            width: 38,
+            height: 38,
+            borderRadius: 2.25,
+            color: "primary.main",
+            bgcolor: "#EEF3FF",
+            display: "grid",
+            placeItems: "center",
+            flexShrink: 0,
+          }}
+        >
           {icon}
         </Box>
-        <Typography fontWeight={700} fontSize="0.9rem" noWrap>
+        <Typography fontWeight={750} fontSize="0.9rem" noWrap color="#172033">
           {title}
         </Typography>
       </Stack>
       {loading ? (
         <CircularProgress size={18} />
       ) : (
-        <Chip size="small" label={status} color={statusColor} />
+        <Chip
+          size="small"
+          label={status}
+          color={statusColor}
+          sx={{ fontWeight: 650, height: 25, fontSize: "0.7rem" }}
+        />
       )}
     </Stack>
-    <Box sx={{ mt: 1.25, minHeight: 42 }}>
+    <Box sx={{ mt: 1.5, minHeight: 44 }}>
       {error ? (
         <Typography variant="caption" color="error.main">
           {error}
@@ -185,7 +248,12 @@ const DashboardStatusCard = ({
       )}
     </Box>
     {actionLabel && onAction && (
-      <Button size="small" onClick={onAction} sx={{ mt: 0.75, px: 0 }}>
+      <Button
+        size="small"
+        onClick={onAction}
+        endIcon={<ArrowForwardRoundedIcon sx={{ fontSize: "1rem !important" }} />}
+        sx={{ mt: 0.75, px: 0, py: 0.25, fontWeight: 700 }}
+      >
         {actionLabel}
       </Button>
     )}
@@ -193,7 +261,15 @@ const DashboardStatusCard = ({
 );
 
 const CallSummaryRow = ({ call }: { call: ResearchCall }) => (
-  <Box sx={{ py: 1.25 }}>
+  <Box
+    sx={{
+      px: 0.5,
+      py: 1.5,
+      borderRadius: 2,
+      transition: "background-color 160ms ease",
+      "&:hover": { bgcolor: "#F8FAFD" },
+    }}
+  >
     <Stack
       direction={{ xs: "column", sm: "row" }}
       justifyContent="space-between"
@@ -202,7 +278,7 @@ const CallSummaryRow = ({ call }: { call: ResearchCall }) => (
     >
       <Box minWidth={0}>
         <Stack direction="row" alignItems="center" spacing={0.75} flexWrap="wrap">
-          <Typography fontWeight={700} fontSize="0.85rem" noWrap>
+          <Typography fontWeight={750} fontSize="0.88rem" noWrap color="#172033">
             {call.name || call.symbol || "Unknown instrument"}
           </Typography>
           <Chip
@@ -221,7 +297,18 @@ const CallSummaryRow = ({ call }: { call: ResearchCall }) => (
         </Typography>
       </Box>
       <Box sx={{ textAlign: { xs: "left", sm: "right" }, flexShrink: 0 }}>
-        <Chip size="small" label={call.status || "Unknown"} variant="outlined" />
+        <Chip
+          size="small"
+          label={call.status || "Unknown"}
+          variant="outlined"
+          sx={{
+            ...callStatusChipStyles(call.status),
+            height: 25,
+            fontSize: "0.7rem",
+            fontWeight: 750,
+            textTransform: "capitalize",
+          }}
+        />
         <Typography display="block" variant="caption" color="text.secondary" mt={0.25}>
           {formatDateTime(call.created_at)}
         </Typography>
@@ -354,10 +441,39 @@ const Dashboard = () => {
     : { label: "Not available", color: "default" as const };
 
   return (
-    <Box sx={{ width: "100%", minWidth: 0 }}>
+    <Box sx={{ width: "100%", minWidth: 0, pb: 2 }}>
       <Paper
-        variant="outlined"
-        sx={{ p: { xs: 2, sm: 3 }, borderColor: "#E9E9EE", borderRadius: 2 }}
+        elevation={0}
+        sx={{
+          position: "relative",
+          overflow: "hidden",
+          p: { xs: 2.5, sm: 3.5 },
+          border: "1px solid rgba(255,255,255,0.18)",
+          borderRadius: 3.5,
+          color: "#FFFFFF",
+          background: "linear-gradient(120deg, #102A72 0%, #1E40AF 55%, #315CCB 100%)",
+          boxShadow: "0 18px 40px rgba(30, 64, 175, 0.2)",
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            width: 260,
+            height: 260,
+            borderRadius: "50%",
+            right: -70,
+            top: -150,
+            bgcolor: "rgba(255,255,255,0.1)",
+          },
+          "&::after": {
+            content: '""',
+            position: "absolute",
+            width: 150,
+            height: 150,
+            borderRadius: "50%",
+            right: 140,
+            bottom: -120,
+            bgcolor: "rgba(112, 150, 255, 0.22)",
+          },
+        }}
       >
         <Stack
           direction={{ xs: "column", md: "row" }}
@@ -365,11 +481,20 @@ const Dashboard = () => {
           alignItems={{ xs: "stretch", md: "center" }}
           spacing={2}
         >
-          <Box>
-            <Typography variant="h5" fontWeight={700}>
+          <Box sx={{ position: "relative", zIndex: 1 }}>
+            <Stack direction="row" alignItems="center" spacing={0.75} mb={0.8}>
+              <AutoAwesomeOutlinedIcon sx={{ fontSize: "1rem", color: "#BFD0FF" }} />
+              <Typography
+                variant="overline"
+                sx={{ color: "#D8E2FF", letterSpacing: "0.11em", fontWeight: 700, lineHeight: 1 }}
+              >
+                Research workspace
+              </Typography>
+            </Stack>
+            <Typography variant="h4" fontWeight={800} letterSpacing="-0.025em">
               RA Dashboard
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            <Typography variant="body2" sx={{ mt: 0.75, color: "rgba(255,255,255,0.76)", maxWidth: 520 }}>
               Review your calls, delivery channels, and account status.
             </Typography>
           </Box>
@@ -377,7 +502,20 @@ const Dashboard = () => {
             variant="contained"
             startIcon={<AddCircleOutlineIcon />}
             onClick={() => navigate("/recommendations")}
-            sx={{ whiteSpace: "nowrap", alignSelf: { xs: "stretch", md: "auto" } }}
+            sx={{
+              position: "relative",
+              zIndex: 1,
+              whiteSpace: "nowrap",
+              alignSelf: { xs: "stretch", md: "auto" },
+              bgcolor: "#FFFFFF",
+              color: "#17398F",
+              fontWeight: 750,
+              px: 2.25,
+              py: 1.15,
+              borderRadius: 2.25,
+              boxShadow: "0 8px 20px rgba(4, 18, 57, 0.18)",
+              "&:hover": { bgcolor: "#F4F7FF", boxShadow: "0 10px 24px rgba(4, 18, 57, 0.24)" },
+            }}
           >
             Create Research Call
           </Button>
@@ -392,8 +530,8 @@ const Dashboard = () => {
             sm: "repeat(2, minmax(0, 1fr))",
             xl: "repeat(4, minmax(0, 1fr))",
           },
-          gap: 1.5,
-          my: 2,
+          gap: 2,
+          my: 2.5,
         }}
       >
         <DashboardStatusCard
@@ -469,32 +607,62 @@ const Dashboard = () => {
       </Box>
 
       <Paper
-        variant="outlined"
-        sx={{ p: { xs: 1, sm: 2 }, borderColor: "#CBD5E1", borderRadius: 2 }}
+        elevation={0}
+        sx={{
+          p: { xs: 1, sm: 2 },
+          border: "1px solid #E2E8F2",
+          borderRadius: 3,
+          boxShadow: "0 10px 30px rgba(15, 23, 42, 0.045)",
+          bgcolor: "#FFFFFF",
+        }}
       >
         <Stack
           direction={{ xs: "column", sm: "row" }}
           justifyContent="space-between"
           alignItems={{ xs: "stretch", sm: "center" }}
           spacing={1.5}
-          px={{ xs: 1, sm: 0 }}
+          px={{ xs: 1, sm: 0.5 }}
           pt={1}
-          mb={1}
+          mb={1.5}
         >
-          <Box>
-            <Typography variant="h6" fontWeight={700}>
-              Research Call History
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Your primary workspace for reviewing and filtering recommendation history.
-            </Typography>
-          </Box>
+          <Stack direction="row" spacing={1.25} alignItems="flex-start">
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 2.25,
+                bgcolor: "#EEF3FF",
+                color: "primary.main",
+                display: "grid",
+                placeItems: "center",
+                flexShrink: 0,
+              }}
+            >
+              <HistoryRoundedIcon fontSize="small" />
+            </Box>
+            <Box>
+              <Typography variant="h6" fontWeight={750} color="#172033">
+                Research Call History
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Review and filter your complete recommendation history.
+              </Typography>
+            </Box>
+          </Stack>
           <TextField
             placeholder="Search symbols..."
             size="small"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            sx={{ width: { xs: "100%", sm: 260 }, flexShrink: 0 }}
+            sx={{
+              width: { xs: "100%", sm: 280 },
+              flexShrink: 0,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 2.25,
+                bgcolor: "#F8FAFD",
+                "& fieldset": { borderColor: "#E3E8F0" },
+              },
+            }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -517,13 +685,30 @@ const Dashboard = () => {
           display: "grid",
           gridTemplateColumns: { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" },
           gap: 2,
-          mt: 2,
+          mt: 2.5,
         }}
       >
-        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, minWidth: 0 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={0.5}>
-            <Typography fontWeight={700}>Active Calls</Typography>
-            <Chip size="small" label={activeCalls.length} color="primary" variant="outlined" />
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2, sm: 2.5 },
+            border: "1px solid #E4EAF2",
+            borderRadius: 3,
+            minWidth: 0,
+            boxShadow: "0 8px 26px rgba(15, 23, 42, 0.04)",
+          }}
+        >
+          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "#ECFDF3", color: "#15803D", display: "grid", placeItems: "center" }}>
+                <BoltRoundedIcon fontSize="small" />
+              </Box>
+              <Box>
+                <Typography fontWeight={750} color="#172033">Active Calls</Typography>
+                <Typography variant="caption" color="text.secondary">Currently in the market</Typography>
+              </Box>
+            </Stack>
+            <Chip size="small" label={activeCalls.length} color="success" sx={{ fontWeight: 750 }} />
           </Stack>
           {callsLoading ? (
             <Stack alignItems="center" py={4}><CircularProgress size={24} /></Stack>
@@ -540,10 +725,27 @@ const Dashboard = () => {
           )}
         </Paper>
 
-        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, minWidth: 0 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={0.5}>
-            <Typography fontWeight={700}>Recent Calls</Typography>
-            <Typography variant="caption" color="text.secondary">Latest 5</Typography>
+        <Paper
+          elevation={0}
+          sx={{
+            p: { xs: 2, sm: 2.5 },
+            border: "1px solid #E4EAF2",
+            borderRadius: 3,
+            minWidth: 0,
+            boxShadow: "0 8px 26px rgba(15, 23, 42, 0.04)",
+          }}
+        >
+          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: "#EEF3FF", color: "primary.main", display: "grid", placeItems: "center" }}>
+                <TrendingUpRoundedIcon fontSize="small" />
+              </Box>
+              <Box>
+                <Typography fontWeight={750} color="#172033">Recent Calls</Typography>
+                <Typography variant="caption" color="text.secondary">Latest recommendations</Typography>
+              </Box>
+            </Stack>
+            <Chip size="small" label="Latest 5" variant="outlined" sx={{ fontWeight: 650, borderColor: "#D9E1EC" }} />
           </Stack>
           {callsLoading ? (
             <Stack alignItems="center" py={4}><CircularProgress size={24} /></Stack>
@@ -561,8 +763,15 @@ const Dashboard = () => {
         </Paper>
 
         <Paper
-          variant="outlined"
-          sx={{ p: 2, borderRadius: 2, minWidth: 0, gridColumn: { lg: "1 / -1" } }}
+          elevation={0}
+          sx={{
+            p: { xs: 2, sm: 2.5 },
+            border: "1px solid #E4EAF2",
+            borderRadius: 3,
+            minWidth: 0,
+            gridColumn: { lg: "1 / -1" },
+            boxShadow: "0 8px 26px rgba(15, 23, 42, 0.04)",
+          }}
         >
           <Stack
             direction={{ xs: "column", sm: "row" }}
@@ -571,11 +780,21 @@ const Dashboard = () => {
             spacing={1}
             mb={1}
           >
-            <Stack direction="row" alignItems="center" spacing={1}>
-              <NotificationsNoneOutlinedIcon color="primary" />
-              <Typography fontWeight={700}>Notifications</Typography>
+            <Stack direction="row" alignItems="center" spacing={1.1}>
+              <Box sx={{ width: 38, height: 38, borderRadius: 2, bgcolor: "#FFF7E8", color: "#B45309", display: "grid", placeItems: "center" }}>
+                <NotificationsNoneOutlinedIcon fontSize="small" />
+              </Box>
+              <Box>
+                <Typography fontWeight={750} color="#172033">Notifications</Typography>
+                <Typography variant="caption" color="text.secondary">Latest account and subscription updates</Typography>
+              </Box>
             </Stack>
-            <Button size="small" onClick={() => navigate("/notifications")}>
+            <Button
+              size="small"
+              onClick={() => navigate("/notifications")}
+              endIcon={<ArrowForwardRoundedIcon sx={{ fontSize: "1rem !important" }} />}
+              sx={{ fontWeight: 700 }}
+            >
               View All Notifications
             </Button>
           </Stack>
@@ -595,12 +814,14 @@ const Dashboard = () => {
                   direction={{ xs: "column", sm: "row" }}
                   justifyContent="space-between"
                   spacing={1}
-                  py={1.1}
+                  px={0.5}
+                  py={1.35}
+                  sx={{ borderRadius: 2, "&:hover": { bgcolor: "#F8FAFD" } }}
                 >
                   <Box minWidth={0}>
                     <Stack direction="row" alignItems="center" spacing={0.75}>
                       {!notification.is_read && (
-                        <Box sx={{ width: 7, height: 7, borderRadius: "50%", bgcolor: "primary.main" }} />
+                        <Box sx={{ width: 7, height: 7, borderRadius: "50%", bgcolor: "primary.main", boxShadow: "0 0 0 3px #E8EEFF" }} />
                       )}
                       <Typography fontWeight={notification.is_read ? 500 : 700} fontSize="0.85rem">
                         {notification.title}
