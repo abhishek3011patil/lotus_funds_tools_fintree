@@ -11,7 +11,8 @@ import {
   getMyParticipants,
   saveParticipantRA,
   uploadExcelParticipants,
-  downloadTelegramTemplate
+  downloadTelegramTemplate,
+   updateParticipantStatus
 } from "../controllers/telegram.controller";
 import {
   authenticate,
@@ -49,6 +50,12 @@ router.post(
   authenticate,
   upload.single("file"),
   uploadExcelParticipants
+);
+
+router.patch(
+  "/participant/:id/status",
+  authenticate,
+  updateParticipantStatus
 );
 
 router.get(
