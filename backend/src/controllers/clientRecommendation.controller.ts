@@ -37,9 +37,9 @@ export const getClientRecommendations = async (
     const values: any[] = [];
 
     // Show only recommendations from subscribed RAs
- if (req.allowedRAIds && req.allowedRAIds.length > 0) {
+ if (Array.isArray(req.allowedRAIds)) {
   query += `
-    WHERE r.ra_user_id = ANY($1)
+    WHERE r.ra_user_id = ANY($1::uuid[])
   `;
 
   values.push(req.allowedRAIds);

@@ -75,13 +75,19 @@ const AdminSettings = lazy(() => import("../pages_admin/AdminSettings"));
 
 
 // --- Lazy: Client Section Pages ---
-const ClientDashboard = lazy(() => import("../client_section/pages/ClientDashboard"));
-const ClientRecommendations = lazy(() => import("../client_section/pages/ClientRecommendations"));
-const ClientBlogs = lazy(() => import("../client_section/pages/ClientBlogs"));
-const ClientVideos = lazy(() => import("../client_section/pages/ClientVideos"));
+const ClientDashboard = lazy(
+  () => import("../client_section/dashboard/pages/ClientDashboardPage")
+);
+const ClientRecommendations = lazy(
+  () => import("../client_section/recommendations/pages/ClientRecommendationsPage")
+);
+const ClientInsights = lazy(() => import("../client_section/insights/pages/ClientInsightsPage"));
 const ClientPerformance = lazy(() => import("../client_section/pages/ClientPerformance"));
 const ClientNotifications = lazy(() => import("../client_section/pages/ClientNotifications"));
-const ClientProfile = lazy(() => import("../client_section/pages/ClientProfile"));
+const ClientProfile = lazy(() => import("../client_section/profile/pages/ClientProfilePage"));
+const ClientAnalystsPage = lazy(
+  () => import("../client_section/analysts/pages/ClientAnalystsPage")
+);
 
 // --- Lazy: Subscription ---
 const SubscriptionPage = lazy(() => import("../subscription/SubscriptionPage"));
@@ -301,8 +307,10 @@ const AppRoutes = () => {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<ClientDashboard />} />
           <Route path="recommendations" element={<ClientRecommendations />} />
-          <Route path="blogs" element={<ClientBlogs />} />
-          <Route path="videos" element={<ClientVideos />} />
+          <Route path="analysts" element={<ClientAnalystsPage />} />
+          <Route path="insights" element={<ClientInsights />} />
+          <Route path="blogs" element={<Navigate to="../insights" replace />} />
+          <Route path="videos" element={<Navigate to="../insights" replace />} />
           <Route path="performance" element={<ClientPerformance />} />
           <Route path="notifications" element={<ClientNotifications />} />
           <Route path="profile" element={<ClientProfile />} />

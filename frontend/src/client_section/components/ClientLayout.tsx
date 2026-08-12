@@ -21,19 +21,19 @@ import {
 import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
-import ArticleIcon from '@mui/icons-material/Article';
-import OndemandVideoIcon from '@mui/icons-material/OndemandVideo';
+import AutoStoriesRoundedIcon from '@mui/icons-material/AutoStoriesRounded';
 import InsertChartIcon from '@mui/icons-material/InsertChart';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import PersonIcon from '@mui/icons-material/Person';
+import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
 
 const drawerWidth = 240;
 
 const sidebarItems = [
   { name: 'Dashboard', path: '/client/dashboard', icon: DashboardIcon },
   { name: 'Recommendations', path: '/client/recommendations', icon: CheckBoxIcon },
-  { name: 'Blogs', path: '/client/blogs', icon: ArticleIcon },
-  { name: 'Videos', path: '/client/videos', icon: OndemandVideoIcon },
+  { name: 'Research Analysts', path: '/client/analysts', icon: GroupsRoundedIcon },
+  { name: 'Insights', path: '/client/insights', icon: AutoStoriesRoundedIcon },
   { name: 'My Performance', path: '/client/performance', icon: InsertChartIcon },
   { name: 'Notifications', path: '/client/notifications', icon: NotificationsIcon },
   { name: 'Profile', path: '/client/profile', icon: PersonIcon },

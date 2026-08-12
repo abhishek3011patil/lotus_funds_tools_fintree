@@ -23,6 +23,9 @@ import { mountSwaggerDocs } from "./config/swagger";
 import clientRecommendationRoutes from "./routes/clientRecommendation.routes";
 import clientNotificationRoutes from "./routes/clientNotification.routes";
 import subscriptionNotificationRoutes from "./routes/subscriptionNotification.routes";
+import clientAnalystSubscriptionRoutes from "./routes/clientAnalystSubscriptions/clientAnalystSubscription.routes";
+import clientDashboardRoutes from "./routes/clientDashboard/clientDashboard.routes";
+import clientAccountRoutes from "./routes/clientAccount/clientAccount.routes";
 
 const app = express();
 
@@ -111,6 +114,9 @@ app.use(
 );
 
 app.use("/api/client/notifications", clientNotificationRoutes);
+app.use("/api/client/analysts", clientAnalystSubscriptionRoutes);
+app.use("/api/client/dashboard", clientDashboardRoutes);
+app.use("/api/client/account", clientAccountRoutes);
 app.use(
   "/api/subscription-notifications",
   subscriptionNotificationRoutes

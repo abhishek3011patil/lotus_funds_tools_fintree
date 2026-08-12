@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authenticate } from "../middlewares/auth.middleware";
 import { checkClientSubscription } from "../middlewares/clientSubscription.middleware";
-import { getClientRecommendations } from "../controllers/clientRecommendation.controller";
+import { getClientRecommendationsFeed } from "../controllers/clientRecommendationsFeed/clientRecommendationsFeed.controller";
 
 const router = Router();
 
@@ -9,7 +9,7 @@ router.get(
   "/",
   authenticate,
   checkClientSubscription,
-  getClientRecommendations
+  getClientRecommendationsFeed
 );
 
 export default router;
