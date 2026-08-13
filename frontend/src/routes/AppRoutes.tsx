@@ -88,6 +88,9 @@ const ClientProfile = lazy(() => import("../client_section/profile/pages/ClientP
 const ClientAnalystsPage = lazy(
   () => import("../client_section/analysts/pages/ClientAnalystsPage")
 );
+const ClientRegistrationPage = lazy(
+  () => import("../client_section/registration/pages/ClientRegistrationPage")
+);
 
 // --- Lazy: Subscription ---
 const SubscriptionPage = lazy(() => import("../subscription/SubscriptionPage"));
@@ -296,6 +299,7 @@ const AppRoutes = () => {
 {/* 3. Client Section Layout — CLIENT ROLE ONLY */}
 
 <Route path="/client/login" element={<LoginFormClient />} />
+        <Route path="/client/register" element={<ClientRegistrationPage />} />
         <Route
           path="/client"
           element={

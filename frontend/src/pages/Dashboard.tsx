@@ -41,6 +41,7 @@ import {
   getSubscriptionStatusPresentation,
   normalizeDaysRemaining,
 } from "../components/subscription/subscriptionStatus.utils";
+import RAClientsCard from "../components/dashboard/RAClientsCard";
 
 type ResearchCall = {
   id: string;
@@ -528,12 +529,14 @@ const Dashboard = () => {
           gridTemplateColumns: {
             xs: "1fr",
             sm: "repeat(2, minmax(0, 1fr))",
-            xl: "repeat(4, minmax(0, 1fr))",
+            xl: "repeat(5, minmax(0, 1fr))",
           },
           gap: 2,
           my: 2.5,
         }}
       >
+        <RAClientsCard />
+
         <DashboardStatusCard
           title="Telegram"
           icon={<TelegramIcon fontSize="small" />}

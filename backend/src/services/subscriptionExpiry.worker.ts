@@ -4,6 +4,9 @@ import {
 import {
   processDueSubscriptionNotifications,
 } from "../controllers/subscriptionNotification.controller";
+import {
+  expireDueRaClientSubscriptions,
+} from "./raClientSubscriptionNotification.service";
 
 let timer:
   | NodeJS.Timeout
@@ -47,6 +50,18 @@ const runExpiryPass =
           );
         }
       } while (expired === 500);
+
+      let expiredClientSubscriptions = 0;
+      do {
+        const result = await expireDueRaClientSubscriptions({ batchSize: 500 });
+        expiredClientSubscriptions = result.expired;
+
+        if (result.expired > 0) {
+          console.log(
+            `Expired ${result.expired} client-to-RA subscription(s) and created ${result.notificationsCreated} RA notification(s).`
+          );
+        }
+      } while (expiredClientSubscriptions === 500);
 
       const notifications =
         await processDueSubscriptionNotifications({

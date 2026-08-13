@@ -463,6 +463,7 @@ export const getMySubscriptionNotifications = async (
         SELECT
           id,
           subscription_id,
+          client_ra_subscription_id,
           type,
           title,
           message,

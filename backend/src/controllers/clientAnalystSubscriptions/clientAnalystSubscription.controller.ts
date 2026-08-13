@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { createRaClientSubscriptionNotification } from "../../services/raClientSubscriptionNotification.service";
 import type { Response } from "express";
 import Razorpay from "razorpay";
 import { pool } from "../../db";
@@ -448,6 +449,12 @@ export const verifyAnalystSubscriptionPayment = async (
           getDurationDays(),
         ]
       );
+
+      await createRaClientSubscriptionNotification({
+        db,
+        clientRaSubscriptionId: subscriptionResult.rows[0].id,
+        event: "ACTIVATED",
+      });
 
       await db.query("COMMIT");
       return res.status(200).json({

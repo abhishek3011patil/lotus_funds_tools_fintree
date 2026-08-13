@@ -16,7 +16,8 @@ import api from "../../utils/axio";
 
 type SubscriptionNotification = {
   id: string;
-  subscription_id: string;
+  subscription_id: string | null;
+  client_ra_subscription_id: string | null;
   type: string;
   title: string;
   message: string;
@@ -64,7 +65,11 @@ const RANotification = () => {
   }, []);
 
   useEffect(() => {
-    void loadNotifications();
+    const timer = window.setTimeout(() => {
+      void loadNotifications();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [loadNotifications]);
 
   const markRead = async (
@@ -114,7 +119,7 @@ const RANotification = () => {
             Notifications
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Subscription renewal and expiry updates.
+            Account subscription and client subscriber updates.
           </Typography>
         </Box>
         {unreadCount > 0 && (
@@ -180,9 +185,11 @@ const RANotification = () => {
                       <Chip
                         size="small"
                         color={
-                          notification.type === "Subscription Expired"
+                          notification.type.includes("Expired")
                             ? "error"
-                            : "warning"
+                            : notification.type === "New Client Subscription"
+                              ? "success"
+                              : "warning"
                         }
                         label={notification.type}
                       />
@@ -214,10 +221,16 @@ const RANotification = () => {
                   onClick={(event) => {
                     event.stopPropagation();
                     void markRead(notification);
-                    navigate("/settings");
+                    navigate(
+                      notification.client_ra_subscription_id
+                        ? "/"
+                        : "/settings"
+                    );
                   }}
                 >
-                  Open subscription settings
+                  {notification.client_ra_subscription_id
+                    ? "View clients"
+                    : "Open subscription settings"}
                 </Button>
               </CardContent>
             </Card>
