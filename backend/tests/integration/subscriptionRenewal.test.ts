@@ -116,6 +116,83 @@ describe("subscription renewal", () => {
     expect(db.release).toHaveBeenCalledOnce();
   });
 
+  it("creates the renewal order for the selected RA tier", async () => {
+    const selectedPlan = {
+      id: "ra-plan-3",
+      plan_code: "RA_TIER_3",
+      display_name: "RA Tier 3",
+      tier_code: "TIER_3",
+      price_paise: 899900,
+      currency: "INR",
+      duration_days: 365,
+      version: 2,
+    };
+    const insertedOrder = {
+      id: "local-order-1",
+      provider_order_id: "order_provider_1",
+      amount_paise: selectedPlan.price_paise,
+      currency: selectedPlan.currency,
+      receipt: "renew_receipt",
+      status: "CREATED",
+    };
+    const db = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: "subscription-1",
+              status: "ACTIVE",
+              expires_at: new Date(
+                Date.now() + 10 * 86_400_000
+              ).toISOString(),
+              plan_id: "ra-plan-1",
+              audience_type: "RA",
+              email: "ra@example.com",
+              user_status: "active",
+            },
+          ],
+        })
+        .mockResolvedValueOnce({ rows: [selectedPlan] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ count: 0 }] })
+        .mockResolvedValueOnce({ rows: [insertedOrder] })
+        .mockResolvedValueOnce({ rows: [] }),
+      release: vi.fn(),
+    };
+    connectMock.mockResolvedValue(db as any);
+    razorpayMocks.createOrder.mockResolvedValue({
+      id: "order_provider_1",
+    });
+    const response = createResponse();
+
+    await createSubscriptionRenewalOrder(
+      {
+        user: {
+          id: "user-1",
+          role: "RESEARCH_ANALYST",
+        },
+        body: { planId: selectedPlan.id },
+      } as any,
+      response
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(db.query.mock.calls[2][1]).toEqual([
+      selectedPlan.id,
+      "RA",
+    ]);
+    expect(razorpayMocks.createOrder).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: selectedPlan.price_paise })
+    );
+    expect(db.query.mock.calls[3][1]).toEqual([
+      "user-1",
+      "subscription-1",
+      selectedPlan.id,
+    ]);
+  });
+
   it("rejects a forged payment signature", async () => {
     queryMock.mockResolvedValueOnce({
       rows: [

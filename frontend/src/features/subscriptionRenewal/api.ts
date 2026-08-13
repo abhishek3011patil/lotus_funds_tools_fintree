@@ -23,9 +23,10 @@ export type RenewalVerificationResponse = {
   expiresAt: string;
 };
 
-export const createRenewalOrder = async () =>
+export const createRenewalOrder = async (planId: string) =>
   api.post<RenewalOrderResponse>(
-    "/subscriptions/renewal/order"
+    "/subscriptions/renewal/order",
+    { planId }
   );
 
 export const verifyRenewalPayment = async (

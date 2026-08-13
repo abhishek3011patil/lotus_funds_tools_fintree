@@ -16,6 +16,8 @@ import {
 import {
   cancelSubscription,
 } from "../../../features/subscriptionCancellation/api";
+import RenewalPlanDialog from "../../../features/subscriptionRenewal/RenewalPlanDialog";
+import type { RAPlan } from "../../../features/raRegistrationSubscription/types";
 
 const RASubscriptionStatus = () => {
   const [subscription, setSubscription] =
@@ -23,6 +25,8 @@ const RASubscriptionStatus = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [renewing, setRenewing] = useState(false);
+  const [renewalPlansOpen, setRenewalPlansOpen] = useState(false);
+  const [processingPlanId, setProcessingPlanId] = useState<string | null>(null);
   const [renewalMessage, setRenewalMessage] =
     useState<string | null>(null);
   const [renewalError, setRenewalError] =
@@ -83,15 +87,16 @@ const RASubscriptionStatus = () => {
     };
   }, [loadSubscription]);
 
-  const renewSubscription = useCallback(async () => {
+  const renewSubscription = useCallback(async (plan: RAPlan) => {
     if (renewing) return;
 
     setRenewing(true);
+    setProcessingPlanId(plan.id);
     setRenewalMessage(null);
     setRenewalError(null);
 
     try {
-      const orderResponse = await createRenewalOrder();
+      const orderResponse = await createRenewalOrder(plan.id);
       const payment = await openRARegistrationCheckout(
         orderResponse.data,
         async (razorpayOrderId) => {
@@ -110,6 +115,7 @@ const RASubscriptionStatus = () => {
         verification.data.message ||
           "Subscription renewed successfully."
       );
+      setRenewalPlansOpen(false);
       await loadSubscription();
       window.dispatchEvent(
         new Event("subscription:updated")
@@ -128,6 +134,7 @@ const RASubscriptionStatus = () => {
       );
     } finally {
       setRenewing(false);
+      setProcessingPlanId(null);
     }
   }, [loadSubscription, renewing]);
 
@@ -180,7 +187,7 @@ const RASubscriptionStatus = () => {
         loading={loading}
         error={error}
         onRetry={loadSubscription}
-        onRenew={renewSubscription}
+        onRenew={() => setRenewalPlansOpen(true)}
         onCancel={() => {
           setCancellationError(null);
           setCancellationOpen(true);
@@ -190,6 +197,13 @@ const RASubscriptionStatus = () => {
         renewalMessage={renewalMessage}
         renewalError={renewalError}
         title="Subscription Status"
+      />
+      <RenewalPlanDialog
+        open={renewalPlansOpen}
+        processingPlanId={processingPlanId}
+        currentPlanName={subscription?.planName}
+        onClose={() => setRenewalPlansOpen(false)}
+        onChoose={(plan) => void renewSubscription(plan)}
       />
       <SubscriptionCancellationDialog
         open={cancellationOpen}

@@ -115,6 +115,7 @@ export const createSubscriptionRenewalOrder = async (
 ): Promise<void> => {
   const userId = req.user?.id;
   const audienceType = getAudienceForRole(req.user?.role);
+  const requestedPlanId = getString(req.body?.planId);
 
   if (!userId) {
     res.status(401).json({
@@ -264,7 +265,7 @@ export const createSubscriptionRenewalOrder = async (
           )
         LIMIT 1
       `,
-      [subscription.plan_id, audienceType]
+      [requestedPlanId || subscription.plan_id, audienceType]
     );
 
     if (planResult.rows.length === 0) {
@@ -286,13 +287,14 @@ export const createSubscriptionRenewalOrder = async (
         FROM payment_orders
         WHERE user_id = $1
           AND notes ->> 'subscriptionId' = $2
+          AND notes ->> 'planId' = $3
           AND notes ->> 'purpose' = 'SUBSCRIPTION_RENEWAL'
           AND status IN ('CREATED', 'PENDING')
         ORDER BY created_at DESC
         LIMIT 1
         FOR UPDATE
       `,
-      [userId, subscription.id]
+      [userId, subscription.id, plan.id]
     );
 
     if (existingOrder.rows.length > 0) {
