@@ -27,6 +27,7 @@ import clientAnalystSubscriptionRoutes from "./routes/clientAnalystSubscriptions
 import clientDashboardRoutes from "./routes/clientDashboard/clientDashboard.routes";
 import clientAccountRoutes from "./routes/clientAccount/clientAccount.routes";
 import raDashboardRoutes from "./routes/raDashboard/raDashboard.routes";
+import clientRegistrationRoutes from "./routes/clientRegistration/clientRegistration.routes";
 
 const app = express();
 
@@ -118,6 +119,7 @@ app.use("/api/client/notifications", clientNotificationRoutes);
 app.use("/api/client/analysts", clientAnalystSubscriptionRoutes);
 app.use("/api/client/dashboard", clientDashboardRoutes);
 app.use("/api/client/account", clientAccountRoutes);
+app.use("/api/client/register", clientRegistrationRoutes);
 app.use("/api/ra/dashboard", raDashboardRoutes);
 app.use(
   "/api/subscription-notifications",

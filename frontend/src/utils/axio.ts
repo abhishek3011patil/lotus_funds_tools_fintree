@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getLoginRoute, isLoginRoute } from "./authRedirect";
 
 const instance = axios.create({
     baseURL: `${import.meta.env.VITE_API_URL}/api`,
@@ -27,7 +28,7 @@ instance.interceptors.response.use(
 
         if (
             error.response?.status === 401 &&
-            window.location.pathname !== "/login"
+            !isLoginRoute(window.location.pathname)
         ) {
 
             const role = localStorage.getItem("role");
@@ -37,15 +38,7 @@ instance.interceptors.response.use(
             localStorage.removeItem("username");
             localStorage.removeItem("role");
 
-            if (
-                role === "ADMIN" ||
-                role === "SUPER_ADMIN" ||
-                role === "EMPLOYEE"
-            ) {
-                window.location.href = "/login-admin";
-            } else {
-                window.location.href = "/login";
-            }
+            window.location.href = getLoginRoute(role);
         }
 
         return Promise.reject(error);

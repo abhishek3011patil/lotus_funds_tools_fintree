@@ -190,4 +190,42 @@ describe("email templates", () => {
     expect(rendered.text).toContain("31 July 2026");
     expect(rendered.html).toContain("Lotus Funds");
   });
+
+  it("renders a password setup resend without approval wording", () => {
+    const rendered = renderEmailTemplate(
+      "PASSWORD_SETUP_RESENT",
+      {
+        name: "Sample Analyst",
+        passwordSetupUrl:
+          "https://example.test/set-password?token=test",
+        expiresInHours: 24,
+      }
+    );
+
+    expect(rendered.subject).toBe(
+      "Your new password setup link"
+    );
+    expect(rendered.text).toContain(
+      "new password setup link"
+    );
+    expect(rendered.text).not.toContain("approved");
+    expect(rendered.html).toContain("Set your password");
+  });
+
+  it("renders an administrator password reset link", () => {
+    const rendered = renderEmailTemplate(
+      "PASSWORD_RESET_LINK",
+      {
+        name: "Active Analyst",
+        passwordResetUrl:
+          "https://example.test/reset-password?token=test",
+        expiresInHours: 1,
+      }
+    );
+
+    expect(rendered.subject).toBe("Reset your password");
+    expect(rendered.text).toContain("administrator");
+    expect(rendered.text).toContain("OTP");
+    expect(rendered.text).not.toContain("approved");
+  });
 });

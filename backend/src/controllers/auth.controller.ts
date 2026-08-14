@@ -35,6 +35,22 @@ const getClientIp = (req: Request) => {
   return ip;
 };
 
+const validateResetPassword = (password: string): string | null => {
+  if (password.length < 8) {
+    return "Password must contain at least 8 characters.";
+  }
+  if (Buffer.byteLength(password, "utf8") > 72) {
+    return "Password must not exceed 72 bytes.";
+  }
+  if (!/[A-Za-z]/.test(password)) {
+    return "Password must contain at least one letter.";
+  }
+  if (!/\d/.test(password)) {
+    return "Password must contain at least one number.";
+  }
+  return null;
+};
+
 
 /* ================= SEND OTP AFTER PASSWORD ================= */
 /* =========================================================
@@ -85,7 +101,18 @@ export const verifyOtp = async (req: Request, res: Response) => {
     if (!token || !otp || !password)
       return res.status(400).json({ message: "Token, OTP and password required" });
 
-    const userRes = await pool.query(`SELECT * FROM users WHERE reset_token=$1`, [token]);
+    const passwordError = validateResetPassword(String(password));
+    if (passwordError) {
+      return res.status(400).json({ message: passwordError });
+    }
+
+    const userRes = await pool.query(
+      `SELECT *
+       FROM users
+       WHERE reset_token = $1
+         AND token_expiry > NOW()`,
+      [token]
+    );
 
     if (userRes.rows.length === 0) return res.status(400).json({ message: "Invalid token" });
 
@@ -99,10 +126,17 @@ export const verifyOtp = async (req: Request, res: Response) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Activate user
+    // Preserve suspended/disabled states; only legacy inactive setup is activated.
     await pool.query(
       `UPDATE users 
-       SET password_hash=$1, status='active', otp=NULL, otp_expiry=NULL, reset_token=NULL
+       SET password_hash = $1,
+           status = CASE WHEN status = 'inactive' THEN 'active' ELSE status END,
+           is_active = CASE WHEN status = 'inactive' THEN true ELSE is_active END,
+           otp = NULL,
+           otp_expiry = NULL,
+           reset_token = NULL,
+           token_expiry = NULL,
+           updated_at = NOW()
        WHERE id=$2`,
       [hashedPassword, user.id]
     );
@@ -120,7 +154,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
    ========================================================= */
 export const login = async (req: Request, res: Response) => {
   try {
-    let { loginId, password, otp } = req.body;
+    let { loginId, password, otp, requestedRole } = req.body;
 
     // ✅ Normalize input
     loginId = loginId.trim().toLowerCase();
@@ -146,6 +180,13 @@ export const login = async (req: Request, res: Response) => {
 
     } else {
       /* ================= NORMAL USERS ================= */
+ const normalizedRequestedRole = String(requestedRole || "").trim().toUpperCase();
+ const allowedRequestedRoles = new Set(["RESEARCH_ANALYST", "BROKER", "CLIENT"]);
+
+ if (normalizedRequestedRole && !allowedRequestedRoles.has(normalizedRequestedRole)) {
+   return res.status(400).json({ message: "Invalid login portal role." });
+ }
+
  const userRes = await pool.query(
   `
     SELECT
@@ -161,11 +202,18 @@ export const login = async (req: Request, res: Response) => {
       otp_verified_until
     FROM users
     WHERE LOWER(email) = $1
+      AND ($2::text = '' OR role = $2)
   `,
-  [loginId]
+  [loginId, normalizedRequestedRole]
 );
       if (userRes.rows.length === 0) {
         return res.status(400).json({ message: "Invalid credentials ❌" });
+      }
+
+      if (!normalizedRequestedRole && userRes.rows.length > 1) {
+        return res.status(409).json({
+          message: "This email has more than one account. Use the correct login portal.",
+        });
       }
 
       user = userRes.rows[0];
@@ -335,6 +383,7 @@ export const sendLoginOtp = async (
           otp_expiry
       FROM users
       WHERE LOWER(email) = $1
+        AND role = 'RESEARCH_ANALYST'
       `,
       [loginId]
     );

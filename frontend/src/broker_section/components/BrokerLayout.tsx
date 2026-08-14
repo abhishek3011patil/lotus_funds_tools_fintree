@@ -23,6 +23,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import FolderIcon from '@mui/icons-material/Folder';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import SettingsIcon from '@mui/icons-material/Settings';
+import { getLoginRoute } from '../../utils/authRedirect';
 
 const drawerWidth = 240;
 
@@ -63,8 +64,9 @@ export const BrokerLayout = () => {
   };
 
   const handleLogout = () => {
+    const role = localStorage.getItem('role');
     localStorage.clear();
-    navigate('/broker/login', { replace: true });
+    navigate(getLoginRoute(role, ['BROKER']), { replace: true });
   };
 
   // Reusable Sidebar Content

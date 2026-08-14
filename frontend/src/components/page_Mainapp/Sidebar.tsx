@@ -19,6 +19,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { SidebarItem } from "../../types/sidebar";
 import { useState } from "react";
 import axios from "axios";
+import { getLoginRoute } from "../../utils/authRedirect";
 
 
 export interface SidebarProps {
@@ -81,11 +82,7 @@ const handleLogout = async () => {
     // clear storage AFTER audit log is saved
     localStorage.clear();
 
-    if (role === "ADMIN" || role === "EMPLOYEE") {
-      navigate("/login-admin", { replace: true });
-    } else {
-      navigate("/login", { replace: true });
-    }
+    navigate(getLoginRoute(role), { replace: true });
   }
 };
 

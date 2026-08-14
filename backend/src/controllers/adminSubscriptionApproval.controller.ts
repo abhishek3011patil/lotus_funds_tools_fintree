@@ -388,10 +388,11 @@ export const approvePaidRegistration =
               role
             FROM users
             WHERE LOWER(TRIM(email)) = $1
+              AND role = $2
             LIMIT 1
             FOR UPDATE
           `,
-          [email]
+          [email, config.role]
         );
 
       if (existingUser.rows.length > 0) {
@@ -401,7 +402,7 @@ export const approvePaidRegistration =
         res.status(409).json({
           success: false,
           message:
-            "A user account already exists for this email. Do not create a duplicate account through registration approval.",
+            `A ${applicantType === "RA" ? "research analyst" : "broker"} account already exists for this email.`,
           existingUserId:
             existingUser.rows[0].id,
           existingStatus:

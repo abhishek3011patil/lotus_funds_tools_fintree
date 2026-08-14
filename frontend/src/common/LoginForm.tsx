@@ -98,6 +98,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           loginId: formData.username,
           password: formData.password,
           otp: formData.otp,
+          requestedRole: "RESEARCH_ANALYST",
         }
       );
       if (res.data.requireOtp && !isOtpRequired) {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildPersonalizedStudyOptions,
   getRecentStudies,
+  getStudiesByLabels,
   getStudiesByValues,
 } from "./UnderlyingStudy";
 
@@ -20,6 +21,16 @@ describe("underlying-study personalization helpers", () => {
         (study) => study.value
       )
     ).toEqual(["rsi"]);
+  });
+
+  it("restores canonical values from stored labels", () => {
+    expect(
+      getStudiesByLabels([
+        "Average Directional Index (ADX)",
+        "Fibonacci Retracements & Extensions",
+        "Relative Strength Index (RSI)",
+      ]).map((study) => study.value)
+    ).toEqual(["adx", "fibonacci_retracements", "rsi"]);
   });
 
   it("keeps the compatibility helper ordered", () => {

@@ -13,7 +13,9 @@ import type { ClientAnalyst } from "../types";
 interface AnalystCardProps {
   analyst: ClientAnalyst;
   subscribing: boolean;
+  cancelling: boolean;
   onSubscribe: (analyst: ClientAnalyst) => void;
+  onCancel: (analyst: ClientAnalyst) => void;
 }
 
 const getApiOrigin = () =>
@@ -29,7 +31,9 @@ const formatPrice = (amountPaise: number, currency: string) =>
 const AnalystCard = ({
   analyst,
   subscribing,
+  cancelling,
   onSubscribe,
+  onCancel,
 }: AnalystCardProps) => {
   const imageUrl = analyst.profileImage
     ? `${getApiOrigin()}${analyst.profileImage}`
@@ -90,8 +94,11 @@ const AnalystCard = ({
 
         <Button
           variant={analyst.isSubscribed ? "outlined" : "contained"}
-          disabled={analyst.isSubscribed || subscribing}
-          onClick={() => onSubscribe(analyst)}
+          color={analyst.isSubscribed ? "error" : "primary"}
+          disabled={subscribing || cancelling}
+          onClick={() =>
+            analyst.isSubscribed ? onCancel(analyst) : onSubscribe(analyst)
+          }
           sx={{
             minWidth: 100,
             height: 42,
@@ -100,24 +107,27 @@ const AnalystCard = ({
             flexShrink: 0,
             textTransform: "none",
             fontWeight: 800,
-            color: analyst.isSubscribed ? "#15803D" : "#FFFFFF",
-            borderColor: analyst.isSubscribed ? "#22C55E" : "transparent",
-            bgcolor: analyst.isSubscribed ? "#F0FDF4" : "#5271FF",
+            color: analyst.isSubscribed ? "#B91C1C" : "#FFFFFF",
+            borderColor: analyst.isSubscribed ? "#FCA5A5" : "transparent",
+            bgcolor: analyst.isSubscribed ? "#FEF2F2" : "#5271FF",
             "&:hover": {
-              bgcolor: analyst.isSubscribed ? "#F0FDF4" : "#405EE6",
+              bgcolor: analyst.isSubscribed ? "#FEE2E2" : "#405EE6",
             },
             "&.Mui-disabled": {
-              color: analyst.isSubscribed ? "#15803D" : "#FFFFFF",
-              borderColor: analyst.isSubscribed ? "#22C55E" : "transparent",
-              bgcolor: analyst.isSubscribed ? "#F0FDF4" : "#5271FF",
+              color: analyst.isSubscribed ? "#B91C1C" : "#FFFFFF",
+              borderColor: analyst.isSubscribed ? "#FCA5A5" : "transparent",
+              bgcolor: analyst.isSubscribed ? "#FEF2F2" : "#5271FF",
               opacity: 0.85,
             },
           }}
         >
-          {subscribing ? (
-            <CircularProgress size={20} sx={{ color: "#FFFFFF" }} />
+          {subscribing || cancelling ? (
+            <CircularProgress
+              size={20}
+              sx={{ color: analyst.isSubscribed ? "#B91C1C" : "#FFFFFF" }}
+            />
           ) : analyst.isSubscribed ? (
-            "Subscribed"
+            "Cancel"
           ) : (
             "Subscribe"
           )}

@@ -10,7 +10,10 @@ import {
   parseResearchCallTemplateSnapshot,
 } from "../services/researchCallTemplate.service";
 import { createClientNotification } from "./clientNotification.controller";
-import { recordUnderlyingStudySelections } from "../services/underlyingStudyPreferences.service";
+import {
+  recordUnderlyingStudySelections,
+  validateUnderlyingStudySubmission,
+} from "../services/underlyingStudyPreferences.service";
 
 const getClientIp = (req: any): string => {
   let ip =
@@ -93,6 +96,20 @@ export const createResearchCall = async (
         code: "INVALID_RESEARCH_CALL_STATUS",
         message:
           "Status must be DRAFT or PUBLISHED.",
+      });
+    }
+
+    const studyValidation = validateUnderlyingStudySubmission({
+      studyText: underlying_study,
+      studyValues: underlying_study_values,
+      required: normalizedStatus === "PUBLISHED",
+    });
+
+    if (!studyValidation.valid) {
+      return res.status(400).json({
+        success: false,
+        code: "INVALID_UNDERLYING_STUDY",
+        message: studyValidation.message,
       });
     }
 
@@ -210,7 +227,7 @@ export const createResearchCall = async (
       stop_loss_3 || null,
       holding_period || null,
       rationale || null,
-      underlying_study || null,
+      studyValidation.text,
       is_algo === true || is_algo === "true",
       has_vested_interest === true ||
         has_vested_interest === "true",
@@ -234,7 +251,7 @@ const createdCall = rows[0];
 try {
   await recordUnderlyingStudySelections({
     raUserId: req.user!.id,
-    studyValues: underlying_study_values,
+    studyValues: studyValidation.values,
   });
 } catch (preferenceError) {
   // Personalization failure must not fail call creation.
@@ -731,6 +748,21 @@ if (
   });
 }
 
+const studyValidation = validateUnderlyingStudySubmission({
+  studyText: updates.underlying_study,
+  studyValues: underlying_study_values,
+  required: false,
+});
+
+if (!studyValidation.valid) {
+  await client.query("ROLLBACK");
+  return res.status(400).json({
+    success: false,
+    code: "INVALID_UNDERLYING_STUDY",
+    message: studyValidation.message,
+  });
+}
+
     // =========================================================
     // 1️⃣ GET EXISTING CALL
     // =========================================================
@@ -969,7 +1001,7 @@ const insertResult = await client.query(
     updates.holding_period ?? existingCall.holding_period,
 
     updates.rationale ?? existingCall.rationale,
-    updates.underlying_study ?? existingCall.underlying_study,
+    studyValidation.text ?? existingCall.underlying_study,
 
     existingCall.is_algo,
     existingCall.has_vested_interest,
@@ -1020,7 +1052,7 @@ if (whatsappMessage) {
   try {
   await recordUnderlyingStudySelections({
     raUserId: userId,
-    studyValues: underlying_study_values,
+    studyValues: studyValidation.values,
   });
 } catch (preferenceError) {
   console.error(
@@ -1261,6 +1293,8 @@ export const publishDraftCall = async (
       WHERE id = $1
         AND status = 'DRAFT'
         AND ra_user_id = $2
+        AND NULLIF(TRIM(underlying_study), '') IS NOT NULL
+        AND CHAR_LENGTH(underlying_study) <= 255
       RETURNING *
       `,
       [id, raUserId, messageText]

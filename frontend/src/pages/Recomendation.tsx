@@ -53,6 +53,7 @@ import { useStockAutocomplete } from "../hooks/useStockAutocomplete";
 import {
   UNDERLYING_STUDIES,
   buildPersonalizedStudyOptions,
+  getStudiesByLabels,
   getStudiesByValues,
 } from "../assets/UnderlyingStudy";
 
@@ -70,6 +71,8 @@ import { fetchResearchCallTemplates } from "../services/researchCallTemplate.ser
 const BUY_COLOR = "#22c55e";
 const SELL_COLOR = "#ef4444";
 const PUBLISH_PREVIEW_SESSION_KEY = "researchCallShowPublishPreview";
+const MAX_UNDERLYING_STUDY_LENGTH = 255;
+const MAX_UNDERLYING_STUDIES = 20;
 
 type PreparedResearchCallMessage = {
   message: string;
@@ -136,7 +139,9 @@ const fetchRAMessageProfile = async () => {
   }
 
   if (!form.rationale?.trim()) missing.push("Rationale");
-  if (!form.underlyingStudy.length) missing.push("Underlying Study");
+  if (!isErrataMode && !form.underlyingStudy.length) {
+    missing.push("Underlying Study");
+  }
 
   if (form.rangeEnabled) {
     if (!form.entryLow) missing.push("Lower Entry");
@@ -316,6 +321,13 @@ function formReducer(
 }
 
   const [form, dispatch] = useReducer(formReducer, initialForm);
+  const underlyingStudyText = form.underlyingStudy
+    .map((study) => study.label)
+    .join(", ");
+  const underlyingStudyTooLong =
+    underlyingStudyText.length > MAX_UNDERLYING_STUDY_LENGTH;
+  const tooManyUnderlyingStudies =
+    form.underlyingStudy.length > MAX_UNDERLYING_STUDIES;
 
   const panelBg = form.action === "BUY" ? "#eef9ee" : "#fee2e2";
   const panelBorder = form.action === "BUY" ? "#7ac77a" : SELL_COLOR;
@@ -1555,10 +1567,7 @@ const handleViewHistory = useCallback(async (item: any) => {
         rationale: item.rationale || "",
  remark: "",
        underlyingStudy: item.underlying_study
-  ? item.underlying_study.split(",").map((study: string) => ({
-      label: study.trim(),
-      value: study.trim().toLowerCase().replace(/\s+/g, "_"),
-    }))
+  ? getStudiesByLabels(item.underlying_study.split(","))
   : [],
       };
 
@@ -1580,6 +1589,18 @@ const validatePublishForm = () => {
 
   if (missingFields.length > 0) {
     alert(`Please fill required fields:\n\n${missingFields.join(", ")}`);
+    return false;
+  }
+
+  if (underlyingStudyTooLong) {
+    alert(
+      `Underlying Study must not exceed ${MAX_UNDERLYING_STUDY_LENGTH} characters. Remove one or more selections.`
+    );
+    return false;
+  }
+
+  if (tooManyUnderlyingStudies) {
+    alert(`Select no more than ${MAX_UNDERLYING_STUDIES} underlying studies.`);
     return false;
   }
 
@@ -2280,11 +2301,22 @@ const handleTrack = async () => {
       return;
     }
 
-    const missingFields = getMissingFields();
+    const missingFields = getMissingFields().filter(
+      (field) => field !== "Underlying Study"
+    );
 
     if (missingFields.length > 0) {
       alert(
         `Please fill required fields:\n\n${missingFields.join(", ")}`
+      );
+      return;
+    }
+
+    if (underlyingStudyTooLong || tooManyUnderlyingStudies) {
+      alert(
+        tooManyUnderlyingStudies
+          ? `Select no more than ${MAX_UNDERLYING_STUDIES} underlying studies.`
+          : `Underlying Study must not exceed ${MAX_UNDERLYING_STUDY_LENGTH} characters.`
       );
       return;
     }
@@ -3480,7 +3512,7 @@ sx={{
         {/* Underlying Study */}
         <Box sx={{ mb: 1 }}>
           <Typography sx={{ fontSize: "0.7rem", fontWeight: 700, mb: 0.5 }}>
-            Underlying Study
+            Underlying Study{isErrataMode ? " (optional)" : ""}
           </Typography>
 <Autocomplete<StudyAutocompleteOption, true, false, false>
   multiple
@@ -3507,12 +3539,29 @@ sx={{
   )}
   renderInput={(params) => (
     <TextField
-      required
+      required={!isErrataMode}
       {...params}
+      error={
+        wasValidated &&
+        ((!isErrataMode && !form.underlyingStudy.length) ||
+          underlyingStudyTooLong ||
+          tooManyUnderlyingStudies)
+      }
+      helperText={
+        tooManyUnderlyingStudies
+          ? `${form.underlyingStudy.length}/${MAX_UNDERLYING_STUDIES} selections - remove one or more selections`
+          : underlyingStudyTooLong
+          ? `${underlyingStudyText.length}/${MAX_UNDERLYING_STUDY_LENGTH} characters - remove one or more selections`
+          : wasValidated && !isErrataMode && !form.underlyingStudy.length
+            ? "Select at least one underlying study"
+            : undefined
+      }
       placeholder={
         form.underlyingStudy.length
           ? ""
-          : "Select one or more underlying studies"
+          : isErrataMode
+            ? "Leave blank to keep the existing study"
+            : "Select one or more underlying studies"
       }
       variant="outlined"
     />

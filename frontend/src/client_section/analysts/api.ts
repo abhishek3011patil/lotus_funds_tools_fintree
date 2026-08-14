@@ -24,6 +24,13 @@ export const createAnalystOrder = async (raUserId: string) => {
   return response.data;
 };
 
+export const cancelAnalystSubscription = async (raUserId: string) => {
+  const response = await api.patch(
+    `/client/analysts/${encodeURIComponent(raUserId)}/cancel`
+  );
+  return response.data;
+};
+
 export const verifyAnalystPayment = async (
   payment: RazorpayPaymentResult
 ) => {

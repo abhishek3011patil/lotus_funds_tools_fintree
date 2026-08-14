@@ -8,6 +8,7 @@ import ProfileOverview from "../components/ProfileOverview";
 import ChangePasswordPanel from "../components/ChangePasswordPanel";
 import { fetchClientProfile } from "../api";
 import type { ClientProfile } from "../types";
+import { getLoginRoute } from "../../../utils/authRedirect";
 
 type Section = "profile" | "password";
 
@@ -30,8 +31,9 @@ const ClientProfilePage = () => {
   }, []);
 
   const logout = () => {
+    const role = localStorage.getItem("role");
     localStorage.clear();
-    navigate("/client/login", { replace: true });
+    navigate(getLoginRoute(role, ["CLIENT"]), { replace: true });
   };
 
   const navButtonSx = (active: boolean) => ({

@@ -20,6 +20,7 @@ import {
   getUnderlyingStudyPersonalization,
   normalizeStudyValues,
   recordUnderlyingStudySelections,
+  validateUnderlyingStudySubmission,
 } from "../../src/services/underlyingStudyPreferences.service";
 
 const queryMock = vi.mocked(pool.query);
@@ -42,6 +43,66 @@ describe("underlying-study preferences", () => {
         ])
       )
     ).toEqual(["rsi", "macd"]);
+  });
+
+  it("validates canonical labels and values for publishing", () => {
+    expect(
+      validateUnderlyingStudySubmission({
+        studyText:
+          "Average Directional Index (ADX), Fibonacci Retracements & Extensions",
+        studyValues: JSON.stringify(["adx", "fibonacci_retracements"]),
+        required: true,
+      })
+    ).toEqual({
+      valid: true,
+      text:
+        "Average Directional Index (ADX), Fibonacci Retracements & Extensions",
+      values: ["adx", "fibonacci_retracements"],
+    });
+  });
+
+  it("rejects missing, mismatched, unknown, and oversized studies", () => {
+    expect(
+      validateUnderlyingStudySubmission({
+        studyText: "",
+        studyValues: [],
+        required: true,
+      }).valid
+    ).toBe(false);
+
+    expect(
+      validateUnderlyingStudySubmission({
+        studyText: "MACD",
+        studyValues: ["rsi"],
+        required: true,
+      }).valid
+    ).toBe(false);
+
+    expect(
+      validateUnderlyingStudySubmission({
+        studyText: "Unknown",
+        studyValues: ["unknown"],
+        required: true,
+      }).valid
+    ).toBe(false);
+
+    expect(
+      validateUnderlyingStudySubmission({
+        studyText: "R".repeat(256),
+        studyValues: ["rsi"],
+        required: true,
+      }).valid
+    ).toBe(false);
+  });
+
+  it("allows an incomplete draft without an underlying study", () => {
+    expect(
+      validateUnderlyingStudySubmission({
+        studyText: null,
+        studyValues: undefined,
+        required: false,
+      })
+    ).toEqual({ valid: true, text: null, values: [] });
   });
 
   it("records each known study once per successful call", async () => {

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  cancelAnalystSubscription,
   createAnalystSubscriptionOrder,
   listClientAnalysts,
   verifyAnalystSubscriptionPayment,
@@ -26,6 +27,7 @@ const requireClient = (
 
 router.use(authenticate, requireClient);
 router.get("/", listClientAnalysts);
+router.patch("/:raUserId/cancel", cancelAnalystSubscription);
 router.post("/:raUserId/order", createAnalystSubscriptionOrder);
 router.post("/payment/verify", verifyAnalystSubscriptionPayment);
 

@@ -118,6 +118,13 @@ const STUDY_BY_VALUE = new Map(
   ])
 );
 
+const STUDY_BY_LABEL = new Map(
+  FLAT_STUDIES.map((study) => [
+    study.label.trim().toLowerCase(),
+    study,
+  ])
+);
+
 export const getStudiesByValues = (
   values: string[]
 ): StudyOption[] =>
@@ -128,6 +135,17 @@ export const getStudiesByValues = (
     .filter(
       (study): study is StudyOption =>
         Boolean(study)
+    );
+
+export const getStudiesByLabels = (
+  labels: string[]
+): StudyOption[] =>
+  labels
+    .map((label) =>
+      STUDY_BY_LABEL.get(label.trim().toLowerCase())
+    )
+    .filter(
+      (study): study is StudyOption => Boolean(study)
     );
 
 // Kept for the client recommendation page while both screens

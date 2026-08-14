@@ -12,9 +12,21 @@ export const getClientProfile = async (req: AuthRequest, res: Response) => {
     }
 
     const result = await pool.query(
-      `SELECT id, name, username, email, role, status, created_at
-       FROM users
-       WHERE id = $1 AND role = 'CLIENT'
+      `SELECT
+         client.id,
+         client.name,
+         client.username,
+         client.email,
+         client.role,
+         client.status,
+         client.created_at,
+         profile.first_name,
+         profile.last_name,
+         profile.phone_number,
+         profile.profile_image
+       FROM users client
+       LEFT JOIN client_profiles profile ON profile.user_id = client.id
+       WHERE client.id = $1 AND client.role = 'CLIENT'
        LIMIT 1`,
       [clientId]
     );
@@ -31,6 +43,12 @@ export const getClientProfile = async (req: AuthRequest, res: Response) => {
         name: profile.name || profile.username || "Client",
         username: profile.username,
         email: profile.email,
+        firstName: profile.first_name || null,
+        lastName: profile.last_name || null,
+        phoneNumber: profile.phone_number || null,
+        profileImage: profile.profile_image
+          ? `/uploads/${String(profile.profile_image).replace(/^[/\\]+/, "")}`
+          : null,
         role: profile.role,
         status: profile.status,
         memberSince: profile.created_at,

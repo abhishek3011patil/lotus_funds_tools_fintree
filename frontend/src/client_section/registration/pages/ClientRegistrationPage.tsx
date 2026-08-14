@@ -10,28 +10,41 @@ import {
   Stack,
   TextField,
   Typography,
+  CircularProgress,
+  InputAdornment,
 } from "@mui/material";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import AddAPhotoOutlinedIcon from "@mui/icons-material/AddAPhotoOutlined";
 import PersonAddAltRoundedIcon from "@mui/icons-material/PersonAddAltRounded";
-import { Link as RouterLink } from "react-router-dom";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
+import axios from "axios";
 
 type ClientRegistrationForm = {
   firstName: string;
   lastName: string;
   email: string;
   phoneNumber: string;
+  password: string;
+  confirmPassword: string;
 };
 
 const ClientRegistrationPage = () => {
+  const navigate = useNavigate();
   const [form, setForm] = useState<ClientRegistrationForm>({
     firstName: "",
     lastName: "",
     email: "",
     phoneNumber: "",
+    password: "",
+    confirmPassword: "",
   });
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const profilePreview = useMemo(
     () => (profilePicture ? URL.createObjectURL(profilePicture) : ""),
@@ -48,12 +61,14 @@ const ClientRegistrationPage = () => {
     event: ChangeEvent<HTMLInputElement>
   ) => {
     setNotice("");
+    setError("");
     setForm((current) => ({ ...current, [field]: event.target.value }));
   };
 
   const handlePicture = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
     setNotice("");
+    setError("");
 
     if (file && !file.type.startsWith("image/")) {
       setNotice("Please select an image file for the profile picture.");
@@ -70,11 +85,43 @@ const ClientRegistrationPage = () => {
     setProfilePicture(file);
   };
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setNotice(
-      "The form is ready, but client registration submission is not connected to the backend yet. No information has been saved."
-    );
+    setNotice("");
+    setError("");
+
+    if (form.password !== form.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = new FormData();
+      Object.entries(form).forEach(([key, value]) => payload.append(key, value));
+      if (profilePicture) payload.append("profilePicture", profilePicture);
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/client/register`,
+        payload
+      );
+
+      setNotice(response.data.message || "Registration completed. You can now sign in.");
+      window.setTimeout(() => {
+        navigate("/client/login", {
+          replace: true,
+          state: { registeredEmail: form.email.trim().toLowerCase() },
+        });
+      }, 900);
+    } catch (requestError: unknown) {
+      setError(
+        axios.isAxiosError(requestError)
+          ? requestError.response?.data?.message || "Unable to complete registration."
+          : "Unable to complete registration."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -148,9 +195,46 @@ const ClientRegistrationPage = () => {
                 helperText="Include your country code when applicable."
                 sx={{ gridColumn: { sm: "1 / -1" } }}
               />
+              <TextField
+                label="Password"
+                type={showPassword ? "text" : "password"}
+                value={form.password}
+                onChange={updateField("password")}
+                required
+                autoComplete="new-password"
+                helperText="At least 8 characters with one letter and one number."
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        edge="end"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        onClick={() => setShowPassword((value) => !value)}
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <TextField
+                label="Confirm password"
+                type={showPassword ? "text" : "password"}
+                value={form.confirmPassword}
+                onChange={updateField("confirmPassword")}
+                required
+                autoComplete="new-password"
+                error={Boolean(form.confirmPassword && form.password !== form.confirmPassword)}
+                helperText={
+                  form.confirmPassword && form.password !== form.confirmPassword
+                    ? "Passwords do not match."
+                    : " "
+                }
+              />
             </Box>
 
-            {notice && <Alert severity="info" sx={{ mt: 3 }}>{notice}</Alert>}
+            {notice && <Alert severity="success" sx={{ mt: 3 }}>{notice}</Alert>}
+            {error && <Alert severity="error" sx={{ mt: 3 }}>{error}</Alert>}
 
             <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} gap={2} mt={3.5}>
               <Typography variant="body2" color="text.secondary">
@@ -159,8 +243,8 @@ const ClientRegistrationPage = () => {
                   Sign in
                 </Box>
               </Typography>
-              <Button type="submit" variant="contained" sx={{ minWidth: 190, py: 1.15, textTransform: "none", bgcolor: "#5271FF", fontWeight: 750 }}>
-                Submit registration
+              <Button disabled={submitting} type="submit" variant="contained" sx={{ minWidth: 190, py: 1.15, textTransform: "none", bgcolor: "#5271FF", fontWeight: 750 }}>
+                {submitting ? <CircularProgress size={22} color="inherit" /> : "Create account"}
               </Button>
             </Stack>
           </Box>

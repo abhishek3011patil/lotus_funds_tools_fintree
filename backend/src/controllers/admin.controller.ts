@@ -5,6 +5,7 @@ import { sendApprovalMail } from "../config/mailer";
 import crypto from "crypto";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { createAuditLog } from "../utils/auditLogger";
+import { emailService } from "../services/email";
 
 const getClientIp = (req: Request) => {
   let ip =
@@ -623,19 +624,59 @@ export const resendPasswordLink = async (
   req: AuthRequest,
   res: Response
 ) => {
-  try {
-    const { userId } = req.body;
+  const userId = String(req.body?.userId || "").trim();
 
-    const userRes = await pool.query(
+  if (!userId) {
+    return res.status(400).json({
+      success: false,
+      message: "User ID is required",
+    });
+  }
+
+  const configuredTtlHours = Number(
+    process.env.PASSWORD_SETUP_TOKEN_TTL_HOURS || 24
+  );
+  const tokenTtlHours =
+    Number.isFinite(configuredTtlHours) && configuredTtlHours > 0
+      ? Math.min(Math.floor(configuredTtlHours), 168)
+      : 24;
+  const frontendUrl = String(process.env.FRONTEND_URL || "").replace(/\/$/, "");
+
+  if (!frontendUrl) {
+    return res.status(503).json({
+      success: false,
+      message: "Password setup links are not configured.",
+    });
+  }
+
+  const db = await pool.connect();
+  let transactionOpen = false;
+
+  try {
+    await db.query("BEGIN");
+    transactionOpen = true;
+
+    const userRes = await db.query(
       `
-      SELECT id, name, email, token_expiry
+      SELECT
+        id,
+        name,
+        email,
+        role,
+        status,
+        is_active,
+        password_hash,
+        token_expiry
       FROM users
       WHERE id = $1
+      FOR UPDATE
       `,
       [userId]
     );
 
     if (userRes.rowCount === 0) {
+      await db.query("ROLLBACK");
+      transactionOpen = false;
       return res.status(404).json({
         success: false,
         message: "User not found",
@@ -644,28 +685,153 @@ export const resendPasswordLink = async (
 
     const user = userRes.rows[0];
 
-    const token = crypto.randomBytes(32).toString("hex");
-    const tokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
+    if (!["RESEARCH_ANALYST", "CLIENT"].includes(user.role)) {
+      await db.query("ROLLBACK");
+      transactionOpen = false;
+      return res.status(409).json({
+        success: false,
+        message: "Password setup resend is available only for research analyst and client accounts.",
+      });
+    }
 
-    await pool.query(
-      `
-      UPDATE users
-      SET
-        reset_token = $1,
-        token_expiry = $2,
-        updated_at = NOW()
-      WHERE id = $3
-      `,
-      [token, tokenExpiry, userId]
+    const passwordSetupPending =
+      !user.password_hash &&
+      user.status === "inactive" &&
+      user.is_active === false;
+    const passwordResetAvailable =
+      Boolean(user.password_hash) &&
+      user.status === "active" &&
+      user.is_active === true;
+
+    if (!passwordSetupPending && !passwordResetAvailable) {
+      await db.query("ROLLBACK");
+      transactionOpen = false;
+      return res.status(409).json({
+        success: false,
+        message: "Password links are available only for inactive accounts awaiting setup or active accounts.",
+      });
+    }
+
+    let registrationApplicationId: string | null = null;
+
+    if (passwordSetupPending) {
+      const registrationResult = await db.query(
+        `SELECT application.id AS registration_application_id
+         FROM registration_applications application
+         INNER JOIN subscriptions subscription
+           ON subscription.registration_application_id = application.id
+         WHERE application.user_id = $1
+           AND application.status = 'APPROVED'
+           AND subscription.status = 'ACTIVE'
+         ORDER BY application.approved_at DESC NULLS LAST
+         LIMIT 1`,
+        [userId]
+      );
+
+      if (registrationResult.rowCount === 0) {
+        await db.query("ROLLBACK");
+        transactionOpen = false;
+        return res.status(409).json({
+          success: false,
+          message: "An approved registration with an active subscription is required.",
+        });
+      }
+
+      registrationApplicationId =
+        registrationResult.rows[0].registration_application_id;
+    }
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const tokenExpiry = new Date(
+      Date.now() + tokenTtlHours * 60 * 60 * 1000
     );
 
-    const frontendUrl = process.env.FRONTEND_URL?.endsWith("/")
-      ? process.env.FRONTEND_URL
-      : `${process.env.FRONTEND_URL}/`;
+    if (passwordSetupPending) {
+      const tokenHash = crypto
+        .createHash("sha256")
+        .update(token)
+        .digest("hex");
 
-    const link = `${frontendUrl}set-password?token=${token}`;
+      await db.query(
+        `UPDATE password_setup_tokens
+         SET revoked_at = NOW()
+         WHERE user_id = $1
+           AND used_at IS NULL
+           AND revoked_at IS NULL`,
+        [userId]
+      );
 
-    await sendApprovalMail(user.email, user.name, link);
+      await db.query(
+        `INSERT INTO password_setup_tokens (
+           user_id,
+           registration_application_id,
+           token_hash,
+           expires_at
+         ) VALUES ($1, $2, $3, $4)`,
+        [userId, registrationApplicationId, tokenHash, tokenExpiry]
+      );
+
+      await db.query(
+        `UPDATE users
+         SET reset_token = NULL,
+             token_expiry = NULL,
+             updated_at = NOW()
+         WHERE id = $1`,
+        [userId]
+      );
+    } else {
+      await db.query(
+        `UPDATE users
+         SET reset_token = $1,
+             token_expiry = $2,
+             otp = NULL,
+             otp_expiry = NULL,
+             updated_at = NOW()
+         WHERE id = $3`,
+        [token, tokenExpiry, userId]
+      );
+    }
+
+    await db.query("COMMIT");
+    transactionOpen = false;
+
+    const link = passwordSetupPending
+      ? `${frontendUrl}/set-password?token=${encodeURIComponent(token)}`
+      : `${frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
+
+    const emailResult = passwordSetupPending
+      ? await emailService.send(
+          "PASSWORD_SETUP_RESENT",
+          user.email,
+          {
+            name: user.name,
+            passwordSetupUrl: link,
+            expiresInHours: tokenTtlHours,
+          }
+        )
+      : await emailService.send(
+          "PASSWORD_RESET_LINK",
+          user.email,
+          {
+            name: user.name,
+            passwordResetUrl: link,
+            expiresInHours: tokenTtlHours,
+          }
+        );
+
+    if (!emailResult.sent) {
+      const message =
+        emailResult.reason === "EMAIL_DISABLED"
+          ? "Email delivery is disabled on the server."
+          : emailResult.reason === "EMAIL_NOT_CONFIGURED"
+            ? "Email delivery is not fully configured on the server."
+            : "The password email could not be delivered.";
+
+      return res.status(503).json({
+        success: false,
+        message,
+      });
+    }
 
     await createAuditLog({
       adminId: req.user?.id,
@@ -675,12 +841,14 @@ export const resendPasswordLink = async (
       module: "USER_MANAGEMENT",
       targetEntity: user.email,
       targetType: "USER",
-      description: "Password reset link resent by admin",
+      description: passwordSetupPending
+        ? "Password setup link resent by admin"
+        : "Password reset link sent by admin",
       status: "SUCCESS",
       ipAddress: getClientIp(req),
       device: req.headers["user-agent"] as string,
       oldValue: {
-        previousTokenExpiry: user.token_expiry || null,
+        previousLegacyTokenExpiry: user.token_expiry || null,
       },
       newValue: {
         userId,
@@ -691,15 +859,22 @@ export const resendPasswordLink = async (
 
     return res.status(200).json({
       success: true,
-      message: "Password link sent successfully ✅",
+      message: passwordSetupPending
+        ? "A new password setup link was sent successfully."
+        : "A password reset link was sent successfully.",
     });
   } catch (error) {
+    if (transactionOpen) {
+      await db.query("ROLLBACK");
+    }
     console.error("Resend Password Link Error:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Server error",
+      message: "Unable to send the password link.",
     });
+  } finally {
+    db.release();
   }
 };
 

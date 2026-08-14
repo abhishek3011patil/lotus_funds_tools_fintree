@@ -2,6 +2,7 @@ import { Navigate } from "react-router-dom";
 import { JSX, useEffect, useState } from "react";
 import axios from "axios";
 import LoadingPage from "../common/LoadingPage";
+import { getLoginRoute } from "../utils/authRedirect";
 
 interface Props {
   children: JSX.Element;
@@ -62,7 +63,8 @@ const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
   }
 
   if (status === "unauth") {
-    return <Navigate to="/login" replace />;
+    const role = localStorage.getItem("role");
+    return <Navigate to={getLoginRoute(role, allowedRoles)} replace />;
   }
 
   if (status === "forbidden") {

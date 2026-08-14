@@ -171,6 +171,48 @@ const renderers: TemplateRendererMap = {
     registrationReceived("Research Analyst", data),
   RA_APPROVED: (data) =>
     approved("Research Analyst", data),
+  PASSWORD_SETUP_RESENT: (data) => {
+    const subject = "Your new password setup link";
+    const expiryText = `${data.expiresInHours} hour${
+      data.expiresInHours === 1 ? "" : "s"
+    }`;
+    return {
+      subject,
+      text: `Hello ${data.name},\n\nA new password setup link was requested for your account. This link is valid for ${expiryText}:\n${data.passwordSetupUrl}\n\nIf you did not request this, contact support.`,
+      html: brandedLayout(
+        subject,
+        paragraph(`Hello ${data.name},`) +
+          paragraph(
+            `A new password setup link was requested for your account. It is valid for ${expiryText}.`
+          ) +
+          linkButton("Set your password", data.passwordSetupUrl) +
+          paragraph(
+            "If you did not request this link, contact support."
+          )
+      ),
+    };
+  },
+  PASSWORD_RESET_LINK: (data) => {
+    const subject = "Reset your password";
+    const expiryText = `${data.expiresInHours} hour${
+      data.expiresInHours === 1 ? "" : "s"
+    }`;
+    return {
+      subject,
+      text: `Hello ${data.name},\n\nAn administrator sent you a password reset link. This link is valid for ${expiryText}:\n${data.passwordResetUrl}\n\nYou will verify the reset using an OTP sent to your registered email.`,
+      html: brandedLayout(
+        subject,
+        paragraph(`Hello ${data.name},`) +
+          paragraph(
+            `An administrator sent you a password reset link. It is valid for ${expiryText}.`
+          ) +
+          linkButton("Reset your password", data.passwordResetUrl) +
+          paragraph(
+            "You will verify the reset using an OTP sent to your registered email."
+          )
+      ),
+    };
+  },
   RA_REJECTED: (data) =>
     rejected("Research Analyst", data),
   RA_SUSPENDED: (data) => {

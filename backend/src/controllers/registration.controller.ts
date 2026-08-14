@@ -188,6 +188,26 @@ SELECT
   u.username,
   u.role,
   u.status AS user_status,
+  (
+    u.password_hash IS NULL
+    AND u.status = 'inactive'
+    AND COALESCE(u.is_active, false) = false
+    AND EXISTS (
+      SELECT 1
+      FROM registration_applications application
+      INNER JOIN subscriptions subscription
+        ON subscription.registration_application_id = application.id
+      WHERE application.user_id = u.id
+        AND application.status = 'APPROVED'
+        AND subscription.status = 'ACTIVE'
+    )
+  ) AS password_setup_pending,
+  (
+    u.password_hash IS NOT NULL
+    AND u.status = 'active'
+    AND COALESCE(u.is_active, false) = true
+    AND NULLIF(TRIM(u.email), '') IS NOT NULL
+  ) AS password_reset_available,
   u.suspended_reason,
 
   rd.id AS ra_id,

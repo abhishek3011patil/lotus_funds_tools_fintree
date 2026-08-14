@@ -26,6 +26,7 @@ import InsertChartIcon from '@mui/icons-material/InsertChart';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import PersonIcon from '@mui/icons-material/Person';
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
+import { getLoginRoute } from '../../utils/authRedirect';
 
 const drawerWidth = 240;
 
@@ -68,8 +69,9 @@ export const ClientLayout = () => {
   };
 
   const handleLogout = () => {
+    const role = localStorage.getItem('role');
     localStorage.clear();
-    navigate('/login', { replace: true });
+    navigate(getLoginRoute(role, ['CLIENT']), { replace: true });
   };
 
   // Reusable Sidebar Content (Drawer inner components)

@@ -11,6 +11,7 @@ import {
 import AnalystCard from "../components/AnalystCard";
 import AnalystSearch from "../components/AnalystSearch";
 import {
+  cancelAnalystSubscription,
   createAnalystOrder,
   fetchClientAnalysts,
   verifyAnalystPayment,
@@ -34,6 +35,7 @@ const ClientAnalystsPage = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [subscribingId, setSubscribingId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -89,6 +91,31 @@ const ClientAnalystsPage = () => {
       if (message !== "Razorpay Checkout was closed.") setError(message);
     } finally {
       setSubscribingId(null);
+    }
+  };
+
+  const handleCancel = async (analyst: ClientAnalyst) => {
+    const confirmed = window.confirm(
+      `Cancel your subscription to ${analyst.name}? You will immediately lose access to this analyst's calls.`
+    );
+    if (!confirmed) return;
+
+    setCancellingId(analyst.id);
+    setError(null);
+    try {
+      await cancelAnalystSubscription(analyst.id);
+      setAnalysts((current) =>
+        current.map((item) =>
+          item.id === analyst.id
+            ? { ...item, isSubscribed: false, subscriptionExpiresAt: null }
+            : item
+        )
+      );
+      setNotice(`Your subscription to ${analyst.name} was cancelled.`);
+    } catch (cancelError) {
+      setError(getErrorMessage(cancelError));
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -170,7 +197,9 @@ const ClientAnalystsPage = () => {
               key={analyst.id}
               analyst={analyst}
               subscribing={subscribingId === analyst.id}
+              cancelling={cancellingId === analyst.id}
               onSubscribe={handleSubscribe}
+              onCancel={handleCancel}
             />
           ))}
         </Box>

@@ -1,6 +1,7 @@
 import { BrowserRouter } from "react-router-dom";
 import AppRoutes from "./routes/AppRoutes";
 import { useEffect } from "react";
+import { getLoginRoute } from "./utils/authRedirect";
 
 function App() {
 
@@ -17,18 +18,7 @@ function App() {
       localStorage.removeItem("role");
 
       // ✅ Redirect based on role
-      if (
-        role === "ADMIN" ||
-        role === "SUPER_ADMIN" ||
-        role === "EMPLOYEE"
-      ) {
-
-        window.location.href = "/login-admin";
-
-      } else {
-
-        window.location.href = "/login";
-      }
+      window.location.href = getLoginRoute(role);
     };
 
     const checkTokenExpiry = () => {

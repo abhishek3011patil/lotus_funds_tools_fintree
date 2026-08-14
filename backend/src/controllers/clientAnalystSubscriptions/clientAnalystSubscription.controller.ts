@@ -7,6 +7,8 @@ import type { AuthRequest } from "../../middlewares/auth.middleware";
 
 const DEFAULT_PRICE_PAISE = 249_900;
 const DEFAULT_DURATION_DAYS = 365;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const getPricePaise = () => {
   const configured = Number(process.env.CLIENT_RA_SUBSCRIPTION_PRICE_PAISE);
@@ -159,6 +161,51 @@ export const listClientAnalysts = async (
     return res.status(500).json({
       success: false,
       message: "Unable to load research analysts.",
+    });
+  }
+};
+
+export const cancelAnalystSubscription = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  const clientUserId = req.user!.id;
+  const raUserId = String(req.params.raUserId || "").trim();
+
+  if (!UUID_PATTERN.test(raUserId)) {
+    return res.status(400).json({ message: "Invalid research analyst ID." });
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE client_ra_subscriptions
+       SET status = 'CANCELLED',
+           unsubscribed_at = NOW(),
+           updated_at = NOW()
+       WHERE client_user_id = $1
+         AND ra_user_id = $2
+         AND status = 'ACTIVE'
+         AND expires_at > NOW()
+       RETURNING id, status, unsubscribed_at`,
+      [clientUserId, raUserId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(409).json({
+        message: "No active subscription was found for this analyst.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Analyst subscription cancelled.",
+      subscription: result.rows[0],
+    });
+  } catch (error) {
+    console.error("CANCEL CLIENT ANALYST SUBSCRIPTION ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to cancel the analyst subscription.",
     });
   }
 };

@@ -79,6 +79,7 @@ const LoginFormBroker: React.FC = () => {
         loginId: formData.username,
         password: formData.password,
         otp: formData.otp,
+        requestedRole: "BROKER",
       });
 
       // Dynamic check for OTP requirement

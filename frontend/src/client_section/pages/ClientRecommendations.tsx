@@ -179,8 +179,8 @@ const ClientRecommendation = () => {
 
             <Button
               variant="contained"
-              fullWidth={{ xs: true, sm: false }}
               sx={{
+                width: { xs: "100%", sm: "auto" },
                 backgroundColor: "#4f46e5",
                 borderRadius: "20px",
                 textTransform: "none",
@@ -202,7 +202,7 @@ const ClientRecommendation = () => {
 
           {/* Metrics Row (Entry, Target, Stop Loss) */}
           <Grid container spacing={2} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Box
                 sx={{
                   border: "1px solid #e2e8f0",
@@ -221,7 +221,7 @@ const ClientRecommendation = () => {
               </Box>
             </Grid>
 
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Box
                 sx={{
                   border: "1px solid #e2e8f0",
@@ -240,7 +240,7 @@ const ClientRecommendation = () => {
               </Box>
             </Grid>
 
-            <Grid item xs={12} sm={4}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <Box
                 sx={{
                   border: "1px solid #e2e8f0",
@@ -343,7 +343,7 @@ const ClientRecommendation = () => {
       {/* Grid List */}
       <Grid container spacing={{ xs: 2, sm: 3 }}>
         {recommendations.map((item) => (
-          <Grid item xs={12} sm={6} md={6} lg={4} xl={3} key={item.id} sx={{ display: "flex" }}>
+          <Grid size={{ xs: 12, sm: 6, md: 6, lg: 4, xl: 3 }} key={item.id} sx={{ display: "flex" }}>
             <Card
               elevation={0}
               sx={{

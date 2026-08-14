@@ -80,6 +80,12 @@ const ClientRecommendationsPage = () => {
         setSubscribed(result.subscribed);
         setDiscover(result.discover);
         setAnalysts(result.filters.analysts);
+        if (
+          raId !== "ALL" &&
+          !result.filters.analysts.some((analyst) => analyst.id === raId)
+        ) {
+          setRaId("ALL");
+        }
       })
       .catch((requestError) => {
         if ((requestError as { code?: string }).code !== "ERR_CANCELED") {
@@ -145,6 +151,7 @@ const ClientRecommendationsPage = () => {
       });
       setSubscribed(result.subscribed);
       setDiscover(result.discover);
+      setAnalysts(result.filters.analysts);
       setLoading(false);
     } catch (subscribeError) {
       const message = errorMessage(subscribeError);

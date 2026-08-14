@@ -1,6 +1,8 @@
 export type EmailTemplateName =
   | "RA_REGISTRATION_RECEIVED"
   | "RA_APPROVED"
+  | "PASSWORD_SETUP_RESENT"
+  | "PASSWORD_RESET_LINK"
   | "RA_REJECTED"
   | "RA_SUSPENDED"
   | "BROKER_REGISTRATION_RECEIVED"
@@ -22,6 +24,18 @@ export interface RegistrationReceivedTemplateData {
 export interface ApprovalTemplateData {
   name: string;
   passwordSetupUrl: string;
+}
+
+export interface PasswordSetupResentTemplateData {
+  name: string;
+  passwordSetupUrl: string;
+  expiresInHours: number;
+}
+
+export interface PasswordResetLinkTemplateData {
+  name: string;
+  passwordResetUrl: string;
+  expiresInHours: number;
 }
 
 export interface RejectionTemplateData {
@@ -73,6 +87,10 @@ export interface EmailTemplateDataMap {
   RA_REGISTRATION_RECEIVED:
     RegistrationReceivedTemplateData;
   RA_APPROVED: ApprovalTemplateData;
+  PASSWORD_SETUP_RESENT:
+    PasswordSetupResentTemplateData;
+  PASSWORD_RESET_LINK:
+    PasswordResetLinkTemplateData;
   RA_REJECTED: RejectionTemplateData;
   RA_SUSPENDED: SuspensionTemplateData;
   BROKER_REGISTRATION_RECEIVED:

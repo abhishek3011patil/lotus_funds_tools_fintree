@@ -21,6 +21,7 @@ import { useNavigate } from "react-router-dom";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
 import {ToggleButton, ToggleButtonGroup} from "@mui/material";
 import SendIcon from '@mui/icons-material/Send';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
@@ -51,6 +52,20 @@ type AdminRow = {
   "age/time": string;
   pending_requests: number;
   suspended_at?: string;
+  passwordSetupPending?: boolean;
+  passwordResetAvailable?: boolean;
+};
+
+type ClientRow = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: string;
+  createdAt: string;
+  suspendedAt?: string;
+  suspendedReason?: string;
+  profileImage?: string;
 };
 
 const ITEMS_PER_PAGE = 10;
@@ -61,8 +76,16 @@ const AdminDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [filterTab, setFilterTab] = useState<"all" | "approved" | "requests">("all");
+  const [clients, setClients] = useState<ClientRow[]>([]);
+  const [clientFilter, setClientFilter] = useState<"all" | "active" | "suspended">("all");
+  const [clientPage, setClientPage] = useState(1);
+  const [selectedClient, setSelectedClient] = useState<ClientRow | null>(null);
+  const [clientSuspendReason, setClientSuspendReason] = useState("");
+  const [suspendingClient, setSuspendingClient] = useState(false);
+  const [activatingClient, setActivatingClient] = useState(false);
 
   const [selectedRA, setSelectedRA] = useState<AdminRow | null>(null);
+  const [resendingPasswordLink, setResendingPasswordLink] = useState(false);
   const [panelMode, setPanelMode] = useState<"ra" | "participant" | "whatsapp">("ra");
   const [suspendReason, setSuspendReason] = useState("");
   const [suspendedPage, setSuspendedPage] = useState(1);
@@ -221,6 +244,8 @@ const [participant, setParticipant] = useState<Participant | null>(null);
         : "",
 
       status: item.user_status,
+      passwordSetupPending: Boolean(item.password_setup_pending),
+      passwordResetAvailable: Boolean(item.password_reset_available),
       raStatus: item.ra_status,
       rejectionReason: item.rejection_reason || "",
       suspendReason: item.suspended_reason || "",
@@ -281,13 +306,52 @@ const handleActivate = async (
   }
 };
 
+const loadClients = async () => {
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/client/register/admin/clients`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to load clients");
+    }
+
+    setClients(
+      (Array.isArray(data.clients) ? data.clients : []).map((client: any) => ({
+        id: String(client.id),
+        name:
+          client.name ||
+          `${client.first_name || ""} ${client.last_name || ""}`.trim() ||
+          "N/A",
+        email: client.email || "",
+        phone: client.phone_number || "",
+        status: client.status || "inactive",
+        createdAt: client.created_at || "",
+        suspendedAt: client.suspended_at || "",
+        suspendedReason: client.suspended_reason || "",
+        profileImage: client.profile_image || "",
+      }))
+    );
+  } catch (error) {
+    console.error("Failed to load clients:", error);
+  }
+};
+
 useEffect(() => {
   loadRegistrations();
+  loadClients();
 }, []);
 
   useEffect(() => {
     setPage(1);
     setSuspendedPage(1);
+    setClientPage(1);
   }, [searchQuery]);
 
   /* ================= STATUS COLOR ================= */
@@ -356,6 +420,25 @@ const suspendedPageCount = Math.ceil(
 const paginatedSuspendedRows = filteredSuspendedRows.slice(
   (suspendedPage - 1) * ITEMS_PER_PAGE,
   suspendedPage * ITEMS_PER_PAGE
+);
+
+const filteredClients = clients.filter((client) => {
+  const status = client.status.toLowerCase();
+  const query = searchQuery.toLowerCase().trim();
+
+  if (clientFilter !== "all" && status !== clientFilter) return false;
+
+  return (
+    client.name.toLowerCase().includes(query) ||
+    client.email.toLowerCase().includes(query) ||
+    client.phone.includes(query)
+  );
+});
+
+const clientPageCount = Math.ceil(filteredClients.length / ITEMS_PER_PAGE);
+const paginatedClients = filteredClients.slice(
+  (clientPage - 1) * ITEMS_PER_PAGE,
+  clientPage * ITEMS_PER_PAGE
 );
 
   /* ================= FILE VIEW ================= */
@@ -940,6 +1023,9 @@ const handleSuspend = async (userId: string) => {
 };
 
 const handleResendPasswordLink = async (userId: string) => {
+  if (resendingPasswordLink) return;
+
+  setResendingPasswordLink(true);
   try {
     const res = await fetch(
   `${import.meta.env.VITE_API_URL}/admin/resend-password-link`,
@@ -959,11 +1045,91 @@ const handleResendPasswordLink = async (userId: string) => {
       throw new Error(data.message || "Failed to send link");
     }
 
-    alert("Password setup link sent successfully ✅");
+    alert(data.message || "A new password setup link was sent successfully.");
 
   } catch (error) {
     console.error(error);
-    alert("Failed to send password setup link");
+    alert(
+      error instanceof Error
+        ? error.message
+        : "Failed to send password setup link"
+    );
+  } finally {
+    setResendingPasswordLink(false);
+  }
+};
+
+const handleSuspendClient = async () => {
+  if (!selectedClient || suspendingClient) return;
+
+  if (!clientSuspendReason.trim()) {
+    alert("Please enter suspend reason");
+    return;
+  }
+
+  if (!window.confirm(`Suspend ${selectedClient.name}?`)) return;
+
+  setSuspendingClient(true);
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/admin/suspend-user`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          userId: selectedClient.id,
+          suspendReason: clientSuspendReason.trim(),
+        }),
+      }
+    );
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || "Failed to suspend client");
+    }
+
+    alert(result.message || "Client suspended successfully");
+    setSelectedClient(null);
+    setClientSuspendReason("");
+    await loadClients();
+  } catch (error) {
+    alert(error instanceof Error ? error.message : "Failed to suspend client");
+  } finally {
+    setSuspendingClient(false);
+  }
+};
+
+const handleActivateClient = async () => {
+  if (!selectedClient || activatingClient) return;
+  if (!window.confirm(`Activate ${selectedClient.name}?`)) return;
+
+  setActivatingClient(true);
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/client/register/admin/clients/${encodeURIComponent(selectedClient.id)}/activate`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || "Failed to activate client");
+    }
+
+    alert(result.message || "Client activated successfully");
+    setSelectedClient(null);
+    await loadClients();
+  } catch (error) {
+    alert(error instanceof Error ? error.message : "Failed to activate client");
+  } finally {
+    setActivatingClient(false);
   }
 };
 
@@ -1200,7 +1366,7 @@ const handleDeleteWhatsAppParticipant = async () => {
                         setSelectedRA(row);
                       }}
                     >
-                      View Details
+                      Options
                     </Button> 
                   </Box>
                 </TableCell> 
@@ -1282,7 +1448,7 @@ const handleDeleteWhatsAppParticipant = async () => {
         />
       )}
 
-       {pageCount > 1 && (
+      {pageCount > 1 && (
         <Pagination
           sx={{ alignSelf: "center", mt: 2 }}
           count={pageCount}
@@ -1357,7 +1523,7 @@ const handleDeleteWhatsAppParticipant = async () => {
                   setSelectedRA(row);
                 }}
               >
-                View Details
+                Options
               </Button>
             </TableCell>
 
@@ -1389,6 +1555,109 @@ const handleDeleteWhatsAppParticipant = async () => {
     )}
   />
 </Box>
+
+      {/* ================= CLIENTS TABLE ================= */}
+      <Box sx={{ mt: 5 }}>
+        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+          Clients
+        </Typography>
+
+        <ToggleButtonGroup
+          value={clientFilter}
+          exclusive
+          onChange={(_, value) => {
+            if (value) {
+              setClientFilter(value);
+              setClientPage(1);
+            }
+          }}
+          size="small"
+          sx={{ mb: 2 }}
+        >
+          <ToggleButton value="all">All</ToggleButton>
+          <ToggleButton value="active">Active</ToggleButton>
+          <ToggleButton value="suspended">Suspended</ToggleButton>
+        </ToggleButtonGroup>
+
+        <TableContainer component={Paper} variant="outlined">
+          <Table size="small">
+            <TableHead sx={{ backgroundColor: "#f6f6f6" }}>
+              <TableRow>
+                <TableCell>Name</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>Mobile</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Registered At</TableCell>
+                <TableCell align="right">Options</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {paginatedClients.map((client) => (
+                <TableRow key={client.id}>
+                  <TableCell>{client.name}</TableCell>
+                  <TableCell>{client.email || "-"}</TableCell>
+                  <TableCell>{client.phone || "-"}</TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      label={client.status}
+                      color={statusColor(client.status) as any}
+                      sx={{ textTransform: "capitalize" }}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {client.createdAt
+                      ? new Date(client.createdAt).toLocaleString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
+                        })
+                      : "-"}
+                  </TableCell>
+                  <TableCell align="right">
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => {
+                        setClientSuspendReason("");
+                        setSelectedClient(client);
+                      }}
+                    >
+                      Options
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+
+              {filteredClients.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    No matching clients
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        {clientPageCount > 1 && (
+          <Pagination
+            sx={{ display: "flex", justifyContent: "center", mt: 2 }}
+            count={clientPageCount}
+            page={clientPage}
+            onChange={(_, value) => setClientPage(value)}
+            renderItem={(item) => (
+              <PaginationItem
+                slots={{ previous: ArrowBackIcon, next: ArrowForwardIcon }}
+                {...item}
+              />
+            )}
+          />
+        )}
+      </Box>
 
       {/* SIDE PANEL */}
       {selectedRA && (
@@ -1458,14 +1727,21 @@ const handleDeleteWhatsAppParticipant = async () => {
     View Disclaimer History
   </Button>
 
-  <Button
-    onClick={() =>
-      selectedRA?.userId &&
-      handleResendPasswordLink(selectedRA.userId)
-    }
-  >
-    Resend Password Link
-  </Button>
+  {(selectedRA.passwordSetupPending || selectedRA.passwordResetAvailable) && (
+    <Button
+      disabled={resendingPasswordLink}
+      onClick={() =>
+        selectedRA?.userId &&
+        handleResendPasswordLink(selectedRA.userId)
+      }
+    >
+      {resendingPasswordLink
+        ? "Sending..."
+        : selectedRA.passwordSetupPending
+          ? "Resend Password Setup Link"
+          : "Send Password Reset Link"}
+    </Button>
+  )}
 
   <Button
     onClick={() =>
@@ -1949,7 +2225,112 @@ color: whatsappParticipant ? "#fff" : "#9e9e9e",
       )}
 
       {/* PAGINATION */}
-     
+
+      <Dialog
+        open={Boolean(selectedClient)}
+        onClose={() => {
+          setSelectedClient(null);
+          setClientSuspendReason("");
+        }}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Client Options</DialogTitle>
+        <DialogContent dividers>
+          {selectedClient && (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+              <Box sx={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 1.5 }}>
+                <Typography color="text.secondary">Name</Typography>
+                <Typography>{selectedClient.name}</Typography>
+                <Typography color="text.secondary">Email</Typography>
+                <Typography>{selectedClient.email || "-"}</Typography>
+                <Typography color="text.secondary">Mobile</Typography>
+                <Typography>{selectedClient.phone || "-"}</Typography>
+                <Typography color="text.secondary">Status</Typography>
+                <Typography sx={{ textTransform: "capitalize" }}>{selectedClient.status}</Typography>
+                <Typography color="text.secondary">Registered At</Typography>
+                <Typography>
+                  {selectedClient.createdAt
+                    ? new Date(selectedClient.createdAt).toLocaleString("en-IN")
+                    : "-"}
+                </Typography>
+                {selectedClient.status.toLowerCase() === "suspended" && (
+                  <>
+                    <Typography color="text.secondary">Suspended At</Typography>
+                    <Typography>
+                      {selectedClient.suspendedAt
+                        ? new Date(selectedClient.suspendedAt).toLocaleString("en-IN")
+                        : "-"}
+                    </Typography>
+                    <Typography color="text.secondary">Suspend Reason</Typography>
+                    <Typography>{selectedClient.suspendedReason || "-"}</Typography>
+                  </>
+                )}
+                <Typography color="text.secondary">Profile Picture</Typography>
+                <Typography>
+                  {selectedClient.profileImage ? (
+                    <Button size="small" onClick={() => openFile(selectedClient.profileImage)}>
+                      View Picture
+                    </Button>
+                  ) : (
+                    "Not uploaded"
+                  )}
+                </Typography>
+              </Box>
+
+              <Button
+                variant="outlined"
+                disabled={resendingPasswordLink || selectedClient.status.toLowerCase() === "suspended"}
+                onClick={() => handleResendPasswordLink(selectedClient.id)}
+              >
+                {resendingPasswordLink ? "Sending..." : "Resend Password Setup Link"}
+              </Button>
+
+              {selectedClient.status.toLowerCase() === "suspended" && (
+                <Button
+                  variant="contained"
+                  color="success"
+                  disabled={activatingClient}
+                  onClick={handleActivateClient}
+                >
+                  {activatingClient ? "Activating..." : "Activate Client"}
+                </Button>
+              )}
+
+              {selectedClient.status.toLowerCase() !== "suspended" && (
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                  <TextField
+                    size="small"
+                    label="Suspend reason"
+                    value={clientSuspendReason}
+                    onChange={(event) => setClientSuspendReason(event.target.value)}
+                    multiline
+                    minRows={2}
+                  />
+                  <Button
+                    variant="contained"
+                    color="error"
+                    disabled={suspendingClient}
+                    onClick={handleSuspendClient}
+                  >
+                    {suspendingClient ? "Suspending..." : "Suspend Client"}
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setSelectedClient(null);
+              setClientSuspendReason("");
+            }}
+          >
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
   <DialogTitle>

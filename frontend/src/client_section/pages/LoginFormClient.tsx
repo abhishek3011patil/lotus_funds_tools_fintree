@@ -12,12 +12,16 @@ import {
 
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import LoadingPage from "../../common/LoadingPage";
 
 const LoginFormClient: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const registeredEmail = String(
+    (location.state as { registeredEmail?: string } | null)?.registeredEmail || ""
+  );
   const [showPassword, setShowPassword] = useState(false);
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
@@ -28,7 +32,7 @@ const LoginFormClient: React.FC = () => {
   const API_URL = import.meta.env.VITE_API_URL;
 
   const [formData, setFormData] = useState({
-    username: "",
+    username: registeredEmail,
     password: "",
     otp: "",
   });
@@ -81,6 +85,7 @@ const LoginFormClient: React.FC = () => {
         loginId: formData.username,
         password: formData.password,
         otp: formData.otp,
+        requestedRole: "CLIENT",
       });
 
       // If backend asks for OTP and it hasn't been shown yet

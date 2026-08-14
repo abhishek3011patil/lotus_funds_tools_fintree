@@ -157,12 +157,14 @@ export const getClientRecommendationsFeed = async (
          AND analyst.status = 'active'
          AND COALESCE(analyst.is_active, false) = true
          AND details.status = 'approved'
+         AND analyst.id = ANY($1::uuid[])
          AND EXISTS (
            SELECT 1 FROM research_calls research_call
            WHERE research_call.ra_user_id = analyst.id
              AND COALESCE(research_call.is_latest, true) = true
          )
-       ORDER BY analyst.name`
+       ORDER BY analyst.name`,
+      [allowedRAIds]
     );
 
     const subscribedTotal = Number(

@@ -43,6 +43,7 @@ const BrokerRegistration = lazy(() => import("../pages_registration/BrokerRegist
 
 // --- Lazy: Main (Employee / Broker) ---
 const Dashboard = lazy(() => import("../pages/Dashboard"));
+const NewPassword = lazy(() => import("../common/NewPassword"));
 const Performance = lazy(() => import("../pages/Performance"));
 const Settings = lazy(() => import("../pages/Settings"));
 const Recommendations = lazy(() => import("../pages/Recomendation"));
@@ -123,10 +124,11 @@ const AppRoutes = () => {
       <Routes>
 
         {/* New Password — must be above wildcard */}
-       <Route
+<Route
   path="/set-password"
   element={<RAPasswordSetupPage />}
 />
+        <Route path="/reset-password" element={<NewPassword />} />
         {/* Auth & Public */}
         <Route path="/login" element={<LoginForm />} />
         <Route path="/login-admin" element={<LoginFormAdmin />} />
