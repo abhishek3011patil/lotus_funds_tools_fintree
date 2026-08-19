@@ -212,7 +212,7 @@ describe("email templates", () => {
     expect(rendered.html).toContain("Set your password");
   });
 
-  it("renders an administrator password reset link", () => {
+  it("renders a password reset link", () => {
     const rendered = renderEmailTemplate(
       "PASSWORD_RESET_LINK",
       {
@@ -224,8 +224,9 @@ describe("email templates", () => {
     );
 
     expect(rendered.subject).toBe("Reset your password");
-    expect(rendered.text).toContain("administrator");
+    expect(rendered.text).toContain("password reset was requested");
     expect(rendered.text).toContain("OTP");
+    expect(rendered.text).toContain("safely ignore");
     expect(rendered.text).not.toContain("approved");
   });
 });

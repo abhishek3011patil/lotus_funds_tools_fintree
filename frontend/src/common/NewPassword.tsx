@@ -76,14 +76,18 @@ const NewPassword: React.FC = () => {
   try {
     if (!token) throw new Error("Token missing from URL");
 
-    await axios.post(`${API_URL}/api/auth/verify-otp-and-set-password`, {
+    const response = await axios.post(`${API_URL}/api/auth/verify-otp-and-set-password`, {
       token,       // ✅ send the reset token
       otp,         // ✅ 6-digit OTP
       password: formData.password, // ✅ new password
     });
 
     setMessage("Password successfully updated!");
-    setTimeout(() => navigate("/login"), 2000);
+    const loginPath =
+      response.data?.role === "CLIENT"
+        ? "/client/login"
+        : "/login";
+    setTimeout(() => navigate(loginPath), 2000);
   } catch (err: any) {
     setMessage(err.response?.data?.message || "Invalid OTP or token.");
   } finally {

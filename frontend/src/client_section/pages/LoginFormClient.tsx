@@ -8,6 +8,11 @@ import {
   InputAdornment,
   CircularProgress,
   Link,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Alert,
 } from "@mui/material";
 
 import Visibility from "@mui/icons-material/Visibility";
@@ -28,6 +33,11 @@ const LoginFormClient: React.FC = () => {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [isOtpRequired, setIsOtpRequired] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
+  const [resetError, setResetError] = useState("");
 
   const API_URL = import.meta.env.VITE_API_URL;
 
@@ -72,6 +82,45 @@ const LoginFormClient: React.FC = () => {
       );
     } finally {
       setSendingOtp(false);
+    }
+  };
+
+  const openResetDialog = () => {
+    setResetEmail(formData.username.trim());
+    setResetMessage("");
+    setResetError("");
+    setResetDialogOpen(true);
+  };
+
+  const handlePasswordResetRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail.trim()) return;
+
+    setResetLoading(true);
+    setResetMessage("");
+    setResetError("");
+
+    try {
+      const res = await axios.post(
+        `${API_URL}/api/auth/request-password-reset`,
+        {
+          email: resetEmail.trim(),
+          requestedRole: "CLIENT",
+        }
+      );
+      setResetMessage(
+        res.data.message ||
+          "If an active Client account exists for that email, a password reset link has been sent."
+      );
+    } catch (err: unknown) {
+      setResetError(
+        axios.isAxiosError(err)
+          ? err.response?.data?.message ||
+              "Unable to request a password reset. Please try again."
+          : "Unable to request a password reset. Please try again."
+      );
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -223,6 +272,22 @@ const LoginFormClient: React.FC = () => {
           }}
         />
 
+        <Box sx={{ textAlign: "right", mt: -1, mb: 1.5 }}>
+          <Link
+            component="button"
+            type="button"
+            onClick={openResetDialog}
+            underline="hover"
+            sx={{
+              color: "#4F6CF8",
+              fontWeight: 600,
+              fontSize: "14px",
+            }}
+          >
+            Forgot password?
+          </Link>
+        </Box>
+
         {/* Dynamic OTP Section */}
         {isOtpRequired && (
           <Box sx={{ mt: 1, mb: 1 }}>
@@ -321,6 +386,62 @@ const LoginFormClient: React.FC = () => {
           </Typography>
         )}
       </Box>
+
+      <Dialog
+        open={resetDialogOpen}
+        onClose={() => !resetLoading && setResetDialogOpen(false)}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+        <Box component="form" onSubmit={handlePasswordResetRequest}>
+          <DialogTitle sx={{ fontWeight: 700 }}>
+            Reset your password
+          </DialogTitle>
+          <DialogContent>
+            <Typography sx={{ color: "text.secondary", mb: 2 }}>
+              Enter your registered Client email. We’ll send you a secure reset link.
+            </Typography>
+            <TextField
+              autoFocus
+              label="Registered email"
+              type="email"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              fullWidth
+              required
+              disabled={resetLoading || Boolean(resetMessage)}
+              sx={inputStyles}
+            />
+            {resetMessage && <Alert severity="success">{resetMessage}</Alert>}
+            {resetError && <Alert severity="error">{resetError}</Alert>}
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button
+              type="button"
+              onClick={() => setResetDialogOpen(false)}
+              disabled={resetLoading}
+              sx={{ textTransform: "none" }}
+            >
+              {resetMessage ? "Close" : "Cancel"}
+            </Button>
+            {!resetMessage && (
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={resetLoading || !resetEmail.trim()}
+                sx={{ textTransform: "none", borderRadius: 2 }}
+              >
+                {resetLoading ? (
+                  <CircularProgress size={20} color="inherit" />
+                ) : (
+                  "Send reset link"
+                )}
+              </Button>
+            )}
+          </DialogActions>
+        </Box>
+      </Dialog>
     </Box>
   );
 };

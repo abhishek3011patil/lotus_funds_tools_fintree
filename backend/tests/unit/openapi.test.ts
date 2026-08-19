@@ -37,6 +37,7 @@ describe("OpenAPI documentation", () => {
     };
     const expectedOperations = [
       ["post", "/api/auth/login"],
+      ["post", "/api/auth/request-password-reset"],
       ["post", "/api/registration/register-ra"],
       ["post", "/api/broker/register-broker"],
       ["post", "/api/research/calls"],

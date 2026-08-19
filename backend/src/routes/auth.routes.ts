@@ -8,7 +8,8 @@ import {
   sendOtp,
   verifyOtp,
   changeAdminPassword,
-  sendLoginOtp 
+  sendLoginOtp,
+  requestPasswordReset,
 } from "../controllers/auth.controller";
 
 import {
@@ -40,6 +41,18 @@ const passwordSetupLimiter = rateLimit({
   },
 });
 
+const passwordResetRequestLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message:
+      "Too many password reset requests. Please try again later.",
+  },
+});
+
 /* Public password-setup flow */
 
 router.get(
@@ -52,6 +65,12 @@ router.post(
   "/password-setup",
   passwordSetupLimiter,
   completePasswordSetup
+);
+
+router.post(
+  "/request-password-reset",
+  passwordResetRequestLimiter,
+  requestPasswordReset
 );
 
 /* Authentication */
@@ -86,11 +105,13 @@ router.get(
 
 router.post(
   "/request-otp",
+  passwordSetupLimiter,
   sendOtp
 );
 
 router.post(
   "/verify-otp-and-set-password",
+  passwordSetupLimiter,
   verifyOtp
 );
 

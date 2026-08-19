@@ -199,16 +199,19 @@ const renderers: TemplateRendererMap = {
     }`;
     return {
       subject,
-      text: `Hello ${data.name},\n\nAn administrator sent you a password reset link. This link is valid for ${expiryText}:\n${data.passwordResetUrl}\n\nYou will verify the reset using an OTP sent to your registered email.`,
+      text: `Hello ${data.name},\n\nA password reset was requested for your account. This link is valid for ${expiryText}:\n${data.passwordResetUrl}\n\nYou will verify the reset using an OTP sent to your registered email. If you did not request this, you can safely ignore this email.`,
       html: brandedLayout(
         subject,
         paragraph(`Hello ${data.name},`) +
           paragraph(
-            `An administrator sent you a password reset link. It is valid for ${expiryText}.`
+            `A password reset was requested for your account. This link is valid for ${expiryText}.`
           ) +
           linkButton("Reset your password", data.passwordResetUrl) +
           paragraph(
             "You will verify the reset using an OTP sent to your registered email."
+          ) +
+          paragraph(
+            "If you did not request this, you can safely ignore this email."
           )
       ),
     };

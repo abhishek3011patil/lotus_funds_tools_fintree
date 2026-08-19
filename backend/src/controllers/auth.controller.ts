@@ -6,6 +6,7 @@ import { sendOtpMail, sendApprovalMail } from "../config/mailer";
 import crypto from "crypto";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { createAuditLog } from "../utils/auditLogger";
+import { emailService } from "../services/email";
 
 
 /* ================= GET CLIENT IP ================= */
@@ -49,6 +50,134 @@ const validateResetPassword = (password: string): string | null => {
     return "Password must contain at least one number.";
   }
   return null;
+};
+
+const getPasswordResetRequestMessage = (role: string) =>
+  `If an active ${role === "CLIENT" ? "Client" : "Research Analyst"} account exists for that email, a password reset link has been sent.`;
+
+/* =========================================================
+   REQUEST PASSWORD RESET LINK
+   POST /api/auth/request-password-reset
+   ========================================================= */
+export const requestPasswordReset = async (
+  req: Request,
+  res: Response
+) => {
+  const email = String(req.body?.email || "")
+    .trim()
+    .toLowerCase();
+  const requestedRole =
+    req.body?.requestedRole === "CLIENT"
+      ? "CLIENT"
+      : "RESEARCH_ANALYST";
+  const requestMessage =
+    getPasswordResetRequestMessage(requestedRole);
+
+  if (!email) {
+    return res.status(400).json({
+      success: false,
+      message: "Email is required.",
+    });
+  }
+
+  const frontendUrl = String(
+    process.env.FRONTEND_URL || ""
+  ).replace(/\/$/, "");
+
+  if (!frontendUrl) {
+    return res.status(503).json({
+      success: false,
+      message: "Password reset is temporarily unavailable.",
+    });
+  }
+
+  const configuredTtlHours = Number(
+    process.env.PASSWORD_RESET_TOKEN_TTL_HOURS || 1
+  );
+  const tokenTtlHours =
+    Number.isFinite(configuredTtlHours) &&
+    configuredTtlHours > 0
+      ? Math.min(Math.floor(configuredTtlHours), 24)
+      : 1;
+
+  try {
+    const userResult = await pool.query(
+      `SELECT id, name, email
+       FROM users
+       WHERE LOWER(email) = $1
+         AND role = $2
+         AND status = 'active'
+         AND is_active = true
+         AND password_hash IS NOT NULL
+       LIMIT 1`,
+      [email, requestedRole]
+    );
+
+    // Always return the same response for unknown or unavailable accounts.
+    if (userResult.rowCount === 0) {
+      return res.status(200).json({
+        success: true,
+        message: requestMessage,
+      });
+    }
+
+    const user = userResult.rows[0];
+    const token = crypto.randomBytes(32).toString("hex");
+    const tokenExpiry = new Date(
+      Date.now() + tokenTtlHours * 60 * 60 * 1000
+    );
+
+    await pool.query(
+      `UPDATE users
+       SET reset_token = $1,
+           token_expiry = $2,
+           otp = NULL,
+           otp_expiry = NULL,
+           updated_at = NOW()
+       WHERE id = $3`,
+      [token, tokenExpiry, user.id]
+    );
+
+    const passwordResetUrl =
+      `${frontendUrl}/reset-password?token=` +
+      encodeURIComponent(token);
+    const emailResult = await emailService.send(
+      "PASSWORD_RESET_LINK",
+      user.email,
+      {
+        name:
+          user.name ||
+          (requestedRole === "CLIENT"
+            ? "Client"
+            : "Research Analyst"),
+        passwordResetUrl,
+        expiresInHours: tokenTtlHours,
+      }
+    );
+
+    if (!emailResult.sent) {
+      console.error("PASSWORD RESET EMAIL NOT SENT", {
+        reason: emailResult.reason,
+      });
+      // Preserve the neutral response so delivery failures cannot be used
+      // to determine whether an account exists.
+      return res.status(200).json({
+        success: true,
+        message: requestMessage,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: requestMessage,
+    });
+  } catch (error) {
+    console.error("REQUEST PASSWORD RESET ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Password reset is temporarily unavailable.",
+    });
+  }
 };
 
 
@@ -141,7 +270,10 @@ export const verifyOtp = async (req: Request, res: Response) => {
       [hashedPassword, user.id]
     );
 
-    return res.json({ message: "Password set successfully ✅" });
+    return res.json({
+      message: "Password set successfully ✅",
+      role: user.role,
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Server error" });

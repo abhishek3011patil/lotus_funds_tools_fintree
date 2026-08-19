@@ -68,6 +68,15 @@ app.use(helmet());
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 300,
+  // These authenticated read-only endpoints are polled in the UI and can
+  // otherwise exhaust the shared per-IP allowance during normal use.
+  skip: (req) =>
+    req.method === "GET" &&
+    [
+      "/api/telegram/status",
+      "/notifications/unread-count",
+      "/api/subscription-notifications/unread-count",
+    ].includes(req.path),
   standardHeaders: true,
   legacyHeaders: false,
   message: {

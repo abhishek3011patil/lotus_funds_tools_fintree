@@ -63,6 +63,47 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /api/auth/request-password-reset:
+    post:
+      tags: [Authentication]
+      summary: Email a password reset link to an active RA or Client
+      description: Returns a neutral success message so registered accounts cannot be enumerated.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                requestedRole:
+                  type: string
+                  enum: [RESEARCH_ANALYST, CLIENT]
+                  default: RESEARCH_ANALYST
+      responses:
+        "200":
+          $ref: "#/components/responses/SuccessMessage"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          description: Too many password reset requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/ServerError"
+        "503":
+          description: Password reset links are not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/auth/logout:
     post:
       tags: [Authentication]
