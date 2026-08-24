@@ -1,8 +1,25 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
+import bcrypt from "bcrypt";
 import { pool } from "../db";
 import { createNotification } from "../utils/notification";
 import { emailService } from "../services/email";
+import type { AuthRequest } from "../middlewares/auth.middleware";
+
+const uploadedFileUrl = (filename: unknown): string | null => {
+  const value = String(filename || "").replace(/^[/\\]+/, "");
+  return value ? `/uploads/${value}` : null;
+};
+
+const uploadedFileUrls = (filenames: unknown): string[] => {
+  if (Array.isArray(filenames)) {
+    return filenames
+      .map(uploadedFileUrl)
+      .filter((value): value is string => Boolean(value));
+  }
+
+  return [];
+};
 
 /* =========================================================
    REGISTER BROKER (POST /api/broker/register-broker)
@@ -332,5 +349,262 @@ res.status(200).json(brokers);
   } catch (error) {
     console.error("GET ALL BROKERS ERROR:", error);
     res.status(500).json({ message: "Failed to fetch brokers" });
+  }
+};
+
+/* =========================================================
+   CURRENT BROKER PROFILE (GET /api/broker/me)
+   ========================================================= */
+export const getMyBrokerProfile = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  const userId = req.user?.id;
+
+  if (!userId || req.user?.role !== "BROKER") {
+    return res.status(403).json({
+      success: false,
+      message: "Broker access required.",
+    });
+  }
+
+  try {
+    const result = await pool.query(
+      `
+        SELECT
+          broker.*,
+          account.name AS account_name,
+          account.email AS account_email,
+          account.status AS user_status,
+          account.is_active AS user_is_active,
+          account.created_at AS account_created_at,
+          application.status AS application_status
+        FROM broker_details broker
+        INNER JOIN users account
+          ON account.id = broker.user_id
+         AND account.role = 'BROKER'
+        LEFT JOIN LATERAL (
+          SELECT registration_application.status
+          FROM registration_applications registration_application
+          WHERE registration_application.entity_id = broker.id
+            AND registration_application.applicant_type = 'BROKER'
+          ORDER BY registration_application.created_at DESC
+          LIMIT 1
+        ) application ON true
+        WHERE broker.user_id = $1
+        LIMIT 1
+      `,
+      [userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Broker profile was not found.",
+      });
+    }
+
+    const broker = result.rows[0];
+
+    return res.json({
+      success: true,
+      broker: {
+        id: broker.id,
+        account: {
+          userId,
+          name: broker.account_name,
+          email: broker.account_email,
+          status: broker.user_status,
+          isActive: Boolean(broker.user_is_active),
+          memberSince: broker.account_created_at,
+        },
+        organization: {
+          legalName: broker.legal_name,
+          tradeName: broker.trade_name,
+          entityType: broker.entity_type,
+          incorporationDate: broker.incorporation_date,
+          pan: broker.pan,
+          cin: broker.cin,
+          gstin: broker.gstin,
+          website: broker.website,
+        },
+        contact: {
+          email: broker.email,
+          mobile: broker.mobile,
+          registeredAddress: broker.registered_address,
+          correspondenceAddress: broker.correspondence_address,
+        },
+        registration: {
+          sebiRegistrationNo: broker.sebi_registration_no,
+          category: broker.registration_category,
+          registrationDate: broker.registration_date,
+          validity: broker.registration_validity,
+          membershipCode: broker.membership_code,
+          status: broker.status,
+          applicationStatus: broker.application_status,
+          approvedAt: broker.approved_at,
+          rejectionReason: broker.rejection_reason,
+        },
+        exchanges: {
+          nse: Boolean(broker.exchange_nse),
+          bse: Boolean(broker.exchange_bse),
+          smi: Boolean(broker.exchange_smi),
+          ncdex: Boolean(broker.exchange_ncdex),
+        },
+        segments: {
+          cash: Boolean(broker.segment_cash),
+          futuresAndOptions: Boolean(broker.segment_fo),
+          currency: Boolean(broker.segment_currency),
+        },
+        compliance: {
+          officerName: broker.compliance_officer_name,
+          designation: broker.compliance_designation,
+          pan: broker.compliance_pan,
+          mobile: broker.compliance_mobile,
+        },
+        financials: {
+          netWorth: broker.net_worth,
+          auditorName: broker.auditor_name,
+          auditorMembership: broker.auditor_membership,
+        },
+        authorizedPerson: {
+          name: broker.authorized_person_name,
+          pan: broker.authorized_person_pan,
+          designation: broker.authorized_person_designation,
+          email: broker.authorized_person_email,
+          aadhaar: broker.authorized_person_aadhaar,
+          mobile: broker.authorized_person_mobile,
+        },
+        declarations: {
+          noDisciplinaryAction: Boolean(broker.no_disciplinary_action),
+          noSuspension: Boolean(broker.no_suspension),
+          noCriminalCase: Boolean(broker.no_criminal_case),
+          agreeSebiCirculars: Boolean(broker.agree_sebi_circulars),
+          agreeCodeOfConduct: Boolean(broker.agree_code_of_conduct),
+        },
+        documents: {
+          sebiCertificate: uploadedFileUrl(broker.sebi_certificate),
+          exchangeCertificates: uploadedFileUrls(
+            broker.exchange_certificates
+          ),
+          appointmentLetter: uploadedFileUrl(broker.appointment_letter),
+          netWorthCertificate: uploadedFileUrl(
+            broker.networth_certificate
+          ),
+          financialStatements: uploadedFileUrl(
+            broker.financial_statements
+          ),
+          caCertificate: uploadedFileUrl(broker.ca_certificate),
+        },
+        createdAt: broker.created_at,
+        updatedAt: broker.updated_at,
+      },
+    });
+  } catch (error) {
+    console.error("GET CURRENT BROKER PROFILE ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to load broker profile.",
+    });
+  }
+};
+
+/* =========================================================
+   CHANGE BROKER PASSWORD (POST /api/broker/change-password)
+   ========================================================= */
+export const changeBrokerPassword = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  const userId = req.user?.id;
+  const currentPassword = String(req.body?.currentPassword || "");
+  const newPassword = String(req.body?.newPassword || "");
+
+  if (!userId || req.user?.role !== "BROKER") {
+    return res.status(403).json({
+      success: false,
+      message: "Broker access required.",
+    });
+  }
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({
+      success: false,
+      message: "Current password and new password are required.",
+    });
+  }
+
+  if (
+    newPassword.length < 8 ||
+    !/[A-Za-z]/.test(newPassword) ||
+    !/\d/.test(newPassword)
+  ) {
+    return res.status(400).json({
+      success: false,
+      message:
+        "New password must be at least 8 characters and contain a letter and a number.",
+    });
+  }
+
+  if (currentPassword === newPassword) {
+    return res.status(400).json({
+      success: false,
+      message: "New password must be different from the current password.",
+    });
+  }
+
+  try {
+    const userResult = await pool.query(
+      `
+        SELECT password_hash
+        FROM users
+        WHERE id = $1
+          AND role = 'BROKER'
+        LIMIT 1
+      `,
+      [userId]
+    );
+
+    if (userResult.rowCount === 0 || !userResult.rows[0].password_hash) {
+      return res.status(404).json({
+        success: false,
+        message: "Broker account was not found.",
+      });
+    }
+
+    const passwordMatches = await bcrypt.compare(
+      currentPassword,
+      userResult.rows[0].password_hash
+    );
+
+    if (!passwordMatches) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect.",
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await pool.query(
+      `
+        UPDATE users
+        SET password_hash = $1,
+            updated_at = NOW()
+        WHERE id = $2
+          AND role = 'BROKER'
+      `,
+      [passwordHash, userId]
+    );
+
+    return res.json({
+      success: true,
+      message: "Password changed successfully.",
+    });
+  } catch (error) {
+    console.error("CHANGE BROKER PASSWORD ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to change password.",
+    });
   }
 };

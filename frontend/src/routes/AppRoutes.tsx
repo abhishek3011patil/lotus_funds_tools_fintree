@@ -141,6 +141,7 @@ const DisclaimerHistory = lazy(
 );
 
 const BrokerDashboard = lazy(() => import("../broker_section/pages/BrokerDashboard"));
+const BrokerProfile = lazy(() => import("../broker_section/pages/BrokerProfile"));
 const BrokerRecommendations = lazy(() => import("../broker_section/pages/BrokerRecommendations"));
 const BrokerPerformance = lazy(() => import("../broker_section/pages/BrokerPerformance"));
 const BrokerSettings = lazy(() => import("../broker_section/pages/BrokerSettings"));
@@ -277,6 +278,7 @@ const AppRoutes = () => {
         >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<BrokerDashboard />} />
+          <Route path="profile" element={<BrokerProfile />} />
           <Route path="recommendations" element={<BrokerRecommendations />} />
           <Route path="performance" element={<BrokerPerformance />} />
           <Route path="settings" element={<BrokerSettings />} />

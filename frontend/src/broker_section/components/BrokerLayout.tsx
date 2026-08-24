@@ -23,6 +23,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import FolderIcon from '@mui/icons-material/Folder';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import SettingsIcon from '@mui/icons-material/Settings';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { getLoginRoute } from '../../utils/authRedirect';
 
 const drawerWidth = 240;
@@ -30,6 +31,7 @@ const drawerWidth = 240;
 // Sidebar navigation structure mapped to Broker files visible in image_c53918.png
 const brokerSidebarItems = [
   { name: 'Dashboard', path: '/broker/dashboard', icon: DashboardIcon },
+  { name: 'My Broker Profile', path: '/broker/profile', icon: AccountCircleIcon },
   { name: 'Recommendations', path: '/broker/recommendations', icon: FolderIcon },
   { name: 'Performance', path: '/broker/performance', icon: ShowChartIcon },
   { name: 'Settings', path: '/broker/settings', icon: SettingsIcon },

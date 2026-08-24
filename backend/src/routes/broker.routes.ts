@@ -1,5 +1,10 @@
 import express from "express";
-import { createBroker, getAllBrokers } from "../controllers/broker.controller";
+import {
+  changeBrokerPassword,
+  createBroker,
+  getAllBrokers,
+  getMyBrokerProfile,
+} from "../controllers/broker.controller";
 import { upload } from "../middlewares/upload";
 import { authenticate } from "../middlewares/auth.middleware";
 import { requireAdmin } from "../middlewares/admin.middleware";
@@ -24,6 +29,13 @@ router.get(
   authenticate,
   requireAdmin,
   getAllBrokers
+);
+
+router.get("/me", authenticate, getMyBrokerProfile);
+router.post(
+  "/change-password",
+  authenticate,
+  changeBrokerPassword
 );
 
 export default router;
