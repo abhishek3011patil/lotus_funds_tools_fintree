@@ -12,7 +12,7 @@ import {
 
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
-import { useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import axios from "axios";
 import LoadingPage from "../../common/LoadingPage";
 
@@ -60,9 +60,11 @@ const LoginFormBroker: React.FC = () => {
       setMessage(
         res.data.message || "OTP has been sent to your registered email."
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessage(
-        err.response?.data?.message || "Failed to send OTP. Please try again."
+        axios.isAxiosError<{ message?: string }>(err)
+          ? err.response?.data?.message || "Failed to send OTP. Please try again."
+          : "Failed to send OTP. Please try again."
       );
     } finally {
       setSendingOtp(false);
@@ -123,9 +125,11 @@ const LoginFormBroker: React.FC = () => {
         setMessage("Invalid role for Broker login");
         localStorage.clear();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessage(
-        err.response?.data?.message || "Server error. Please try again."
+        axios.isAxiosError<{ message?: string }>(err)
+          ? err.response?.data?.message || "Server error. Please try again."
+          : "Server error. Please try again."
       );
     } finally {
       setLoading(false);
@@ -273,7 +277,8 @@ const LoginFormBroker: React.FC = () => {
         >
           Don’t have an account?{" "}
           <Link
-            href="/registration"
+            component={RouterLink}
+            to="/register/broker"
             underline="none"
             sx={{
               color: "#4F6CF8",
