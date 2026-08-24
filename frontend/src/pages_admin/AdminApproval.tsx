@@ -48,6 +48,10 @@ type AdminRow = {
 
   status: "Pending" | "Approved" | "Rejected" | "Suspended"| string;
   rejectionReason?: string;
+  applicationStatus?: string;
+  subscriptionStatus?: string;
+  subscriptionPlanName?: string;
+  approvalReady?: boolean;
 
   created_at: string;
 };
@@ -184,6 +188,10 @@ user_id: item.user_id ? String(item.user_id) : "",
 
   status: item.status || "Pending",
   rejectionReason: item.rejection_reason || "",
+  applicationStatus: item.application_status || "",
+  subscriptionStatus: item.subscription_status || "",
+  subscriptionPlanName: item.subscription_plan_name || "",
+  approvalReady: item.approval_ready === true,
 
   "age/time": "Just now",
 }));
@@ -763,6 +771,7 @@ const handleSuspend = async (
                 <TableCell>Broker Name</TableCell>
                 <TableCell>Phone</TableCell>
                 <TableCell>Status</TableCell>
+                <TableCell>Registration Stage</TableCell>
                 <TableCell align="right">Action</TableCell>
               </TableRow>
             </TableHead>
@@ -777,6 +786,9 @@ const handleSuspend = async (
                         label={broker.status}
                         color={statusColor(broker.status) as any}
                       />
+                    </TableCell>
+                    <TableCell>
+                      {broker.applicationStatus || "Legacy registration"}
                     </TableCell>
                     <TableCell align="right">
                       <Button
@@ -841,6 +853,17 @@ const handleSuspend = async (
 
     <Typography fontWeight={600}>Broker Verification</Typography>
     <Typography sx={{ mt: 1 }}>{selectedBroker.name}</Typography>
+    <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+      Application: {selectedBroker.applicationStatus || "Legacy registration"}
+    </Typography>
+    <Typography color="text.secondary">
+      Subscription: {selectedBroker.subscriptionStatus || "Not created"}
+    </Typography>
+    {selectedBroker.subscriptionPlanName && (
+      <Typography color="text.secondary">
+        Plan: {selectedBroker.subscriptionPlanName}
+      </Typography>
+    )}
 
     <Box sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 1 }}>
       <Button 
@@ -870,8 +893,8 @@ const handleSuspend = async (
         color="success"
         fullWidth
         disabled={
-          selectedBroker.status.toLowerCase() === "approved" &&
-          selectedBroker.status.toLowerCase() !== "suspended"
+          selectedBroker.status.toLowerCase() === "approved" ||
+          !selectedBroker.approvalReady
         }
         onClick={() => {
           setSelectedId(selectedBroker.id);
@@ -879,7 +902,11 @@ const handleSuspend = async (
           setConfirmOpen(true);
         }}
       >
-        Approve
+        {selectedBroker.status.toLowerCase() === "approved"
+          ? "Approved"
+          : selectedBroker.approvalReady
+            ? "Approve"
+            : "Awaiting Payment"}
       </Button>
       
       {selectedBroker.status.toLowerCase() !== "approved" && (

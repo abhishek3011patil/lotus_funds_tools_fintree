@@ -40,6 +40,42 @@ const RAUnderReviewPage = lazy(
 );
 
 const BrokerRegistration = lazy(() => import("../pages_registration/BrokerRegistration"));
+const RegistrationSubscriptionPage = lazy(
+  () =>
+    import(
+      "../folder/registrationSubscription/pages/RegistrationSubscriptionPage"
+    )
+);
+const RegistrationCheckoutPage = lazy(
+  () =>
+    import(
+      "../folder/registrationSubscription/pages/RegistrationCheckoutPage"
+    )
+);
+const RegistrationPaymentSuccessPage = lazy(
+  () =>
+    import(
+      "../folder/registrationSubscription/pages/RegistrationPaymentSuccessPage"
+    )
+);
+const RegistrationPaymentFailedPage = lazy(
+  () =>
+    import(
+      "../folder/registrationSubscription/pages/RegistrationPaymentFailedPage"
+    )
+);
+const RegistrationPaymentPendingPage = lazy(
+  () =>
+    import(
+      "../folder/registrationSubscription/pages/RegistrationPaymentPendingPage"
+    )
+);
+const RegistrationUnderReviewPage = lazy(
+  () =>
+    import(
+      "../folder/registrationSubscription/pages/RegistrationUnderReviewPage"
+    )
+);
 
 // --- Lazy: Main (Employee / Broker) ---
 const Dashboard = lazy(() => import("../pages/Dashboard"));
@@ -156,6 +192,33 @@ const AppRoutes = () => {
     element={<RAUnderReviewPage />}
   />
 </Route>
+
+        {/* Shared registration subscription flow (RA/Broker/Client capable). */}
+        <Route path="/register/broker" element={<BrokerRegistration />} />
+        <Route
+          path="/register/subscription"
+          element={<RegistrationSubscriptionPage />}
+        />
+        <Route
+          path="/register/checkout"
+          element={<RegistrationCheckoutPage />}
+        />
+        <Route
+          path="/register/payment-success"
+          element={<RegistrationPaymentSuccessPage />}
+        />
+        <Route
+          path="/register/payment-failed"
+          element={<RegistrationPaymentFailedPage />}
+        />
+        <Route
+          path="/register/payment-pending"
+          element={<RegistrationPaymentPendingPage />}
+        />
+        <Route
+          path="/register/under-review"
+          element={<RegistrationUnderReviewPage />}
+        />
 
         {/* Subscription */}
         <Route path="/subscription" element={<SubscriptionPage />} />

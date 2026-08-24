@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { saveRegistrationSession } from "../folder/registrationSubscription";
 import {
   Box,
   TextField,
@@ -120,6 +122,7 @@ const errMsg = (msg = "This field is required") => (
 // Main Component
 // ─────────────────────────────────────────────
 const BrokerRegistration = () => {
+  const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
 
   // Step 1 starts here - state
@@ -492,7 +495,7 @@ useEffect(() => {
   try {
     console.log("Submitting form...");
 
-    await axios.post(
+    const response = await axios.post(
   `${import.meta.env.VITE_API_URL}/api/broker/register-broker`,
   formData,
   {
@@ -502,14 +505,37 @@ useEffect(() => {
   }
 );
 
+const applicationId =
+  typeof response.data?.application_id === "string"
+    ? response.data.application_id.trim()
+    : "";
+const registrationToken =
+  typeof response.data?.registration_token === "string"
+    ? response.data.registration_token.trim()
+    : "";
+
+if (!applicationId || !registrationToken) {
+  throw new Error(
+    "Registration succeeded, but the secure subscription session was incomplete."
+  );
+}
+
+saveRegistrationSession({
+  applicationId,
+  registrationToken,
+  audienceType: "BROKER",
+});
+
 localStorage.removeItem("brokerRegistrationForm");
-localStorage.removeItem("brokerRegistrationStep");    
-alert("Broker Registered Successfully");
+localStorage.removeItem("brokerRegistrationStep");
+navigate("/register/subscription", { replace: true });
   } catch (err: any) {
     console.error(err);
 
     if (err.response?.data?.message) {
       alert(err.response.data.message);
+    } else if (err instanceof Error) {
+      alert(err.message);
     } else {
       alert("Something went wrong");
     }

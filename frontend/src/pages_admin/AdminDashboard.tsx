@@ -68,6 +68,20 @@ type ClientRow = {
   profileImage?: string;
 };
 
+type BrokerRow = {
+  id: string;
+  legalName: string;
+  tradeName: string;
+  email: string;
+  phone: string;
+  sebiRegistrationNo: string;
+  status: string;
+  applicationStatus: string;
+  subscriptionStatus: string;
+  subscriptionPlanName: string;
+  createdAt: string;
+};
+
 const ITEMS_PER_PAGE = 10;
 
 const AdminDashboard = () => {
@@ -83,6 +97,8 @@ const AdminDashboard = () => {
   const [clientSuspendReason, setClientSuspendReason] = useState("");
   const [suspendingClient, setSuspendingClient] = useState(false);
   const [activatingClient, setActivatingClient] = useState(false);
+  const [brokers, setBrokers] = useState<BrokerRow[]>([]);
+  const [brokerPage, setBrokerPage] = useState(1);
 
   const [selectedRA, setSelectedRA] = useState<AdminRow | null>(null);
   const [resendingPasswordLink, setResendingPasswordLink] = useState(false);
@@ -343,15 +359,57 @@ const loadClients = async () => {
   }
 };
 
+const loadBrokers = async () => {
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/api/broker/all-brokers`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to load brokers");
+    }
+
+    if (!Array.isArray(data)) {
+      throw new Error("Invalid broker response");
+    }
+
+    setBrokers(
+      data.map((broker: any) => ({
+        id: String(broker.id),
+        legalName: broker.legal_name || "N/A",
+        tradeName: broker.trade_name || "",
+        email: broker.email || "",
+        phone: broker.mobile || "",
+        sebiRegistrationNo: broker.sebi_registration_no || "",
+        status: broker.status || "pending",
+        applicationStatus: broker.application_status || "",
+        subscriptionStatus: broker.subscription_status || "",
+        subscriptionPlanName: broker.subscription_plan_name || "",
+        createdAt: broker.created_at || "",
+      }))
+    );
+  } catch (error) {
+    console.error("Failed to load brokers:", error);
+  }
+};
+
 useEffect(() => {
   loadRegistrations();
   loadClients();
+  loadBrokers();
 }, []);
 
   useEffect(() => {
     setPage(1);
     setSuspendedPage(1);
     setClientPage(1);
+    setBrokerPage(1);
   }, [searchQuery]);
 
   /* ================= STATUS COLOR ================= */
@@ -439,6 +497,24 @@ const clientPageCount = Math.ceil(filteredClients.length / ITEMS_PER_PAGE);
 const paginatedClients = filteredClients.slice(
   (clientPage - 1) * ITEMS_PER_PAGE,
   clientPage * ITEMS_PER_PAGE
+);
+
+const filteredBrokers = brokers.filter((broker) => {
+  const query = searchQuery.toLowerCase().trim();
+
+  return (
+    broker.legalName.toLowerCase().includes(query) ||
+    broker.tradeName.toLowerCase().includes(query) ||
+    broker.email.toLowerCase().includes(query) ||
+    broker.phone.includes(query) ||
+    broker.sebiRegistrationNo.toLowerCase().includes(query)
+  );
+});
+
+const brokerPageCount = Math.ceil(filteredBrokers.length / ITEMS_PER_PAGE);
+const paginatedBrokers = filteredBrokers.slice(
+  (brokerPage - 1) * ITEMS_PER_PAGE,
+  brokerPage * ITEMS_PER_PAGE
 );
 
   /* ================= FILE VIEW ================= */
@@ -1555,6 +1631,112 @@ const handleDeleteWhatsAppParticipant = async () => {
     )}
   />
 </Box>
+
+      {/* ================= BROKER DETAILS TABLE ================= */}
+      <Box sx={{ mt: 5 }}>
+        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+          Broker Details
+        </Typography>
+
+        <TableContainer component={Paper} variant="outlined">
+          <Table size="small">
+            <TableHead sx={{ backgroundColor: "#f0f7ff" }}>
+              <TableRow>
+                <TableCell>Legal / Trade Name</TableCell>
+                <TableCell>Contact</TableCell>
+                <TableCell>SEBI Registration</TableCell>
+                <TableCell>Broker Status</TableCell>
+                <TableCell>Subscription</TableCell>
+                <TableCell>Registered At</TableCell>
+                <TableCell align="right">Action</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {paginatedBrokers.map((broker) => (
+                <TableRow key={broker.id}>
+                  <TableCell>
+                    <Typography variant="body2" fontWeight={600}>
+                      {broker.legalName}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {broker.tradeName || "No trade name"}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{broker.email || "-"}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {broker.phone || "-"}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>{broker.sebiRegistrationNo || "-"}</TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      label={broker.status}
+                      color={statusColor(broker.status) as any}
+                      sx={{ textTransform: "capitalize" }}
+                    />
+                    {broker.applicationStatus && (
+                      <Typography variant="caption" display="block" color="text.secondary">
+                        {broker.applicationStatus}
+                      </Typography>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {broker.subscriptionPlanName || "No plan"}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {broker.subscriptionStatus || "Not created"}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    {broker.createdAt
+                      ? new Date(broker.createdAt).toLocaleString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "-"}
+                  </TableCell>
+                  <TableCell align="right">
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => navigate(`/admin/edit/BROKER/${broker.id}`)}
+                    >
+                      View Details
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+
+              {filteredBrokers.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} align="center">
+                    No matching brokers
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        {brokerPageCount > 1 && (
+          <Pagination
+            sx={{ display: "flex", justifyContent: "center", mt: 2 }}
+            count={brokerPageCount}
+            page={brokerPage}
+            onChange={(_, value) => setBrokerPage(value)}
+            renderItem={(item) => (
+              <PaginationItem
+                slots={{ previous: ArrowBackIcon, next: ArrowForwardIcon }}
+                {...item}
+              />
+            )}
+          />
+        )}
+      </Box>
 
       {/* ================= CLIENTS TABLE ================= */}
       <Box sx={{ mt: 5 }}>

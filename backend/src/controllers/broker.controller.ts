@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import crypto from "crypto";
 import { pool } from "../db";
 import { createNotification } from "../utils/notification";
 import { emailService } from "../services/email";
@@ -35,8 +36,22 @@ if (existing.rows.length > 0) {
   });
 }
 
+    const registrationToken = crypto.randomBytes(32).toString("hex");
+    const registrationTokenHash = crypto
+      .createHash("sha256")
+      .update(registrationToken)
+      .digest("hex");
+    const registrationTokenTtlHours = Math.max(
+      Number(process.env.REGISTRATION_TOKEN_TTL_HOURS || 24),
+      1
+    );
+    const registrationTokenExpiresAt = new Date(
+      Date.now() + registrationTokenTtlHours * 60 * 60 * 1000
+    );
+
     const query = `
-    INSERT INTO broker_details (
+    WITH new_broker AS (
+      INSERT INTO broker_details (
       user_id,
       legal_name,
       trade_name,
@@ -109,7 +124,38 @@ if (existing.rows.length > 0) {
       $45,$46,$47,
       $48,$49
     )
-    RETURNING *;
+      RETURNING *
+    ),
+    new_application AS (
+      INSERT INTO registration_applications (
+        applicant_type,
+        entity_id,
+        user_id,
+        email,
+        mobile,
+        status,
+        submitted_at,
+        registration_token_hash,
+        registration_token_expires_at
+      )
+      SELECT
+        'BROKER',
+        new_broker.id,
+        new_broker.user_id,
+        new_broker.email,
+        new_broker.mobile,
+        'FORM_SUBMITTED',
+        NOW(),
+        $50,
+        $51
+      FROM new_broker
+      RETURNING id
+    )
+    SELECT
+      new_broker.*,
+      new_application.id AS application_id
+    FROM new_broker
+    CROSS JOIN new_application;
     `;
 
     const values = [
@@ -172,6 +218,8 @@ if (existing.rows.length > 0) {
       data.no_criminal_case,
       data.agree_sebi_circulars,
       data.agree_code_of_conduct,
+      registrationTokenHash,
+      registrationTokenExpiresAt,
     ];
 
       const result = await pool.query(query, values);
@@ -202,8 +250,15 @@ await createNotification({
     }
 
     return res.status(201).json({
-      message: "Broker registered successfully",
-      broker: result.rows[0],
+      success: true,
+      message:
+        "Broker registration submitted. Select a subscription plan to continue.",
+      broker,
+      application_id: broker.application_id,
+      registration_token: registrationToken,
+      registration_token_expires_at:
+        registrationTokenExpiresAt.toISOString(),
+      next_step: "SELECT_SUBSCRIPTION_PLAN",
     });
 
   } catch (error: any) {
@@ -227,7 +282,43 @@ await createNotification({
    ========================================================= */
 export const getAllBrokers = async (req: Request, res: Response) => {
   try {
-    const result = await pool.query("SELECT * FROM broker_details ORDER BY created_at DESC");
+    const result = await pool.query(`
+      SELECT
+        broker.*,
+        application.id AS application_id,
+        application.status AS application_status,
+        subscription.id AS subscription_id,
+        subscription.status AS subscription_status,
+        subscription.starts_at AS subscription_starts_at,
+        subscription.expires_at AS subscription_expires_at,
+        plan.display_name AS subscription_plan_name,
+        users.status AS user_status,
+        (
+          application.status = 'PAID_PENDING_APPROVAL'
+          AND subscription.status = 'PAID_PENDING_APPROVAL'
+        ) AS approval_ready
+      FROM broker_details broker
+      LEFT JOIN LATERAL (
+        SELECT registration_application.*
+        FROM registration_applications registration_application
+        WHERE registration_application.entity_id = broker.id
+          AND registration_application.applicant_type = 'BROKER'
+        ORDER BY registration_application.created_at DESC
+        LIMIT 1
+      ) application ON true
+      LEFT JOIN LATERAL (
+        SELECT broker_subscription.*
+        FROM subscriptions broker_subscription
+        WHERE broker_subscription.registration_application_id = application.id
+        ORDER BY broker_subscription.created_at DESC
+        LIMIT 1
+      ) subscription ON true
+      LEFT JOIN subscription_plans plan
+        ON plan.id = subscription.plan_id
+      LEFT JOIN users
+        ON users.id = broker.user_id
+      ORDER BY broker.created_at DESC
+    `);
     const brokers = result.rows.map((b) => ({
   ...b,
   exchange_certificates: Array.isArray(b.exchange_certificates)

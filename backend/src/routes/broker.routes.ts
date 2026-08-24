@@ -19,6 +19,11 @@ router.post(
   createBroker
 );
 
-router.get("/all-brokers", getAllBrokers);
+router.get(
+  "/all-brokers",
+  authenticate,
+  requireAdmin,
+  getAllBrokers
+);
 
 export default router;
