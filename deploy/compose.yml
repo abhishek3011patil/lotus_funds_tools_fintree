@@ -1,0 +1,80 @@
+name: fintree
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      # PostgreSQL 18 stores data below a version-specific directory. The
+      # official image requires the volume at /var/lib/postgresql.
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        VITE_RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_SSL: "false"
+      FRONTEND_URL: https://${APP_DOMAIN}
+    volumes:
+      - uploads:/app/backend/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      TLS_EMAIL: ${TLS_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+
+  duckdns:
+    image: curlimages/curl:8.12.1
+    restart: unless-stopped
+    profiles: ["duckdns"]
+    environment:
+      DUCKDNS_SUBDOMAIN: ${DUCKDNS_SUBDOMAIN}
+      DUCKDNS_TOKEN: ${DUCKDNS_TOKEN}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        while true; do
+          curl -fsS "https://www.duckdns.org/update?domains=$${DUCKDNS_SUBDOMAIN}&token=$${DUCKDNS_TOKEN}&ip=";
+          sleep 300;
+        done
+
+volumes:
+  postgres_data:
+  uploads:
+  caddy_data:
+  caddy_config:

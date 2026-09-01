@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import path from "path";
+import fs from "fs";
 
 import researchRoutes from "./routes/researchCalls.routes";
 import authRoutes from "./routes/auth.routes";
@@ -149,6 +150,52 @@ app.use(
   "/api/subscriptions",
   subscriptionAccessRoutes
 );
+
+/*
+ * In production the compiled React application is copied next to the
+ * backend. Keeping the UI and API on one origin removes the need for a
+ * changing tunnel/API URL and lets the reverse proxy manage HTTPS once.
+ */
+const frontendDistPath =
+  process.env.FRONTEND_DIST_PATH ||
+  path.resolve(process.cwd(), "../frontend");
+const frontendIndexPath = path.join(
+  frontendDistPath,
+  "index.html"
+);
+
+if (
+  process.env.NODE_ENV === "production" &&
+  fs.existsSync(frontendIndexPath)
+) {
+  app.use(express.static(frontendDistPath));
+
+  app.use((req, res, next) => {
+    const backendPrefixes = [
+      "/api",
+      "/admin",
+      "/notifications",
+      "/uploads",
+      "/check",
+      "/docs",
+    ];
+    const isBackendRequest = backendPrefixes.some(
+      (prefix) =>
+        req.path === prefix ||
+        req.path.startsWith(`${prefix}/`)
+    );
+
+    if (
+      req.method === "GET" &&
+      !isBackendRequest &&
+      req.accepts("html")
+    ) {
+      return res.sendFile(frontendIndexPath);
+    }
+
+    return next();
+  });
+}
 
 app.use((err: any, _req: any, res: any, _next: any) => {
   console.error("UPLOAD ERROR:", err);

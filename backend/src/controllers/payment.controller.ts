@@ -4,11 +4,19 @@ import crypto from 'crypto';
 import { pool } from "../db";
 import { createAuditLog } from "../utils/auditLogger";
 
-// Initialize Razorpay instance
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID as string,
-  key_secret: process.env.RAZORPAY_KEY_SECRET as string,
-});
+const getRazorpayClient = (): Razorpay | null => {
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+  if (!keyId || !keySecret) {
+    return null;
+  }
+
+  return new Razorpay({
+    key_id: keyId,
+    key_secret: keySecret,
+  });
+};
 const getClientIp = (req: Request) => {
   return (
     req.headers["x-forwarded-for"]?.toString().split(",")[0] ||
@@ -22,6 +30,12 @@ const getClientIp = (req: Request) => {
    ========================================================= */
 export const createOrder = async (req: Request, res: Response): Promise<void> => {
   try {
+    const razorpay = getRazorpayClient();
+    if (!razorpay) {
+      res.status(503).json({ message: "Payment service is not configured" });
+      return;
+    }
+
     const { amount, planName, resetToken } = req.body;
 
     const options = {
@@ -79,6 +93,12 @@ adminRole: "SYSTEM",
    VERIFY PAYMENT (POST /api/payments/verify)
    ========================================================= */
 export const verifyPayment = async (req: Request, res: Response): Promise<void> => {
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  if (!keySecret) {
+    res.status(503).json({ message: "Payment service is not configured" });
+    return;
+  }
+
   const {
     razorpay_order_id,
     razorpay_payment_id,
@@ -90,7 +110,7 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
   const sign = razorpay_order_id + "|" + razorpay_payment_id;
 
   const expectedSignature = crypto
-    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET as string)
+    .createHmac("sha256", keySecret)
     .update(sign.toString())
     .digest("hex");
 

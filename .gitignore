@@ -7,12 +7,19 @@ node_modules/
 # Build
 dist/
 build/
+*.tsbuildinfo
 
 # Uploads
 uploads/
 
 # Logs
 *.log
+
+# Local deployment data and generated transfer packages
+deploy/backups/
+deploy/server-transfer/
+database-backups/
+fintree-server-package.tar.gz
 
 # Test output (approved visual baselines under tests/ remain tracked)
 test-results/

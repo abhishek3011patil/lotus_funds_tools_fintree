@@ -4,6 +4,8 @@ import { AuthRequest } from "../middlewares/auth.middleware";
 import { createAuditLog } from "../utils/auditLogger";
 import axios from "axios";
 
+const whatsappApiVersion =
+  process.env.WHATSAPP_API_VERSION?.trim() || "v23.0";
 
 const normalizePhone = (phone: string): string => {
   let digits = String(phone || "").replace(/\D/g, "");
@@ -647,7 +649,7 @@ export const testWhatsAppMessage = async (
         const destination = participant.phone_number.replace(/\D/g, "");
 
         await axios.post(
-          `https://graph.facebook.com/v23.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+          `https://graph.facebook.com/${whatsappApiVersion}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
           {
             messaging_product: "whatsapp",
             recipient_type: "individual",

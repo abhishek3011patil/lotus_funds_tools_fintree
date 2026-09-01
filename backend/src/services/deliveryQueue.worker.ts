@@ -7,6 +7,9 @@ const WHATSAPP_ACCESS_TOKEN =
 const WHATSAPP_PHONE_NUMBER_ID =
   process.env.WHATSAPP_PHONE_NUMBER_ID?.trim();
 
+const WHATSAPP_API_VERSION =
+  process.env.WHATSAPP_API_VERSION?.trim() || "v23.0";
+
 const WORKER_INTERVAL_MS = 3000;
 const MAX_ATTEMPTS = 3;
 
@@ -345,7 +348,7 @@ if (!message) {
 
     const response =
       await axios.post<WhatsAppSendResponse>(
-        `https://graph.facebook.com/v23.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
+        `https://graph.facebook.com/${WHATSAPP_API_VERSION}/${WHATSAPP_PHONE_NUMBER_ID}/messages`,
         {
           messaging_product: "whatsapp",
           recipient_type: "individual",

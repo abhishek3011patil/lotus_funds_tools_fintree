@@ -1,0 +1,16 @@
+.git
+.github
+.vscode
+.agents
+node_modules
+**/node_modules
+**/dist
+**/.env
+database-backups
+output
+test-results
+tests
+tmp
+*.log
+*.dump
+*.tar
