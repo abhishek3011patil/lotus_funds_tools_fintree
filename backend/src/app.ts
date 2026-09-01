@@ -64,7 +64,31 @@ app.use(
   })
 );
 
-app.use(helmet());
+app.use(
+  helmet({
+    /*
+     * Razorpay Standard Checkout is loaded from Razorpay's official hosted
+     * script and opens Razorpay-hosted frames. Keep the allowlist narrow so
+     * the rest of Helmet's production CSP protection remains enabled.
+     */
+    contentSecurityPolicy: {
+      directives: {
+        scriptSrc: ["'self'", "https://checkout.razorpay.com"],
+        frameSrc: [
+          "'self'",
+          "https://api.razorpay.com",
+          "https://*.razorpay.com",
+        ],
+        connectSrc: [
+          "'self'",
+          "https://api.razorpay.com",
+          "https://*.razorpay.com",
+        ],
+        imgSrc: ["'self'", "data:", "https://*.razorpay.com"],
+      },
+    },
+  })
+);
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
