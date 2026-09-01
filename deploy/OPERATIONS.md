@@ -171,17 +171,33 @@ In Windows PowerShell:
 $actionsKey = "$env:USERPROFILE\.ssh\fintree_actions_server"
 ssh-keygen -t ed25519 -f $actionsKey -C "github-actions-fintree"
 Get-Content "$actionsKey.pub" | ssh -i "C:\Users\Abhishek\Downloads\ssh-key-2026-09-01.key" ubuntu@tarkashh-app.duckdns.org "umask 077; mkdir -p ~/.ssh; cat >> ~/.ssh/authorized_keys"
-ssh-keyscan -H tarkashh-app.duckdns.org
+```
+
+Press `Enter` twice when `ssh-keygen` asks for a passphrase; an unattended
+Actions key cannot prompt for one. For this deployment, the dedicated key is
+already installed at `C:\Users\Abhishek\.ssh\fintree_actions_server`.
+
+Copy the private Actions key for the `DEPLOY_SSH_KEY` secret without printing
+it on screen:
+
+```powershell
+Get-Content -Raw "$env:USERPROFILE\.ssh\fintree_actions_server" | Set-Clipboard
+```
+
+Copy the already trusted host entry for the current Oracle public IP:
+
+```powershell
+(ssh-keygen -F 130.210.47.95 | Where-Object { $_ -notmatch '^#' }) -join "`n" | Set-Clipboard
 ```
 
 In GitHub repository **Settings -> Secrets and variables -> Actions**, create:
 
-- `DEPLOY_HOST`: `tarkashh-app.duckdns.org`
+- `DEPLOY_HOST`: `130.210.47.95`
 - `DEPLOY_USER`: `ubuntu`
 - `DEPLOY_PATH`: `/home/ubuntu/fintree`
 - `DEPLOY_SSH_KEY`: the complete contents of the private
   `fintree_actions_server` file
-- `DEPLOY_KNOWN_HOSTS`: the complete `ssh-keyscan -H` output
+- `DEPLOY_KNOWN_HOSTS`: the trusted host entries copied by the command above
 
 Under the **Variables** tab, create `PRODUCTION_DEPLOY_ENABLED` with value
 `true` only after the server has been migrated to the Git checkout and a manual
@@ -222,6 +238,44 @@ Important environment cautions:
 - Empty Razorpay values intentionally disable paid-payment endpoints; the app
   continues to run.
 - Keep `EMAIL_ENABLED=false` until valid email credentials are configured.
+
+### Enable or update Razorpay
+
+Use Razorpay **test-mode** credentials first. Never paste keys into GitHub,
+chat, commands, or committed files. Edit these values only in
+`~/fintree/deploy/.env`:
+
+```dotenv
+RAZORPAY_KEY_ID=...
+RAZORPAY_KEY_SECRET=...
+RAZORPAY_WEBHOOK_SECRET=...
+```
+
+Configure the Razorpay webhook destination as:
+
+```text
+https://tarkashh-app.duckdns.org/api/payments/razorpay/webhook
+```
+
+Because the public Razorpay key is included in the browser application during
+its build, use the full start/build script after changing Razorpay values:
+
+```bash
+cd ~/fintree
+./deploy/scripts/start.sh
+```
+
+Check configuration without revealing a key or creating a payment:
+
+```bash
+cd ~/fintree/deploy
+sudo docker compose exec -T app sh -lc 'if [ -n "$RAZORPAY_KEY_ID" ] && [ -n "$RAZORPAY_KEY_SECRET" ]; then echo razorpay-configured; else echo razorpay-not-configured; fi'
+sudo docker compose ps
+```
+
+Then perform one test-mode checkout and confirm the order, payment, and
+webhook event in the Razorpay test dashboard. Do not switch to live keys or
+make a real charge until an authorized person explicitly approves it.
 
 ## Backups
 
