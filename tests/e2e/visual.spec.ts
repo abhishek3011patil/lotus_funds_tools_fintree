@@ -92,7 +92,7 @@ test("login page visual contract", async ({ page }) => {
 
 test("RA subscription plans visual contract", async ({ page }) => {
   await page.route(
-    "http://localhost:3000/api/subscription-plans?audienceType=RA",
+    "**/api/subscription-plans?audienceType=RA",
     async (route) => {
       await route.fulfill({
         status: 200,
