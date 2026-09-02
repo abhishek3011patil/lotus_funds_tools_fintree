@@ -8,7 +8,8 @@ import {
   IconButton,
   Stack,
   Avatar,
-  InputAdornment
+  InputAdornment,
+  Alert
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -23,6 +24,7 @@ const AdminNotification = () => {
   // Filtered dataset containing ONLY Dashboard and Admin Approval updates
   const [notifications, setNotifications] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [error, setError] = useState('');
 
   // Helper function to format fallback dates and handle "Today" logic
   const formatDate = (dateString) => {
@@ -60,6 +62,7 @@ const AdminNotification = () => {
   };
 
 const handleMarkAllCompleted = async () => {
+  setError('');
   try {
     const res = await fetch(
       `${import.meta.env.VITE_API_URL}/notifications/mark-all-read`,
@@ -72,6 +75,7 @@ const handleMarkAllCompleted = async () => {
     );
 
     const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Unable to mark notifications as read.');
 
     if (data.success) {
       setNotifications(prev =>
@@ -83,10 +87,12 @@ const handleMarkAllCompleted = async () => {
     }
   } catch (err) {
     console.error(err);
+    setError(err instanceof Error ? err.message : 'Unable to mark notifications as read.');
   }
 };
 
 const handleDeleteNotification = async (id) => {
+  setError('');
   try {
     const res = await fetch(
       `${import.meta.env.VITE_API_URL}/notifications/${id}`,
@@ -99,6 +105,7 @@ const handleDeleteNotification = async (id) => {
     );
 
     const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Unable to delete notification.');
 
     if (data.success) {
       setNotifications(prev =>
@@ -107,6 +114,7 @@ const handleDeleteNotification = async (id) => {
     }
   } catch (err) {
     console.error(err);
+    setError(err instanceof Error ? err.message : 'Unable to delete notification.');
   }
 };
 
@@ -120,27 +128,11 @@ const handleDeleteNotification = async (id) => {
   const groups = Array.from(new Set(filteredNotifications.map(n => n.dateGroup)));
 
   useEffect(() => {
-    markAllAsRead();
     fetchNotifications();
   }, []);
 
-  const markAllAsRead = async () => {
-  try {
-    await fetch(
-      `${import.meta.env.VITE_API_URL}/notifications/read-all`,
-      {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }
-    );
-  } catch (err) {
-    console.error(err);
-  }
-};
-
   const fetchNotifications = async () => {
+    setError('');
     try {
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/notifications`,
@@ -152,6 +144,7 @@ const handleDeleteNotification = async (id) => {
       );
 
       const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Unable to load notifications.');
 
       if (data.success) {
         // Uniformly normalize all date groups so matching dates aggregate under "Today"
@@ -167,12 +160,18 @@ const handleDeleteNotification = async (id) => {
       }
     } catch (err) {
       console.error(err);
+      setError(err instanceof Error ? err.message : 'Unable to load notifications.');
     }
   };
 
   return (
     <Box sx={{ width: '100%', minHeight: '100vh', bgcolor: '#f8fafc' }}>
       <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, maxWidth: '1250px', margin: '0 auto' }}>
+        {error && (
+          <Alert severity="error" onClose={() => setError('')} action={<Button color="inherit" size="small" onClick={fetchNotifications}>Retry</Button>} sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
         
         {/* Search Header Wrapper Controls */}
         <Box sx={{ mb: 4 }}>

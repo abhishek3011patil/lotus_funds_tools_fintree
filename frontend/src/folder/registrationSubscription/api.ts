@@ -7,6 +7,7 @@ import type {
   SelectPlanResponse,
   SubscriptionAudience,
   VerifyRegistrationPaymentResponse,
+  RegistrationPaymentStatusResponse,
 } from "./types";
 
 const API_URL = String(
@@ -124,6 +125,17 @@ export const createRegistrationPaymentOrder = async (
   return parseResponse<RegistrationPaymentOrderResponse>(
     response
   );
+};
+
+export const getRegistrationPaymentStatus = async (
+  applicationId: string,
+  registrationToken: string
+): Promise<RegistrationPaymentStatusResponse> => {
+  const response = await fetch(
+    `${API_URL}/api/payments/registration-status/${encodeURIComponent(applicationId)}`,
+    { headers: registrationHeaders(registrationToken) }
+  );
+  return parseResponse<RegistrationPaymentStatusResponse>(response);
 };
 
 /**

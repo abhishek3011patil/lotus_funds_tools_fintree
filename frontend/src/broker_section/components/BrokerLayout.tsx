@@ -20,11 +20,10 @@ import {
 
 import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import FolderIcon from '@mui/icons-material/Folder';
-import ShowChartIcon from '@mui/icons-material/ShowChart';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { getLoginRoute } from '../../utils/authRedirect';
+import api from '../../utils/axio';
 
 const drawerWidth = 240;
 
@@ -32,8 +31,6 @@ const drawerWidth = 240;
 const brokerSidebarItems = [
   { name: 'Dashboard', path: '/broker/dashboard', icon: DashboardIcon },
   { name: 'My Broker Profile', path: '/broker/profile', icon: AccountCircleIcon },
-  { name: 'Recommendations', path: '/broker/recommendations', icon: FolderIcon },
-  { name: 'Performance', path: '/broker/performance', icon: ShowChartIcon },
   { name: 'Settings', path: '/broker/settings', icon: SettingsIcon },
 ];
 
@@ -65,10 +62,16 @@ export const BrokerLayout = () => {
     setMobileOpen(!mobileOpen);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     const role = localStorage.getItem('role');
-    localStorage.clear();
-    navigate(getLoginRoute(role, ['BROKER']), { replace: true });
+    try {
+      await api.post('/auth/logout');
+    } catch (error) {
+      console.error('Logout request failed:', error);
+    } finally {
+      localStorage.clear();
+      navigate(getLoginRoute(role, ['BROKER']), { replace: true });
+    }
   };
 
   // Reusable Sidebar Content

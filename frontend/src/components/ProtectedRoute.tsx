@@ -1,8 +1,9 @@
-import { Navigate } from "react-router-dom";
-import { JSX, useEffect, useState } from "react";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { JSX, useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import LoadingPage from "../common/LoadingPage";
 import { getLoginRoute } from "../utils/authRedirect";
+import { Alert, Box, Button, Paper, Stack, Typography } from "@mui/material";
 
 interface Props {
   children: JSX.Element;
@@ -10,14 +11,18 @@ interface Props {
 }
 
 const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [status, setStatus] = useState<
-    "loading" | "unauth" | "forbidden" | "allowed"
+    "loading" | "unauth" | "forbidden" | "error" | "allowed"
   >("loading");
 
-  useEffect(() => {
+  const verifyAccess = useCallback(() => {
+    setStatus("loading");
     const token = localStorage.getItem("token");
 
     if (!token) {
+      sessionStorage.setItem("postLoginPath", `${location.pathname}${location.search}`);
       setStatus("unauth");
       return;
     }
@@ -46,11 +51,15 @@ const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
     return;
   }
 
-  // ✅ Do NOT logout on CORS/network/dev tunnel error
-  console.error("Auth check failed, but not logging out:", message || error.message);
-  setStatus("allowed");
+  console.error("Auth check failed:", message || error.message);
+  setStatus("error");
 });
-  }, [allowedRoles]);
+  }, [allowedRoles, location.pathname, location.search]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Verify the stored session whenever the protected destination changes.
+    verifyAccess();
+  }, [verifyAccess]);
 
   if (status === "loading") {
     return (
@@ -68,7 +77,30 @@ const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
   }
 
   if (status === "forbidden") {
-    return <Navigate to="/" replace />;
+    return (
+      <Box sx={{ minHeight: "100vh", bgcolor: "#f4f7fe", display: "grid", placeItems: "center", p: 2 }}>
+        <Paper sx={{ maxWidth: 520, p: 4, textAlign: "center", borderRadius: 4 }}>
+          <Typography variant="h4" fontWeight={800}>Access denied</Typography>
+          <Typography color="text.secondary" mt={1}>Your account does not have permission to open this page.</Typography>
+          <Button variant="contained" sx={{ mt: 3 }} onClick={() => navigate("/", { replace: true })}>Go to home</Button>
+        </Paper>
+      </Box>
+    );
+  }
+
+  if (status === "error") {
+    return (
+      <Box sx={{ minHeight: "100vh", bgcolor: "#f4f7fe", display: "grid", placeItems: "center", p: 2 }}>
+        <Stack component={Paper} spacing={2} sx={{ maxWidth: 560, p: 4, borderRadius: 4 }}>
+          <Typography variant="h5" fontWeight={800}>We could not verify your session</Typography>
+          <Alert severity="warning">Check your connection and try again. This page remains locked until access can be verified.</Alert>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            <Button variant="contained" onClick={verifyAccess}>Retry</Button>
+            <Button variant="outlined" onClick={() => navigate("/", { replace: true })}>Go to home</Button>
+          </Stack>
+        </Stack>
+      </Box>
+    );
   }
 
   return children;

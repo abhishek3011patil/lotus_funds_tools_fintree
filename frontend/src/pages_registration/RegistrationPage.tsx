@@ -35,6 +35,13 @@ import {
 const RegistrationPage: React.FC = () => {
 const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
+
+  const exitRegistration = () => {
+    const shouldExit = window.confirm(
+      "Exit registration? Your form fields are saved on this device, but selected files may need to be uploaded again."
+    );
+    if (shouldExit) navigate("/login");
+  };
   
   
   const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
@@ -1846,10 +1853,13 @@ helperText={
 )}
 
 
-        <Box sx={{ display: 'flex', justifyContent: currentStep > 1 ? 'space-between' : 'flex-end', alignItems: 'flex-start', mt: 8 }}>
-          {currentStep > 1 && (
-            <Button variant="outlined" sx={{ borderRadius: 3, textTransform: 'none', px: 6, py: 2.2, fontWeight: 700, fontSize: '1.2rem', color: '#8E99AF', borderColor: '#8E99AF' }} onClick={() => setCurrentStep(currentStep - 1)}>Back</Button>
-          )}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2, mt: 8 }}>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            {currentStep > 1 && (
+              <Button variant="outlined" sx={{ borderRadius: 3, textTransform: 'none', px: 4, py: 2.2, fontWeight: 700, fontSize: '1.05rem', color: '#8E99AF', borderColor: '#8E99AF' }} onClick={() => setCurrentStep(currentStep - 1)}>Back</Button>
+            )}
+            <Button color="inherit" sx={{ borderRadius: 3, textTransform: 'none', px: 3, py: 2.2, fontWeight: 700 }} onClick={exitRegistration}>Exit</Button>
+          </Box>
           <Box sx={{ textAlign: 'right' }}>
             <Button variant="contained" sx={styles.saveBtn} onClick={handleSave}>
               {currentStep === 4 ? "Submit" : "Save & Continue"}

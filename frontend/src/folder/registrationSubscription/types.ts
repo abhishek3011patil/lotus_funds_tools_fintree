@@ -137,3 +137,15 @@ export interface ApiErrorBody {
   message?: string;
   registrationStatus?: string;
 }
+
+export interface RegistrationPaymentStatusResponse {
+  success: true;
+  applicationId: string;
+  registrationStatus: string;
+  payment: {
+    localOrderId: string;
+    razorpayOrderId: string | null;
+    status: string;
+    updatedAt: string;
+  } | null;
+}

@@ -18,6 +18,7 @@ import HomePage from "../pages/HomePage";
 const LoginForm = lazy(() => import("../common/LoginForm"));
 const LoginFormAdmin = lazy(() => import("../common/LoginFormAdmin"));
 const Signup = lazy(() => import("../pages/common/Signup"));
+const NotFound = lazy(() => import("../pages/Notfound"));
 const RAPasswordSetupPage = lazy(
   () =>
     import(
@@ -105,7 +106,6 @@ const ExceltoJSONTool = lazy(() => import("../tools/ExceltoJSONtool").then(m => 
 
 // --- Lazy: Admin ---
 const AdminDashboard = lazy(() => import("../pages_admin/AdminDashboard"));
-const AdminRecommendations = lazy(() => import("../pages_admin/AdminRecommendations"));
 const AdminApproval = lazy(() => import("../pages_admin/AdminApproval"));
 const AdminNotification = lazy(() => import("../pages_admin/Admin common/AdminNotification"));
 const AdminSettings = lazy(() => import("../pages_admin/AdminSettings"));
@@ -120,7 +120,6 @@ const ClientRecommendations = lazy(
   () => import("../client_section/recommendations/pages/ClientRecommendationsPage")
 );
 const ClientInsights = lazy(() => import("../client_section/insights/pages/ClientInsightsPage"));
-const ClientPerformance = lazy(() => import("../client_section/pages/ClientPerformance"));
 const ClientNotifications = lazy(() => import("../client_section/pages/ClientNotifications"));
 const ClientProfile = lazy(() => import("../client_section/profile/pages/ClientProfilePage"));
 const ClientAnalystsPage = lazy(
@@ -143,8 +142,6 @@ const DisclaimerHistory = lazy(
 
 const BrokerDashboard = lazy(() => import("../broker_section/pages/BrokerDashboard"));
 const BrokerProfile = lazy(() => import("../broker_section/pages/BrokerProfile"));
-const BrokerRecommendations = lazy(() => import("../broker_section/pages/BrokerRecommendations"));
-const BrokerPerformance = lazy(() => import("../broker_section/pages/BrokerPerformance"));
 const BrokerSettings = lazy(() => import("../broker_section/pages/BrokerSettings"));
 
 // --- Fallback UI shown while a lazy chunk is loading ---
@@ -281,8 +278,8 @@ const AppRoutes = () => {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<BrokerDashboard />} />
           <Route path="profile" element={<BrokerProfile />} />
-          <Route path="recommendations" element={<BrokerRecommendations />} />
-          <Route path="performance" element={<BrokerPerformance />} />
+          <Route path="recommendations" element={<Navigate to="../dashboard" replace />} />
+          <Route path="performance" element={<Navigate to="../dashboard" replace />} />
           <Route path="settings" element={<BrokerSettings />} />
         </Route>
 
@@ -349,7 +346,7 @@ const AppRoutes = () => {
         >
           <Route index element={<AdminDashboard />} />
           <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="recommendations" element={<AdminRecommendations />} />
+          <Route path="recommendations" element={<Navigate to="../dashboard" replace />} />
           <Route path="approval" element={<AdminApproval />} />
           <Route path="AdminAuditLogs" element={<AdminAuditLogs />} />
           <Route path="notifications" element={<AdminNotification />} />
@@ -384,12 +381,12 @@ const AppRoutes = () => {
           <Route path="insights" element={<ClientInsights />} />
           <Route path="blogs" element={<Navigate to="../insights" replace />} />
           <Route path="videos" element={<Navigate to="../insights" replace />} />
-          <Route path="performance" element={<ClientPerformance />} />
+          <Route path="performance" element={<Navigate to="../dashboard" replace />} />
           <Route path="notifications" element={<ClientNotifications />} />
           <Route path="profile" element={<ClientProfile />} />
         </Route>
         {/* Catch-all — always last */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
 
 
       </Routes>

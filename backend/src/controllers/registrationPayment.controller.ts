@@ -110,6 +110,79 @@ const sendExistingOrder = (
   });
 };
 
+export const getRegistrationPaymentStatus = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const applicationId = typeof req.params.applicationId === "string"
+    ? req.params.applicationId.trim()
+    : "";
+  const registrationToken = getRegistrationToken(req);
+
+  if (!applicationId || !registrationToken) {
+    res.status(400).json({ success: false, message: "Application and registration token are required." });
+    return;
+  }
+
+  try {
+    const result = await pool.query(
+      `
+        SELECT
+          application.id,
+          application.status AS registration_status,
+          application.registration_token_hash,
+          application.registration_token_expires_at,
+          payment_order.id AS local_order_id,
+          payment_order.provider_order_id AS razorpay_order_id,
+          payment_order.status AS payment_status,
+          payment_order.updated_at AS payment_updated_at
+        FROM registration_applications application
+        LEFT JOIN LATERAL (
+          SELECT id, provider_order_id, status, updated_at
+          FROM payment_orders
+          WHERE registration_application_id = application.id
+          ORDER BY created_at DESC
+          LIMIT 1
+        ) payment_order ON TRUE
+        WHERE application.id = $1
+      `,
+      [applicationId]
+    );
+
+    if (result.rowCount === 0) {
+      res.status(404).json({ success: false, message: "Registration application was not found." });
+      return;
+    }
+
+    const record = result.rows[0];
+    const suppliedHash = hashRegistrationToken(registrationToken);
+    const hasStoredToken = typeof record.registration_token_hash === "string" &&
+      record.registration_token_hash.length > 0 && record.registration_token_expires_at;
+    const tokenExpired = !hasStoredToken ||
+      new Date(record.registration_token_expires_at).getTime() <= Date.now();
+
+    if (tokenExpired || !secureHashEquals(record.registration_token_hash, suppliedHash)) {
+      res.status(401).json({ success: false, message: "Registration session has expired. Please contact support." });
+      return;
+    }
+
+    res.json({
+      success: true,
+      applicationId: record.id,
+      registrationStatus: record.registration_status,
+      payment: record.local_order_id ? {
+        localOrderId: record.local_order_id,
+        razorpayOrderId: record.razorpay_order_id,
+        status: record.payment_status,
+        updatedAt: record.payment_updated_at,
+      } : null,
+    });
+  } catch (error) {
+    console.error("Get registration payment status error:", error);
+    res.status(500).json({ success: false, message: "Unable to check payment status." });
+  }
+};
+
 /**
  * POST /api/payments/registration-order
  *

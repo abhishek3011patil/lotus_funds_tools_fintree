@@ -339,6 +339,22 @@ useEffect(() => {
   );
 }, [activeStep]);
 
+const saveDraft = () => {
+  localStorage.setItem(
+    "brokerRegistrationForm",
+    JSON.stringify({ s1, s2, s3, s4, declarations })
+  );
+  localStorage.setItem("brokerRegistrationStep", activeStep.toString());
+  window.alert("Draft saved on this device.");
+};
+
+const exitRegistration = () => {
+  const shouldExit = window.confirm(
+    "Exit registration? Your form fields are saved on this device, but selected files may need to be uploaded again."
+  );
+  if (shouldExit) navigate("/broker/login");
+};
+
   // ────────────────────────────────────────────
   // Validation per step
   // ────────────────────────────────────────────
@@ -1247,28 +1263,10 @@ const renderStep4 = () => {
       {/* Utility Header */}
       <Box sx={{ display: "flex", justifyContent: "flex-end", px: { xs: 2, md: 4 }, py: 1, bgcolor: "white", borderBottom: "1px solid #E2E8F0" }}>
         <Stack direction="row" spacing={1} alignItems="center">
-          <Button startIcon={<HelpOutlineIcon sx={{ fontSize: 18 }} />} sx={{ color: "#64748B", textTransform: "none", fontWeight: 500 }}>Help</Button>
+          <Button component="a" href="mailto:support@tarkashh.com?subject=Broker%20registration%20help" startIcon={<HelpOutlineIcon sx={{ fontSize: 18 }} />} sx={{ color: "#64748B", textTransform: "none", fontWeight: 500 }}>Help</Button>
           <Button
-  variant="contained"
-  onClick={() => {
-    localStorage.setItem(
-      "brokerRegistrationForm",
-      JSON.stringify({
-        s1,
-        s2,
-        s3,
-        s4,
-        declarations,
-      })
-    );
-
-    localStorage.setItem(
-      "brokerRegistrationStep",
-      activeStep.toString()
-    );
-
-    alert("Draft Saved");
-  }}
+	  variant="contained"
+	  onClick={saveDraft}
   sx={{
     bgcolor: "#2563EB",
     textTransform: "none",
@@ -1277,9 +1275,9 @@ const renderStep4 = () => {
     px: 3,
   }}
 >
-  Save Draft
+	  Save Draft
 </Button>
-          <Button sx={{ color: "#64748B", textTransform: "none", fontWeight: 500 }}>Exit Registration</Button>
+	          <Button onClick={exitRegistration} sx={{ color: "#64748B", textTransform: "none", fontWeight: 500 }}>Exit Registration</Button>
         </Stack>
       </Box>
 
@@ -1314,7 +1312,7 @@ const renderStep4 = () => {
             Back
           </Button>
           <Stack direction="row" spacing={2}>
-            <Button variant="outlined" sx={{ textTransform: "none", color: "#64748B", borderColor: "#E2E8F0", bgcolor: "white", px: 4, fontWeight: 600 }}>
+            <Button variant="outlined" onClick={saveDraft} sx={{ textTransform: "none", color: "#64748B", borderColor: "#E2E8F0", bgcolor: "white", px: 4, fontWeight: 600 }}>
               Save as Draft
             </Button>
             <Button variant="contained" endIcon={<ChevronRightIcon />}

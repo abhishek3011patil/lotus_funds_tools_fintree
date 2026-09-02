@@ -29,3 +29,26 @@ export const getLoginRoute = (
 
 export const isLoginRoute = (pathname: string): boolean =>
   LOGIN_ROUTES.some((route) => pathname === route);
+
+export const consumePostLoginPath = (
+  fallback: string,
+  allowedPrefixes: string[]
+): string => {
+  const savedPath = sessionStorage.getItem("postLoginPath");
+  sessionStorage.removeItem("postLoginPath");
+  if (
+    savedPath &&
+    savedPath.startsWith("/") &&
+    !savedPath.startsWith("//") &&
+    allowedPrefixes.some((prefix) => savedPath === prefix || savedPath.startsWith(`${prefix}/`))
+  ) {
+    return savedPath;
+  }
+  return fallback;
+};
+
+export const consumeAuthMessage = (): string => {
+  const message = sessionStorage.getItem("authMessage") || "";
+  sessionStorage.removeItem("authMessage");
+  return message;
+};

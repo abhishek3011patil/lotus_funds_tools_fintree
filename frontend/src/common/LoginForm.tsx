@@ -23,6 +23,7 @@ import LoadingPage from "./LoadingPage";
 import AuthBackdrop from "./AuthBackdrop";
 import BusinessIcon from "@mui/icons-material/Business";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import { consumeAuthMessage, consumePostLoginPath } from "../utils/authRedirect";
 
 const LoginForm: React.FC = () => {
 
@@ -30,7 +31,7 @@ const LoginForm: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(consumeAuthMessage);
   const [loading, setLoading] = useState(false);
   const [isOtpRequired, setIsOtpRequired] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -178,7 +179,7 @@ localStorage.setItem("role", role);
 }
 
      if (role === "RESEARCH_ANALYST") {
-  navigate("/recommendations", {
+  navigate(consumePostLoginPath("/recommendations", ["/dashboard", "/performance", "/settings", "/notifications", "/ra", "/recommendations"]), {
     replace: true,
   });
 } else if (role === "BROKER") {

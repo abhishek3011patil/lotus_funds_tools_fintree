@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -7,6 +7,8 @@ import {
   IconButton,
   InputAdornment,
   CircularProgress,
+  Alert,
+  Stack,
 } from "@mui/material";
 
 import Visibility from "@mui/icons-material/Visibility";
@@ -31,11 +33,18 @@ const NewPassword: React.FC = () => {
 
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [messageSeverity, setMessageSeverity] = useState<"success" | "error">("success");
 
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // Remove old login session
-
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const timer = window.setInterval(() => {
+      setOtpCooldown((current) => Math.max(0, current - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [otpCooldown]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -46,8 +55,7 @@ const NewPassword: React.FC = () => {
     formData.confirmPassword !== "" && formData.password !== formData.confirmPassword;
 
   // ---------------- STEP 1: Request OTP ----------------
-  const handleRequestOTP = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const requestOtp = async () => {
     if (isMismatch || !formData.password) return;
 
     setLoading(true);
@@ -59,12 +67,24 @@ const NewPassword: React.FC = () => {
   password: formData.password,
 });
       setStep(2);
+      setOtpCooldown(60);
+      setMessageSeverity("success");
       setMessage("OTP sent to your registered email!");
-    } catch (err: any) {
-      setMessage(err.response?.data?.message || "Verification failed.");
+    } catch (err: unknown) {
+      setMessageSeverity("error");
+      setMessage(
+        axios.isAxiosError<{ message?: string }>(err)
+          ? err.response?.data?.message || "Verification failed."
+          : "Verification failed."
+      );
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRequestOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await requestOtp();
   };
 
   // ---------------- STEP 2: Verify OTP ----------------
@@ -83,13 +103,21 @@ const NewPassword: React.FC = () => {
     });
 
     setMessage("Password successfully updated!");
+    setMessageSeverity("success");
     const loginPath =
       response.data?.role === "CLIENT"
         ? "/client/login"
         : "/login";
     setTimeout(() => navigate(loginPath), 2000);
-  } catch (err: any) {
-    setMessage(err.response?.data?.message || "Invalid OTP or token.");
+  } catch (err: unknown) {
+    setMessageSeverity("error");
+    setMessage(
+      axios.isAxiosError<{ message?: string }>(err)
+        ? err.response?.data?.message || "Invalid OTP or token."
+        : err instanceof Error
+          ? err.message
+          : "Invalid OTP or token."
+    );
   } finally {
     setLoading(false);
   }
@@ -102,6 +130,21 @@ const NewPassword: React.FC = () => {
       backgroundColor: "#F8FBFF",
     },
   };
+
+  if (!token) {
+    return (
+      <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", bgcolor: "#F4F7FE", p: 2 }}>
+        <Stack spacing={2} sx={{ width: "100%", maxWidth: 480, bgcolor: "#fff", p: 4, borderRadius: 4, boxShadow: "0 15px 35px rgba(0,0,0,0.1)" }}>
+          <Typography variant="h4" fontWeight={700}>Reset link is missing</Typography>
+          <Alert severity="error">This password-reset link is incomplete or invalid. Request a new link from your login page.</Alert>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            <Button variant="contained" onClick={() => navigate("/login")}>Analyst login</Button>
+            <Button variant="outlined" onClick={() => navigate("/client/login")}>Client login</Button>
+          </Stack>
+        </Stack>
+      </Box>
+    );
+  }
 
   // Show shared full-page loader while OTP request or verification is in progress.
   if (loading) {
@@ -223,6 +266,15 @@ const NewPassword: React.FC = () => {
             >
               Change Password
             </Button>
+            <Button
+              fullWidth
+              variant="text"
+              disabled={otpCooldown > 0 || loading}
+              onClick={() => void requestOtp()}
+              sx={{ textTransform: "none" }}
+            >
+              {otpCooldown > 0 ? `Resend OTP in ${otpCooldown}s` : "Resend OTP"}
+            </Button>
           </Box>
         )}
 
@@ -253,21 +305,11 @@ const NewPassword: React.FC = () => {
           )}
         </Button>
 
-        {message && (
-          <Typography
-            sx={{
-              mt: 2,
-              textAlign: "center",
-              color: "#4F6CF8",
-              bgcolor: "#EEF2FF",
-              p: 1,
-              borderRadius: 1,
-              fontSize: "0.9rem",
-            }}
-          >
-            {message}
-          </Typography>
-        )}
+        {message && <Alert severity={messageSeverity} sx={{ mt: 2 }}>{message}</Alert>}
+        <Stack direction="row" justifyContent="center" spacing={1} mt={2}>
+          <Button size="small" onClick={() => navigate("/login")}>Analyst login</Button>
+          <Button size="small" onClick={() => navigate("/client/login")}>Client login</Button>
+        </Stack>
       </Box>
     </Box>
   );

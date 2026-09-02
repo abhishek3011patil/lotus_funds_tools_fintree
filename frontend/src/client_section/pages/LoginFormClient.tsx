@@ -21,6 +21,7 @@ import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import LoadingPage from "../../common/LoadingPage";
 import AuthBackdrop from "../../common/AuthBackdrop";
+import { consumeAuthMessage, consumePostLoginPath } from "../../utils/authRedirect";
 
 const LoginFormClient: React.FC = () => {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ const LoginFormClient: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(consumeAuthMessage);
   const [loading, setLoading] = useState(false);
   const [isOtpRequired, setIsOtpRequired] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
@@ -174,7 +175,7 @@ const LoginFormClient: React.FC = () => {
       }
 
       if (role === "CLIENT") {
-        navigate("/client/dashboard", { replace: true });
+        navigate(consumePostLoginPath("/client/dashboard", ["/client"]), { replace: true });
       } else {
         setMessage("Invalid role for Client login");
         localStorage.clear();

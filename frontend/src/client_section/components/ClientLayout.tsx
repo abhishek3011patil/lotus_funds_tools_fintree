@@ -22,11 +22,11 @@ import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import AutoStoriesRoundedIcon from '@mui/icons-material/AutoStoriesRounded';
-import InsertChartIcon from '@mui/icons-material/InsertChart';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import PersonIcon from '@mui/icons-material/Person';
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
 import { getLoginRoute } from '../../utils/authRedirect';
+import api from '../../utils/axio';
 
 const drawerWidth = 240;
 
@@ -35,7 +35,6 @@ const sidebarItems = [
   { name: 'Recommendations', path: '/client/recommendations', icon: CheckBoxIcon },
   { name: 'Research Analysts', path: '/client/analysts', icon: GroupsRoundedIcon },
   { name: 'Insights', path: '/client/insights', icon: AutoStoriesRoundedIcon },
-  { name: 'My Performance', path: '/client/performance', icon: InsertChartIcon },
   { name: 'Notifications', path: '/client/notifications', icon: NotificationsIcon },
   { name: 'Profile', path: '/client/profile', icon: PersonIcon },
 ];
@@ -62,16 +61,22 @@ export const ClientLayout = () => {
 
   // Derive current page title from active path
   const activeItem = sidebarItems.find((item) => item.path === location.pathname);
-  const pageTitle = activeItem ? activeItem.name : 'Performance';
+  const pageTitle = activeItem ? activeItem.name : 'Dashboard';
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     const role = localStorage.getItem('role');
-    localStorage.clear();
-    navigate(getLoginRoute(role, ['CLIENT']), { replace: true });
+    try {
+      await api.post('/auth/logout');
+    } catch (error) {
+      console.error('Logout request failed:', error);
+    } finally {
+      localStorage.clear();
+      navigate(getLoginRoute(role, ['CLIENT']), { replace: true });
+    }
   };
 
   // Reusable Sidebar Content (Drawer inner components)

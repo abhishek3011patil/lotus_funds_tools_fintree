@@ -16,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import LoadingPage from "./LoadingPage";
 import AuthBackdrop from "./AuthBackdrop";
+import { consumeAuthMessage, consumePostLoginPath } from "../utils/authRedirect";
 
 
 const LoginFormAdmin: React.FC = () => {
@@ -32,7 +33,7 @@ const LoginFormAdmin: React.FC = () => {
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isOtpRequired, setIsOtpRequired] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(consumeAuthMessage);
   const [loading, setLoading] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL;
@@ -125,8 +126,8 @@ localStorage.setItem("username", res.data.username);
 localStorage.setItem("role", role);
 
       // Redirect based on role
-      if (role === "ADMIN" || role === "SUPERADMIN") navigate("/admin");
-      if (role === "EMPLOYEE") navigate("/automation");
+      if (role === "ADMIN" || role === "SUPERADMIN") navigate(consumePostLoginPath("/admin", ["/admin", "/automation", "/morning-report-builder", "/morning-report-view", "/logo-theme", "/email-generator"]), { replace: true });
+      if (role === "EMPLOYEE") navigate(consumePostLoginPath("/automation", ["/automation", "/morning-report-builder", "/morning-report-view", "/logo-theme", "/email-generator"]), { replace: true });
 
 
     } catch (err: unknown) {

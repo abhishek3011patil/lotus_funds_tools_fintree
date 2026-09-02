@@ -33,6 +33,9 @@ instance.interceptors.response.use(
 
             const role = localStorage.getItem("role");
 
+            sessionStorage.setItem("authMessage", "Your session expired. Please sign in again.");
+            sessionStorage.setItem("postLoginPath", `${window.location.pathname}${window.location.search}`);
+
             localStorage.removeItem("token");
             localStorage.removeItem("tokenExpiry");
             localStorage.removeItem("username");

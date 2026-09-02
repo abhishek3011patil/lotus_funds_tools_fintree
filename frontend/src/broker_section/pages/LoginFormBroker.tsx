@@ -16,13 +16,14 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import axios from "axios";
 import LoadingPage from "../../common/LoadingPage";
 import AuthBackdrop from "../../common/AuthBackdrop";
+import { consumeAuthMessage, consumePostLoginPath } from "../../utils/authRedirect";
 
 const LoginFormBroker: React.FC = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(consumeAuthMessage);
   const [loading, setLoading] = useState(false);
   const [isOtpRequired, setIsOtpRequired] = useState(false);
 
@@ -121,7 +122,7 @@ const LoginFormBroker: React.FC = () => {
       }
 
       if (role === "BROKER") {
-        navigate("/broker/dashboard");
+        navigate(consumePostLoginPath("/broker/dashboard", ["/broker"]), { replace: true });
       } else {
         setMessage("Invalid role for Broker login");
         localStorage.clear();

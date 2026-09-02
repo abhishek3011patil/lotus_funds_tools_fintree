@@ -223,7 +223,7 @@ const RANotification = () => {
                     void markRead(notification);
                     navigate(
                       notification.client_ra_subscription_id
-                        ? "/"
+                        ? "/dashboard"
                         : "/settings"
                     );
                   }}

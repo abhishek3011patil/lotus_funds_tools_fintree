@@ -15,6 +15,7 @@ type Props = {
   details?: ReactNode;
   actionLabel?: string;
   onAction?: () => void;
+  secondaryActions?: ReactNode;
 };
 
 const RegistrationStatusLayout = ({
@@ -24,6 +25,7 @@ const RegistrationStatusLayout = ({
   details,
   actionLabel,
   onAction,
+  secondaryActions,
 }: Props) => (
   <Box
     sx={{
@@ -74,6 +76,7 @@ const RegistrationStatusLayout = ({
             {actionLabel}
           </Button>
         )}
+        {secondaryActions}
       </Stack>
     </Paper>
   </Box>
