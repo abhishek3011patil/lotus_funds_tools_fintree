@@ -136,7 +136,7 @@ const handleLogout = async () => {
       >
         <ListItemButton
           component={Link}
-          to="/"
+          to="/dashboard"
           sx={{
             color: "inherit",
             height: HEADER_HEIGHT,

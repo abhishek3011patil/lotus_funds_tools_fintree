@@ -12,6 +12,7 @@ import BrokerLayout from "../broker_section/components/BrokerLayout";
 import AdminAuditLogs from "../pages_admin/AdminAuditLogs";
 import LoginFormClient from "../client_section/pages/LoginFormClient";
 import LoginFormBroker from "../broker_section/pages/LoginFormBroker";
+import HomePage from "../pages/HomePage";
 
 // --- Lazy: Auth & Public ---
 const LoginForm = lazy(() => import("../common/LoginForm"));
@@ -167,6 +168,7 @@ const AppRoutes = () => {
 />
         <Route path="/reset-password" element={<NewPassword />} />
         {/* Auth & Public */}
+        <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginForm />} />
         <Route path="/login-admin" element={<LoginFormAdmin />} />
         <Route path="/signup" element={<Signup />} />
@@ -232,7 +234,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
-          <Route path="/" element={<Dashboard />} />
+<Route path="/dashboard" element={<Dashboard />} />
 <Route path="/performance" element={<Performance />} />
 <Route path="/settings" element={<Settings />} />
 

@@ -74,7 +74,7 @@ const AppLayout = () => {
   const appSidebarItems: SidebarItem[] = [
     {
       label: "Dashboard",
-      path: "/",
+      path: "/dashboard",
       icon: <DashboardIcon sx={{ mr: 1.5 }} />,
     },
     {

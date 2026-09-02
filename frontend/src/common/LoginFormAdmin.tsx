@@ -15,6 +15,7 @@ import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import LoadingPage from "./LoadingPage";
+import AuthBackdrop from "./AuthBackdrop";
 
 
 const LoginFormAdmin: React.FC = () => {
@@ -70,9 +71,11 @@ const handleSendOtp = async () => {
 
     setMessage(res.data.message);
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     setMessage(
-      err.response?.data?.message ||
+      (axios.isAxiosError<{ message?: string }>(err)
+        ? err.response?.data?.message
+        : undefined) ||
       "Failed to send OTP."
     );
   } finally {
@@ -102,7 +105,7 @@ if (res.data.requireOtp) {
   return;
 }
 
-      const { token, role, username } = res.data;
+      const { token, role } = res.data;
 
 
       //console.log("LOGIN RESPONSE:", res.data);
@@ -126,13 +129,13 @@ localStorage.setItem("role", role);
       if (role === "EMPLOYEE") navigate("/automation");
 
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       setMessage(
-        err.response?.data?.message ||
+        (axios.isAxiosError<{ message?: string }>(err)
+          ? err.response?.data?.message
+          : undefined) ||
         "Server error. Please try again."
-
       );
-      console.log(err.response?.data);
     } finally {
       setLoading(false);
     }
@@ -162,22 +165,33 @@ localStorage.setItem("role", role);
       sx={{
         minHeight: "100vh",
         display: "flex",
-        justifyContent: "center",
+        position: "relative",
+        overflow: "hidden",
+        justifyContent: { xs: "center", md: "flex-end" },
         alignItems: "center",
-        background: "#F4F7FE",
-        p: 2,
+        background: "#f8f9fd",
+        p: { xs: 2, md: 4 },
+        pr: { md: "8vw" },
       }}
     >
+      <AuthBackdrop
+        portal="Company Portal"
+        accent="#14213d"
+        message="A calm command centre for operations, governance and oversight."
+      />
       <Box
         component="form"
         onSubmit={handleSubmit}
         sx={{
           width: "100%",
-          maxWidth: 400,
+          maxWidth: 430,
           bgcolor: "#ffffff",
           p: 4,
           borderRadius: 4,
-          boxShadow: "0 15px 35px rgba(0,0,0,0.1)",
+          border: "1px solid #e7eaf2",
+          boxShadow: "0 24px 65px rgba(27,42,82,0.12)",
+          position: "relative",
+          zIndex: 1,
         }}
       >
         <Typography
@@ -194,6 +208,7 @@ localStorage.setItem("role", role);
 
         <TextField
           name="username"
+          label="Username"
           placeholder="Username"
           value={formData.username}
           onChange={handleChange}
@@ -204,6 +219,7 @@ localStorage.setItem("role", role);
 
         <TextField
           name="password"
+          label="Password"
           type={showPassword ? "text" : "password"}
           placeholder="Password"
           value={formData.password}
@@ -217,6 +233,7 @@ localStorage.setItem("role", role);
                 <IconButton
                   onClick={handleClickShowPassword}
                   edge="end"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <VisibilityOff /> : <Visibility />}
                 </IconButton>
@@ -230,6 +247,7 @@ localStorage.setItem("role", role);
   <>
     <TextField
       name="otp"
+      label="One-time password"
       type={showOtp ? "text" : "password"}
       placeholder="Enter OTP"
       value={formData.otp}
@@ -244,6 +262,7 @@ localStorage.setItem("role", role);
               onClick={handleClickShowOtp}
               edge="end"
               size="small"
+              aria-label={showOtp ? "Hide one-time password" : "Show one-time password"}
             >
               {showOtp ? (
                 <VisibilityOff fontSize="small" />
@@ -305,6 +324,8 @@ localStorage.setItem("role", role);
 
         {message && (
           <Typography
+            role="status"
+            aria-live="polite"
             sx={{
               mt: 2,
               textAlign: "center",

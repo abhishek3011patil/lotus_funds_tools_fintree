@@ -61,6 +61,24 @@ const plans = [
   },
 ];
 
+test("homepage portal access visual contract", async ({ page }) => {
+  await page.goto("/");
+
+  await expect(
+    page.getByRole("heading", { name: /better research/i })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: /open portal/i })
+  ).toHaveCount(3);
+  await expect(
+    page.getByRole("link", { name: /company access/i })
+  ).toHaveAttribute("href", "/login-admin");
+
+  await expect(page).toHaveScreenshot("homepage.png", {
+    fullPage: true,
+  });
+});
+
 test("login page visual contract", async ({ page }) => {
   await page.goto("/login");
   await expect(

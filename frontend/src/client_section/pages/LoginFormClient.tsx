@@ -20,6 +20,7 @@ import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import LoadingPage from "../../common/LoadingPage";
+import AuthBackdrop from "../../common/AuthBackdrop";
 
 const LoginFormClient: React.FC = () => {
   const navigate = useNavigate();
@@ -211,22 +212,33 @@ const LoginFormClient: React.FC = () => {
       sx={{
         minHeight: "100vh",
         display: "flex",
-        justifyContent: "center",
+        position: "relative",
+        overflow: "hidden",
+        justifyContent: { xs: "center", md: "flex-end" },
         alignItems: "center",
-        background: "#F4F7FE",
-        p: { xs: 2, sm: 3 },
+        background: "#f8f9fd",
+        p: { xs: 2, md: 4 },
+        pr: { md: "8vw" },
       }}
     >
+      <AuthBackdrop
+        portal="Client Portal"
+        accent="#16a34a"
+        message="Follow credible research without losing sight of the bigger picture."
+      />
       <Box
         component="form"
         onSubmit={handleSubmit}
         sx={{
           width: "100%",
-          maxWidth: { xs: "100%", sm: 400 },
+          maxWidth: { xs: "100%", sm: 430 },
           bgcolor: "#ffffff",
           p: { xs: 3, sm: 4 },
           borderRadius: 4,
-          boxShadow: "0 15px 35px rgba(0,0,0,0.1)",
+          border: "1px solid #e7eaf2",
+          boxShadow: "0 24px 65px rgba(27,42,82,0.12)",
+          position: "relative",
+          zIndex: 1,
         }}
       >
         <Typography
@@ -244,6 +256,7 @@ const LoginFormClient: React.FC = () => {
 
         <TextField
           name="username"
+          label="Username or email"
           placeholder="Username / Email"
           value={formData.username}
           onChange={handleChange}
@@ -254,6 +267,7 @@ const LoginFormClient: React.FC = () => {
 
         <TextField
           name="password"
+          label="Password"
           type={showPassword ? "text" : "password"}
           placeholder="Password"
           value={formData.password}
@@ -264,7 +278,11 @@ const LoginFormClient: React.FC = () => {
           InputProps={{
             endAdornment: (
               <InputAdornment position="end">
-                <IconButton onClick={handleClickShowPassword} edge="end">
+                <IconButton
+                  onClick={handleClickShowPassword}
+                  edge="end"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
                   {showPassword ? <VisibilityOff /> : <Visibility />}
                 </IconButton>
               </InputAdornment>
@@ -293,6 +311,7 @@ const LoginFormClient: React.FC = () => {
           <Box sx={{ mt: 1, mb: 1 }}>
             <TextField
               name="otp"
+              label="One-time password"
               placeholder="Enter OTP"
               value={formData.otp}
               onChange={handleChange}
@@ -361,6 +380,8 @@ const LoginFormClient: React.FC = () => {
 
         {message && (
           <Typography
+            role="status"
+            aria-live="polite"
             sx={{
               mt: 2,
               textAlign: "center",
