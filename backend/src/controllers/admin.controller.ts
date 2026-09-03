@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { createAuditLog } from "../utils/auditLogger";
 import { emailService } from "../services/email";
+import { getPasswordLinkMode } from "../utils/passwordLink";
 
 const getClientIp = (req: Request) => {
   let ip =
@@ -666,7 +667,13 @@ export const resendPasswordLink = async (
         status,
         is_active,
         password_hash,
-        token_expiry
+        token_expiry,
+        EXISTS (
+          SELECT 1
+          FROM ra_details
+          WHERE ra_details.user_id = users.id
+            AND ra_details.status = 'approved'
+        ) AS legacy_approved_ra
       FROM users
       WHERE id = $1
       FOR UPDATE
@@ -694,14 +701,9 @@ export const resendPasswordLink = async (
       });
     }
 
-    const passwordSetupPending =
-      !user.password_hash &&
-      user.status === "inactive" &&
-      user.is_active === false;
-    const passwordResetAvailable =
-      Boolean(user.password_hash) &&
-      user.status === "active" &&
-      user.is_active === true;
+    const passwordLinkMode = getPasswordLinkMode(user);
+    const passwordSetupPending = passwordLinkMode === "setup";
+    const passwordResetAvailable = passwordLinkMode === "reset";
 
     if (!passwordSetupPending && !passwordResetAvailable) {
       await db.query("ROLLBACK");

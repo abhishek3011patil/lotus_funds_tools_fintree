@@ -44,6 +44,12 @@ const BOOLEAN_FIELDS = new Set([
   "agree_code_of_conduct",
 ]);
 
+const EMAIL_FIELDS = new Set(["email", "authorized_person_email"]);
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const isValidEmail = (value: unknown): boolean =>
+  typeof value === "string" && EMAIL_PATTERN.test(value.trim());
+
 // ─── Component ────────────────────────────────────────────────────────────────
 const EditPage = () => {
   const { id, type } = useParams();
@@ -97,6 +103,28 @@ const EditPage = () => {
 
   // ── Save ───────────────────────────────────────────────────────────────────
   const handleSave = async () => {
+    const emailErrors: Record<string, string> = {};
+
+    if (!isValidEmail(fields.email)) {
+      emailErrors.email = "Enter a valid email address.";
+    }
+
+    if (
+      type?.toUpperCase() === "BROKER" &&
+      fields.authorized_person_email &&
+      !isValidEmail(fields.authorized_person_email)
+    ) {
+      emailErrors.authorized_person_email =
+        "Enter a valid authorized person email address.";
+    }
+
+    if (Object.keys(emailErrors).length > 0) {
+      setServerErrors((prev) => ({ ...prev, ...emailErrors }));
+      setSuccessMsg("");
+      setErrorMsg("Please correct the invalid email address.");
+      return;
+    }
+
     const formData = new FormData();
 
     // Append all scalar fields; booleans serialised to "true"/"false"
@@ -440,7 +468,13 @@ const DATE_FIELDS = [
                 <Grid item xs={12} sm={6} key={field}>
                   <TextField
                     fullWidth
-                    type={DATE_FIELDS.includes(field) ? "date" : "text"}
+                    type={
+                      DATE_FIELDS.includes(field)
+                        ? "date"
+                        : EMAIL_FIELDS.has(field)
+                          ? "email"
+                          : "text"
+                    }
                     label={field.replace(/_/g, " ").toUpperCase()}
                     name={field}
                     value={fields[field] ?? ""}
@@ -678,6 +712,7 @@ const DATE_FIELDS = [
                   <Grid item xs={12} sm={6} key={field}>
                     <TextField
                       fullWidth
+                      type={EMAIL_FIELDS.has(field) ? "email" : "text"}
                       label={field.replace(/_/g, " ").toUpperCase()}
                       name={field}
                       value={fields[field] ?? ""}

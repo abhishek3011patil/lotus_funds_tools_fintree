@@ -9,6 +9,7 @@ import { createAuditLog } from "../utils/auditLogger";
 import axios from "axios";
 import { createNotification } from "../utils/notification";
 import { emailService } from "../services/email";
+import { isValidEmail } from "../utils/validation";
 
 
 
@@ -204,8 +205,17 @@ SELECT
   ) AS password_setup_pending,
   (
     u.password_hash IS NOT NULL
-    AND u.status = 'active'
-    AND COALESCE(u.is_active, false) = true
+    AND (
+      (
+        u.status = 'active'
+        AND COALESCE(u.is_active, false) = true
+      )
+      OR (
+        u.status = 'inactive'
+        AND COALESCE(u.is_active, false) = false
+        AND rd.status = 'approved'
+      )
+    )
     AND NULLIF(TRIM(u.email), '') IS NOT NULL
   ) AS password_reset_available,
   u.suspended_reason,
@@ -1428,6 +1438,14 @@ const id = String(idParam);
     const files = req.files as any;
     normalizeRAUpdateData(data);
 
+    if (data.email !== undefined && !isValidEmail(data.email)) {
+      return res.status(400).json({
+        success: false,
+        field: "email",
+        message: "Enter a valid email address.",
+      });
+    }
+
     const oldData = await pool.query(
   `SELECT * FROM ra_details WHERE id = $1`,
   [id]
@@ -1644,8 +1662,29 @@ if (result.rows[0]?.user_id && data.email) {
 export const updateBroker = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const data = req.body;
+    const data = req.body || {};
     const files = req.files as any;
+
+    if (!isValidEmail(data.email)) {
+      return res.status(400).json({
+        success: false,
+        field: "email",
+        message: "Enter a valid email address.",
+      });
+    }
+
+    if (data.authorized_person_email && !isValidEmail(data.authorized_person_email)) {
+      return res.status(400).json({
+        success: false,
+        field: "authorized_person_email",
+        message: "Enter a valid authorized person email address.",
+      });
+    }
+
+    data.email = data.email.trim().toLowerCase();
+    if (data.authorized_person_email) {
+      data.authorized_person_email = data.authorized_person_email.trim().toLowerCase();
+    }
 
       /* ================= GET OLD DATA ================= */
 

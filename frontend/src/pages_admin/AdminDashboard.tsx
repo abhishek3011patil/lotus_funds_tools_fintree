@@ -2465,7 +2465,11 @@ color: whatsappParticipant ? "#fff" : "#9e9e9e",
                 disabled={resendingPasswordLink || selectedClient.status.toLowerCase() === "suspended"}
                 onClick={() => handleResendPasswordLink(selectedClient.id)}
               >
-                {resendingPasswordLink ? "Sending..." : "Resend Password Setup Link"}
+                {resendingPasswordLink
+                  ? "Sending..."
+                  : selectedClient.status.toLowerCase() === "inactive"
+                    ? "Resend Password Setup Link"
+                    : "Send Password Reset Link"}
               </Button>
 
               {selectedClient.status.toLowerCase() === "suspended" && (
