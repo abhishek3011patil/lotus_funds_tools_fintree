@@ -19,6 +19,7 @@ const LoginForm = lazy(() => import("../common/LoginForm"));
 const LoginFormAdmin = lazy(() => import("../common/LoginFormAdmin"));
 const Signup = lazy(() => import("../pages/common/Signup"));
 const NotFound = lazy(() => import("../pages/Notfound"));
+const RAClientsPage = lazy(() => import("../pages/RAClientsPage"));
 const RAPasswordSetupPage = lazy(
   () =>
     import(
@@ -233,6 +234,14 @@ const AppRoutes = () => {
         >
 <Route path="/dashboard" element={<Dashboard />} />
 <Route path="/performance" element={<Performance />} />
+<Route
+  path="/ra/clients"
+  element={
+    <ProtectedRoute allowedRoles={["RESEARCH_ANALYST"]}>
+      <RAClientsPage />
+    </ProtectedRoute>
+  }
+/>
 <Route path="/settings" element={<Settings />} />
 
 <Route path="/notifications" element={<RANotification />} />

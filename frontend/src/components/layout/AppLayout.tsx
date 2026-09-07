@@ -7,6 +7,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import FolderIcon from "@mui/icons-material/Folder";
 import NotificationsIcon from "@mui/icons-material/Notifications";
+import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 
 import Header from "./Header";
 import Sidebar from "../page_Mainapp/Sidebar";
@@ -81,6 +82,11 @@ const AppLayout = () => {
       label: "Recommendations",
       path: "/recommendations",
       icon: <CheckBoxIcon sx={{ mr: 1.5 }} />,
+    },
+    {
+      label: "Clients",
+      path: "/ra/clients",
+      icon: <PeopleAltIcon sx={{ mr: 1.5 }} />,
     },
     {
       label: "Performance",
