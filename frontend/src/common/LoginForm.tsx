@@ -42,6 +42,16 @@ const LoginForm: React.FC = () => {
   const [resetError, setResetError] = useState("");
 
   const API_URL = import.meta.env.VITE_API_URL;
+  const getLoginErrorMessage = (err: unknown): string => {
+  if (axios.isAxiosError<{ message?: string }>(err)) {
+    return (
+      err.response?.data?.message ||
+      "Something went wrong while logging you in. Please try again."
+    );
+  }
+
+  return "Something went wrong while logging you in. Please try again.";
+};
 
   const [formData, setFormData] = useState({
     username: "",
@@ -81,14 +91,9 @@ const handleSendOtp = async () => {
       res.data.message || "OTP has been sent to your registered email."
     );
 
-  } catch (err: unknown) {
-    setMessage(
-      (axios.isAxiosError<{ message?: string }>(err)
-        ? err.response?.data?.message
-        : undefined) ||
-        "Failed to send OTP. Please try again."
-    );
-  } finally {
+} catch (err: unknown) {
+  setMessage(getLoginErrorMessage(err));
+}finally {
     setSendingOtp(false);
   }
 };
@@ -147,9 +152,14 @@ const handleSubmit = async (e: React.FormEvent) => {
           requestedRole: "RESEARCH_ANALYST",
         }
       );
-      if (res.data.requireOtp && !isOtpRequired) {
+   if (res.data.requireOtp && !isOtpRequired) {
   setIsOtpRequired(true);
   setLoading(false);
+
+  setMessage(
+    res.data.message ||
+      "For security verification, an OTP is required. Please check your registered email."
+  );
 
   await handleSendOtp();
 
@@ -193,14 +203,9 @@ localStorage.setItem("role", role);
         setMessage("Invalid role");
         localStorage.clear();
       }
-    } catch (err: unknown) {
-      setMessage(
-        (axios.isAxiosError<{ message?: string }>(err)
-          ? err.response?.data?.message
-          : undefined) ||
-        "Server error. Please try again."
-      );
-    } finally {
+  } catch (err: unknown) {
+  setMessage(getLoginErrorMessage(err));
+} finally {
       setLoading(false);
     }
   };

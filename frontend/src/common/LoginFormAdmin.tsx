@@ -39,6 +39,17 @@ const LoginFormAdmin: React.FC = () => {
 
   const API_URL = import.meta.env.VITE_API_URL;
 
+  const getLoginErrorMessage = (err: unknown): string => {
+  if (axios.isAxiosError<{ message?: string }>(err)) {
+    return (
+      err.response?.data?.message ||
+      "Something went wrong while logging you in. Please try again."
+    );
+  }
+
+  return "Something went wrong while logging you in. Please try again.";
+};
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -73,14 +84,9 @@ const handleSendOtp = async () => {
 
     setMessage(res.data.message);
 
-  } catch (err: unknown) {
-    setMessage(
-      (axios.isAxiosError<{ message?: string }>(err)
-        ? err.response?.data?.message
-        : undefined) ||
-      "Failed to send OTP."
-    );
-  } finally {
+ } catch (err: unknown) {
+  setMessage(getLoginErrorMessage(err));
+} finally {
     setSendingOtp(false);
   }
 };
@@ -89,21 +95,40 @@ const handleSendOtp = async () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage("");
+
+      if (!formData.username.trim()) {
+    setMessage("Please enter your username.");
+    return;
+  }
+
+  if (!formData.password) {
+    setMessage("Please enter your password.");
+    return;
+  }
+
+
     setLoading(true);
 
     try {
-     const res = await axios.post(
+const res = await axios.post(
   `${API_URL}/api/auth/login`,
   {
-    loginId: formData.username, // send loginId instead of username
+    loginId: formData.username,
     password: formData.password,
     otp: formData.otp,
+    requestedRole: "ADMIN",
   }
 );
 
 if (res.data.requireOtp) {
   setIsOtpRequired(true);
   setLoading(false);
+
+  setMessage(
+    res.data.message ||
+      "For security verification, an OTP is required. Please request an OTP to continue."
+  );
+
   return;
 }
 
@@ -137,14 +162,9 @@ localStorage.setItem("role", role);
       }
 
 
-    } catch (err: unknown) {
-      setMessage(
-        (axios.isAxiosError<{ message?: string }>(err)
-          ? err.response?.data?.message
-          : undefined) ||
-        "Server error. Please try again."
-      );
-    } finally {
+  } catch (err: unknown) {
+  setMessage(getLoginErrorMessage(err));
+}finally {
       setLoading(false);
     }
   };

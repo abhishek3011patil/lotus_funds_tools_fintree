@@ -446,11 +446,11 @@ export const getRecommendationHistory = async (
           ELSE 0
         END AS profit_loss,
 
-        COALESCE(
-          u.name,
-          rc.display_name,
-          '-'
-        ) AS researcher_name
+COALESCE(
+  NULLIF(TRIM(u.name), ''),
+  NULLIF(TRIM(u.username), ''),
+  'Research Analyst'
+) AS researcher_name
 
       FROM research_calls rc
 
@@ -1682,12 +1682,11 @@ export const getMyRecommendationHistory = async (
           ELSE 0
         END AS profit_loss,
 
-        COALESCE(
-          u.name,
-          rc.display_name,
-          '-'
-        ) AS researcher_name
-
+       COALESCE(
+  NULLIF(TRIM(u.name), ''),
+  NULLIF(TRIM(u.username), ''),
+  'Research Analyst'
+) AS researcher_name
       FROM research_calls rc
 LEFT JOIN users u
   ON u.id = rc.ra_user_id
@@ -1773,6 +1772,41 @@ export const getInstruments = async (req: AuthRequest, res: Response) => {
     return res.status(502).json({
       success: false,
       message: "Instrument provider is temporarily unavailable",
+    });
+  }
+};
+
+export const getAllResearchAnalysts = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const { rows } = await pool.query(`
+      SELECT
+        id,
+        name,
+        username,
+        email
+      FROM users
+      WHERE role = 'RESEARCH_ANALYST'
+        AND status = 'active'
+      ORDER BY name ASC
+    `);
+
+    return res.status(200).json(rows);
+  } catch (err) {
+    console.error("GET ALL RESEARCH ANALYSTS ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch Research Analysts",
     });
   }
 };

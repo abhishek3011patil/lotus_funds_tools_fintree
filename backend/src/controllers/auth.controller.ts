@@ -293,100 +293,175 @@ export const login = async (req: Request, res: Response) => {
 
     
 
-    let user;
+   let user;
 
-    /* ================= ADMIN LOGIN (STRICT) ================= */
-    if (loginId === "admin" || loginId === "superadmin") {
-      const adminRes = await pool.query(
-        `SELECT id, username, password_hash, role 
-         FROM company_users 
-         WHERE LOWER(username) = $1`,
-        [loginId]
-      );
+const normalizedRequestedRole = String(requestedRole || "")
+  .trim()
+  .toUpperCase();
 
-      if (adminRes.rows.length === 0) {
-        return res.status(400).json({ message: "Admin not found ❌" });
-      }
+const allowedRequestedRoles = new Set([
+  "ADMIN",
+  "SUPERADMIN",
+  "EMPLOYEE",
+  "RESEARCH_ANALYST",
+  "BROKER",
+  "CLIENT",
+]);
 
-      user = adminRes.rows[0];
+/* ================= VALIDATE LOGIN PORTAL ================= */
 
-    } else {
-      /* ================= NORMAL USERS ================= */
- const normalizedRequestedRole = String(requestedRole || "").trim().toUpperCase();
- const allowedRequestedRoles = new Set(["RESEARCH_ANALYST", "BROKER", "CLIENT"]);
-
- if (normalizedRequestedRole && !allowedRequestedRoles.has(normalizedRequestedRole)) {
-   return res.status(400).json({ message: "Invalid login portal role." });
- }
-
- const userRes = await pool.query(
-  `
-    SELECT
-      id,
-      email,
-      username,
-      password_hash,
-      role,
-      status,
-      is_active,
-      otp,
-      otp_expiry,
-      otp_verified_until
-    FROM users
-    WHERE LOWER(email) = $1
-      AND ($2::text = '' OR role = $2)
-  `,
-  [loginId, normalizedRequestedRole]
-);
-      if (userRes.rows.length === 0) {
-        return res.status(400).json({ message: "Invalid credentials ❌" });
-      }
-
-      if (!normalizedRequestedRole && userRes.rows.length > 1) {
-        return res.status(409).json({
-          message: "This email has more than one account. Use the correct login portal.",
-        });
-      }
-
-      user = userRes.rows[0];
-
-      if (user.status?.toLowerCase() === "suspended") {
-  return res.status(403).json({
-    message: "Account suspended by admin ❌",
-  });
-}
-
-if (!user.password_hash) {
-  return res.status(403).json({
+if (!normalizedRequestedRole) {
+  return res.status(400).json({
+    success: false,
+    code: "LOGIN_PORTAL_REQUIRED",
     message:
-      "Password setup is incomplete. Use the approval email to create your password.",
+      "Please select the appropriate login portal to continue.",
   });
 }
+
+if (!allowedRequestedRoles.has(normalizedRequestedRole)) {
+  return res.status(400).json({
+    success: false,
+    code: "INVALID_LOGIN_PORTAL",
+    message:
+      "You are trying to access an invalid login portal. Please use the appropriate login portal for your account.",
+  });
+}
+
+/* ================= ADMIN / COMPANY LOGIN ================= */
 
 if (
-  user.status?.toLowerCase() !== "active" ||
-  user.is_active !== true
+  normalizedRequestedRole === "ADMIN" ||
+  normalizedRequestedRole === "SUPERADMIN" ||
+  normalizedRequestedRole === "EMPLOYEE"
 ) {
-  return res.status(403).json({
-    message: "Account inactive ❌",
-  });
+  const adminRes = await pool.query(
+    `
+      SELECT
+        id,
+        username,
+        password_hash,
+        role
+      FROM company_users
+      WHERE LOWER(username) = $1
+    `,
+    [loginId]
+  );
+
+  if (adminRes.rows.length === 0) {
+    return res.status(404).json({
+      success: false,
+      code: "ACCOUNT_NOT_FOUND",
+      message:
+        "No Company account was found with the provided username. Please check your username and try again.",
+    });
+  }
+
+  user = adminRes.rows[0];
+
+  /* ================= WRONG COMPANY PORTAL ================= */
+
+  if (user.role?.toUpperCase() !== normalizedRequestedRole) {
+    return res.status(403).json({
+      success: false,
+      code: "WRONG_LOGIN_PORTAL",
+      message:
+        "This account is not authorized to access the Company Portal. Please use the appropriate login portal for your account.",
+    });
+  }
 }
 
-    if (user.status.toLowerCase() === "suspended") {
-  return res.status(403).json({
-    message: "Account suspended by admin ❌",
-  });
+/* ================= NORMAL USERS ================= */
+
+else {
+  const userRes = await pool.query(
+    `
+      SELECT
+        id,
+        email,
+        username,
+        password_hash,
+        role,
+        status,
+        is_active,
+        otp,
+        otp_expiry,
+        otp_verified_until
+      FROM users
+      WHERE LOWER(email) = $1
+        AND role = $2
+    `,
+    [loginId, normalizedRequestedRole]
+  );
+
+  if (userRes.rows.length === 0) {
+    const roleMessage =
+      normalizedRequestedRole === "RESEARCH_ANALYST"
+        ? "No Research Analyst account was found with the provided email address. Please check your email and try again."
+        : normalizedRequestedRole === "BROKER"
+        ? "No Broker account was found with the provided email address. Please check your email and try again."
+        : "No Client account was found with the provided email address. Please check your email and try again.";
+
+    return res.status(404).json({
+      success: false,
+      code: "ACCOUNT_NOT_FOUND",
+      message: roleMessage,
+    });
+  }
+
+  user = userRes.rows[0];
+
+  /* ================= ACCOUNT STATUS ================= */
+
+  if (user.status?.toLowerCase() === "suspended") {
+    return res.status(403).json({
+      success: false,
+      code: "ACCOUNT_SUSPENDED",
+      message:
+        `Your ${normalizedRequestedRole === "RESEARCH_ANALYST"
+          ? "Research Analyst"
+          : normalizedRequestedRole === "BROKER"
+          ? "Broker"
+          : "Client"} account has been suspended by the administrator. Please contact the administrator for assistance.`,
+    });
+  }
+
+  if (!user.password_hash) {
+    return res.status(403).json({
+      success: false,
+      code: "PASSWORD_NOT_SETUP",
+      message:
+        "Your account setup is incomplete. Please use the password setup link sent to your registered email.",
+    });
+  }
+
+  if (
+    user.status?.toLowerCase() !== "active" ||
+    user.is_active !== true
+  ) {
+    return res.status(403).json({
+      success: false,
+      code: "ACCOUNT_INACTIVE",
+      message:
+        `Your ${normalizedRequestedRole === "RESEARCH_ANALYST"
+          ? "Research Analyst"
+          : normalizedRequestedRole === "BROKER"
+          ? "Broker"
+          : "Client"} account is currently inactive. Please contact the administrator for assistance.`,
+    });
+  }
 }
-
-
-    }
-
     /* ================= PASSWORD CHECK ================= */
     const match = await bcrypt.compare(password, user.password_hash);
 
     if (!match) {
-      return res.status(400).json({ message: "Invalid password ❌" });
-    }
+  return res.status(401).json({
+    success: false,
+    code: "INVALID_PASSWORD",
+    message:
+      "Incorrect password. Please check your password and try again.",
+  });
+}
 
     const otpSessionExpired =
     !user.otp_verified_until ||
@@ -397,25 +472,35 @@ if (
     // User needs OTP only if previous verification expired
 
     if (!otp) {
-        return res.json({
-            requireOtp: true
-        });
-    }
+  return res.status(200).json({
+    success: true,
+    requireOtp: true,
+    code: "OTP_REQUIRED",
+    message:
+      "For security verification, an OTP is required. Please check your registered email for the OTP.",
+  });
+}
 
-    if (user.otp !== otp) {
-        return res.status(400).json({
-            message: "Invalid OTP"
-        });
-    }
+if (user.otp !== otp) {
+  return res.status(401).json({
+    success: false,
+    code: "INVALID_OTP",
+    message:
+      "The OTP you entered is incorrect. Please check the OTP and try again.",
+  });
+}
 
-    if (
-        !user.otp_expiry ||
-        new Date(user.otp_expiry) < new Date()
-    ) {
-        return res.status(400).json({
-            message: "OTP expired"
-        });
-    }
+if (
+  !user.otp_expiry ||
+  new Date(user.otp_expiry) < new Date()
+) {
+  return res.status(401).json({
+    success: false,
+    code: "OTP_EXPIRED",
+    message:
+      "Your OTP has expired. Please request a new OTP and try again.",
+  });
+}
 
     await pool.query(
         `
@@ -475,17 +560,24 @@ if (
 }
 
 
-    return res.json({
-      message: "Login successful ✅",
-      token,
-      role: user.role,
-      username: user.username ?? user.email ?? "N/A",
-    });
+   return res.json({
+  success: true,
+  message: "Login successful. Welcome back!",
+  token,
+  role: user.role,
+  username: user.username ?? user.email ?? "N/A",
+});
 
-  } catch (error) {
-    console.error("LOGIN ERROR:", error);
-    return res.status(500).json({ message: "Server error" });
-  }
+ } catch (error) {
+  console.error("LOGIN ERROR:", error);
+
+  return res.status(500).json({
+    success: false,
+    code: "LOGIN_SERVER_ERROR",
+    message:
+      "We're unable to complete your login right now. Please try again later.",
+  });
+}
 };
 
 export const sendLoginOtp = async (
@@ -520,11 +612,14 @@ export const sendLoginOtp = async (
       [loginId]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        message: "User not found",
-      });
-    }
+   if (result.rows.length === 0) {
+  return res.status(404).json({
+    success: false,
+    code: "RA_ACCOUNT_NOT_FOUND",
+    message:
+      "No Research Analyst account was found with the provided email address. Please check your details and try again.",
+  });
+}
 
     const user = result.rows[0];
 
@@ -535,14 +630,17 @@ export const sendLoginOtp = async (
       });
     }
 
-    if (
-      user.status.toLowerCase() !== "active" ||
-      user.is_active !== true
-    ) {
-      return res.status(403).json({
-        message: "Account inactive.",
-      });
-    }
+   if (
+  user.status?.toLowerCase() !== "active" ||
+  user.is_active !== true
+) {
+  return res.status(403).json({
+    success: false,
+    code: "ACCOUNT_INACTIVE",
+    message:
+      "Your Research Analyst account is currently inactive. Please contact the administrator for assistance.",
+  });
+}
 
     // Don't generate a new OTP if the current one is still valid
     if (
@@ -551,9 +649,11 @@ export const sendLoginOtp = async (
       new Date(user.otp_expiry) > new Date()
     ) {
       return res.status(200).json({
-        message:
-          "An OTP has already been sent to your registered email. Please use it or wait for it to expire before requesting a new one.",
-      });
+  success: true,
+  code: "OTP_ALREADY_SENT",
+  message:
+    "An OTP has already been sent to your registered email. Please check your email and enter the OTP.",
+});
     }
 
     const otp = Math.floor(
@@ -579,15 +679,21 @@ export const sendLoginOtp = async (
 
     await sendOtpMail(user.email, otp);
 
-    return res.status(200).json({
-      message: "OTP sent successfully.",
-    });
+   return res.status(200).json({
+  success: true,
+  code: "OTP_SENT",
+  message:
+    "OTP has been sent to your registered email. Please enter the OTP to continue.",
+});
   } catch (error) {
     console.error("SEND OTP ERROR:", error);
 
     return res.status(500).json({
-      message: "Server error",
-    });
+  success: false,
+  code: "OTP_SERVER_ERROR",
+  message:
+    "We couldn't send the OTP right now. Please try again later.",
+});
   }
 };
 

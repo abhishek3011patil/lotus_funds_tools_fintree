@@ -10,6 +10,8 @@ import {
   MenuItem,
   TextField,
   InputAdornment,
+   IconButton,
+  Button,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -28,6 +30,7 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
 import HistoryIcon from "@mui/icons-material/History";
 import axios from "axios";
+import { ClearIcon } from "@mui/x-date-pickers/icons";
 
 interface PerformanceMetrics {
   total: number;
@@ -517,52 +520,70 @@ return (
         </Paper>
       )}
 
-      {/* This now renders even when the performance API fails */}
-{/* Search Bar Block */}
-<Box
-  sx={{
-    mt: 4,
-    mb: 2,
-    display: "flex",
-    justifyContent: "flex-end", // Aligns search bar to the right
-    alignItems: "center",
-  }}
->
+{/* SEARCH */}
+
+<Box sx={{ mt: 4, mb: 2 }}>
   <TextField
+    fullWidth
     size="small"
-    placeholder="Search symbol, action..."
     value={search}
     onChange={(e) => setSearch(e.target.value)}
+    placeholder="Search symbol, action, company..."
     sx={{
-      width: { xs: "100%", sm: "260px" },
       "& .MuiOutlinedInput-root": {
-        height: "38px",
+        height: "48px",
         borderRadius: "8px",
         backgroundColor: "#fff",
-        fontSize: "0.875rem",
-        "& fieldset": { borderColor: "#E5E7EB" },
-        "&:hover fieldset": { borderColor: "#D1D5DB" },
-        "&.Mui-focused fieldset": { borderColor: "#2563EB", borderWidth: "1px" },
+
+        "& fieldset": {
+          borderColor: "#E5E7EB",
+        },
+
+        "&:hover fieldset": {
+          borderColor: "#D1D5DB",
+        },
+
+        "&.Mui-focused fieldset": {
+          borderColor: "#2563EB",
+          borderWidth: "1px",
+        },
       },
     }}
     InputProps={{
       startAdornment: (
         <InputAdornment position="start">
-          <SearchIcon sx={{ color: "#9CA3AF", fontSize: 18 }} />
+          <SearchIcon
+            sx={{
+              color: "#9CA3AF",
+              fontSize: 22,
+            }}
+          />
         </InputAdornment>
       ),
+
+      endAdornment: search ? (
+        <InputAdornment position="end">
+          <IconButton
+            size="small"
+            onClick={() => setSearch("")}
+            aria-label="Clear search"
+          >
+            <ClearIcon fontSize="small" />
+          </IconButton>
+        </InputAdornment>
+      ) : undefined,
     }}
   />
 </Box>
 
 {/* Recommendation History Table Component */}
 <Box sx={{ mt: 1 }}>
-  <RecommendationHistory
-    enableExport
-    showAllRAs={false}
-    exportFileBaseName="ra-performance"
-    searchQuery={search}
-  />
+<RecommendationHistory
+  enableExport
+  showAllRAs={true}
+  exportFileBaseName="ra-performance"
+  searchQuery={search}
+/>
 </Box>
     </Box>
   </Box>

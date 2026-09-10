@@ -4,7 +4,8 @@ import { authenticate } from "../middlewares/auth.middleware";
 import {
     getResearchCalls,
     getPublishedCalls,
-    publishDraftCall
+    publishDraftCall,
+     getAllResearchAnalysts
 } from "../controllers/researchCalls.controller";
 import { exitResearchCall } from "../controllers/exitResearchCall";
 import {
@@ -62,6 +63,12 @@ router.get(
   "/calls/:callId/versions",
   authenticate,
   getCallVersionHistory
+);
+
+router.get(
+  "/researchers",
+  authenticate,
+  getAllResearchAnalysts
 );
 
 router.get("/research/calls/published", authenticate, getPublishedCalls);
