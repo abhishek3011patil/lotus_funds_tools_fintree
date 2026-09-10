@@ -17,6 +17,7 @@ import axios from "axios";
 import LoadingPage from "./LoadingPage";
 import AuthBackdrop from "./AuthBackdrop";
 import { consumeAuthMessage, consumePostLoginPath } from "../utils/authRedirect";
+import { normalizeRole } from "../utils/role.utils";
 
 
 const LoginFormAdmin: React.FC = () => {
@@ -126,8 +127,14 @@ localStorage.setItem("username", res.data.username);
 localStorage.setItem("role", role);
 
       // Redirect based on role
-      if (role === "ADMIN" || role === "SUPERADMIN") navigate(consumePostLoginPath("/admin", ["/admin", "/automation", "/morning-report-builder", "/morning-report-view", "/logo-theme", "/email-generator"]), { replace: true });
-      if (role === "EMPLOYEE") navigate(consumePostLoginPath("/automation", ["/automation", "/morning-report-builder", "/morning-report-view", "/logo-theme", "/email-generator"]), { replace: true });
+      const normalizedRole = normalizeRole(role);
+      if (normalizedRole === "ADMIN") navigate(consumePostLoginPath("/admin", ["/admin", "/automation", "/morning-report-builder", "/morning-report-view", "/logo-theme", "/email-generator"]), { replace: true });
+      else if (normalizedRole === "SUPERADMIN") navigate(consumePostLoginPath("/super-admin/dashboard", ["/super-admin", "/admin", "/automation", "/morning-report-builder", "/morning-report-view", "/logo-theme", "/email-generator"]), { replace: true });
+      else if (normalizedRole === "EMPLOYEE") navigate(consumePostLoginPath("/automation", ["/automation", "/morning-report-builder", "/morning-report-view", "/logo-theme", "/email-generator"]), { replace: true });
+      else {
+        setMessage("Please use the standard login page");
+        localStorage.clear();
+      }
 
 
     } catch (err: unknown) {

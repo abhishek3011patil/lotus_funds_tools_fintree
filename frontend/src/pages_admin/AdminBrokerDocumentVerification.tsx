@@ -1,0 +1,4 @@
+import { Chip, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
+import AdminPageShell from "../components/admin/AdminPageShell";
+const AdminBrokerDocumentVerification = () => <AdminPageShell title="Broker Document Verification" subtitle="Broker registration document review queue."><TableContainer component={Paper} variant="outlined"><Table size="small"><TableHead><TableRow><TableCell>Broker</TableCell><TableCell>Document</TableCell><TableCell>Submitted</TableCell><TableCell>Status</TableCell></TableRow></TableHead><TableBody><TableRow><TableCell>Example Partner Securities</TableCell><TableCell>Registration certificate</TableCell><TableCell>2026-07-28</TableCell><TableCell><Chip size="small" label="PENDING" /></TableCell></TableRow></TableBody></Table></TableContainer></AdminPageShell>;
+export default AdminBrokerDocumentVerification;

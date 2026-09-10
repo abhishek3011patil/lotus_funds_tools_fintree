@@ -9,6 +9,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import LoadingPage from "../common/LoadingPage";
 import ClientLayout from "../client_section/components/ClientLayout";
 import BrokerLayout from "../broker_section/components/BrokerLayout";
+import SuperAdminLayout from "../components/superAdmin/SuperAdminLayout";
 import AdminAuditLogs from "../pages_admin/AdminAuditLogs";
 import LoginFormClient from "../client_section/pages/LoginFormClient";
 import LoginFormBroker from "../broker_section/pages/LoginFormBroker";
@@ -143,7 +144,26 @@ const DisclaimerHistory = lazy(
 
 const BrokerDashboard = lazy(() => import("../broker_section/pages/BrokerDashboard"));
 const BrokerProfile = lazy(() => import("../broker_section/pages/BrokerProfile"));
+const BrokerRecommendations = lazy(() => import("../broker_section/pages/BrokerRecommendations"));
+const BrokerPerformance = lazy(() => import("../broker_section/pages/BrokerPerformance"));
 const BrokerSettings = lazy(() => import("../broker_section/pages/BrokerSettings"));
+const BrokerResearchCalls = lazy(() => import("../broker_section/pages/BrokerResearchCalls"));
+const BrokerResearchAnalysts = lazy(() => import("../broker_section/pages/BrokerResearchAnalysts"));
+const BrokerClients = lazy(() => import("../broker_section/pages/BrokerClients"));
+const BrokerAnnouncements = lazy(() => import("../broker_section/pages/BrokerAnnouncements"));
+const BrokerBranding = lazy(() => import("../broker_section/pages/BrokerBranding"));
+const BrokerSubscription = lazy(() => import("../broker_section/pages/BrokerSubscription"));
+const BrokerNotifications = lazy(() => import("../broker_section/pages/BrokerNotifications"));
+
+const SuperAdminDashboard = lazy(() => import("../pages_super_admin/SuperAdminDashboard"));
+const SuperAdminRAManagement = lazy(() => import("../pages_super_admin/SuperAdminRAManagement"));
+const SuperAdminBrokerManagement = lazy(() => import("../pages_super_admin/SuperAdminBrokerManagement"));
+const SuperAdminManagement = lazy(() => import("../pages_super_admin/SuperAdminManagement"));
+const SuperAdminAuditLogs = lazy(() => import("../pages_super_admin/SuperAdminAuditLogs"));
+const SuperAdminRevenue = lazy(() => import("../pages_super_admin/SuperAdminRevenue"));
+const SuperAdminSettings = lazy(() => import("../pages_super_admin/SuperAdminSettings"));
+const SuperAdminNotifications = lazy(() => import("../pages_super_admin/SuperAdminNotifications"));
+const DisclaimerVersionList = lazy(() => import("../features/disclaimers/DisclaimerVersionList"));
 
 // --- Fallback UI shown while a lazy chunk is loading ---
 const PageLoader = () => (
@@ -287,8 +307,15 @@ const AppRoutes = () => {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<BrokerDashboard />} />
           <Route path="profile" element={<BrokerProfile />} />
-          <Route path="recommendations" element={<Navigate to="../dashboard" replace />} />
-          <Route path="performance" element={<Navigate to="../dashboard" replace />} />
+          <Route path="research-calls" element={<BrokerResearchCalls />} />
+          <Route path="research-analysts" element={<BrokerResearchAnalysts />} />
+          <Route path="clients" element={<BrokerClients />} />
+          <Route path="recommendations" element={<BrokerRecommendations />} />
+          <Route path="performance" element={<BrokerPerformance />} />
+          <Route path="announcements" element={<BrokerAnnouncements />} />
+          <Route path="branding" element={<BrokerBranding />} />
+          <Route path="subscription" element={<BrokerSubscription />} />
+          <Route path="notifications" element={<BrokerNotifications />} />
           <Route path="settings" element={<BrokerSettings />} />
         </Route>
 
@@ -375,6 +402,25 @@ const AppRoutes = () => {
 
 <Route path="/client/login" element={<LoginFormClient />} />
         <Route path="/client/register" element={<ClientRegistrationPage />} />
+        <Route
+          path="/super-admin"
+          element={
+            <ProtectedRoute allowedRoles={["SUPERADMIN", "SUPER_ADMIN"]}>
+              <SuperAdminLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<SuperAdminDashboard />} />
+          <Route path="research-analysts" element={<SuperAdminRAManagement />} />
+          <Route path="brokers" element={<SuperAdminBrokerManagement />} />
+          <Route path="admins" element={<SuperAdminManagement />} />
+          <Route path="audit-logs" element={<SuperAdminAuditLogs />} />
+          <Route path="revenue" element={<SuperAdminRevenue />} />
+          <Route path="disclaimers" element={<DisclaimerVersionList />} />
+          <Route path="notifications" element={<SuperAdminNotifications />} />
+          <Route path="settings" element={<SuperAdminSettings />} />
+        </Route>
         <Route
           path="/client"
           element={

@@ -1,12 +1,5 @@
-import { Navigate, useLocation } from "react-router-dom";
-
-const roleRoutes: Record<string, string> = {
-    ADMIN: "/admin",
-    EMPLOYEE: "/automation",
-    RA: "/",
-    BROKER: "/broker",
-    CLIENT: "/client",
-};
+import { Navigate } from "react-router-dom";
+import { getDefaultRouteForRole } from "../utils/role.utils";
 
 const RoleRouter = () => {
     const role = localStorage.getItem("role");
@@ -16,9 +9,9 @@ const RoleRouter = () => {
         return <Navigate to="/login" replace />;
     }
 
-    const path = roleRoutes[role];
+    const path = getDefaultRouteForRole(role);
 
-    return path ? <Navigate to={path} replace /> : <Navigate to="/login" replace />;
+    return <Navigate to={path} replace />;
 };
 
 export default RoleRouter;

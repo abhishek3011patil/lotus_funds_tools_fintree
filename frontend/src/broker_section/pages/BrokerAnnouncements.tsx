@@ -1,0 +1,10 @@
+import { Alert, Box, Button, Card, CardContent, Chip, FormControl, InputLabel, MenuItem, Paper, Select, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
+import { brokerAnnouncements } from "../mocks/broker.mock";
+import BrokerPageHeader from "../components/BrokerPageHeader";
+
+const BrokerAnnouncements = () => <Box><BrokerPageHeader title="Announcements" subtitle="Create non-research communications for Broker clients. This preview does not publish data." />
+  <Alert severity="warning" sx={{ mb: 2 }}>Announcements must not contain or imitate a research recommendation, target, entry or trading instruction.</Alert>
+  <TableContainer component={Paper} variant="outlined"><Table size="small"><TableHead><TableRow><TableCell>Title</TableCell><TableCell>Audience</TableCell><TableCell>Publish date</TableCell><TableCell>Status</TableCell></TableRow></TableHead><TableBody>{brokerAnnouncements.map((row) => <TableRow key={row.id}><TableCell>{row.title}</TableCell><TableCell>{row.audience}</TableCell><TableCell>{row.publishDate}</TableCell><TableCell><Chip size="small" label={row.status} /></TableCell></TableRow>)}</TableBody></Table></TableContainer>
+  <Card variant="outlined" sx={{ mt: 3 }}><CardContent><Typography variant="h6" gutterBottom>Draft announcement</Typography><Stack spacing={2}><TextField label="Title" /><TextField label="Message" multiline minRows={4} helperText="Non-research communications only" /><FormControl><InputLabel>Audience</InputLabel><Select label="Audience" defaultValue="ALL"><MenuItem value="ALL">All clients</MenuItem><MenuItem value="ACTIVE">Active clients</MenuItem><MenuItem value="PLACEHOLDER">Custom segment (API pending)</MenuItem></Select></FormControl><TextField type="date" label="Publish date" slotProps={{ inputLabel: { shrink: true } }} /><Button variant="contained" disabled>Save draft (API not connected)</Button></Stack></CardContent></Card>
+</Box>;
+export default BrokerAnnouncements;

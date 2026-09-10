@@ -3,6 +3,7 @@ import { JSX, useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import LoadingPage from "../common/LoadingPage";
 import { getLoginRoute } from "../utils/authRedirect";
+import { normalizeRole } from "../utils/role.utils";
 import { Alert, Box, Button, Paper, Stack, Typography } from "@mui/material";
 
 interface Props {
@@ -32,9 +33,10 @@ const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
         headers: { Authorization: `Bearer ${token}` },
       })
       .then((res) => {
-        const userRole = res.data.role;
+        const userRole = normalizeRole(res.data.role);
+        const normalizedAllowedRoles = allowedRoles?.map(normalizeRole);
 
-        if (allowedRoles && !allowedRoles.includes(userRole)) {
+        if (normalizedAllowedRoles && !normalizedAllowedRoles.includes(userRole)) {
           setStatus("forbidden");
         } else {
           setStatus("allowed");

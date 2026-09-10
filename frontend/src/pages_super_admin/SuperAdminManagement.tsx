@@ -1,0 +1,4 @@
+import { Alert, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
+import AdminPageShell from "../components/admin/AdminPageShell";
+const SuperAdminManagement = () => <AdminPageShell title="Admin Management" subtitle="Platform administrator directory."><Alert severity="info" sx={{ mb: 2 }}>No add/remove Admin mutation is connected in this branch.</Alert><TableContainer component={Paper} variant="outlined"><Table size="small"><TableHead><TableRow><TableCell>Admin</TableCell><TableCell>Scope</TableCell><TableCell>Status</TableCell></TableRow></TableHead><TableBody><TableRow><TableCell>Operations Admin</TableCell><TableCell>Verification and billing</TableCell><TableCell>Active</TableCell></TableRow></TableBody></Table></TableContainer></AdminPageShell>;
+export default SuperAdminManagement;

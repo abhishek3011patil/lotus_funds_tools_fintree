@@ -24,6 +24,7 @@ import AuthBackdrop from "./AuthBackdrop";
 import BusinessIcon from "@mui/icons-material/Business";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { consumeAuthMessage, consumePostLoginPath } from "../utils/authRedirect";
+import { normalizeRole } from "../utils/role.utils";
 
 const LoginForm: React.FC = () => {
 
@@ -170,21 +171,23 @@ localStorage.setItem("username", res.data.username);
 
 localStorage.setItem("role", role);
 
+  const normalizedRole = normalizeRole(role);
+
    
-  if (role === "ADMIN" || role === "EMPLOYEE" || role === "SUPERADMIN") {
+  if (normalizedRole === "ADMIN" || normalizedRole === "EMPLOYEE" || normalizedRole === "SUPERADMIN") {
   setMessage("Please use company login page");
   localStorage.clear();
 
   return;
 }
 
-     if (role === "RESEARCH_ANALYST") {
+     if (normalizedRole === "RESEARCH_ANALYST") {
   navigate(consumePostLoginPath("/recommendations", ["/dashboard", "/performance", "/settings", "/notifications", "/ra", "/recommendations"]), {
     replace: true,
   });
-} else if (role === "BROKER") {
+} else if (normalizedRole === "BROKER") {
         navigate("/broker/dashboard");
-      } else if (role === "CLIENT") {
+      } else if (normalizedRole === "CLIENT") {
         navigate("/client/dashboard", { replace: true });
       } else {
         setMessage("Invalid role");
