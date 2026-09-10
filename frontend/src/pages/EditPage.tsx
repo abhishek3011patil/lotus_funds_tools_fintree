@@ -790,46 +790,112 @@ const DATE_FIELDS = [
           </Grid>
         )}
 
-        {/* ── UPLOADED DOCUMENTS ────────────────────────────────────────── */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>Uploaded Documents</Typography>
-            <Divider sx={{ mb: 2 }} />
-            <Grid container spacing={2}>
-              {(isRA ? raFileFields : brokerFileFields).map((file) => (
-                <Grid
-                  item
-                  xs={12}
-                  sm={6}
-                  key={file.key}
-                  sx={{ display: "flex", alignItems: "center" }}
-                >
-                  <Button variant="outlined" component="label">
-                    Upload {file.label}
-                    <input
-                      type="file"
-                      hidden
-                      name={file.key}
-                      onChange={handleFileChange}
-                    />
-                  </Button>
+{/* ── UPLOADED DOCUMENTS ────────────────────────────────────────── */}
+<Grid item xs={12}>
+  <Paper
+    sx={{
+      p: { xs: 2, sm: 3 },
+      width: "100%",
+      maxWidth: "100%",
+      boxSizing: "border-box",
+      overflow: "hidden",
+    }}
+  >
+    <Typography variant="h6" gutterBottom>
+      Uploaded Documents
+    </Typography>
 
-                  <Button
-                    variant="outlined"
-                    sx={{ ml: 1 }}
-                    onClick={() => openFile(data[file.key])}
-                  >
-                    View
-                  </Button>
+    <Divider sx={{ mb: 2 }} />
 
-                  <Typography sx={{ ml: 2, fontSize: 12, color: "gray" }}>
-                    {files[file.key]?.name ?? data[file.key] ?? ""}
-                  </Typography>
-                </Grid>
-              ))}
-            </Grid>
-          </Paper>
+    <Grid container spacing={2}>
+      {(isRA ? raFileFields : brokerFileFields).map((file) => (
+        <Grid
+          item
+          xs={12}
+          sm={6}
+          key={file.key}
+          sx={{
+            minWidth: 0,
+            width: "100%",
+          }}
+        >
+          <Box
+            sx={{
+              width: "100%",
+              minWidth: 0,
+              boxSizing: "border-box",
+              border: "1px solid #e0e0e0",
+              borderRadius: 2,
+              p: { xs: 1.5, sm: 1 },
+            }}
+          >
+            {/* Buttons */}
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: { xs: "column", sm: "row" },
+                gap: 1,
+                width: "100%",
+              }}
+            >
+              <Button
+                variant="outlined"
+                component="label"
+                fullWidth
+                sx={{
+                  textTransform: "none",
+                  minWidth: 0,
+                  whiteSpace: "normal",
+                  overflowWrap: "break-word",
+                }}
+              >
+                Upload {file.label}
+
+                <input
+                  type="file"
+                  hidden
+                  name={file.key}
+                  onChange={handleFileChange}
+                />
+              </Button>
+
+              <Button
+                variant="outlined"
+                onClick={() => openFile(data[file.key])}
+                sx={{
+                  textTransform: "none",
+                  minWidth: { xs: "100%", sm: "70px" },
+                  width: { xs: "100%", sm: "auto" },
+                }}
+              >
+                View
+              </Button>
+            </Box>
+
+            {/* Filename */}
+            <Typography
+              sx={{
+                mt: 1.5,
+                fontSize: 13,
+                color: "gray",
+                width: "100%",
+                minWidth: 0,
+                overflowWrap: "anywhere",
+                wordBreak: "break-word",
+                lineHeight: 1.5,
+              }}
+              title={files[file.key]?.name ?? data[file.key] ?? ""}
+            >
+              {files[file.key]?.name ??
+                data[file.key] ??
+                "No file uploaded"}
+            </Typography>
+          </Box>
         </Grid>
+      ))}
+    </Grid>
+  </Paper>
+</Grid>
 
         {/* ── STATUS & SAVE ─────────────────────────────────────────────── */}
         <Grid item xs={12}>

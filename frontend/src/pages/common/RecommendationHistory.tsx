@@ -1157,6 +1157,7 @@ const handleReset = () => {
           display: "flex",
           flexWrap: "wrap",
           alignItems: "center",
+           width: "100%",
         }}
       >
 
@@ -1392,16 +1393,36 @@ const handleReset = () => {
         </Button>
 
 
-        {/* EXPORT */}
-        {enableExport && (
-          <TableExportMenu
-            rows={paginatedData}
-            columns={exportColumns}
-            fileBaseName={exportFileBaseName}
-            printTitle="RA Recommendation History"
-            loading={loading}
-          />
-        )}
+   {/* EXPORT CONTAINER */}
+{enableExport && (
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: { xs: "stretch", sm: "center", md: "flex-start" },
+      width: { xs: "100%", sm: "auto" },
+      minWidth: 0,
+      px: { xs: 1, sm: 1.5 },
+      py: { xs: 1, sm: 1 },
+      flexShrink: 1,
+    }}
+  >
+    <Box
+      sx={{
+        width: { xs: "100%", sm: "auto" },
+        minWidth: 0,
+      }}
+    >
+      <TableExportMenu
+        rows={paginatedData}
+        columns={exportColumns}
+        fileBaseName={exportFileBaseName}
+        printTitle="RA Recommendation History"
+        loading={loading}
+      />
+    </Box>
+  </Box>
+)}
 
       </Box>
     </Box>

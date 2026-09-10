@@ -203,166 +203,245 @@ const downloadTemplate = async () => {
   link.remove();
 };
 
-  return (
-    <Box sx={{ p: 1, width: "100%" }}>
-      <Paper
-        elevation={0}
-        sx={{ p: 3, border: "1px solid #e0e0e0", borderRadius: 2, width: "100%" }}
-      >
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" },
-            gap: 3,
-          }}
-        >
-
-        {/* Entity Type */}
-<Box sx={{ gridColumn: "1 / -1" }}>
-  <Typography sx={{ mb: 1, fontWeight: 600 }}>
-    Type
-  </Typography>
-
-  <RadioGroup
-    row
-    value={entityType}
-    onChange={(e) =>
-      setEntityType(e.target.value)
-    }
-  >
-    <FormControlLabel
-      value="USER"
-      control={<Radio />}
-      label="User"
-    />
-
-    <FormControlLabel
-      value="GROUP"
-      control={<Radio />}
-      label="Group"
-    />
-
-    <FormControlLabel
-      value="CHANNEL"
-      control={<Radio />}
-      label="Channel"
-    />
-  </RadioGroup>
-</Box>
-         {/* Username */}
-<TextField
-  fullWidth
-  label={
-    entityType === "USER"
-      ? "Telegram Username"
-      : entityType === "GROUP"
-      ? "Group Username or Link"
-      : "Channel Username or Link"
-  }
-  placeholder={
-    entityType === "USER"
-      ? "@username"
-      : entityType === "GROUP"
-      ? "@group_username"
-      : "@channel_username"
-  }
-  value={username}
-  onChange={(e) => setUsername(e.target.value)}
-/>
-
-         {entityType === "USER" && (
-  <>
-    {/* Telegram ID */}
-    <TextField
-      fullWidth
-      label="Telegram ID"
-      placeholder="123456789"
-      value={telegramId}
-      onChange={(e) => setTelegramId(e.target.value)}
-    />
-  </>
-)}
-
-        {entityType === "USER" && (
-  <>
-    {/* Phone */}
-    <TextField
-      fullWidth
-      label="Phone Number"
-      placeholder="+919876543210"
-      value={phoneNumber}
-      error={!!phoneError}
-      helperText={phoneError}
-      onChange={(e) => {
-        const value = e.target.value;
-        setPhoneNumber(value);
-
-        if (value && !value.startsWith("+91")) {
-          setPhoneError(
-            "Phone number must start with +91"
-          );
-        } else {
-          setPhoneError("");
-        }
-      }}
-    />
-  </>
-)}
-
-          {/* Save Button */}
-          <Box   sx={{
-    gridColumn: "1 / -1",
-    mt: 1,
-    display: "flex",
-    gap: 2,
-  }}
->
-  <Button
-    variant="contained"
-    size="large"
-    startIcon={<SendIcon />}
-    onClick={handleSave}
-    disabled={loading}
+ return (
+  <Box
     sx={{
-      backgroundColor: "#22C55E",
-      "&:hover": { backgroundColor: "#1a9d4b" },
-      textTransform: "none",
-      px: 4,
-      fontWeight: "600",
-      fontSize: 15,
+      width: "100%",
+      maxWidth: "100%",
+      minWidth: 0,
+      p: { xs: 0, sm: 1 },
+      boxSizing: "border-box",
     }}
   >
-    {loading ? "Saving..." : "Save Details"}
-  </Button>
+    <Paper
+      elevation={0}
+      sx={{
+        p: { xs: 1.5, sm: 3 },
+        border: "1px solid #e0e0e0",
+        borderRadius: 2,
+        width: "100%",
+        maxWidth: "100%",
+        minWidth: 0,
+        boxSizing: "border-box",
+        overflow: "hidden",
+      }}
+    >
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "minmax(0, 1fr)",
+            sm: "minmax(0, 1fr)",
+            md: "repeat(3, minmax(0, 1fr))",
+          },
+          gap: { xs: 2, sm: 3 },
+          width: "100%",
+          minWidth: 0,
+        }}
+      >
 
-  <Button
-    variant="outlined"
-    size="large"
-    onClick={() => fileInputRef.current?.click()}
-  >
-    Add Excel
-  </Button>
-<Button
-  variant="outlined"
-  size="large"
-  component="a"
-  href="/excel_sheets/telegram-sheets.xlsx"
-  download="telegram-sheets.xlsx"
->
-  Download Excel
-</Button>
-  <input
-    ref={fileInputRef}
-    type="file"
-    hidden
-    accept=".xlsx,.xls"
-    onChange={handleExcelUpload}
-  />
-          </Box>
+        {/* Entity Type */}
+        <Box
+          sx={{
+            gridColumn: "1 / -1",
+            width: "100%",
+            minWidth: 0,
+          }}
+        >
+          <Typography sx={{ mb: 1, fontWeight: 600 }}>
+            Type
+          </Typography>
+
+          <RadioGroup
+            row
+            value={entityType}
+            onChange={(e) => setEntityType(e.target.value)}
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              width: "100%",
+              minWidth: 0,
+              gap: { xs: 0.5, sm: 1 },
+            }}
+          >
+            <FormControlLabel
+              value="USER"
+              control={<Radio />}
+              label="User"
+              sx={{ mr: { xs: 1, sm: 2 } }}
+            />
+
+            <FormControlLabel
+              value="GROUP"
+              control={<Radio />}
+              label="Group"
+              sx={{ mr: { xs: 1, sm: 2 } }}
+            />
+
+            <FormControlLabel
+              value="CHANNEL"
+              control={<Radio />}
+              label="Channel"
+              sx={{ mr: 0 }}
+            />
+          </RadioGroup>
         </Box>
-      </Paper>
-    </Box>
-  );
+
+        {/* Username */}
+        <TextField
+          fullWidth
+          label={
+            entityType === "USER"
+              ? "Telegram Username"
+              : entityType === "GROUP"
+              ? "Group Username or Link"
+              : "Channel Username or Link"
+          }
+          placeholder={
+            entityType === "USER"
+              ? "@username"
+              : entityType === "GROUP"
+              ? "@group_username"
+              : "@channel_username"
+          }
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          sx={{
+            minWidth: 0,
+            "& .MuiInputBase-root": {
+              minWidth: 0,
+            },
+          }}
+        />
+
+        {/* Telegram ID */}
+        {entityType === "USER" && (
+          <TextField
+            fullWidth
+            label="Telegram ID"
+            placeholder="123456789"
+            value={telegramId}
+            onChange={(e) => setTelegramId(e.target.value)}
+            sx={{
+              minWidth: 0,
+              "& .MuiInputBase-root": {
+                minWidth: 0,
+              },
+            }}
+          />
+        )}
+
+        {/* Phone */}
+        {entityType === "USER" && (
+          <TextField
+            fullWidth
+            label="Phone Number"
+            placeholder="+919876543210"
+            value={phoneNumber}
+            error={!!phoneError}
+            helperText={phoneError}
+            onChange={(e) => {
+              const value = e.target.value;
+              setPhoneNumber(value);
+
+              if (value && !value.startsWith("+91")) {
+                setPhoneError(
+                  "Phone number must start with +91"
+                );
+              } else {
+                setPhoneError("");
+              }
+            }}
+            sx={{
+              minWidth: 0,
+              "& .MuiInputBase-root": {
+                minWidth: 0,
+              },
+            }}
+          />
+        )}
+
+        {/* Buttons */}
+        <Box
+          sx={{
+            gridColumn: "1 / -1",
+            mt: 1,
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            flexWrap: "wrap",
+            gap: 2,
+            width: "100%",
+            minWidth: 0,
+          }}
+        >
+          {/* Save */}
+          <Button
+            variant="contained"
+            size="large"
+            startIcon={<SendIcon />}
+            onClick={handleSave}
+            disabled={loading}
+            sx={{
+              backgroundColor: "#22C55E",
+              "&:hover": {
+                backgroundColor: "#1a9d4b",
+              },
+              textTransform: "none",
+              px: 4,
+              fontWeight: "600",
+              fontSize: 15,
+              width: { xs: "100%", sm: "auto" },
+              maxWidth: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            {loading ? "Saving..." : "Save Details"}
+          </Button>
+
+          {/* Add Excel */}
+          <Button
+            variant="outlined"
+            size="large"
+            onClick={() => fileInputRef.current?.click()}
+            sx={{
+              textTransform: "none",
+              width: { xs: "100%", sm: "auto" },
+              maxWidth: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            Add Excel
+          </Button>
+
+          {/* Download Excel */}
+          <Button
+            variant="outlined"
+            size="large"
+            component="a"
+            href="/excel_sheets/telegram-sheets.xlsx"
+            download="telegram-sheets.xlsx"
+            sx={{
+              textTransform: "none",
+              width: { xs: "100%", sm: "auto" },
+              maxWidth: "100%",
+              boxSizing: "border-box",
+            }}
+          >
+            Download Excel
+          </Button>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            hidden
+            accept=".xlsx,.xls"
+            onChange={handleExcelUpload}
+          />
+        </Box>
+      </Box>
+    </Paper>
+  </Box>
+);
 };
 
 export default TelegramSearch;

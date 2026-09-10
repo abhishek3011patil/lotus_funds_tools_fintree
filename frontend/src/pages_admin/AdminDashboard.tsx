@@ -2267,7 +2267,16 @@ color: whatsappParticipant ? "#fff" : "#9e9e9e",
     }}
   >
     {/* Input Layout Elements */}
-    <Box sx={{ display: "flex", flexDirection: "row", gap: 2, mt: 1, mb: 2.5 }}>
+    <Box
+  sx={{
+    display: "flex",
+    flexDirection: { xs: "column", sm: "row" },
+    gap: 2,
+    mt: 1,
+    mb: 2.5,
+    width: "100%",
+  }}
+>
       <TextField
         fullWidth
         size="small"
@@ -2305,51 +2314,70 @@ color: whatsappParticipant ? "#fff" : "#9e9e9e",
     </Box>
 
     {/* Button Shape Actions Group */}
-    <Box sx={{ display: "flex", gap: 2 }}>
+    <Box
+  sx={{
+    display: "flex",
+    flexDirection: { xs: "column", sm: "row" },
+    gap: 2,
+    width: "100%",
+  }}
+>
       <Button 
         variant="contained" 
         onClick={handleAddWhatsAppParticipant}
         startIcon={<SendIcon sx={{ transform: "rotate(-25deg)", fontSize: "0.9rem" }} />}
-        sx={{ 
-          textTransform: "none", 
-          fontWeight: 600,
-          backgroundColor: "#22c55e", 
-          px: 3,
-          py: 1,
-          borderRadius: "14px",
-          boxShadow: "0px 2px 4px rgba(34, 197, 94, 0.2)",
-          "&:hover": { backgroundColor: "#16a34a", boxShadow: "none" } 
-        }}
+        sx={{
+  textTransform: "none",
+  fontWeight: 600,
+  backgroundColor: "#22c55e",
+  px: 3,
+  py: 1,
+  borderRadius: "14px",
+  boxShadow: "0px 2px 4px rgba(34, 197, 94, 0.2)",
+  width: { xs: "100%", sm: "auto" },
+  "&:hover": {
+    backgroundColor: "#16a34a",
+    boxShadow: "none",
+  },
+}}
       >
         Save Details
       </Button>
       <Button 
         variant="outlined" 
         onClick={handleExcelUploadClick}
-        sx={{ 
-          textTransform: "none", 
-          fontWeight: 600, 
-          color: "#1e3a8a",
-          borderColor: "#bfdbfe",
-          borderRadius: "14px", 
-          px: 3,
-          "&:hover": { borderColor: "#3b82f6", backgroundColor: "#f0f9ff" }
-        }}
+        sx={{
+  textTransform: "none",
+  fontWeight: 600,
+  color: "#1e3a8a",
+  borderColor: "#bfdbfe",
+  borderRadius: "14px",
+  px: 3,
+  width: { xs: "100%", sm: "auto" },
+  "&:hover": {
+    borderColor: "#3b82f6",
+    backgroundColor: "#f0f9ff",
+  },
+}}
       >
         Add Excel
       </Button>
       <Button 
         variant="outlined" 
         startIcon={<FileDownloadIcon sx={{ fontSize: "1.1rem" }} />}
-        sx={{ 
-          textTransform: "none", 
-          fontWeight: 600, 
-          color: "#1e3a8a",
-          borderColor: "#bfdbfe",
-          borderRadius: "14px", 
-          px: 3,
-          "&:hover": { borderColor: "#3b82f6", backgroundColor: "#f0f9ff" }
-        }}
+    sx={{
+  textTransform: "none",
+  fontWeight: 600,
+  color: "#1e3a8a",
+  borderColor: "#bfdbfe",
+  borderRadius: "14px",
+  px: 3,
+  width: { xs: "100%", sm: "auto" },
+  "&:hover": {
+    borderColor: "#3b82f6",
+    backgroundColor: "#f0f9ff",
+  },
+}}
       >
         Template
       </Button>
