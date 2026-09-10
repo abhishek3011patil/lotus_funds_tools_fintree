@@ -7,7 +7,6 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   FormControl,
   InputAdornment,
   InputLabel,
@@ -30,6 +29,7 @@ import type {
   FeedPage,
   RecommendationStatus,
 } from "../types";
+import { ClientRecommendationsSkeleton } from "../../components/ClientPageSkeletons";
 
 const emptyPage: FeedPage = {
   items: [],
@@ -328,9 +328,7 @@ const ClientRecommendationsPage = () => {
       )}
 
       {loading ? (
-        <Box sx={{ minHeight: 420, display: "grid", placeItems: "center" }}>
-          <CircularProgress sx={{ color: "#5271FF" }} />
-        </Box>
+        <ClientRecommendationsSkeleton />
       ) : (
         <Stack spacing={4.5}>
           <Box component="section">

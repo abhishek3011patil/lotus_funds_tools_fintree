@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import {
   Alert,
   Box,
-  CircularProgress,
   Pagination,
   Snackbar,
   Stack,
@@ -18,6 +17,7 @@ import {
 } from "../api";
 import { openAnalystCheckout } from "../razorpay";
 import type { ClientAnalyst } from "../types";
+import { ClientAnalystsSkeleton } from "../../components/ClientPageSkeletons";
 
 const getErrorMessage = (error: unknown) => {
   const responseMessage = (
@@ -150,14 +150,14 @@ const ClientAnalystsPage = () => {
         </Alert>
       )}
 
-      <Typography sx={{ color: "#64748B", fontSize: 13.5, mb: 1.75 }}>
-        {loading ? "Loading analysts…" : `${total} verified analyst${total === 1 ? "" : "s"}`}
-      </Typography>
+      {!loading && (
+        <Typography sx={{ color: "#64748B", fontSize: 13.5, mb: 1.75 }}>
+          {total} verified analyst{total === 1 ? "" : "s"}
+        </Typography>
+      )}
 
       {loading ? (
-        <Box sx={{ minHeight: 320, display: "grid", placeItems: "center" }}>
-          <CircularProgress sx={{ color: "#5271FF" }} />
-        </Box>
+        <ClientAnalystsSkeleton />
       ) : analysts.length === 0 ? (
         <Box
           sx={{

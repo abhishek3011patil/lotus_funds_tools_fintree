@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -27,6 +27,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
 import { getLoginRoute } from '../../utils/authRedirect';
 import api from '../../utils/axio';
+import { ClientRouteSkeleton } from './ClientPageSkeletons';
 
 const drawerWidth = 240;
 
@@ -337,7 +338,9 @@ export const ClientLayout = () => {
             overflowY: 'auto',
           }}
         >
-          <Outlet />
+          <Suspense fallback={<ClientRouteSkeleton />}>
+            <Outlet />
+          </Suspense>
         </Box>
       </Box>
     </Box>

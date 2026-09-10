@@ -3,7 +3,7 @@ import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import NotificationsRoundedIcon from "@mui/icons-material/NotificationsRounded";
 import OnlinePredictionRoundedIcon from "@mui/icons-material/OnlinePredictionRounded";
 import TodayRoundedIcon from "@mui/icons-material/TodayRounded";
-import { Alert, Box, CircularProgress, Stack, Typography } from "@mui/material";
+import { Alert, Box, Stack, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { fetchClientDashboard } from "../api";
 import type { ClientDashboardResponse } from "../types";
@@ -12,6 +12,7 @@ import DiscoverAnalystsPanel from "../components/DiscoverAnalystsPanel";
 import RecentCallsPanel from "../components/RecentCallsPanel";
 import SubscriptionsPanel from "../components/SubscriptionsPanel";
 import { ExpiringPanel, NotificationsPanel } from "../components/DashboardSidePanels";
+import { ClientDashboardSkeleton } from "../../components/ClientPageSkeletons";
 
 const ClientDashboardPage = () => {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ const ClientDashboardPage = () => {
   }, []);
 
   if (!dashboard && !error) {
-    return <Box sx={{ minHeight: 520, display: "grid", placeItems: "center" }}><CircularProgress sx={{ color: "#5271FF" }} /></Box>;
+    return <ClientDashboardSkeleton />;
   }
 
   if (!dashboard) return <Alert severity="error">{error}</Alert>;

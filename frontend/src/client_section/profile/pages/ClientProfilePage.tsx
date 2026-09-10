@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Box, Button, CircularProgress, Paper, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Paper, Stack, Typography } from "@mui/material";
 import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
@@ -9,6 +9,7 @@ import ChangePasswordPanel from "../components/ChangePasswordPanel";
 import { fetchClientProfile } from "../api";
 import type { ClientProfile } from "../types";
 import { getLoginRoute } from "../../../utils/authRedirect";
+import { ClientProfileSkeleton } from "../../components/ClientPageSkeletons";
 
 type Section = "profile" | "password";
 
@@ -26,7 +27,9 @@ const ClientProfilePage = () => {
       .catch((requestError) => {
         if (requestError?.name !== "CanceledError") setError("Unable to load your profile.");
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
     return () => controller.abort();
   }, []);
 
@@ -64,7 +67,7 @@ const ClientProfilePage = () => {
         </Paper>
 
         <Box>
-          {loading && <Box sx={{ py: 8, textAlign: "center" }}><CircularProgress size={30} /></Box>}
+          {loading && <ClientProfileSkeleton />}
           {error && <Alert severity="error">{error}</Alert>}
           {!loading && !error && section === "profile" && profile && <ProfileOverview profile={profile} />}
           {!loading && !error && section === "password" && <ChangePasswordPanel />}

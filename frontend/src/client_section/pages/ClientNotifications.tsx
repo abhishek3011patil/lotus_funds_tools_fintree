@@ -4,9 +4,10 @@ import DoneAllRoundedIcon from "@mui/icons-material/DoneAllRounded";
 import NotificationsNoneRoundedIcon from "@mui/icons-material/NotificationsNoneRounded";
 import {
   Alert, Box, Button, Card, CardActionArea, CardContent, Chip,
-  CircularProgress, Container, IconButton, Stack, Typography,
+  CircularProgress, Container, IconButton, Skeleton, Stack, Typography,
 } from "@mui/material";
 import api from "../../utils/axio";
+import { ClientNotificationsSkeleton } from "../components/ClientPageSkeletons";
 
 interface Notification {
   id: string;
@@ -123,9 +124,13 @@ const ClientNotifications = () => {
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1.5} mb={3}>
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 700, color: "#1e293b" }}>Notifications</Typography>
-            <Typography color="text.secondary">
-              {unreadCount ? `${unreadCount} unread update${unreadCount === 1 ? "" : "s"}` : "You are all caught up"}
-            </Typography>
+            {loading ? (
+              <Skeleton variant="text" width={170} aria-label="Loading notification count" />
+            ) : (
+              <Typography color="text.secondary">
+                {unreadCount ? `${unreadCount} unread update${unreadCount === 1 ? "" : "s"}` : "You are all caught up"}
+              </Typography>
+            )}
           </Box>
           {unreadCount > 0 && (
             <Button variant="outlined" startIcon={markingAll ? <CircularProgress size={16} /> : <DoneAllRoundedIcon />} disabled={markingAll} onClick={() => void markAllRead()}>
@@ -141,7 +146,7 @@ const ClientNotifications = () => {
         )}
 
         {loading ? (
-          <Box display="flex" justifyContent="center" alignItems="center" minHeight="45vh"><CircularProgress /></Box>
+          <ClientNotificationsSkeleton />
         ) : notifications.length === 0 && !error ? (
           <Stack alignItems="center" spacing={1} sx={{ py: 8, bgcolor: "#fff", borderRadius: 3, border: "1px dashed #cbd5e1" }}>
             <NotificationsNoneRoundedIcon sx={{ fontSize: 48, color: "#94a3b8" }} />
