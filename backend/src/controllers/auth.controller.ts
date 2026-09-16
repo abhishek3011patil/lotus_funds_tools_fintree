@@ -361,7 +361,9 @@ if (
 
   /* ================= WRONG COMPANY PORTAL ================= */
 
-  if (user.role?.toUpperCase() !== normalizedRequestedRole) {
+  // The shared Company Portal sends ADMIN for all company accounts.
+  // Authorization and the token must retain the account's stored role.
+  if (!["ADMIN", "SUPERADMIN", "EMPLOYEE"].includes(user.role)) {
     return res.status(403).json({
       success: false,
       code: "WRONG_LOGIN_PORTAL",
