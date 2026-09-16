@@ -16,6 +16,7 @@ import {
   FormControlLabel,
   Autocomplete,
   Divider,
+  Chip
 } from "@mui/material";
 import axios from "axios";
 import type { SelectChangeEvent } from "@mui/material";
@@ -23,6 +24,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import RARegistrationDevTools from "../dev/RARegistrationDevTools";
 import InputAdornment from "@mui/material/InputAdornment";
+
 
 import { State, City } from "country-state-city";
 import { useNavigate } from "react-router-dom";
@@ -46,6 +48,13 @@ const navigate = useNavigate();
   
   const [errors, setErrors] = useState<{ [key: string]: boolean }>({});
   const [serverErrors, setServerErrors] = useState<{ [key: string]: string }>({});
+
+  const [aadhaarNumber, setAadhaarNumber] = useState("");
+const [aadhaarOtp, setAadhaarOtp] = useState("");
+const [aadhaarOtpSent, setAadhaarOtpSent] = useState(false);
+const [aadhaarVerified, setAadhaarVerified] = useState(false);
+const [aadhaarLoading, setAadhaarLoading] = useState(false);
+
 
   const API_URL = import.meta.env.VITE_API_URL;
 
@@ -94,6 +103,7 @@ const navigate = useNavigate();
   ifsc_code: "",
 
   pan_number: "",
+  aadhaar_number: "",
   address_proof_type: "",
 
   declare_info_true: false,
@@ -1598,7 +1608,6 @@ helperText={
         />
       </Grid>
 
-      {/* PAN CARD */}
     {/* PAN CARD */}
       <Grid 
         size={{ xs: 12, md: 6 }} 
@@ -1649,6 +1658,123 @@ helperText={
         </Box>
       </Grid>
     </Grid>
+
+{/* ================= AADHAAR KYC ================= */}
+<Typography sx={[styles.subTitle, { mt: 4, mb: 2 }]}>
+  Aadhaar KYC
+</Typography>
+
+<Grid container spacing={2} alignItems="flex-start">
+
+  {/* AADHAAR NUMBER & ACTION */}
+  <Grid item xs={12} sm={8} md={6}>
+    <TextField
+      fullWidth
+      required
+      disabled={aadhaarVerified}
+      name="aadhaar_number"
+      label="Aadhaar Number"
+      placeholder="Enter 12 digit Aadhaar number"
+      value={aadhaarNumber}
+      onChange={(e) => {
+        const value = e.target.value.replace(/\D/g, "").slice(0, 12);
+        setAadhaarNumber(value);
+        setAadhaarOtpSent(false);
+        setAadhaarVerified(false);
+      }}
+      error={!!errors.aadhaar_number}
+      helperText={
+        errors.aadhaar_number
+          ? "Enter valid 12 digit Aadhaar number"
+          : aadhaarVerified
+          ? ""
+          : "Enter your 12 digit Aadhaar number"
+      }
+      inputProps={{
+        maxLength: 12,
+        inputMode: "numeric",
+      }}
+      InputProps={{
+        endAdornment: (
+          <InputAdornment position="end">
+            {aadhaarVerified ? (
+              <Chip 
+                icon={<CheckCircleIcon />} 
+                label="Verified" 
+                color="success" 
+                variant="outlined" 
+                size="small" 
+              />
+            ) : (
+              <Button
+                variant="contained"
+                disabled={aadhaarNumber.length !== 12 || aadhaarLoading}
+                onClick={() => setAadhaarOtpSent(true)}
+                sx={{
+                  textTransform: "none",
+                  fontWeight: 600,
+                  borderRadius: 1.5,
+                  boxShadow: "none",
+                  px: 2,
+                }}
+              >
+                {aadhaarLoading
+                  ? "Sending..."
+                  : aadhaarOtpSent
+                  ? "Resend OTP"
+                  : "Send OTP"}
+              </Button>
+            )}
+          </InputAdornment>
+        ),
+      }}
+      sx={styles.input}
+    />
+  </Grid>
+
+  {/* OTP INPUT & VERIFY */}
+  {aadhaarOtpSent && !aadhaarVerified && (
+    <Grid item xs={12} sm={8} md={6}>
+      <TextField
+        fullWidth
+        label="Enter OTP"
+        placeholder="6 digit OTP"
+        value={aadhaarOtp}
+        onChange={(e) => {
+          const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+          setAadhaarOtp(value);
+        }}
+        inputProps={{
+          maxLength: 6,
+          inputMode: "numeric",
+        }}
+        helperText="Enter OTP sent to registered mobile"
+        InputProps={{
+          endAdornment: (
+            <InputAdornment position="end">
+              <Button
+                variant="contained"
+                color="primary"
+                disabled={aadhaarOtp.length !== 6 || aadhaarLoading}
+                onClick={() => setAadhaarVerified(true)}
+                sx={{
+                  textTransform: "none",
+                  fontWeight: 600,
+                  borderRadius: 1.5,
+                  boxShadow: "none",
+                  px: 2,
+                }}
+              >
+                {aadhaarLoading ? "Verifying..." : "Verify"}
+              </Button>
+            </InputAdornment>
+          ),
+        }}
+        sx={styles.input}
+      />
+    </Grid>
+  )}
+</Grid>
 
     {/* ================= ADDRESS ================= */}
     <Grid container spacing={3} alignItems="center" sx={{ mt: 4 }}>
