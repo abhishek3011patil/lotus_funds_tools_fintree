@@ -1,4 +1,5 @@
 import { Response } from "express";
+import { unlink } from "fs/promises";
 import { searchInstruments } from "../services/instrumentSearch.service";
 import { pool } from "../db";
 import { AuthRequest } from "../middlewares/auth.middleware";
@@ -51,9 +52,19 @@ export const createResearchCall = async (
   req: AuthRequest,
   res: Response
 ) => {
+  const files = Array.isArray(req.files)
+    ? req.files
+    : Object.values(req.files || {}).flat();
+  if (req.file) files.push(req.file);
+  let attachmentsSaved = false;
   try {
-    const file = req.file;
-    const filePath = file ? file.path : null;
+    const filePath = files[0]?.path || null;
+    const attachments = files.map(file => ({
+      url: `/uploads/${file.filename}`,
+      name: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+    }));
 
     const {
       status = "DRAFT",
@@ -194,13 +205,14 @@ export const createResearchCall = async (
         disclaimer_snapshot_at,
         published_message_text,
         message_template_version,
-        message_template_snapshot
+        message_template_snapshot,
+        attachments
       )
       VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
         $11,$12,$13,$14,$15,$16,$17,$18,$19,
         $20,$21,$22,$23,$24,$25,$26,$27,$28,
-        $29,$30,$31
+        $29,$30,$31,$32
       )
       RETURNING *;
     `;
@@ -242,9 +254,11 @@ export const createResearchCall = async (
       messageTemplateSnapshot
         ? JSON.stringify(messageTemplateSnapshot)
         : null,
+      JSON.stringify(attachments),
     ];
 
 const { rows } = await pool.query(query, values);
+attachmentsSaved = true;
 const createdCall = rows[0];
 
 
@@ -354,6 +368,7 @@ for (const client of clientResult.rows) {
       id: createdCall.id,
       created_at: createdCall.created_at,
       file: filePath,
+      attachments,
     });
   } catch (err) {
     console.error("CREATE CALL ERROR:", err);
@@ -361,6 +376,12 @@ for (const client of clientResult.rows) {
     return res.status(500).json({
       message: "Server error",
     });
+  } finally {
+    if (!attachmentsSaved) {
+      await Promise.all(files.map(file => unlink(file.path).catch(error => {
+        if (error.code !== "ENOENT") console.error("UPLOAD CLEANUP ERROR:", error);
+      })));
+    }
   }
 };
 
@@ -397,6 +418,8 @@ export const getRecommendationHistory = async (
     const query = `
       SELECT
         rc.created_at AS date_time,
+        rc.file_url,
+        rc.attachments,
 
         COALESCE(rc.action, '-') AS action,
         COALESCE(rc.exchange_type, '-') AS exchange,
@@ -531,6 +554,7 @@ export const getResearchCalls = async (req: AuthRequest, res: Response) => {
     version_type: row.version_type,
     parent_call_id: row.parent_call_id,
     file_url: row.file_url,
+    attachments: row.attachments,
 
     exchange: row.exchange_type,
     instrument: row.market_type,
@@ -912,7 +936,8 @@ const insertResult = await client.query(
     message_template_snapshot,
 
     parent_call_id,
-    is_latest
+    is_latest,
+    attachments
   )
   VALUES (
     $1,
@@ -964,7 +989,8 @@ const insertResult = await client.query(
     $34,
 
     $35,
-    $36
+    $36,
+    $37
   )
   RETURNING *
   `,
@@ -1025,6 +1051,7 @@ const insertResult = await client.query(
 
     rootId,
     true,
+    JSON.stringify(existingCall.attachments || []),
   ]
 );
 
@@ -1184,6 +1211,7 @@ export const getCallVersionHistory = async (
     errata_reason,
 
     file_url,
+    attachments,
     disclaimer_snapshot,
     disclaimer_snapshot_at,
     published_message_text,
@@ -1633,6 +1661,8 @@ export const getMyRecommendationHistory = async (
     const query = `
       SELECT
         rc.created_at AS date_time,
+        rc.file_url,
+        rc.attachments,
 
         COALESCE(rc.action, '-') AS action,
         COALESCE(rc.exchange_type, '-') AS exchange,

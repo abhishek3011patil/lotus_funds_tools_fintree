@@ -28,7 +28,7 @@ import {
 
 
 import RecommendationsPanel from "../components/page_Mainapp/RecommendationsPanel";
-import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
+import RecommendationMediaUpload from "../components/common/RecommendationMediaUpload";
 
 import AdditionalPriceSection, {
   type AdditionalPriceField,
@@ -164,11 +164,9 @@ const fetchRAMessageProfile = async () => {
   //console.log("RENDER");
   const [underlyingStudyInput, setUnderlyingStudyInput] = useState("");
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
   const [isErrataMode, setIsErrataMode] = useState(false);
   const [errataSourceId, setErrataSourceId] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 const [isSubmitting, setIsSubmitting] = useState(false);
 const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
 const [previewLoading, setPreviewLoading] = useState(false);
@@ -201,16 +199,6 @@ const [
   setFrequentStudyOptions,
 ] = useState<StudyOption[]>([]);
 
-
-const handleFileChange = (
-  event: ChangeEvent<HTMLInputElement>
-) =>  {
-  const file = event.target.files?.[0];
-  if (file) {
-    setSelectedFile(file);   // ✅ store it
-    console.log("Selected file:", file.name);
-  }
-};
 
 
   type RecommendationForm = {
@@ -343,14 +331,11 @@ function formReducer(
   setDirectValue("");
 
   // Reset uploaded media
-  setSelectedFile(null);
+  setSelectedFiles([]);
   setPreviewDialogOpen(false);
   setPreparedPreview(null);
   setPreviewLoading(false);
 
-  if (fileInputRef.current) {
-    fileInputRef.current.value = "";
-  }
 };
 
 const prepareResearchCallMessage = async (
@@ -888,9 +873,7 @@ const finalDisplayName =
 
     const formData = new FormData();
 
-    if (selectedFile) {
-      formData.append("file", selectedFile);
-    }
+    selectedFiles.forEach(file => formData.append("files", file));
 
     Object.entries(payload).forEach(([key, value]) => {
       if (value !== null && value !== undefined) {
@@ -2446,9 +2429,7 @@ const finalSymbol = String(
 
     const formData = new FormData();
 
-    if (selectedFile) {
-      formData.append("file", selectedFile);
-    }
+    selectedFiles.forEach(file => formData.append("files", file));
 
     Object.entries(payload).forEach(([key, value]) => {
       if (value !== null && value !== undefined) {
@@ -3622,36 +3603,13 @@ sx={{
     minWidth: { xs: "100%", sm: 180 },
   }}
 >
-            <input
-              required
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              style={{ display: 'none' }}
-              accept="image/*,video/*,pdf/*"
-            />
-
-            {/* Your Button */}
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<CloudUploadOutlinedIcon />}
-              onClick={() => fileInputRef.current?.click()}
-              sx={{
-                fontSize: '0.7rem',
-                py: 1,
-                backgroundColor: "#c6c4cb",
-                color: "#fff",
-                '&:hover': { backgroundColor: "#b0afb6" }
-              }}
-            >
-              Upload Media
-            </Button>
-            {selectedFile && (
-  <Typography sx={{ fontSize: "0.6rem", color: "green" }}>
-    {selectedFile.name}
-  </Typography>
-)}
+            {isErrataMode ? (
+              <Typography variant="caption" color="text.secondary">
+                Existing attachments are retained for this correction.
+              </Typography>
+            ) : (
+              <RecommendationMediaUpload files={selectedFiles} onChange={setSelectedFiles} disabled={isSubmitting || previewLoading} />
+            )}
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <Typography sx={{ fontSize: '0.65rem', fontWeight: 600 }}>Is this an Algo Powered Recommendation?</Typography>
               <Switch size="small" />

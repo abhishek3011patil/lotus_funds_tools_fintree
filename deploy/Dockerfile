@@ -37,6 +37,8 @@ RUN npm ci --omit=dev \
     && apt-get purge -y --auto-remove python3 make g++ \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=backend-build /source/backend/dist ./dist
+COPY backend/scripts/migrate.js ./scripts/migrate.js
+COPY backend/migrations/ ./migrations/
 COPY --from=frontend-build /source/frontend/dist /app/frontend
 
 RUN mkdir -p /app/backend/uploads \
@@ -48,4 +50,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:3000/check').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
-CMD ["node", "dist/server.js"]
+CMD ["sh", "-c", "npm run migrate && exec node dist/server.js"]

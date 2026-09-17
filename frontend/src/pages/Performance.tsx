@@ -672,6 +672,7 @@ return (
 {/* Recommendation History Table Component */}
 <Box sx={{ mt: 1 }}>
 <RecommendationHistory
+  showMedia
   enableExport
   showAllRAs={true}
   exportFileBaseName="ra-performance"

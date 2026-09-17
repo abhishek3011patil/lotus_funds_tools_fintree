@@ -31,6 +31,7 @@ type ClientRegistrationForm = {
   aadhaarNumber: string;
   aadhaarKycStatus: string;
   aadhaarReferenceId: string;
+  aadhaarVerificationToken: string;
 };
 
 const ClientRegistrationPage = () => {
@@ -45,6 +46,7 @@ const ClientRegistrationPage = () => {
       aadhaarNumber: "",
   aadhaarKycStatus: "",
   aadhaarReferenceId: "",
+  aadhaarVerificationToken: "",
   });
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [notice, setNotice] = useState("");
@@ -55,6 +57,7 @@ const ClientRegistrationPage = () => {
 const [aadhaarOtpSent, setAadhaarOtpSent] = useState(false);
 const [aadhaarVerified, setAadhaarVerified] = useState(false);
 const [aadhaarReferenceId, setAadhaarReferenceId] = useState("");
+const [aadhaarChallengeToken, setAadhaarChallengeToken] = useState("");
 const [aadhaarLoading, setAadhaarLoading] = useState(false);
 const [aadhaarMessage, setAadhaarMessage] = useState("");
 
@@ -74,7 +77,18 @@ const [aadhaarMessage, setAadhaarMessage] = useState("");
   ) => {
     setNotice("");
     setError("");
+    if (field === "email") resetAadhaarVerification();
     setForm((current) => ({ ...current, [field]: event.target.value }));
+  };
+
+  const resetAadhaarVerification = () => {
+    setAadhaarVerified(false);
+    setAadhaarOtpSent(false);
+    setAadhaarOtp("");
+    setAadhaarReferenceId("");
+    setAadhaarChallengeToken("");
+    setAadhaarMessage("");
+    setForm((current) => ({ ...current, aadhaarKycStatus: "", aadhaarReferenceId: "", aadhaarVerificationToken: "" }));
   };
 
   const handlePicture = (event: ChangeEvent<HTMLInputElement>) => {
@@ -110,12 +124,15 @@ const [aadhaarMessage, setAadhaarMessage] = useState("");
   }
 
   setAadhaarLoading(true);
+  resetAadhaarVerification();
 
   try {
     const response = await axios.post(
       `${import.meta.env.VITE_API_URL}/api/aadhaar/send-otp`,
       {
         aadhaar_number: aadhaar,
+        email: form.email,
+        purpose: "client_registration",
       }
     );
 
@@ -124,11 +141,12 @@ const [aadhaarMessage, setAadhaarMessage] = useState("");
       response.data?.data?.reference_id ||
       "";
 
-    if (!referenceId) {
+    if (!referenceId || !response.data?.challenge_token) {
       throw new Error("Aadhaar reference ID was not received.");
     }
 
     setAadhaarReferenceId(referenceId);
+    setAadhaarChallengeToken(response.data.challenge_token);
     setAadhaarOtpSent(true);
     setAadhaarMessage("OTP sent successfully to your Aadhaar-linked mobile number.");
   } catch (requestError: unknown) {
@@ -174,10 +192,13 @@ const handleVerifyAadhaarOtp = async () => {
         aadhaar_number: aadhaar,
         reference_id: aadhaarReferenceId,
         otp,
+        email: form.email,
+        purpose: "client_registration",
+        challenge_token: aadhaarChallengeToken,
       }
     );
 
-    if (response.data?.success) {
+    if (response.data?.success && response.data?.verification_token) {
       setAadhaarVerified(true);
       setAadhaarOtpSent(false);
 
@@ -186,6 +207,7 @@ const handleVerifyAadhaarOtp = async () => {
         aadhaarNumber: aadhaar,
         aadhaarKycStatus: "VERIFIED",
         aadhaarReferenceId: aadhaarReferenceId,
+        aadhaarVerificationToken: response.data.verification_token,
       }));
 
       setAadhaarMessage(
@@ -218,12 +240,11 @@ const handleVerifyAadhaarOtp = async () => {
       setError("Passwords do not match.");
       return;
     }
-    setSubmitting(true);
-
     if (
   form.aadhaarKycStatus !== "VERIFIED" ||
   !form.aadhaarNumber ||
-  !form.aadhaarReferenceId
+  !form.aadhaarReferenceId ||
+  !form.aadhaarVerificationToken
 ) {
   setError("Please complete Aadhaar KYC verification before creating your account.");
   return;
@@ -249,6 +270,9 @@ setSubmitting(true);
         });
       }, 900);
     } catch (requestError: unknown) {
+      if (axios.isAxiosError(requestError) && requestError.response?.data?.field === "aadhaarNumber") {
+        resetAadhaarVerification();
+      }
       setError(
         axios.isAxiosError(requestError)
           ? requestError.response?.data?.message || "Unable to complete registration."
@@ -319,7 +343,7 @@ setSubmitting(true);
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, gap: 2.2 }}>
               <TextField label="First name" value={form.firstName} onChange={updateField("firstName")} required autoComplete="given-name" />
               <TextField label="Last name" value={form.lastName} onChange={updateField("lastName")} required autoComplete="family-name" />
-              <TextField label="Email address" type="email" value={form.email} onChange={updateField("email")} required autoComplete="email" sx={{ gridColumn: { sm: "1 / -1" } }} />
+              <TextField label="Email address" type="email" value={form.email} onChange={updateField("email")} disabled={aadhaarLoading} required autoComplete="email" sx={{ gridColumn: { sm: "1 / -1" } }} />
               <TextField
                 label="Phone number"
                 value={form.phoneNumber}
@@ -344,7 +368,7 @@ setSubmitting(true);
         setNotice("");
         setError("");
         setAadhaarMessage("");
-
+        resetAadhaarVerification();
         setForm((current) => ({
           ...current,
           aadhaarNumber: value,
@@ -355,7 +379,7 @@ setSubmitting(true);
         setAadhaarVerified(false);
       }}
       required
-      disabled={aadhaarVerified}
+      disabled={aadhaarVerified || aadhaarLoading}
       inputProps={{
         maxLength: 12,
         inputMode: "numeric",
@@ -429,6 +453,9 @@ setSubmitting(true);
           ) : (
             "Verify OTP"
           )}
+        </Button>
+        <Button type="button" onClick={handleSendAadhaarOtp} disabled={aadhaarLoading}>
+          Resend OTP
         </Button>
       </Stack>
     )}

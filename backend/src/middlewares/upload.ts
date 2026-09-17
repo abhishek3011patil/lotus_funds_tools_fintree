@@ -2,6 +2,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { Request } from "express";
+import { randomUUID } from "crypto";
 
 const uploadDir = path.join(__dirname, "../../uploads");
 
@@ -39,7 +40,7 @@ const storage = multer.diskStorage({
       .replace(/\s+/g, "_")
       .replace(/[^a-zA-Z0-9_-]/g, "");
 
-    const uniqueName = `${Date.now()}-${baseName}${ext}`;
+    const uniqueName = `${Date.now()}-${randomUUID()}-${baseName}${ext}`;
 
     cb(null, uniqueName);
   },
@@ -75,3 +76,38 @@ export const upload = multer({
     fileSize: 5 * 1024 * 1024, // 5MB
   },
 });
+
+// Recommendation attachments have a broader allowlist than registration proofs.
+export const recommendationMimeTypes: Record<string, string[]> = {
+  ".jpg": ["image/jpeg", "image/jpg"],
+  ".jpeg": ["image/jpeg", "image/jpg"],
+  ".png": ["image/png"],
+  ".webp": ["image/webp"],
+  ".gif": ["image/gif"],
+  ".pdf": ["application/pdf"],
+  ".doc": ["application/msword"],
+  ".docx": ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+  ".xls": ["application/vnd.ms-excel"],
+  ".xlsx": ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+  ".csv": ["text/csv", "application/csv", "application/vnd.ms-excel", "text/plain"],
+  ".txt": ["text/plain"],
+  ".ppt": ["application/vnd.ms-powerpoint"],
+  ".pptx": ["application/vnd.openxmlformats-officedocument.presentationml.presentation"],
+};
+
+export const recommendationUpload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024, files: 10 },
+  fileFilter: (_req, file, cb) => {
+    const extension = path.extname(file.originalname).toLowerCase();
+    if (!recommendationMimeTypes[extension]?.includes(file.mimetype)) {
+      return cb(new Error(
+        "Invalid file type. Use JPG, JPEG, PNG, WEBP, GIF, PDF, DOC, DOCX, XLS, XLSX, CSV, TXT, PPT or PPTX."
+      ));
+    }
+    cb(null, true);
+  },
+}).fields([
+  { name: "files", maxCount: 10 },
+  { name: "file", maxCount: 1 }, // Compatibility with older clients.
+]);

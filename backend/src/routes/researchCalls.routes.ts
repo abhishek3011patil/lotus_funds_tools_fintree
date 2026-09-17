@@ -12,7 +12,7 @@ import {
   getResearchCallTemplates,
   saveResearchCallTemplate,
 } from "../controllers/researchCallTemplate.controller";
-import { upload } from "../middlewares/upload";
+import { recommendationUpload } from "../middlewares/upload";
 import { requireActiveSubscription, requireSubscriptionFeature, reserveSubscriptionEventLimit } from "../middlewares/subscriptionAccess.middleware";
 import { requireResearchPublishingAuthorization } from "../middlewares/researchPublishingPolicy.middleware";
 import { getMyUnderlyingStudyPreferences } from "../controllers/underlyingStudyPreferences.controller";
@@ -45,7 +45,7 @@ router.post(
     limitKey:
       "RA_RESEARCH_CALLS_PER_MONTH",
   }),
-  upload.single("file"),
+  recommendationUpload,
   createResearchCall
 );
 router.get("/research/calls/my", authenticate, getResearchCalls);

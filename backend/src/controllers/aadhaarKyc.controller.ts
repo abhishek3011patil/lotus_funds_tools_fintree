@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import axios from "axios";
 import { pool } from "../db";
+import { issueClientAadhaarProof, readClientAadhaarProof } from "../utils/clientAadhaarProof";
 
 /* =========================================================
    SANDBOX CONFIGURATION
@@ -113,6 +114,11 @@ export const sendAadhaarOtp = async (
 ) => {
 
   try {
+    const isClient = req.body?.purpose === "client_registration";
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    if (isClient && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ success: false, message: "Enter your registration email before requesting Aadhaar OTP." });
+    }
 
     const {
       aadhaar_number
@@ -380,6 +386,10 @@ export const sendAadhaarOtp = async (
       reference_id:
         String(referenceId),
 
+      ...(isClient ? { challenge_token: issueClientAadhaarProof("challenge", {
+        aadhaar, email, referenceId: String(referenceId),
+      }) } : {}),
+
     });
 
 
@@ -448,6 +458,8 @@ export const verifyAadhaarOtp = async (
 ) => {
 
   try {
+    const isClient = req.body?.purpose === "client_registration";
+    const email = String(req.body?.email || "").trim().toLowerCase();
 
     const {
       aadhaar_number,
@@ -589,6 +601,12 @@ export const verifyAadhaarOtp = async (
     /* -----------------------------------------------------
        GET ACCESS TOKEN
        ----------------------------------------------------- */
+
+    if (isClient && !readClientAadhaarProof(req.body?.challenge_token, "challenge", {
+      aadhaar, email, referenceId: String(reference_id),
+    })) {
+      return res.status(400).json({ success: false, message: "Aadhaar OTP request expired or does not match. Please request a new OTP." });
+    }
 
     const accessToken =
       await getSandboxAccessToken();
@@ -732,9 +750,17 @@ export const verifyAadhaarOtp = async (
        AADHAAR VERIFIED
        ===================================================== */
 
-    console.log(
-      "AADHAAR OTP VERIFIED SUCCESSFULLY"
-    );
+    if (isClient) {
+      return res.status(200).json({
+        success: true,
+        message: "Aadhaar KYC verified successfully.",
+        status: "VERIFIED",
+        reference_id: String(reference_id),
+        verification_token: issueClientAadhaarProof("verified", {
+          aadhaar, email, referenceId: String(reference_id),
+        }),
+      });
+    }
 
 
     /* -----------------------------------------------------

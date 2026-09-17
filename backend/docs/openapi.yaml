@@ -2615,7 +2615,12 @@ components:
           type: string
           description: JSON-encoded array of canonical underlying-study values for multipart submission.
         research_remarks: { type: string }
-        file: { type: string, format: binary }
+        file: { type: string, format: binary, description: Legacy single attachment; counts toward the 10-file total. }
+        files:
+          type: array
+          maxItems: 10
+          description: Up to 10 attachments total, 5 MB each. JPG/JPEG, PNG, WEBP, GIF, PDF, DOC/DOCX, XLS/XLSX, CSV, TXT and PPT/PPTX.
+          items: { type: string, format: binary }
 
     ResearchCall:
       type: object

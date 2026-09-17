@@ -4,6 +4,7 @@ import type { Request, Response } from "express";
 import { pool } from "../../db";
 import type { AuthRequest } from "../../middlewares/auth.middleware";
 import { createAuditLog } from "../../utils/auditLogger";
+import { readClientAadhaarProof } from "../../utils/clientAadhaarProof";
 
 export const getClientsForAdmin = async (_req: Request, res: Response) => {
   try {
@@ -114,10 +115,6 @@ export const registerClient = async (req: Request, res: Response) => {
   req.body?.aadhaarNumber || ""
 ).replace(/\D/g, "");
 
-const aadhaarKycStatus = String(
-  req.body?.aadhaarKycStatus || ""
-).trim();
-
 const aadhaarReferenceId = String(
   req.body?.aadhaarReferenceId || ""
 ).trim();
@@ -157,9 +154,12 @@ const profilePicture = req.file;
     return res.status(400).json({ success: false, message: passwordError });
   }
 
-  // ================= AADHAAR KYC VALIDATION =================
+  const verifiedAt = readClientAadhaarProof(req.body?.aadhaarVerificationToken, "verified", {
+    aadhaar: aadhaarNumber, email, referenceId: aadhaarReferenceId,
+  });
+  // Only the OTP verification endpoint can issue this proof; form status is untrusted.
 if (
-  aadhaarKycStatus !== "VERIFIED" ||
+  !verifiedAt ||
   !/^\d{12}$/.test(aadhaarNumber) ||
   !aadhaarReferenceId
 ) {
@@ -233,7 +233,7 @@ if (
     aadhaarNumber,
     "VERIFIED",
     aadhaarReferenceId,
-    new Date(),
+    verifiedAt,
   ]
 );
 

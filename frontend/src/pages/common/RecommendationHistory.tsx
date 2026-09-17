@@ -36,12 +36,15 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import TableExportMenu from "../../components/common/TableExportMenu";
+import RecommendationMediaButton, { type RecommendationAttachment } from "../../components/common/RecommendationMediaButton";
 import {
   formatExportDate,
   type TableExportColumn,
 } from "../../utils/tableExport.utils";
 
 interface HistoryRecord {
+  attachments?: RecommendationAttachment[];
+  file_url?: string | null;
   dateTime: string;
   action: string;
   exchange: string;
@@ -65,6 +68,8 @@ interface HistoryRecord {
 }
 
 interface ApiHistoryRecord {
+  attachments?: RecommendationAttachment[];
+  file_url?: string | null;
   date_time?: string;
   action?: string;
   exchange?: string;
@@ -85,6 +90,7 @@ interface ApiHistoryRecord {
 
 // Added Prop Interface
 interface RecommendationHistoryProps {
+  showMedia?: boolean;
   statusFilter?: string;
   enableAddNotification?: boolean;
   searchQuery?: string;
@@ -102,6 +108,7 @@ const CLIENT_HISTORY_EVENT = "client-recommendation-history-added";
 const CLIENT_HISTORY_PENDING_NOTIFICATION_KEY = "clientHistoryPendingNotification";
 
 export default function RecommendationHistory({
+  showMedia = false,
   statusFilter = "ALL",
   enableAddNotification = false,
   searchQuery = "",
@@ -115,6 +122,8 @@ export default function RecommendationHistory({
   sortBy = "latest",
 }: RecommendationHistoryProps) {
   const mapApiRowToHistory = (row: ApiHistoryRecord): HistoryRecord => ({
+    attachments: row.attachments,
+    file_url: row.file_url,
     dateTime: row.date_time || "",
     action: row.action || "-",
     exchange: row.exchange || "-",
@@ -1448,13 +1457,14 @@ const handleReset = () => {
                 <TableCell sx={historyHeadStyle}>STATUS</TableCell>
                 <TableCell align="right" sx={historyHeadStyle}>Profit / Loss</TableCell>
                 <TableCell sx={historyHeadStyle}>Researcher Name</TableCell>
+                {showMedia && <TableCell sx={historyHeadStyle}>Media</TableCell>}
               </TableRow>
             </TableHead>
 
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={13} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={showMedia ? 14 : 13} align="center" sx={{ py: 4 }}>
                     <LoadingPage
                       title="Loading"
                       subtitle="Fetching recommendation history..."
@@ -1465,7 +1475,7 @@ const handleReset = () => {
                 </TableRow>
               ) : paginatedData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={13} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={showMedia ? 14 : 13} align="center" sx={{ py: 4 }}>
                     No records found
                   </TableCell>
                 </TableRow>
@@ -1589,6 +1599,11 @@ const handleReset = () => {
                       </Box>
                     </TableCell>
                     <TableCell sx={historyBodyStyle}>{getResearcherName(row)}</TableCell>
+                    {showMedia && (
+                      <TableCell sx={historyBodyStyle}>
+                        <RecommendationMediaButton filePath={row.file_url} attachments={row.attachments} symbol={row.symbol} />
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}
