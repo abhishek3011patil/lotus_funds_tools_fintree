@@ -110,7 +110,19 @@ export const registerClient = async (req: Request, res: Response) => {
   const phoneNumber = String(req.body?.phoneNumber || "").trim();
   const password = String(req.body?.password || "");
   const confirmPassword = String(req.body?.confirmPassword || "");
-  const profilePicture = req.file;
+  const aadhaarNumber = String(
+  req.body?.aadhaarNumber || ""
+).replace(/\D/g, "");
+
+const aadhaarKycStatus = String(
+  req.body?.aadhaarKycStatus || ""
+).trim();
+
+const aadhaarReferenceId = String(
+  req.body?.aadhaarReferenceId || ""
+).trim();
+
+const profilePicture = req.file;
 
   if (!firstName || !lastName || !email || !phoneNumber || !password || !confirmPassword) {
     await removeUploadedFile(profilePicture);
@@ -144,6 +156,22 @@ export const registerClient = async (req: Request, res: Response) => {
     await removeUploadedFile(profilePicture);
     return res.status(400).json({ success: false, message: passwordError });
   }
+
+  // ================= AADHAAR KYC VALIDATION =================
+if (
+  aadhaarKycStatus !== "VERIFIED" ||
+  !/^\d{12}$/.test(aadhaarNumber) ||
+  !aadhaarReferenceId
+) {
+  await removeUploadedFile(profilePicture);
+
+  return res.status(400).json({
+    success: false,
+    field: "aadhaarNumber",
+    message:
+      "Please complete Aadhaar KYC verification before creating your account.",
+  });
+}
 
   const db = await pool.connect();
   let committed = false;
@@ -180,18 +208,34 @@ export const registerClient = async (req: Request, res: Response) => {
       [fullName, email, passwordHash]
     );
 
-    await db.query(
-      `INSERT INTO client_profiles (
-         user_id, first_name, last_name, phone_number, profile_image
-       ) VALUES ($1, $2, $3, $4, $5)`,
-      [
-        userResult.rows[0].id,
-        firstName,
-        lastName,
-        phoneDigits,
-        profilePicture?.filename || null,
-      ]
-    );
+  await db.query(
+  `INSERT INTO client_profiles (
+     user_id,
+     first_name,
+     last_name,
+     phone_number,
+     profile_image,
+     aadhaar_number,
+     aadhaar_kyc_status,
+     aadhaar_reference_id,
+     aadhaar_verified_at
+   ) VALUES (
+     $1, $2, $3, $4, $5,
+     $6, $7, $8, $9
+   )`,
+  [
+    userResult.rows[0].id,
+    firstName,
+    lastName,
+    phoneDigits,
+    profilePicture?.filename || null,
+
+    aadhaarNumber,
+    "VERIFIED",
+    aadhaarReferenceId,
+    new Date(),
+  ]
+);
 
     await db.query("COMMIT");
     committed = true;

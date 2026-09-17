@@ -31,6 +31,7 @@ import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
 import HistoryIcon from "@mui/icons-material/History";
 import axios from "axios";
 import { ClearIcon } from "@mui/x-date-pickers/icons";
+import DownloadIcon from "@mui/icons-material/Download";
 
 interface PerformanceMetrics {
   total: number;
@@ -205,6 +206,65 @@ setMetrics({
 
   // }, []); // runs once when page loads
 
+  const handleExportPerformance = async () => {
+  try {
+    setError("");
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setError("Please log in again.");
+      return;
+    }
+
+    const now = new Date();
+
+    const currentMonth = `${now.getFullYear()}-${String(
+      now.getMonth() + 1
+    ).padStart(2, "0")}`;
+
+    const currentYear = now.getFullYear();
+
+    const response = await axios.get(
+      `${import.meta.env.VITE_API_URL}/api/performance/export`,
+      {
+        params: {
+          period,
+          month: currentMonth,
+          year: currentYear,
+        },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        responseType: "blob",
+      }
+    );
+
+    const blob = new Blob([response.data], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = window.URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `ra-performance-${period}.csv`;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    window.URL.revokeObjectURL(url);
+  } catch (err: any) {
+    console.error("Performance Export Error:", err);
+
+    setError(
+      err?.response?.data?.message ||
+        "Unable to export performance data."
+    );
+  }
+};
+
 const BigCard = ({ title, value, icon: Icon, green = false, red = false }: any) => (
   <Paper sx={cardStyle}>
     <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1}>
@@ -331,45 +391,78 @@ return (
         borderRadius: "8px",
       }}
     >
-      {/* Performance Header */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 3,
-          flexWrap: "wrap",
-          gap: 2,
-        }}
+{/* Performance Header */}
+<Box
+  sx={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: { xs: "stretch", sm: "center" },
+    mb: 3,
+    flexWrap: "wrap",
+    gap: 2,
+  }}
+>
+  <Typography
+    fontSize={{ xs: "1.25rem", sm: "1.5rem", md: "1.625rem" }}
+    fontWeight={700}
+  >
+    Performance
+  </Typography>
+
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      gap: 1,
+      flexWrap: "wrap",
+      width: { xs: "100%", sm: "auto" },
+    }}
+  >
+    <FormControl
+      size="small"
+      sx={{
+        width: { xs: "100%", sm: 130 },
+      }}
+    >
+      <InputLabel id="performance-view-label">
+        View
+      </InputLabel>
+
+      <Select
+        labelId="performance-view-label"
+        value={period}
+        label="View"
+        onChange={(e) =>
+          setPeriod(
+            e.target.value as "weekly" | "monthly" | "yearly"
+          )
+        }
       >
-        <Typography
-          fontSize="1.625rem"
-          fontWeight={700}
-        >
-          Performance
-        </Typography>
+        <MenuItem value="weekly">Weekly</MenuItem>
+        <MenuItem value="monthly">Monthly</MenuItem>
+        <MenuItem value="yearly">Yearly</MenuItem>
+      </Select>
+    </FormControl>
 
-        <FormControl size="small" sx={{ minWidth: 180 }}>
-          <InputLabel id="performance-view-label">
-            View
-          </InputLabel>
-
-          <Select
-            labelId="performance-view-label"
-            value={period}
-            label="View"
-            onChange={(e) =>
-              setPeriod(
-                e.target.value as "weekly" | "monthly" | "yearly"
-              )
-            }
-          >
-            <MenuItem value="weekly">Weekly</MenuItem>
-            <MenuItem value="monthly">Monthly</MenuItem>
-            <MenuItem value="yearly">Yearly</MenuItem>
-          </Select>
-        </FormControl>
-      </Box>
+    <Button
+      variant="outlined"
+      startIcon={<DownloadIcon />}
+      onClick={handleExportPerformance}
+      sx={{
+        height: "40px",
+        width: { xs: "100%", sm: "auto" },
+        px: { xs: 2, sm: 2 },
+        textTransform: "none",
+        fontWeight: 600,
+        fontSize: "0.875rem",
+        borderRadius: "6px",
+        whiteSpace: "nowrap",
+      }}
+    >
+      Export Performance
+    </Button>
+  </Box>
+</Box>
 
       {loading ? (
         <Paper sx={cardStyle}>

@@ -29,6 +29,7 @@ import clientDashboardRoutes from "./routes/clientDashboard/clientDashboard.rout
 import clientAccountRoutes from "./routes/clientAccount/clientAccount.routes";
 import raDashboardRoutes from "./routes/raDashboard/raDashboard.routes";
 import clientRegistrationRoutes from "./routes/clientRegistration/clientRegistration.routes";
+import aadhaarKycRoutes from "./routes/aadhaarKyc.routes";
 
 const app = express();
 
@@ -167,6 +168,8 @@ app.get("/check", (_req, res) => {
 
 
 app.use("/api/whatsapp", whatsappRoutes);
+
+app.use("/api/aadhaar", aadhaarKycRoutes);
 
 app.use( "/api/client/recommendations", clientRecommendationRoutes);
 

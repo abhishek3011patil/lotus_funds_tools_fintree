@@ -28,6 +28,9 @@ type ClientRegistrationForm = {
   phoneNumber: string;
   password: string;
   confirmPassword: string;
+  aadhaarNumber: string;
+  aadhaarKycStatus: string;
+  aadhaarReferenceId: string;
 };
 
 const ClientRegistrationPage = () => {
@@ -39,12 +42,21 @@ const ClientRegistrationPage = () => {
     phoneNumber: "",
     password: "",
     confirmPassword: "",
+      aadhaarNumber: "",
+  aadhaarKycStatus: "",
+  aadhaarReferenceId: "",
   });
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [aadhaarOtp, setAadhaarOtp] = useState("");
+const [aadhaarOtpSent, setAadhaarOtpSent] = useState(false);
+const [aadhaarVerified, setAadhaarVerified] = useState(false);
+const [aadhaarReferenceId, setAadhaarReferenceId] = useState("");
+const [aadhaarLoading, setAadhaarLoading] = useState(false);
+const [aadhaarMessage, setAadhaarMessage] = useState("");
 
   const profilePreview = useMemo(
     () => (profilePicture ? URL.createObjectURL(profilePicture) : ""),
@@ -85,6 +97,118 @@ const ClientRegistrationPage = () => {
     setProfilePicture(file);
   };
 
+  const handleSendAadhaarOtp = async () => {
+  setNotice("");
+  setError("");
+  setAadhaarMessage("");
+
+  const aadhaar = form.aadhaarNumber.replace(/\D/g, "");
+
+  if (!/^\d{12}$/.test(aadhaar)) {
+    setError("Please enter a valid 12-digit Aadhaar number.");
+    return;
+  }
+
+  setAadhaarLoading(true);
+
+  try {
+    const response = await axios.post(
+      `${import.meta.env.VITE_API_URL}/api/aadhaar/send-otp`,
+      {
+        aadhaar_number: aadhaar,
+      }
+    );
+
+    const referenceId =
+      response.data?.reference_id ||
+      response.data?.data?.reference_id ||
+      "";
+
+    if (!referenceId) {
+      throw new Error("Aadhaar reference ID was not received.");
+    }
+
+    setAadhaarReferenceId(referenceId);
+    setAadhaarOtpSent(true);
+    setAadhaarMessage("OTP sent successfully to your Aadhaar-linked mobile number.");
+  } catch (requestError: unknown) {
+    setError(
+      axios.isAxiosError(requestError)
+        ? requestError.response?.data?.message ||
+            "Unable to send Aadhaar OTP."
+        : "Unable to send Aadhaar OTP."
+    );
+  } finally {
+    setAadhaarLoading(false);
+  }
+};
+const handleVerifyAadhaarOtp = async () => {
+  setNotice("");
+  setError("");
+  setAadhaarMessage("");
+
+  const aadhaar = form.aadhaarNumber.replace(/\D/g, "");
+  const otp = aadhaarOtp.replace(/\D/g, "");
+
+  if (!/^\d{12}$/.test(aadhaar)) {
+    setError("Please enter a valid 12-digit Aadhaar number.");
+    return;
+  }
+
+  if (!/^\d{6}$/.test(otp)) {
+    setError("Please enter a valid 6-digit OTP.");
+    return;
+  }
+
+  if (!aadhaarReferenceId) {
+    setError("Please request Aadhaar OTP first.");
+    return;
+  }
+
+  setAadhaarLoading(true);
+
+  try {
+    const response = await axios.post(
+      `${import.meta.env.VITE_API_URL}/api/aadhaar/verify-otp`,
+      {
+        aadhaar_number: aadhaar,
+        reference_id: aadhaarReferenceId,
+        otp,
+      }
+    );
+
+    if (response.data?.success) {
+      setAadhaarVerified(true);
+      setAadhaarOtpSent(false);
+
+      setForm((current) => ({
+        ...current,
+        aadhaarNumber: aadhaar,
+        aadhaarKycStatus: "VERIFIED",
+        aadhaarReferenceId: aadhaarReferenceId,
+      }));
+
+      setAadhaarMessage(
+        "Aadhaar KYC verified successfully."
+      );
+    } else {
+      setError(
+        response.data?.message ||
+          "Aadhaar verification failed."
+      );
+    }
+  } catch (requestError: unknown) {
+    setError(
+      axios.isAxiosError(requestError)
+        ? requestError.response?.data?.message ||
+            "Aadhaar verification failed."
+        : "Aadhaar verification failed."
+    );
+  } finally {
+    setAadhaarLoading(false);
+  }
+};
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setNotice("");
@@ -94,8 +218,19 @@ const ClientRegistrationPage = () => {
       setError("Passwords do not match.");
       return;
     }
-
     setSubmitting(true);
+
+    if (
+  form.aadhaarKycStatus !== "VERIFIED" ||
+  !form.aadhaarNumber ||
+  !form.aadhaarReferenceId
+) {
+  setError("Please complete Aadhaar KYC verification before creating your account.");
+  return;
+}
+
+setSubmitting(true);
+
     try {
       const payload = new FormData();
       Object.entries(form).forEach(([key, value]) => payload.append(key, value));
@@ -195,6 +330,117 @@ const ClientRegistrationPage = () => {
                 helperText="Include your country code when applicable."
                 sx={{ gridColumn: { sm: "1 / -1" } }}
               />
+
+              <Box sx={{ gridColumn: { sm: "1 / -1" } }}>
+  <Stack spacing={1.5}>
+    <TextField
+      label="Aadhaar Number"
+      value={form.aadhaarNumber}
+      onChange={(event) => {
+        const value = event.target.value
+          .replace(/\D/g, "")
+          .slice(0, 12);
+
+        setNotice("");
+        setError("");
+        setAadhaarMessage("");
+
+        setForm((current) => ({
+          ...current,
+          aadhaarNumber: value,
+          aadhaarKycStatus: "",
+          aadhaarReferenceId: "",
+        }));
+
+        setAadhaarVerified(false);
+      }}
+      required
+      disabled={aadhaarVerified}
+      inputProps={{
+        maxLength: 12,
+        inputMode: "numeric",
+      }}
+      helperText="Enter your 12-digit Aadhaar number."
+    />
+
+    {!aadhaarVerified && !aadhaarOtpSent && (
+      <Button
+        type="button"
+        variant="outlined"
+        onClick={handleSendAadhaarOtp}
+        disabled={
+          aadhaarLoading ||
+          form.aadhaarNumber.replace(/\D/g, "").length !== 12
+        }
+        sx={{
+          alignSelf: "flex-start",
+          textTransform: "none",
+          fontWeight: 700,
+        }}
+      >
+        {aadhaarLoading ? (
+          <CircularProgress size={20} />
+        ) : (
+          "Send OTP"
+        )}
+      </Button>
+    )}
+
+    {aadhaarOtpSent && !aadhaarVerified && (
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1.5}
+        alignItems={{ sm: "flex-start" }}
+      >
+        <TextField
+          label="Enter OTP"
+          value={aadhaarOtp}
+          onChange={(event) => {
+            const value = event.target.value
+              .replace(/\D/g, "")
+              .slice(0, 6);
+
+            setAadhaarOtp(value);
+            setError("");
+            setAadhaarMessage("");
+          }}
+          inputProps={{
+            maxLength: 6,
+            inputMode: "numeric",
+          }}
+          sx={{ flex: 1 }}
+        />
+
+        <Button
+          type="button"
+          variant="contained"
+          onClick={handleVerifyAadhaarOtp}
+          disabled={aadhaarLoading || aadhaarOtp.length !== 6}
+          sx={{
+            minWidth: 130,
+            py: 1.7,
+            textTransform: "none",
+            fontWeight: 700,
+            bgcolor: "#5271FF",
+          }}
+        >
+          {aadhaarLoading ? (
+            <CircularProgress size={20} color="inherit" />
+          ) : (
+            "Verify OTP"
+          )}
+        </Button>
+      </Stack>
+    )}
+
+    {aadhaarMessage && (
+      <Alert severity={aadhaarVerified ? "success" : "info"}>
+        {aadhaarMessage}
+      </Alert>
+    )}
+  </Stack>
+</Box>
+
               <TextField
                 label="Password"
                 type={showPassword ? "text" : "password"}

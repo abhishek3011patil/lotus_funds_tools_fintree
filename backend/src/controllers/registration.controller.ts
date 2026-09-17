@@ -681,6 +681,20 @@ export const registerRA = async (req: AuthRequest, res: Response) => {
     data.nism_reg_no = data.nism_reg_no?.trim().toUpperCase();
     data.pan_number = data.pan_number?.trim().toUpperCase();
 
+    // ================= AADHAAR KYC VALIDATION =================
+if (
+  data.aadhaar_kyc_status !== "VERIFIED" ||
+  !data.aadhaar_number ||
+  !data.aadhaar_reference_id
+) {
+  return res.status(400).json({
+    success: false,
+    field: "aadhaar_number",
+    message:
+      "Please complete Aadhaar KYC verification before submitting registration.",
+  });
+}
+
     // ================= CHECK EXISTING EMAIL =================
     const existing = await pool.query(
       `SELECT id FROM ra_details WHERE email = $1 LIMIT 1`,
@@ -863,7 +877,8 @@ const registrationTokenExpiresAt = new Date(
 
 
     // ================= INSERT =================
-    const result = await pool.query(
+// ================= INSERT =================
+const result = await pool.query(
   `
   WITH new_ra AS (
     INSERT INTO ra_details (
@@ -886,6 +901,10 @@ const registrationTokenExpiresAt = new Date(
       cancelled_cheque,
       pan_number, pan_card,
       address_proof_type, address_proof_document,
+
+      aadhaar_number, aadhaar_kyc_status,
+      aadhaar_reference_id, aadhaar_verified_at,
+
       declare_info_true, consent_verification,
 
       no_guaranteed_returns, conflict_of_interest,
@@ -913,10 +932,14 @@ const registrationTokenExpiresAt = new Date(
       $37,
       $38,$39,
       $40,$41,
-      $42,$43,
-      $44,$45,
-      $46,$47,$48,
-      $49
+
+      $42,$43,$44,$45,
+
+      $46,$47,
+
+      $48,$49,$50,$51,$52,
+
+      $53
     )
     RETURNING id, user_id, email, mobile
   ),
@@ -940,8 +963,8 @@ const registrationTokenExpiresAt = new Date(
       new_ra.mobile,
       'FORM_SUBMITTED',
       NOW(),
-      $50,
-      $51
+      $54,
+      $55
     FROM new_ra
     RETURNING id
   )
@@ -952,78 +975,92 @@ const registrationTokenExpiresAt = new Date(
   CROSS JOIN new_application;
   `,
   [
-        userId,
+    userId,
 
-        data.salutation ?? null,
-        data.first_name,
-        data.middle_name ?? null,
-        data.surname,
+    data.salutation ?? null,
+    data.first_name,
+    data.middle_name ?? null,
+    data.surname,
 
-        data.org_name ?? null,
-        data.designation ?? null,
-        data.short_bio ?? null,
+    data.org_name ?? null,
+    data.designation ?? null,
+    data.short_bio ?? null,
 
-        data.email,
-        data.mobile ?? null,
-        data.telephone ?? null,
+    data.email,
+    data.mobile ?? null,
+    data.telephone ?? null,
 
-        data.country ?? null,
-        data.state ?? null,
-        data.city ?? null,
-        data.pincode ?? null,
+    data.country ?? null,
+    data.state ?? null,
+    data.city ?? null,
+    data.pincode ?? null,
 
-        data.address_line1 ?? null,
-        data.address_line2 ?? null,
+    data.address_line1 ?? null,
+    data.address_line2 ?? null,
 
-        files?.profile_image?.[0]?.filename ?? null,
+    files?.profile_image?.[0]?.filename ?? null,
 
-        data.sebi_reg_no ?? null,
-        data.sebi_start_date ?? null,
-        data.sebi_expiry_date ?? null,
+    data.sebi_reg_no ?? null,
+    data.sebi_start_date ?? null,
+    data.sebi_expiry_date ?? null,
 
-        files?.sebi_certificate?.[0]?.filename ?? null,
-        files?.sebi_receipt?.[0]?.filename ?? null,
+    files?.sebi_certificate?.[0]?.filename ?? null,
+    files?.sebi_receipt?.[0]?.filename ?? null,
 
-        data.nism_reg_no ?? null,
-        data.nism_valid_till ?? null,
-        files?.nism_certificate?.[0]?.filename ?? null,
+    data.nism_reg_no ?? null,
+    data.nism_valid_till ?? null,
+    files?.nism_certificate?.[0]?.filename ?? null,
 
-        data.academic_qualification ?? null,
-        data.professional_qualification ?? null,
+    data.academic_qualification ?? null,
+    data.professional_qualification ?? null,
 
-        data.market_experience ?? null,
-        data.expertise ?? null,
-        data.markets ?? null,
+    data.market_experience ?? null,
+    data.expertise ?? null,
+    data.markets ?? null,
 
-        data.bank_name ?? null,
-        data.bank_branch ?? null,
-        data.account_holder ?? null,
-        data.account_number ?? null,
-        data.ifsc_code ?? null,
+    data.bank_name ?? null,
+    data.bank_branch ?? null,
+    data.account_holder ?? null,
+    data.account_number ?? null,
+    data.ifsc_code ?? null,
 
-        files?.cancelled_cheque?.[0]?.filename ?? null,
+    files?.cancelled_cheque?.[0]?.filename ?? null,
 
-        data.pan_number ?? null,
-        files?.pan_card?.[0]?.filename ?? null,
+    data.pan_number ?? null,
+    files?.pan_card?.[0]?.filename ?? null,
 
-        data.address_proof_type ?? null,
-        files?.address_proof_document?.[0]?.filename ?? null,
+    data.address_proof_type ?? null,
+    files?.address_proof_document?.[0]?.filename ?? null,
 
-        toBool(data.declare_info_true),
-        toBool(data.consent_verification),
+    // ================= AADHAAR KYC =================
+    data.aadhaar_number ?? null,
 
-        toBool(data.no_guaranteed_returns),
-        toBool(data.conflict_of_interest),
-        toBool(data.personal_trading),
-        toBool(data.sebi_compliance),
-        toBool(data.platform_policy),
+    data.aadhaar_kyc_status === "VERIFIED"
+      ? "VERIFIED"
+      : null,
 
-        data.additional_comments ?? null,
-        registrationTokenHash,
-registrationTokenExpiresAt,
-      ]
-    );
+    data.aadhaar_reference_id ?? null,
 
+    data.aadhaar_kyc_status === "VERIFIED"
+      ? new Date()
+      : null,
+
+    // ================= DECLARATIONS =================
+    toBool(data.declare_info_true),
+    toBool(data.consent_verification),
+
+    toBool(data.no_guaranteed_returns),
+    toBool(data.conflict_of_interest),
+    toBool(data.personal_trading),
+    toBool(data.sebi_compliance),
+    toBool(data.platform_policy),
+
+    data.additional_comments ?? null,
+
+    registrationTokenHash,
+    registrationTokenExpiresAt,
+  ]
+);
  const insertedRA = result.rows[0];
 
 await createNotification({

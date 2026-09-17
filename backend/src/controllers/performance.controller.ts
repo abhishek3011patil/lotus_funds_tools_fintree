@@ -369,3 +369,159 @@ return res.status(200).json({
     });
   }
 };
+export const exportResearchPerformance = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const period =
+      req.query.period === "weekly"
+        ? "weekly"
+        : req.query.period === "yearly"
+        ? "yearly"
+        : "monthly";
+
+    const month =
+      typeof req.query.month === "string"
+        ? req.query.month
+        : new Date().toISOString().slice(0, 7);
+
+    const year =
+      typeof req.query.year === "string"
+        ? req.query.year
+        : new Date().getFullYear().toString();
+
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      return res.status(400).json({
+        success: false,
+        message: "Month must be in YYYY-MM format",
+      });
+    }
+
+    let startDate: string;
+    let interval: string;
+
+    if (period === "yearly") {
+      startDate = `${year}-01-01`;
+      interval = "1 year";
+    } else if (period === "monthly") {
+      startDate = `${month}-01`;
+      interval = "1 month";
+    } else {
+      const now = new Date();
+
+      const day = now.getDay();
+      const diffToMonday = day === 0 ? -6 : 1 - day;
+
+      const monday = new Date(now);
+      monday.setDate(now.getDate() + diffToMonday);
+      monday.setHours(0, 0, 0, 0);
+
+      startDate = monday.toISOString().slice(0, 10);
+      interval = "7 days";
+    }
+
+    const result = await pool.query(
+      `
+        SELECT
+          id,
+          action,
+          entry_price,
+          target_price,
+          stop_loss,
+          exit_price,
+          status,
+          created_at,
+          closed_at
+        FROM research_calls
+        WHERE ra_user_id = $1
+          AND is_latest = true
+          AND (
+            (
+              created_at >= $2::date
+              AND created_at < $2::date + $3::interval
+            )
+            OR
+            (
+              closed_at >= $2::date
+              AND closed_at < $2::date + $3::interval
+            )
+          )
+        ORDER BY created_at DESC
+      `,
+      [req.user.id, startDate, interval]
+    );
+
+    const rows = result.rows;
+
+    const csvHeader = [
+      "ID",
+      "Action",
+      "Entry Price",
+      "Target Price",
+      "Stop Loss",
+      "Exit Price",
+      "Status",
+      "Created At",
+      "Closed At",
+    ];
+
+    const escapeCsvValue = (value: unknown) => {
+      if (value === null || value === undefined) {
+        return "";
+      }
+
+      const stringValue = String(value);
+
+      if (
+        stringValue.includes(",") ||
+        stringValue.includes('"') ||
+        stringValue.includes("\n")
+      ) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+
+      return stringValue;
+    };
+
+    const csvRows = rows.map((call) =>
+      [
+        call.id,
+        call.action,
+        call.entry_price,
+        call.target_price,
+        call.stop_loss,
+        call.exit_price,
+        call.status,
+        call.created_at,
+        call.closed_at,
+      ]
+        .map(escapeCsvValue)
+        .join(",")
+    );
+
+    const csv = [csvHeader.join(","), ...csvRows].join("\n");
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="ra-performance-${period}.csv"`
+    );
+
+    return res.status(200).send(csv);
+  } catch (error) {
+    console.error("EXPORT PERFORMANCE ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to export performance data",
+    });
+  }
+};
