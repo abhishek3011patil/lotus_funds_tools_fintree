@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Typography } from "@mui/material";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -10,44 +10,129 @@ export interface RecommendationAttachment {
   size?: number;
 }
 
-function AttachmentPreview({ attachment, symbol }: { attachment: RecommendationAttachment; symbol: string }) {
+function AttachmentPreview({
+  attachment,
+  symbol,
+}: {
+  attachment: RecommendationAttachment;
+  symbol: string;
+}) {
   const [failed, setFailed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+
   // Older records contain absolute Windows/Linux paths; new ones use /uploads/.
-  const filename = attachment.url.replace(/\\/g, "/").split("/").pop() || "";
+  const filename =
+    attachment.url.replace(/\\/g, "/").split("/").pop() || "";
+
   const apiBase = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+
   const mediaUrl = `${apiBase}/uploads/${encodeURIComponent(filename)}`;
+
   const isImage = /\.(jpe?g|png|webp|gif)$/i.test(filename);
+
+  const openFile = async () => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      alert("Please login to view this file.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(mediaUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("File access failed:", errorText);
+        alert("You are not authorized to view this file.");
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+
+      setFileUrl(url);
+
+      window.open(url, "_blank");
+    } catch (error) {
+      console.error("Error opening file:", error);
+      alert("Unable to open file.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (fileUrl) {
+        URL.revokeObjectURL(fileUrl);
+      }
+    };
+  }, [fileUrl]);
 
   return (
     <Paper variant="outlined" sx={{ p: 2, minWidth: 0 }}>
-      <Typography fontWeight={600} sx={{ overflowWrap: "anywhere", mb: 1 }}>
+      <Typography
+        fontWeight={600}
+        sx={{ overflowWrap: "anywhere", mb: 1 }}
+      >
         {attachment.name || filename}
       </Typography>
+
       {isImage ? (
         failed ? (
-          <Alert severity="error">This image could not be loaded. The uploaded file may no longer be available.</Alert>
+          <Alert severity="error">
+            This image could not be loaded. The uploaded file may no longer be
+            available.
+          </Alert>
         ) : (
-          <Box
-            component="img"
-            src={mediaUrl}
-            crossOrigin="anonymous"
-            alt={`${attachment.name || filename} — uploaded media for ${symbol}`}
-            onError={() => setFailed(true)}
-            sx={{ display: "block", width: "100%", maxHeight: "45vh", objectFit: "contain", bgcolor: "#f8fafc" }}
-          />
+          <Button
+            variant="outlined"
+            onClick={openFile}
+            disabled={loading}
+            fullWidth
+          >
+            {loading ? "Loading..." : "View Image"}
+          </Button>
         )
       ) : (
         <Typography variant="body2" color="text.secondary">
           Open this attachment in a new tab to view or download it.
         </Typography>
       )}
-      <Box sx={{ mt: 1, display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+
+      <Box
+        sx={{
+          mt: 1,
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 1,
+        }}
+      >
         <Typography variant="caption" color="text.secondary">
           {filename.split(".").pop()?.toUpperCase()}
-          {attachment.size ? ` · ${Math.max(1, Math.ceil(attachment.size / 1024))} KB` : ""}
+          {attachment.size
+            ? ` · ${Math.max(1, Math.ceil(attachment.size / 1024))} KB`
+            : ""}
         </Typography>
-        <Button href={mediaUrl} target="_blank" rel="noopener noreferrer" startIcon={<OpenInNewIcon />} size="small" aria-label={`Open ${attachment.name || filename}`}>
-          Open file
+
+        <Button
+          onClick={openFile}
+          disabled={loading}
+          startIcon={<OpenInNewIcon />}
+          size="small"
+          aria-label={`Open ${attachment.name || filename}`}
+        >
+          {loading ? "Opening..." : "Open file"}
         </Button>
       </Box>
     </Paper>

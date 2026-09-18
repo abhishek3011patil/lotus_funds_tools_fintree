@@ -261,20 +261,54 @@ const filteredBrokerRows = brokerRows.filter((b) => {
   return matchesFilter && matchesSearch;
 });
 
-const openFile = (file?: string | string[]) => {
-  if (!file) return alert("File not uploaded");
+const openFile = async (file?: string | string[]) => {
+  if (!file) {
+    alert("File not uploaded");
+    return;
+  }
+
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    alert("Please login to view this file.");
+    return;
+  }
 
   const fileArray = Array.isArray(file)
     ? file
     : file.split(",");
 
-  fileArray.forEach((f) => {
+  for (const f of fileArray) {
     const cleanFile = f.trim();
-    if (cleanFile) {
-      const url = `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(cleanFile)}`;
-      window.open(url, "_blank");
+
+    if (!cleanFile) continue;
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(cleanFile)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("File access failed:", errorText);
+        alert("You are not authorized to view this file.");
+        continue;
+      }
+
+      const blob = await response.blob();
+      const fileUrl = URL.createObjectURL(blob);
+
+      window.open(fileUrl, "_blank");
+    } catch (error) {
+      console.error("Error opening file:", error);
+      alert("Unable to open file.");
     }
-  });
+  }
 };
 
   /* ================= APPROVE ================= */

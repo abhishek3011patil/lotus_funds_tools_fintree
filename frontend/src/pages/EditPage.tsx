@@ -237,18 +237,53 @@ setErrorMsg("");
     }
   };
 
-  const openFile = (file?: string) => {
-    if (!file) return alert("File not uploaded");
-    file.split(",").forEach((f) => {
-      const clean = f.trim();
-      if (clean) {
-        window.open(
-          `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(clean)}`,
-          "_blank"
-        );
+const openFile = async (file?: string) => {
+  if (!file) {
+    alert("File not uploaded");
+    return;
+  }
+
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    alert("Please login to view this file.");
+    return;
+  }
+
+  const filesToOpen = file.split(",");
+
+  for (const f of filesToOpen) {
+    const clean = f.trim();
+
+    if (!clean) continue;
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(clean)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("File access failed:", errorText);
+        alert("You are not authorized to view this file.");
+        continue;
       }
-    });
-  };
+
+      const blob = await response.blob();
+      const fileUrl = URL.createObjectURL(blob);
+
+      window.open(fileUrl, "_blank");
+    } catch (error) {
+      console.error("Error opening file:", error);
+      alert("Unable to open file.");
+    }
+  }
+};
 
   if (!data) return <div>Loading...</div>;
 

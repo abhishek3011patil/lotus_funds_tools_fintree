@@ -518,15 +518,45 @@ const paginatedBrokers = filteredBrokers.slice(
 );
 
   /* ================= FILE VIEW ================= */
-  const openFile = (file?: string) => {
-    if (!file || file.trim() === "") {
-      alert("File not uploaded");
+ const openFile = async (file?: string) => {
+  if (!file || file.trim() === "") {
+    alert("File not uploaded");
+    return;
+  }
+
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    alert("Please login to view this file.");
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(file)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("File access failed:", errorText);
+      alert("You are not authorized to view this file.");
       return;
     }
 
-    const url = `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(file)}`;
-    window.open(url, "_blank");
-  };
+    const blob = await response.blob();
+    const fileUrl = URL.createObjectURL(blob);
+
+    window.open(fileUrl, "_blank");
+  } catch (error) {
+    console.error("Error opening file:", error);
+    alert("Unable to open file.");
+  }
+};
 
   /* ================= EDIT ================= */
   const handleEdit = (id: string) => {

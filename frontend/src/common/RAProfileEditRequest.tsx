@@ -92,14 +92,45 @@ const RAProfileEditRequest = () => {
     }
   };
 
-  const openFile = (file?: string) => {
-    if (!file) return alert("File not uploaded");
+const openFile = async (file?: string) => {
+  if (!file) {
+    alert("File not uploaded");
+    return;
+  }
 
-    window.open(
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    alert("Please login to view this file.");
+    return;
+  }
+
+  try {
+    const response = await fetch(
       `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(file)}`,
-      "_blank"
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
-  };
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("File access failed:", errorText);
+      alert("You are not authorized to view this file.");
+      return;
+    }
+
+    const blob = await response.blob();
+    const fileUrl = URL.createObjectURL(blob);
+
+    window.open(fileUrl, "_blank");
+  } catch (error) {
+    console.error("Error opening file:", error);
+    alert("Unable to open file.");
+  }
+};
 
   const handleSave = async () => {
     const formData = new FormData();
