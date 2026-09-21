@@ -98,27 +98,50 @@ export const listRaSubscribedClients = async (
     );
 
     const listValues = [...values, limit, offset];
-    const result = await pool.query(
-      `SELECT
-         subscription.id,
-         subscription.client_user_id,
-         client.name,
-         client.email,
-         CASE
-           WHEN subscription.status = 'ACTIVE' AND subscription.expires_at <= NOW()
-             THEN 'EXPIRED'
-           ELSE subscription.status
-         END AS status,
-         subscription.starts_at,
-         subscription.expires_at,
-         subscription.subscribed_at
-       FROM client_ra_subscriptions subscription
-       INNER JOIN users client ON client.id = subscription.client_user_id
-       WHERE ${whereSql}
-       ORDER BY subscription.subscribed_at DESC NULLS LAST, client.name ASC
-       LIMIT $${values.length + 1} OFFSET $${values.length + 2}`,
-      listValues
-    );
+  const result = await pool.query(
+  `SELECT
+     subscription.id,
+     subscription.client_user_id,
+     client.name,
+     client.email,
+     CASE
+       WHEN subscription.status = 'ACTIVE' AND subscription.expires_at <= NOW()
+         THEN 'EXPIRED'
+       ELSE subscription.status
+     END AS status,
+     subscription.starts_at,
+     subscription.expires_at,
+     subscription.subscribed_at,
+   EXISTS (
+       SELECT 1
+       FROM telegram_users telegram
+       WHERE telegram.user_id = subscription.ra_user_id
+         AND telegram.client_user_id = subscription.client_user_id
+         AND telegram.is_active = TRUE
+     ) AS telegram_added,
+
+     EXISTS (
+       SELECT 1
+       FROM whatsapp_participants whatsapp
+       WHERE whatsapp.ra_user_id = subscription.ra_user_id
+         AND whatsapp.client_user_id = subscription.client_user_id
+         AND whatsapp.is_active = TRUE
+     ) AS whatsapp_added
+
+   FROM client_ra_subscriptions subscription
+   INNER JOIN users client
+     ON client.id = subscription.client_user_id
+
+   WHERE ${whereSql}
+
+   ORDER BY
+     subscription.subscribed_at DESC NULLS LAST,
+     client.name ASC
+
+   LIMIT $${values.length + 1}
+   OFFSET $${values.length + 2}`,
+  listValues
+);
 
     const total = Number(countResult.rows[0]?.total || 0);
     return res.status(200).json({
@@ -132,6 +155,8 @@ export const listRaSubscribedClients = async (
         startsAt: row.starts_at,
         expiresAt: row.expires_at,
         subscribedAt: row.subscribed_at,
+        telegramAdded: row.telegram_added === true,
+        whatsappAdded: row.whatsapp_added === true,
       })),
       pagination: {
         page,

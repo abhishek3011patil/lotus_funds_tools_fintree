@@ -12,7 +12,9 @@ import {
   saveParticipantRA,
   uploadExcelParticipants,
   downloadTelegramTemplate,
-   updateParticipantStatus
+   updateParticipantStatus,
+   addRAClientToTelegram,
+  removeRAClientFromTelegram
 } from "../controllers/telegram.controller";
 import {
   authenticate,
@@ -33,6 +35,19 @@ router.post("/send-otp", authenticate, sendOtp);
 router.post("/verify-otp", authenticate, verifyOtp);
 router.get("/ra/:raId", authenticate, getParticipantsByRA);
 //router.get("/telegram/status", authenticate, getTelegramStatus);
+
+router.post(
+  "/ra-client/add",
+  authenticate,
+  addRAClientToTelegram
+);
+
+router.delete(
+  "/ra-client/:clientUserId",
+  authenticate,
+  removeRAClientFromTelegram
+);
+
 router.get(
   "/my-participants",
   authenticate,

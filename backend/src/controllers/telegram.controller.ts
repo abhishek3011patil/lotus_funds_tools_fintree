@@ -9,7 +9,10 @@ import { createAuditLog } from "../utils/auditLogger";
 import fs from "fs";
 import * as XLSX from "xlsx";
 import path from "path";
-
+import { setClient, getClient, deleteClient } from "../utils/telegramClientStore";
+import { TelegramClient } from "telegram";
+import { StringSession } from "telegram/sessions";
+import bigInt from "big-integer";
 
 /* ================= GET CLIENT IP ================= */
 
@@ -931,9 +934,7 @@ await client.sendMessage(entity, {
   }
 };
 
-import { setClient, getClient, deleteClient } from "../utils/telegramClientStore";
-import { TelegramClient } from "telegram";
-import { StringSession } from "telegram/sessions";
+
 
 /* =========================================================
    SEND TELEGRAM OTP (POST /api/telegram/send-otp)
@@ -1753,3 +1754,336 @@ export const downloadTelegramTemplate = (
 
   res.download(filePath, "Telegram_Template.xlsx");
 };
+/* =========================================================
+   RA CLIENT TELEGRAM LINKING
+   NEW FEATURE - DOES NOT CHANGE EXISTING TELEGRAM LOGIC
+   ========================================================= */
+
+export const addRAClientToTelegram = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const raId = req.user?.id;
+    const { clientUserId, telegramPhone } = req.body;
+
+    if (!raId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (!clientUserId) {
+      return res.status(400).json({
+        success: false,
+        message: "Client ID is required",
+      });
+    }
+
+    if (!telegramPhone) {
+      return res.status(400).json({
+        success: false,
+        message: "Telegram phone number is required",
+      });
+    }
+
+    // Normalize phone number
+    let phoneNumber = String(telegramPhone).trim();
+
+    if (!phoneNumber.startsWith("+")) {
+      phoneNumber = `+${phoneNumber}`;
+    }
+
+    // ---------------------------------------------------------
+    // Make sure this client belongs to the logged-in RA
+    // ---------------------------------------------------------
+    const clientCheck = await pool.query(
+      `
+      SELECT client_user_id
+      FROM client_ra_subscriptions
+      WHERE ra_user_id = $1
+        AND client_user_id = $2
+        AND status = 'ACTIVE'
+        AND expires_at > NOW()
+      LIMIT 1
+      `,
+      [raId, clientUserId]
+    );
+
+    if (clientCheck.rows.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: "This client is not an active client of this RA",
+      });
+    }
+
+    // ---------------------------------------------------------
+    // Get RA Telegram session
+    // ---------------------------------------------------------
+    const sessionResult = await pool.query(
+      `
+      SELECT telegram_session
+      FROM users
+      WHERE id = $1
+      `,
+      [raId]
+    );
+
+    const sessionString = sessionResult.rows[0]?.telegram_session;
+
+    if (!sessionString) {
+      return res.status(400).json({
+        success: false,
+        message: "Telegram is not connected",
+      });
+    }
+
+    // ---------------------------------------------------------
+    // Use the EXISTING Telegram session
+    // ---------------------------------------------------------
+    const telegramClient = await createClient(sessionString);
+
+    let entity: any;
+
+    try {
+      // -------------------------------------------------------
+      // Find Telegram user using phone number
+      // -------------------------------------------------------
+      const importResult = await telegramClient.invoke(
+        new Api.contacts.ImportContacts({
+          contacts: [
+            new Api.InputPhoneContact({
+              clientId: bigInt(Date.now()),
+              phone: phoneNumber,
+              firstName: "Tarkashh",
+              lastName: "Client",
+            }),
+          ],
+        })
+      );
+
+      if (
+        !importResult ||
+        !importResult.users ||
+        importResult.users.length === 0
+      ) {
+        return res.status(404).json({
+          success: false,
+          message: "No Telegram user was found with this phone number",
+        });
+      }
+
+      entity = importResult.users[0];
+
+    } catch (telegramError) {
+      console.error(
+        "RA CLIENT TELEGRAM PHONE LOOKUP ERROR:",
+        telegramError
+      );
+
+      return res.status(404).json({
+        success: false,
+        message:
+          "Unable to find a Telegram user with this phone number",
+      });
+    }
+
+    if (!entity || !entity.id) {
+      return res.status(404).json({
+        success: false,
+        message: "Telegram user was not found",
+      });
+    }
+
+    // ---------------------------------------------------------
+    // This feature is only for Telegram users
+    // ---------------------------------------------------------
+    if (
+      entity.className !== "User" &&
+      entity.className !== "UserEmpty"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "The phone number does not belong to a Telegram user",
+      });
+    }
+
+    // ---------------------------------------------------------
+    // Telegram ID
+    // ---------------------------------------------------------
+    const telegramId = entity.id.toString();
+
+    // ---------------------------------------------------------
+    // Telegram name
+    // ---------------------------------------------------------
+    let telegramName = "";
+
+    if (entity.username) {
+      telegramName = `@${entity.username}`;
+    } else {
+      const firstName = entity.firstName || "";
+      const lastName = entity.lastName || "";
+
+      telegramName = `${firstName} ${lastName}`.trim();
+
+      if (!telegramName) {
+        telegramName = phoneNumber;
+      }
+    }
+
+    // ---------------------------------------------------------
+    // Phone number
+    // ---------------------------------------------------------
+    let phone = entity.phone || phoneNumber;
+
+    if (phone && !String(phone).startsWith("+")) {
+      phone = `+${phone}`;
+    }
+
+    // ---------------------------------------------------------
+    // Check whether this Telegram participant already exists
+    // for this RA
+    // ---------------------------------------------------------
+    const existingParticipant = await pool.query(
+      `
+      SELECT id
+      FROM telegram_users
+      WHERE telegram_user_id = $1
+        AND user_id = $2
+      LIMIT 1
+      `,
+      [telegramId, raId]
+    );
+
+    let result;
+
+    if (existingParticipant.rows.length > 0) {
+      // Existing Telegram participant:
+      // only attach this Tarkashh client
+      result = await pool.query(
+        `
+        UPDATE telegram_users
+        SET
+          client_user_id = $1,
+          is_active = TRUE,
+          telegram_client_name = $2,
+          phone_number = $3
+        WHERE id = $4
+        RETURNING *
+        `,
+        [
+          clientUserId,
+          telegramName,
+          phone,
+          existingParticipant.rows[0].id,
+        ]
+      );
+    } else {
+      // New Telegram participant
+      result = await pool.query(
+        `
+        INSERT INTO telegram_users
+        (
+          telegram_user_id,
+          telegram_client_name,
+          phone_number,
+          user_id,
+          entity_type,
+          is_active,
+          client_user_id
+        )
+        VALUES
+        ($1, $2, $3, $4, 'USER', TRUE, $5)
+        RETURNING *
+        `,
+        [
+          telegramId,
+          telegramName,
+          phone,
+          raId,
+          clientUserId,
+        ]
+      );
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Client added to Telegram successfully",
+      data: result.rows[0],
+    });
+
+  } catch (error: any) {
+    console.error(
+      "ADD RA CLIENT TO TELEGRAM ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Failed to add client to Telegram",
+    });
+  }
+};
+
+export const removeRAClientFromTelegram = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const raId = req.user?.id;
+    const { clientUserId } = req.params;
+
+    if (!raId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (!clientUserId) {
+      return res.status(400).json({
+        success: false,
+        message: "Client ID is required",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      DELETE FROM telegram_users
+      WHERE user_id = $1
+        AND client_user_id = $2
+      RETURNING *
+      `,
+      [raId, clientUserId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Telegram client link not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Client removed from Telegram participants successfully",
+    });
+
+  } catch (error: any) {
+    console.error(
+      "REMOVE RA CLIENT FROM TELEGRAM ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Failed to remove client from Telegram",
+    });
+  }
+};
+

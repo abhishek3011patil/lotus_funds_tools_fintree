@@ -698,3 +698,265 @@ export const testWhatsAppMessage = async (
     });
   }
 };
+
+export const addRAClientToWhatsApp = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const raId = req.user?.id;
+    const { clientUserId, phoneNumber, participantName } = req.body;
+
+    if (!raId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (!clientUserId) {
+      return res.status(400).json({
+        success: false,
+        message: "Client ID is required",
+      });
+    }
+
+    const phone = normalizePhone(phoneNumber);
+
+    if (!isValidPhone(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Enter a valid phone number with country code",
+      });
+    }
+
+    const clientCheck = await pool.query(
+      `
+      SELECT
+        u.id,
+        u.name
+      FROM client_ra_subscriptions subscription
+      JOIN users u
+        ON u.id = subscription.client_user_id
+      WHERE subscription.ra_user_id = $1
+        AND subscription.client_user_id = $2
+        AND subscription.status = 'ACTIVE'
+        AND subscription.expires_at > NOW()
+      LIMIT 1
+      `,
+      [raId, clientUserId]
+    );
+
+    if (clientCheck.rows.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: "This client is not an active client of this RA",
+      });
+    }
+
+    const name =
+      String(participantName || clientCheck.rows[0].name || "").trim();
+
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: "Participant name is required",
+      });
+    }
+
+    /*
+     * Check whether this phone number already exists
+     * for this RA.
+     */
+    const existingParticipant = await pool.query(
+      `
+      SELECT id
+      FROM whatsapp_participants
+      WHERE ra_user_id = $1
+        AND phone_number = $2
+      LIMIT 1
+      `,
+      [raId, phone]
+    );
+
+    let result;
+
+    if (existingParticipant.rows.length > 0) {
+      /*
+       * Existing WhatsApp participant:
+       * only link it to this Tarkashh client.
+       *
+       * Existing consent/is_active values are preserved.
+       */
+      result = await pool.query(
+        `
+        UPDATE whatsapp_participants
+        SET
+          client_user_id = $1,
+          updated_at = NOW()
+        WHERE id = $2
+        RETURNING *
+        `,
+        [
+          clientUserId,
+          existingParticipant.rows[0].id,
+        ]
+      );
+    } else {
+      /*
+       * New WhatsApp participant created specifically
+       * from the RA Clients page.
+       *
+       * Consent remains FALSE so the existing WhatsApp
+       * messaging logic is not bypassed.
+       */
+      result = await pool.query(
+        `
+        INSERT INTO whatsapp_participants
+        (
+          ra_user_id,
+          participant_name,
+          phone_number,
+          consent_confirmed,
+          consent_source,
+          consent_confirmed_at,
+          is_active,
+          created_by,
+          client_user_id
+        )
+        VALUES
+        (
+          $1,
+          $2,
+          $3,
+          FALSE,
+          'RA_CLIENT_LINK',
+          NULL,
+          TRUE,
+          $4,
+          $5
+        )
+        RETURNING *
+        `,
+        [
+          raId,
+          name,
+          phone,
+          raId,
+          clientUserId,
+        ]
+      );
+    }
+
+    await createAuditLog({
+      userId: req.user?.id,
+      action: "ADD_CLIENT_TO_WHATSAPP",
+      module: "WHATSAPP",
+      targetEntity: clientUserId,
+      targetType: "CLIENT",
+      description: `Added client ${name} to WhatsApp`,
+      reason: "Client linked from RA Clients page",
+      oldValue: null,
+      newValue: result.rows[0],
+      status: "SUCCESS",
+      ipAddress: req.ip,
+      device: req.headers["user-agent"],
+    } as any);
+
+    return res.status(200).json({
+      success: true,
+      message: "Client added to WhatsApp successfully",
+      data: result.rows[0],
+    });
+
+  } catch (error: any) {
+    console.error(
+      "ADD RA CLIENT TO WHATSAPP ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Failed to add client to WhatsApp",
+    });
+  }
+};
+
+export const removeRAClientFromWhatsApp = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    const raId = req.user?.id;
+    const { clientUserId } = req.params;
+
+    if (!raId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (!clientUserId) {
+      return res.status(400).json({
+        success: false,
+        message: "Client ID is required",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      DELETE FROM whatsapp_participants
+      WHERE ra_user_id = $1
+        AND client_user_id = $2
+      RETURNING *
+      `,
+      [raId, clientUserId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "WhatsApp client link not found",
+      });
+    }
+
+    await createAuditLog({
+      userId: req.user?.id,
+      action: "REMOVE_CLIENT_FROM_WHATSAPP",
+      module: "WHATSAPP",
+      targetEntity: clientUserId,
+      targetType: "CLIENT",
+      description: "Removed client from WhatsApp",
+      reason: "Client unlinked from RA Clients page",
+      oldValue: result.rows[0],
+      newValue: null,
+      status: "SUCCESS",
+      ipAddress: req.ip,
+      device: req.headers["user-agent"],
+    } as any);
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Client removed from WhatsApp participants successfully",
+    });
+
+  } catch (error: any) {
+    console.error(
+      "REMOVE RA CLIENT FROM WHATSAPP ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Failed to remove client from WhatsApp",
+    });
+  }
+};
+
+

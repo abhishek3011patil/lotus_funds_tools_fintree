@@ -221,11 +221,11 @@ const RANotification = () => {
                   onClick={(event) => {
                     event.stopPropagation();
                     void markRead(notification);
-                    navigate(
-                      notification.client_ra_subscription_id
-                        ? "/dashboard"
-                        : "/settings"
-                    );
+navigate(
+  notification.client_ra_subscription_id
+    ? "/ra/clients"
+    : "/settings"
+);
                   }}
                 >
                   {notification.client_ra_subscription_id

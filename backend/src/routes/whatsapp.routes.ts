@@ -7,6 +7,8 @@ import {
   deleteWhatsAppParticipant,
   getWhatsAppParticipantsByRA,
   testWhatsAppMessage,
+  addRAClientToWhatsApp, 
+  removeRAClientFromWhatsApp
 } from "../controllers/whatsapp.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 
@@ -36,6 +38,18 @@ router.get(
   "/ra/:raId",
   authenticate,
   getWhatsAppParticipantsByRA
+);
+
+router.post(
+  "/ra-client/add",
+  authenticate,
+  addRAClientToWhatsApp
+);
+
+router.delete(
+  "/ra-client/:clientUserId",
+  authenticate,
+  removeRAClientFromWhatsApp
 );
 
 
