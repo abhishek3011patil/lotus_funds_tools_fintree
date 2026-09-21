@@ -476,10 +476,10 @@ const handleConfirmRemoveWhatsApp = async () => {
         fontWeight: 700,
         borderRadius: 2,
         px: 1.5,
-           backgroundColor: "#25D366",
-    "&:hover": {
-      backgroundColor: "#1DA851",
-    },
+  backgroundColor: "#2E7D32",
+"&:hover": {
+  backgroundColor: "#1B5E20",
+},
       }}
     >
       Add
