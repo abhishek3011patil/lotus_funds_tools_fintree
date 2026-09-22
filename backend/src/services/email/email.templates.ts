@@ -167,6 +167,13 @@ type TemplateRendererMap = {
 };
 
 const renderers: TemplateRendererMap = {
+  BROKER_RA_INVITATION: (data) => ({
+    subject: "Research Analyst registration invitation",
+    text: `${data.brokerName} has invited you to register as a Research Analyst. Complete your registration within 7 days: ${data.registrationUrl}`,
+    html: brandedLayout("Research Analyst registration invitation",
+      paragraph(`${data.brokerName} has invited you to register as a Research Analyst. This link expires in 7 days.`) +
+      linkButton("Register as a Research Analyst", data.registrationUrl)),
+  }),
   RA_REGISTRATION_RECEIVED: (data) =>
     registrationReceived("Research Analyst", data),
   RA_APPROVED: (data) =>

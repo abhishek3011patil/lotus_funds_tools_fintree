@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Box,
+  Alert,
   Typography,
   TextField,
   Button,
@@ -27,7 +28,7 @@ import InputAdornment from "@mui/material/InputAdornment";
 
 
 import { State, City } from "country-state-city";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   saveRARegistrationSession,
 } from "../features/raRegistrationSubscription";
@@ -36,13 +37,20 @@ import {
 
 const RegistrationPage: React.FC = () => {
 const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const brokerInvite = searchParams.get("brokerInvite") || "";
+  const [invitationInfo, setInvitationInfo] = useState<{ brokerName: string; email: string | null } | null>(null);
+  const [invitationError, setInvitationError] = useState("");
+  const formStorageKey = brokerInvite ? `raRegistrationForm:${brokerInvite}` : "raRegistrationForm";
+  const stepStorageKey = brokerInvite ? `raRegistrationStep:${brokerInvite}` : "raRegistrationStep";
+  const brokerReturnPath = brokerInvite && localStorage.getItem("role") === "BROKER" ? "/broker/research-analysts" : "/login";
   const [currentStep, setCurrentStep] = useState(1);
 
   const exitRegistration = () => {
     const shouldExit = window.confirm(
       "Exit registration? Your form fields are saved on this device, but selected files may need to be uploaded again."
     );
-    if (shouldExit) navigate("/login");
+    if (shouldExit) navigate(brokerReturnPath);
   };
   
   
@@ -152,8 +160,25 @@ const [isLoaded, setIsLoaded] = useState(false);
 const [ifscMessage, setIfscMessage] = useState("");
 
 useEffect(() => {
-  const savedForm = localStorage.getItem("raRegistrationForm");
-  const savedStep = localStorage.getItem("raRegistrationStep");
+  if (!brokerInvite) return;
+  let cancelled = false;
+  setInvitationInfo(null);
+  setInvitationError("");
+  axios.get(`${API_URL}/api/broker/ra-invitations/${encodeURIComponent(brokerInvite)}`)
+    .then(({ data }) => {
+      if (cancelled) return;
+      setInvitationInfo(data);
+      if (data.email) setFormData(previous => ({ ...previous, email: data.email }));
+    })
+    .catch(error => {
+      if (!cancelled) setInvitationError(error.response?.data?.message || "Unable to verify this registration link. Please try again.");
+    });
+  return () => { cancelled = true; };
+}, [brokerInvite, API_URL]);
+
+useEffect(() => {
+  const savedForm = localStorage.getItem(formStorageKey);
+  const savedStep = localStorage.getItem(stepStorageKey);
 
   if (savedForm) {
     const parsedData = JSON.parse(savedForm);
@@ -169,23 +194,23 @@ useEffect(() => {
   }
 
   setIsLoaded(true);
-}, []);
+}, [formStorageKey, stepStorageKey]);
 
 useEffect(() => {
   if (!isLoaded) return;
 
   console.log("Saving Form:", formData);
-  localStorage.setItem("raRegistrationForm", JSON.stringify(formData));
-}, [formData, isLoaded]);
+  localStorage.setItem(formStorageKey, JSON.stringify(formData));
+}, [formData, isLoaded, formStorageKey]);
 
 useEffect(() => {
   if (!isLoaded) return;
 
   localStorage.setItem(
-    "raRegistrationStep",
+    stepStorageKey,
     currentStep.toString()
   );
-}, [currentStep, isLoaded]);
+}, [currentStep, isLoaded, stepStorageKey]);
   // Data Lists
   const bankOptions = ["AU Small Finance Bank", "Axis Bank", "Bank of Baroda", "Bank of India", "Bank of Maharashtra", "Canara Bank", "Central Bank of India", "Citibank", "DBS Bank India", "Equitas Small Finance Bank", "Federal Bank", "HDFC Bank", "HSBC", "ICICI Bank", "IDFC First Bank", "Indian Bank", "Indian Overseas Bank", "IndusInd Bank", "Kotak Mahindra Bank", "Punjab & Sind Bank", "Punjab National Bank (PNB)", "RBL Bank", "South Indian Bank", "Standard Chartered", "State Bank of India (SBI)", "UCO Bank", "Ujjivan Small Finance Bank", "Union Bank of India", "Yes Bank"];
 
@@ -575,6 +600,7 @@ Object.entries(fileMapping).forEach(([key, file]) => {
   //const token = localStorage.getItem("token");
 
 
+  if (brokerInvite) form.append("broker_invitation_token", brokerInvite);
   const response = await axios.post(
   `${API_URL}/api/registration/register-ra`,
   form
@@ -622,13 +648,9 @@ if (response.data.success) {
     audienceType: "RA",
   });
 
-  localStorage.removeItem(
-    "raRegistrationForm"
-  );
+  localStorage.removeItem(formStorageKey);
 
-  localStorage.removeItem(
-    "raRegistrationStep"
-  );
+  localStorage.removeItem(stepStorageKey);
 
   navigate(
     "/registration/subscription",
@@ -906,11 +928,15 @@ const cities = selectedState
   ? City.getCitiesOfState("IN", selectedState.isoCode)
   : [];
 
-  return (
+  if (brokerInvite && !invitationInfo) return <Box sx={{ p: 4 }}>
+    <Alert severity={invitationError ? "error" : "info"}>{invitationError || "Verifying broker registration link..."}</Alert>
+    <Button sx={{ mt: 2 }} onClick={() => navigate(brokerReturnPath)}>Back</Button>
+  </Box>;
 
-   
+  return (
     <Box sx={styles.container}>
       <Paper sx={styles.paper} elevation={0}>
+        {invitationInfo && <Alert severity="info" sx={{ mb: 2 }}>Registering with {invitationInfo.brokerName}. Your RA account will be associated with this broker. {invitationInfo.email ? `Use ${invitationInfo.email} for this registration.` : ""}</Alert>}
         <Box sx={styles.stepperBox}>
 
           {/* testing */}
@@ -2202,4 +2228,9 @@ helperText={
   );
 };
 
-export default RegistrationPage;
+// Switching invitation links must also reset form, file and KYC state.
+const RegistrationEntry = () => {
+  const [params] = useSearchParams();
+  return <RegistrationPage key={params.get("brokerInvite") || "standalone"} />;
+};
+export default RegistrationEntry;

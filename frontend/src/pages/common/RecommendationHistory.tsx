@@ -67,7 +67,7 @@ interface HistoryRecord {
 
 }
 
-interface ApiHistoryRecord {
+export interface ApiHistoryRecord {
   attachments?: RecommendationAttachment[];
   file_url?: string | null;
   date_time?: string;
@@ -90,6 +90,7 @@ interface ApiHistoryRecord {
 
 // Added Prop Interface
 interface RecommendationHistoryProps {
+  records?: ApiHistoryRecord[];
   showMedia?: boolean;
   statusFilter?: string;
   enableAddNotification?: boolean;
@@ -108,6 +109,7 @@ const CLIENT_HISTORY_EVENT = "client-recommendation-history-added";
 const CLIENT_HISTORY_PENDING_NOTIFICATION_KEY = "clientHistoryPendingNotification";
 
 export default function RecommendationHistory({
+  records,
   showMedia = false,
   statusFilter = "ALL",
   enableAddNotification = false,
@@ -308,6 +310,14 @@ const [customDateOpen, setCustomDateOpen] = useState(false);
 
   // Fetch data
   useEffect(() => {
+    if (records) {
+      const rows = records.map(mapApiRowToHistory);
+      setData(rows);
+      setFilterData(rows);
+      setAllResearchers([...new Set(rows.map(row => row.researcher_name || "").filter(Boolean))].sort());
+      setLoading(false);
+      return;
+    }
     const fetchHistory = async () => {
       let localHistory: HistoryRecord[] = [];
       
@@ -369,9 +379,10 @@ const res = await fetch(
     };
 
     fetchHistory();
-  }, [page, searchQuery, showAllRAs]);
+  }, [page, searchQuery, showAllRAs, records]);
 
 useEffect(() => {
+  if (records) return;
   const fetchAllResearchers = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -421,9 +432,10 @@ useEffect(() => {
   };
 
   fetchAllResearchers();
-}, []);
+}, [records]);
 
   useEffect(() => {
+  if (records) return;
   const fetchAllHistoryForFilters = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -498,7 +510,7 @@ useEffect(() => {
   };
 
   fetchAllHistoryForFilters();
-}, [showAllRAs]);
+}, [showAllRAs, records]);
 
   useEffect(() => {
   setPage(1);
