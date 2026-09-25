@@ -56,17 +56,28 @@ test("performance viewer shows all attachments and keeps legacy media available"
   await expect(page.getByRole("row").filter({ hasText: "EMPTY" }).getByText("No media")).toBeVisible();
   await page.getByRole("button", { name: "View media for MULTI (4 files)", exact: true }).click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByRole("img")).toHaveCount(2);
-  await expect.poll(() => dialog.getByRole("img").first().evaluate((element: HTMLImageElement) => element.naturalWidth)).toBeGreaterThan(0);
-  await expect(dialog.getByRole("link")).toHaveCount(4);
+  await expect(dialog.getByRole("button", { name: "View Image", exact: true })).toHaveCount(2);
+  await expect(dialog.getByRole("button", { name: /^Open / })).toHaveCount(4);
   for (const file of media) {
-    await expect(dialog.getByRole("link", { name: `Open ${file.name}`, exact: true })).toHaveAttribute("href", new RegExp(`/uploads/${file.name.replaceAll(".", "\\.")}$`));
+    const fileRequest = page.waitForRequest(request => new URL(request.url()).pathname === `/uploads/${encodeURIComponent(file.name)}`);
+    const popupOpened = page.waitForEvent("popup");
+    await dialog.getByRole("button", { name: `Open ${file.name}`, exact: true }).click();
+    expect((await fileRequest).headers().authorization).toBe("Bearer media-test-token");
+    const popup = await popupOpened;
+    await expect(popup).toHaveURL(/^blob:/);
+    await popup.close();
   }
   await expect(dialog).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("media-gallery.png"), animations: "disabled" });
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("button", { name: "View media for LEGACY (1 file)", exact: true }).click();
-  await expect(dialog.getByRole("link", { name: "Open old chart.png", exact: true })).toHaveAttribute("href", /\/uploads\/old%20chart.png$/);
+  const legacyRequest = page.waitForRequest(request => new URL(request.url()).pathname === "/uploads/old%20chart.png");
+  const legacyPopupOpened = page.waitForEvent("popup");
+  await dialog.getByRole("button", { name: "Open old chart.png", exact: true }).click();
+  expect((await legacyRequest).headers().authorization).toBe("Bearer media-test-token");
+  const legacyPopup = await legacyPopupOpened;
+  await expect(legacyPopup).toHaveURL(/^blob:/);
+  await legacyPopup.close();
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
 });

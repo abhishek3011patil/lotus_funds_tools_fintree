@@ -1,4 +1,5 @@
 export type EmailTemplateName =
+  | "BROKER_RA_INVITATION"
   | "RA_REGISTRATION_RECEIVED"
   | "RA_APPROVED"
   | "PASSWORD_SETUP_RESENT"
@@ -84,6 +85,7 @@ export interface ErrataTemplateData {
 }
 
 export interface EmailTemplateDataMap {
+  BROKER_RA_INVITATION: { brokerName: string; registrationUrl: string };
   RA_REGISTRATION_RECEIVED:
     RegistrationReceivedTemplateData;
   RA_APPROVED: ApprovalTemplateData;

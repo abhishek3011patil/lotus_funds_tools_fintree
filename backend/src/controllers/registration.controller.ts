@@ -1,3 +1,4 @@
+import { registerRAWithBrokerInvitation, InvalidBrokerInvitation } from "../services/brokerOnboarding.service";
 import { Request, Response } from "express";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { pool } from "../db";
@@ -878,7 +879,7 @@ const registrationTokenExpiresAt = new Date(
 
     // ================= INSERT =================
 // ================= INSERT =================
-const result = await pool.query(
+const result = await registerRAWithBrokerInvitation(
   `
   WITH new_ra AS (
     INSERT INTO ra_details (
@@ -1059,7 +1060,9 @@ const result = await pool.query(
 
     registrationTokenHash,
     registrationTokenExpiresAt,
-  ]
+  ],
+  data.broker_invitation_token,
+  data.email
 );
  const insertedRA = result.rows[0];
 
@@ -1123,6 +1126,10 @@ await createNotification({
 });
 
   } catch (error: unknown) {
+    if (error instanceof InvalidBrokerInvitation) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+
     const constraintMap: Record<string, { field: string; message: string }> = {
       ra_email_unique: {
         field: "email",
