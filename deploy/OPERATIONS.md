@@ -318,6 +318,24 @@ df -h
 Expected healthy services are `app`, `db`, `caddy`, and `duckdns`. PostgreSQL
 has no published host port; `5432/tcp` in `docker compose ps` is internal only.
 
+### Too many requests (HTTP 429)
+
+The general API budget is 1,500 requests per verified signed-in user per
+15 minutes, or 300 per IP for anonymous/invalid-token requests. Users sharing
+an office IP have separate signed-in budgets. New tokens for the same user
+do not reset the budget. Frontend pages/assets, `/check`, and the existing
+notification/Telegram polling endpoints do not consume this API allowance.
+
+Login/OTP requests have a separate 300-request IP budget. `/api/auth/me`
+uses the general API budget so session reads cannot exhaust login/OTP capacity.
+Failed-login, password-reset, and registration limits still apply independently.
+For a 429 response, inspect its message and `Retry-After` header to identify
+the limit and retry time. Do not disable rate limiting to work around it.
+
+Caddy is the single trusted proxy (`trust proxy = 1`), and the app port is
+not published. Keep this topology when updating the deployment so anonymous
+limits use the actual client IP from Caddy.
+
 ## Recover from a bad pushed change
 
 Use a Git revert from the Windows development machine. This preserves history
