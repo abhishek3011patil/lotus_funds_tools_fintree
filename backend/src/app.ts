@@ -10,6 +10,7 @@ import { pool } from "./db";
 
 import researchRoutes from "./routes/researchCalls.routes";
 import authRoutes from "./routes/auth.routes";
+import profilePictureRoutes from "./routes/profilePicture.routes";
 import brokerRoutes from "./routes/broker.routes";
 import registrationRoutes from "./routes/registration.routes";
 import adminRoutes from "./routes/admin.routes";
@@ -121,6 +122,7 @@ app.use("/api", researchRoutes);
 app.use("/api/research", researchRoutes);
 app.use("/api/broker", brokerRoutes);
 app.use("/api/registration", registrationRoutes);
+app.use("/api/registration", profilePictureRoutes);
 app.use("/api/telegram", telegramRoutes);
 app.use("/admin", adminRoutes);
 

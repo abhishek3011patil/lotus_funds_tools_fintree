@@ -58,6 +58,7 @@ const RASettingsNavigation = ({ activeSection, onNavigate }: RASettingsNavigatio
             sx={{
               justifyContent: "flex-start",
               whiteSpace: "nowrap",
+              flexShrink: 0,
               textTransform: "none",
               fontWeight: active ? 750 : 600,
               color: active ? "#344FC7" : "#526078",

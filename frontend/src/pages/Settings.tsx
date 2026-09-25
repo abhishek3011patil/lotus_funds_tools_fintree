@@ -16,6 +16,7 @@ import RASettingsNavigation, {
   type RASettingsSection,
 } from "../components/setting/RASettingsNavigation";
 import { useTelegramNotification } from "../hooks/useTelegramNotification";
+import RAProfilePicture from "../components/setting/RAProfilePicture";
 
 const cardSx = {
   bgcolor: "#fff",
@@ -50,10 +51,11 @@ const Settings = () => {
           </Typography>
         </Box>
 
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "230px minmax(0, 1fr)" }, gap: 2.5, alignItems: "start" }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "230px minmax(0, 1fr)" }, gap: 2.5, alignItems: "start" }}>
           <RASettingsNavigation activeSection={activeSection} onNavigate={handleNavigate} />
 
           <Stack spacing={2.5} minWidth={0}>
+            <RAProfilePicture />
             <Paper id="ra-settings-account" variant="outlined" sx={cardSx}>
               <Typography variant="h6" fontWeight={800}>Profile and account</Typography>
               <Typography variant="body2" color="text.secondary" mt={0.5} mb={2.5}>

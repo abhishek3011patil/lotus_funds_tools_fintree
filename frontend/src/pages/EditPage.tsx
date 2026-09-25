@@ -1,5 +1,6 @@
 import { useEffect, useState, ChangeEvent } from "react";
 import { useParams } from "react-router-dom";
+import ProfilePictureUpload from "../components/setting/ProfilePictureUpload";
 import {
   Box,
   Button,
@@ -397,7 +398,6 @@ const fetchData = async () => {
   ];
 
   const raFileFields = [
-    { key: "profile_image", label: "Profile Image" },
     { key: "pan_card", label: "PAN Card" },
     { key: "address_proof_document", label: "Address Proof" },
     { key: "sebi_certificate", label: "SEBI Certificate" },
@@ -532,6 +532,13 @@ const fetchData = async () => {
         </Alert>
       </Snackbar>
 
+      {isRA && <ProfilePictureUpload
+        currentFilename={data?.profile_image}
+        value={files.profile_image}
+        name={[fields.first_name, fields.surname].filter(Boolean).join(" ")}
+        helperText="Your picture will be updated when you save this registration."
+        onChange={file => setFiles(previous => { const next = { ...previous }; if (file) next.profile_image = file; else delete next.profile_image; return next; })}
+      />}
       {/* ── MAIN LAYOUT: SIDEBAR + CONTENT ── */}
       <Grid container spacing={4}>
         
