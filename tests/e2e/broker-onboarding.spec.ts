@@ -19,9 +19,14 @@ test.beforeEach(async ({ page }) => {
       else json = linked ? [ra] : [];
     }
     if (pathname === "/api/broker/research-analysts/search") json = linked ? [] : [ra];
+    if (pathname === `/api/broker/research-analysts/${ra.id}` && route.request().method() === "DELETE") {
+      linked = false;
+      await route.fulfill({ status: 204 });
+      return;
+    }
     if (pathname === "/api/broker/ra-invitations") json = { registrationPath: `/registration?brokerInvite=${token}`, expiresAt: "2026-09-29T10:00:00Z", emailSent: Boolean(route.request().postDataJSON()?.sendEmail) };
     if (pathname === `/api/broker/ra-invitations/${token}`) json = { brokerName: "Test Brokerage", email: null };
-    if (pathname === "/api/broker/research-calls") json = [{ date_time: "2026-09-22T09:00:00Z", action: "BUY", exchange: "NSE", type: "Cash", category: "Intraday", instrument: "Example equity", symbol: "TESTCALL", entry: 100, status: "PUBLISHED", researcher_name: ra.name }];
+    if (pathname === "/api/broker/research-calls") json = linked ? [{ date_time: "2026-09-22T09:00:00Z", action: "BUY", exchange: "NSE", type: "Cash", category: "Intraday", instrument: "Example equity", symbol: "TESTCALL", entry: 100, status: "PUBLISHED", researcher_name: ra.name }] : [];
     await route.fulfill({ json });
   });
 });
@@ -45,6 +50,39 @@ test("adds an existing RA and shows their calls in the performance table", async
   await page.getByLabel("Search calls, symbols or Research Analysts").fill("missing");
   await expect(page.getByText("No records found", { exact: true })).toBeVisible();
   expect(unscoped).toEqual([]);
+});
+
+test("confirms removal, hides associated calls, and allows adding the RA again", async ({ page }) => {
+  const addExisting = async () => {
+    await page.getByRole("button", { name: "Add Research Analyst", exact: true }).click();
+    await page.getByRole("button", { name: /^Add existing RA/ }).click();
+    await page.getByLabel("Name or SEBI registration").fill("Ananya");
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await page.getByRole("button", { name: "Add Ananya Research", exact: true }).click();
+    await expect(page.getByRole("table").getByText(ra.name)).toBeVisible();
+  };
+  await page.goto("/broker/research-analysts");
+  await addExisting();
+  await page.getByRole("button", { name: "Remove Ananya Research", exact: true }).click();
+  const confirm = page.getByRole("dialog", { name: "Remove Research Analyst?" });
+  await confirm.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.getByRole("table").getByText(ra.name)).toBeVisible();
+  await page.getByRole("button", { name: "Remove Ananya Research", exact: true }).click();
+  // A failed API request keeps the association visible and allows retrying.
+  await page.route(`**/api/broker/research-analysts/${ra.id}`, route => route.fulfill({ status: 500, json: { message: "Removal unavailable" } }), { times: 1 });
+  await confirm.getByRole("button", { name: "Remove RA", exact: true }).click();
+  await expect(confirm.getByText("Removal unavailable", { exact: true })).toBeVisible();
+  await expect(page.getByRole("table", { includeHidden: true }).getByText(ra.name)).toBeVisible();
+  await confirm.getByRole("button", { name: "Remove RA", exact: true }).click();
+  await expect(confirm).toHaveCount(0);
+  await expect(page.getByRole("table").getByText(ra.name)).toHaveCount(0);
+  await page.goto("/broker/research-calls");
+  await expect(page.getByText(/No published calls yet/)).toBeVisible();
+  await expect(page.getByRole("cell", { name: "TESTCALL", exact: true })).toHaveCount(0);
+  await page.goto("/broker/research-analysts");
+  await addExisting();
+  await page.goto("/broker/research-calls");
+  await expect(page.getByRole("cell", { name: "TESTCALL", exact: true })).toBeVisible();
 });
 
 test("opens the registration form with broker association", async ({ page }) => {

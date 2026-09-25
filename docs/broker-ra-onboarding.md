@@ -10,6 +10,8 @@ Apply `backend/migrations/20260922_broker_ra_onboarding.sql` before deploying th
 
 The Add dialog supports opening the registration form, generating/copying or emailing a registration link, and searching for an existing RA. Email delivery needs the existing email configuration and `FRONTEND_URL`; a failed delivery leaves the generated link available for copying and is reported in the UI.
 
+Each associated RA also has a **Remove** action with confirmation. `DELETE /api/broker/research-analysts/:raId` marks only the authenticated broker's association `INACTIVE`. The RA account, registration and calls remain intact, as do other brokers' associations. The removed RA and their calls disappear from this broker's lists. An approved, active RA can be added again through **Add existing RA**, which reactivates the existing association. No additional database migration is required.
+
 Research Calls reuses the RA Performance `RecommendationHistory` component with broker-scoped records, without fetching global history or falling back to sample records. The existing broker dashboard and other mock-backed broker pages are outside this change.
 
 Validation: backend/frontend builds, broker onboarding API/transaction tests, email service tests, desktop/mobile Playwright onboarding checks, and PostgreSQL checks for many-to-many associations and call isolation. PostgreSQL verification records are rolled back.

@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+import { createApiRateLimiter } from "./middlewares/rateLimit.middleware";
 import path from "path";
 import fs from "fs";
 import { authenticate, AuthRequest } from "./middlewares/auth.middleware";
@@ -94,28 +94,7 @@ app.use(
   })
 );
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
-  // These authenticated read-only endpoints are polled in the UI and can
-  // otherwise exhaust the shared per-IP allowance during normal use.
-  skip: (req) =>
-    req.method === "GET" &&
-    [
-      "/api/telegram/status",
-      "/notifications/unread-count",
-      "/api/subscription-notifications/unread-count",
-    ].includes(req.path),
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message: "Too many requests. Please try again later.",
-  },
-});
-
-
-app.use(limiter);
+app.use(createApiRateLimiter());
 
 /*
  * Razorpay webhook must receive the raw request body.

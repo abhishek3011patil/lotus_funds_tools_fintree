@@ -65,6 +65,20 @@ export const addExistingAnalyst = async (req: AuthRequest, res: Response) => {
   res.status(201).json({ message: "Research Analyst added." });
 };
 
+export const removeBrokerAnalyst = async (req: AuthRequest, res: Response) => {
+  const raId = String(req.params.raId || "");
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(raId)) {
+    return res.status(400).json({ message: "Select a valid Research Analyst." });
+  }
+  const result = await pool.query(
+    `UPDATE broker_research_analysts SET status = 'INACTIVE', updated_at = now()
+     WHERE broker_id = $1 AND ra_id = $2 RETURNING ra_id`,
+    [res.locals.broker.id, raId]
+  );
+  if (!result.rows.length) return res.status(404).json({ message: "Research Analyst association was not found." });
+  return res.status(204).send();
+};
+
 export const createBrokerInvitation = async (req: AuthRequest, res: Response) => {
   const method = req.body.method;
   const email = String(req.body.email || "").trim().toLowerCase();

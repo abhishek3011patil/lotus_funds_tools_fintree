@@ -29,6 +29,31 @@ const router = express.Router();
 
 console.log("✅ AUTH ROUTES LOADED");
 
+// Keep authentication protected with a budget independent of dashboard/API
+// traffic. Existing password setup and reset limits still apply below.
+router.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many authentication requests. Please try again in 15 minutes.",
+  },
+}));
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many failed login attempts. Please try again in 15 minutes.",
+  },
+});
+
 const passwordSetupLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -77,6 +102,7 @@ router.post(
 
 router.post(
   "/login",
+  loginLimiter,
   (req, res, next) => {
     console.log("🔥 LOGIN ROUTE HIT");
     next();
