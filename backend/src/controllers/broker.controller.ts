@@ -608,3 +608,44 @@ export const changeBrokerPassword = async (
     });
   }
 };
+/* =========================================================
+   GET ASSOCIATED RAs BY BROKER ID (For Admin / EditPage)
+   ========================================================= */
+export const getBrokerAnalystsById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const query = `
+      SELECT 
+        ra.id,
+        ra.first_name,
+        ra.surname,
+        ra.org_name,
+        ra.email,
+        ra.sebi_reg_no,
+        ra.mobile,
+        ra.status
+      FROM broker_research_analysts bra
+      INNER JOIN ra_details ra
+        ON ra.id = bra.ra_id
+      WHERE bra.broker_id = $1
+        AND bra.status = 'ACTIVE'
+      ORDER BY bra.updated_at DESC;
+    `;
+
+    const result = await pool.query(query, [id]);
+
+    return res.status(200).json(result.rows);
+  } catch (error: any) {
+    console.error("GET BROKER ANALYSTS ERROR:", error);
+    console.error("ERROR MESSAGE:", error?.message);
+    console.error("ERROR DETAIL:", error?.detail);
+    console.error("ERROR CODE:", error?.code);
+
+    return res.status(500).json({
+      message: "Failed to fetch associated RAs",
+      error: error?.message,
+      detail: error?.detail,
+    });
+  }
+};

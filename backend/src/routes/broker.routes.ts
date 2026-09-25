@@ -4,6 +4,7 @@ import {
   createBroker,
   getAllBrokers,
   getMyBrokerProfile,
+  getBrokerAnalystsById
 } from "../controllers/broker.controller";
 import { upload } from "../middlewares/upload";
 import { authenticate } from "../middlewares/auth.middleware";
@@ -11,6 +12,7 @@ import { requireAdmin } from "../middlewares/admin.middleware";
 import rateLimit from "express-rate-limit";
 import { requireBroker, listBrokerAnalysts, searchExistingAnalysts, addExistingAnalyst,
   createBrokerInvitation, getBrokerInvitation, listBrokerCalls } from "../controllers/brokerOnboarding.controller";
+import { pool } from "../db";
 
 const router = express.Router();
 const invitationLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30 });
@@ -46,6 +48,14 @@ router.post(
   "/change-password",
   authenticate,
   changeBrokerPassword
+);
+
+// Register this in your broker/admin router:
+// Express Route Handler
+router.get(
+  "/:id/ras",
+  authenticate,
+  getBrokerAnalystsById
 );
 
 export default router;
