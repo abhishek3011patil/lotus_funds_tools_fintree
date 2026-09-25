@@ -88,7 +88,8 @@ app.use(
           "https://api.razorpay.com",
           "https://*.razorpay.com",
         ],
-        imgSrc: ["'self'", "data:", "https://*.razorpay.com"],
+        // Authenticated profile pictures and media previews use object URLs.
+        imgSrc: ["'self'", "data:", "blob:", "https://*.razorpay.com"],
       },
     },
   })
