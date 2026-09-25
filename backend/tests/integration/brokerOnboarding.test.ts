@@ -6,7 +6,7 @@ vi.mock("../../src/db", () => ({ pool: { query: vi.fn(), connect: vi.fn() } }));
 vi.mock("../../src/services/email", () => ({ emailService: { send: vi.fn() } }));
 import { pool } from "../../src/db";
 import { emailService } from "../../src/services/email";
-import { requireBroker, addExistingAnalyst, createBrokerInvitation, listBrokerCalls, getBrokerInvitation } from "../../src/controllers/brokerOnboarding.controller";
+import { requireBroker, addExistingAnalyst, removeBrokerAnalyst, createBrokerInvitation, listBrokerCalls, getBrokerInvitation } from "../../src/controllers/brokerOnboarding.controller";
 import { hashBrokerInvitation, InvalidBrokerInvitation, registerRAWithBrokerInvitation } from "../../src/services/brokerOnboarding.service";
 
 const app = express();
@@ -15,6 +15,7 @@ app.use((req, _res, next) => { (req as any).user = { id: "broker-user", role: re
 app.get("/invite/:token", getBrokerInvitation);
 app.use(requireBroker);
 app.post("/analysts", addExistingAnalyst);
+app.delete("/analysts/:raId", removeBrokerAnalyst);
 app.post("/invitations", createBrokerInvitation);
 app.get("/calls", listBrokerCalls);
 
@@ -62,6 +63,36 @@ describe("broker onboarding boundaries", () => {
   it("rejects expired or consumed invitations", async () => {
     vi.mocked(pool.query).mockResolvedValue({ rows: [] } as any);
     await request(app).get(`/invite/${"a".repeat(64)}`).expect(410);
+  });
+});
+
+describe("removing broker RA associations", () => {
+  const raId = "00000000-0000-4000-8000-000000000001";
+  it("requires broker access for removal", async () => {
+    await request(app).delete(`/analysts/${raId}`).set("x-test-role", "RESEARCH_ANALYST").expect(403);
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+  it("rejects invalid RA IDs before updating data", async () => {
+    await request(app).delete("/analysts/not-a-uuid").expect(400);
+    expect(pool.query).toHaveBeenCalledTimes(1);
+  });
+  it("deactivates only the signed-in broker association, including on repeat requests", async () => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await request(app).delete(`/analysts/${raId}`).send({ brokerId: "other-broker" }).expect(204);
+    }
+    const updates = vi.mocked(pool.query).mock.calls.filter(([sql]) => String(sql).includes("UPDATE"));
+    expect(updates).toHaveLength(2);
+    for (const [sql, values] of updates as any) {
+      expect(values).toEqual(["broker-one", raId]);
+      expect(sql).toContain("UPDATE broker_research_analysts SET status = 'INACTIVE'");
+      expect(sql).toContain("WHERE broker_id = $1 AND ra_id = $2");
+      expect(sql).not.toMatch(/DELETE|UPDATE\s+(users|ra_details|research_calls)\b/i);
+    }
+  });
+  it("returns not found for an RA not associated with this broker", async () => {
+    vi.mocked(pool.query).mockResolvedValueOnce({ rows: [{ id: "broker-one" }] } as any)
+      .mockResolvedValueOnce({ rows: [] } as any);
+    await request(app).delete(`/analysts/${raId}`).expect(404);
   });
 });
 

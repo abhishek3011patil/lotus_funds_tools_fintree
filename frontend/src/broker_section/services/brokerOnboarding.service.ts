@@ -19,6 +19,7 @@ export const getBrokerAnalysts = async () => (await api.get<AssociatedAnalyst[]>
 export const searchBrokerAnalysts = async (search: string) =>
   (await api.get<AssociatedAnalyst[]>("/broker/research-analysts/search", { params: { search } })).data;
 export const addBrokerAnalyst = async (raId: string) => api.post("/broker/research-analysts", { raId });
+export const removeBrokerAnalyst = async (raId: string) => api.delete(`/broker/research-analysts/${encodeURIComponent(raId)}`);
 export const createBrokerInvitation = async (method: "DIRECT" | "LINK", email = "", sendEmail = false) =>
   (await api.post<BrokerInvitation>("/broker/ra-invitations", { method, email, sendEmail })).data;
 export const getBrokerCalls = async () => (await api.get<ApiHistoryRecord[]>("/broker/research-calls")).data;

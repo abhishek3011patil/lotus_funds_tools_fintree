@@ -6,7 +6,7 @@ import PersonAddOutlinedIcon from "@mui/icons-material/PersonAddOutlined";
 import LinkOutlinedIcon from "@mui/icons-material/LinkOutlined";
 import GroupAddOutlinedIcon from "@mui/icons-material/GroupAddOutlined";
 import BrokerPageHeader from "../components/BrokerPageHeader";
-import { addBrokerAnalyst, createBrokerInvitation, getBrokerAnalysts, onboardingError, searchBrokerAnalysts, type AssociatedAnalyst, type BrokerInvitation } from "../services/brokerOnboarding.service";
+import { addBrokerAnalyst, createBrokerInvitation, getBrokerAnalysts, onboardingError, removeBrokerAnalyst, searchBrokerAnalysts, type AssociatedAnalyst, type BrokerInvitation } from "../services/brokerOnboarding.service";
 
 const BrokerResearchAnalysts = () => {
   const navigate = useNavigate();
@@ -23,6 +23,9 @@ const BrokerResearchAnalysts = () => {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<AssociatedAnalyst[]>([]);
   const [searched, setSearched] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<AssociatedAnalyst | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState("");
   const load = useCallback(async () => {
     setLoading(true); setError("");
     try { setAnalysts(await getBrokerAnalysts()); }
@@ -69,6 +72,18 @@ const BrokerResearchAnalysts = () => {
     } catch (err) { setDialogError(onboardingError(err)); }
     finally { setBusy(false); }
   };
+  const removeAnalyst = async () => {
+    if (!removeTarget || removing) return;
+    setRemoving(true); setRemoveError("");
+    try {
+      await removeBrokerAnalyst(removeTarget.id);
+      setAnalysts(previous => previous.filter(ra => ra.id !== removeTarget.id));
+      setNotice(`${removeTarget.name} removed from your brokerage. Their calls are no longer shown in your Research Calls.`);
+      setRemoveTarget(null);
+      await load();
+    } catch (err) { setRemoveError(onboardingError(err)); }
+    finally { setRemoving(false); }
+  };
   const registrationUrl = invitation ? new URL(invitation.registrationPath, window.location.origin).href : "";
   return <Box>
     <BrokerPageHeader title="Research Analysts" subtitle="Onboard and manage the Research Analysts associated with your brokerage." />
@@ -80,19 +95,31 @@ const BrokerResearchAnalysts = () => {
     {error && <Alert severity="error" action={<Button onClick={() => void load()}>Retry</Button>} sx={{ mb: 2 }}>{error}</Alert>}
     <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 1, borderColor: "#E9E9EE" }}>
       <Table size="small" aria-label="Associated Research Analysts" sx={{ minWidth: 720, "& th": { bgcolor: "#F9FAFB", fontWeight: 700, fontSize: 12, py: 2, whiteSpace: "nowrap" }, "& td": { fontSize: 13, py: 1.8 } }}>
-        <TableHead><TableRow><TableCell>Name</TableCell><TableCell>SEBI registration</TableCell><TableCell>Expertise</TableCell><TableCell>Registration expiry</TableCell><TableCell>Onboarding</TableCell><TableCell>Status</TableCell></TableRow></TableHead>
+        <TableHead><TableRow><TableCell>Name</TableCell><TableCell>SEBI registration</TableCell><TableCell>Expertise</TableCell><TableCell>Registration expiry</TableCell><TableCell>Onboarding</TableCell><TableCell>Status</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead>
         <TableBody>
-          {loading ? <TableRow><TableCell colSpan={6} align="center"><CircularProgress size={24} aria-label="Loading Research Analysts" /></TableCell></TableRow>
-            : analysts.length === 0 ? <TableRow><TableCell colSpan={6} align="center" sx={{ py: 5 }}>No Research Analysts added yet. Use Add Research Analyst to get started.</TableCell></TableRow>
+          {loading ? <TableRow><TableCell colSpan={7} align="center"><CircularProgress size={24} aria-label="Loading Research Analysts" /></TableCell></TableRow>
+            : analysts.length === 0 ? <TableRow><TableCell colSpan={7} align="center" sx={{ py: 5 }}>No Research Analysts added yet. Use Add Research Analyst to get started.</TableCell></TableRow>
               : analysts.map(ra => <TableRow key={ra.id} hover>
                 <TableCell sx={{ fontWeight: 600 }}>{ra.name}</TableCell><TableCell>{ra.sebiRegistration || "—"}</TableCell>
                 <TableCell>{ra.category || "—"}</TableCell><TableCell>{ra.registrationExpiry ? new Date(ra.registrationExpiry).toLocaleDateString("en-IN") : "—"}</TableCell>
                 <TableCell>{{ DIRECT: "Added here", LINK: "Registration link", EXISTING: "Existing RA" }[ra.onboardingMethod || "EXISTING"]}</TableCell>
                 <TableCell><Chip size="small" label={ra.status === "PENDING" ? "Pending onboarding" : ra.status} color={ra.status === "ACTIVE" ? "success" : ra.status === "REJECTED" ? "error" : "warning"} /></TableCell>
+                <TableCell align="right"><Button size="small" color="error" disabled={removing} aria-label={`Remove ${ra.name}`} onClick={() => { setRemoveError(""); setRemoveTarget(ra); }}>Remove</Button></TableCell>
               </TableRow>)}
         </TableBody>
       </Table>
     </TableContainer>
+    <Dialog open={removeTarget !== null} onClose={() => { if (!removing) setRemoveTarget(null); }} fullWidth maxWidth="xs" aria-labelledby="remove-ra-title" aria-describedby="remove-ra-description">
+      <DialogTitle id="remove-ra-title">Remove Research Analyst?</DialogTitle>
+      <DialogContent>
+        {removeError && <Alert severity="error" sx={{ mb: 2 }}>{removeError}</Alert>}
+        <Typography id="remove-ra-description">Remove {removeTarget?.name} from your brokerage? Their calls will no longer appear in your Research Calls. Their RA account and associations with other brokers will remain intact.</Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button autoFocus disabled={removing} onClick={() => setRemoveTarget(null)}>Cancel</Button>
+        <Button color="error" variant="contained" disabled={removing} onClick={() => void removeAnalyst()}>{removing ? "Removing..." : "Remove RA"}</Button>
+      </DialogActions>
+    </Dialog>
     <Dialog open={dialog !== null} onClose={() => { if (!busy) setDialog(null); }} fullWidth maxWidth="sm" aria-labelledby="onboard-ra-title">
       <DialogTitle id="onboard-ra-title">{dialog === "link" ? "Send registration link" : dialog === "existing" ? "Add existing RA" : "Add Research Analyst"}</DialogTitle>
       <DialogContent>
