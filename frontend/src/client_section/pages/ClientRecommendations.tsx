@@ -68,7 +68,7 @@ const ClientRecommendation = () => {
       const token = localStorage.getItem("token");
 
       const res = await axios.get(
-        "http://localhost:3000/api/client/recommendations",
+        `${import.meta.env.VITE_API_URL}/api/client/recommendations`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

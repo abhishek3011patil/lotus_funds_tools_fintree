@@ -71,11 +71,10 @@ app.use(
 
 app.use(
   helmet({
-    /*
-     * Razorpay Standard Checkout is loaded from Razorpay's official hosted
-     * script and opens Razorpay-hosted frames. Keep the allowlist narrow so
-     * the rest of Helmet's production CSP protection remains enabled.
-     */
+    crossOriginResourcePolicy: {
+      policy: "cross-origin",
+    },
+
     contentSecurityPolicy: {
       directives: {
         scriptSrc: ["'self'", "https://checkout.razorpay.com"],
@@ -184,40 +183,57 @@ app.get("/uploads/:filename", authenticate, async (req: AuthRequest, res) => {
   try {
     const filename = path.basename(String(req.params.filename));
 
-    // Admin and Superadmin can view uploaded documents
-    const role = String(req.user?.role || "").toUpperCase();
+    if (!req.user?.id) {
+      return res.status(401).json({
+        message: "User not authenticated",
+      });
+    }
 
-    if (role !== "ADMIN" && role !== "SUPERADMIN") {
-      if (!req.user?.id) {
-        return res.status(401).json({
-          message: "User not authenticated",
-        });
-      }
+    const role = String(req.user.role || "").trim().toUpperCase();
 
-      // Check whether this file belongs to the logged-in RA
-      const result = await pool.query(
+    // Admin and Superadmin can view ALL uploaded files
+    const isAdmin =
+      role === "ADMIN" ||
+      role === "SUPERADMIN";
+
+    if (!isAdmin) {
+      // Profile images can be viewed by authenticated users
+      const profileImageResult = await pool.query(
         `
         SELECT user_id
         FROM ra_details
-        WHERE user_id = $1
-          AND (
-            profile_image = $2
-            OR pan_card = $2
-            OR address_proof_document = $2
-            OR sebi_certificate = $2
-            OR sebi_receipt = $2
-            OR nism_certificate = $2
-            OR cancelled_cheque = $2
-          )
+        WHERE profile_image = $1
         LIMIT 1
         `,
-        [req.user.id, filename]
+        [filename]
       );
 
-      if (result.rows.length === 0) {
-        return res.status(403).json({
-          message: "You are not authorized to view this file",
-        });
+      // If it is not a profile image,
+      // apply strict authorization for private documents.
+      if (profileImageResult.rows.length === 0) {
+        const result = await pool.query(
+          `
+          SELECT user_id
+          FROM ra_details
+          WHERE user_id = $1
+            AND (
+              pan_card = $2
+              OR address_proof_document = $2
+              OR sebi_certificate = $2
+              OR sebi_receipt = $2
+              OR nism_certificate = $2
+              OR cancelled_cheque = $2
+            )
+          LIMIT 1
+          `,
+          [req.user.id, filename]
+        );
+
+        if (result.rows.length === 0) {
+          return res.status(403).json({
+            message: "You are not authorized to view this file",
+          });
+        }
       }
     }
 

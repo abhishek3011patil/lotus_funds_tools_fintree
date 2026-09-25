@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import { Avatar, Box, Button, Chip, Stack, Typography } from "@mui/material";
 import type { DashboardAnalyst } from "../types";
@@ -8,6 +9,64 @@ interface DiscoverAnalystsPanelProps {
 }
 
 const apiOrigin = String(import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+
+const AnalystAvatar = ({ analyst }: { analyst: DashboardAnalyst }) => {
+  const [imageUrl, setImageUrl] = useState<string>();
+
+  useEffect(() => {
+    let objectUrl: string | undefined;
+
+    const loadImage = async () => {
+      if (!analyst.profileImage) return;
+
+      try {
+        const token = localStorage.getItem("token");
+
+        const imagePath = analyst.profileImage.startsWith("http")
+          ? analyst.profileImage
+          : `${apiOrigin}${
+              analyst.profileImage.startsWith("/") ? "" : "/"
+            }${analyst.profileImage}`;
+
+        const response = await fetch(imagePath, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          console.error("Failed to load analyst profile image:", response.status);
+          return;
+        }
+
+        const blob = await response.blob();
+
+        objectUrl = URL.createObjectURL(blob);
+        setImageUrl(objectUrl);
+      } catch (error) {
+        console.error("Profile image loading error:", error);
+      }
+    };
+
+    loadImage();
+
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [analyst.profileImage]);
+
+  return (
+    <Avatar
+      src={imageUrl}
+      alt={analyst.name}
+      sx={{ bgcolor: "#5271FF", fontWeight: 800 }}
+    >
+      {analyst.name.charAt(0).toUpperCase()}
+    </Avatar>
+  );
+};
 
 const DiscoverAnalystsPanel = ({ analysts, onBrowse }: DiscoverAnalystsPanelProps) => (
   <Box sx={{ bgcolor: "#F5F7FF", border: "1px solid #E0E7FF", borderRadius: "18px", p: { xs: 2, sm: 2.5 } }}>
@@ -28,13 +87,7 @@ const DiscoverAnalystsPanel = ({ analysts, onBrowse }: DiscoverAnalystsPanelProp
       {analysts.map((analyst) => (
         <Box key={analyst.id} sx={{ bgcolor: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "14px", p: 1.75 }}>
           <Stack direction="row" spacing={1.2} alignItems="center">
-            <Avatar
-              src={analyst.profileImage ? `${apiOrigin}${analyst.profileImage}` : undefined}
-              alt={analyst.name}
-              sx={{ bgcolor: "#5271FF", fontWeight: 800 }}
-            >
-              {analyst.name.charAt(0).toUpperCase()}
-            </Avatar>
+           <AnalystAvatar analyst={analyst} />
             <Box sx={{ minWidth: 0 }}>
               <Typography noWrap sx={{ color: "#172033", fontWeight: 800 }}>{analyst.name}</Typography>
               <Typography noWrap sx={{ color: "#5271FF", fontSize: 11.5 }}>
