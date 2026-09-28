@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
   Chip,
   CircularProgress,
-  Divider,
   Stack,
   Table,
   TableBody,
@@ -16,6 +18,7 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import {
   getSubscriptionHistory,
   type SubscriptionEventHistoryItem,
@@ -54,13 +57,14 @@ const formatLabel = (value: string): string =>
     .join(" ");
 
 const RASubscriptionHistory = () => {
+  const [expanded, setExpanded] = useState(false);
   const [payments, setPayments] = useState<
     SubscriptionPaymentHistoryItem[]
   >([]);
   const [events, setEvents] = useState<
     SubscriptionEventHistoryItem[]
   >([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadHistory = useCallback(async () => {
@@ -88,6 +92,8 @@ const RASubscriptionHistory = () => {
   }, []);
 
   useEffect(() => {
+    if (!expanded) return;
+
     void loadHistory();
 
     const handleSubscriptionUpdate = () => {
@@ -104,60 +110,77 @@ const RASubscriptionHistory = () => {
         handleSubscriptionUpdate
       );
     };
-  }, [loadHistory]);
+  }, [expanded, loadHistory]);
 
   return (
-    <Box sx={{ mt: 3 }}>
-      <Divider sx={{ mb: 3 }} />
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        justifyContent="space-between"
-        alignItems={{ xs: "flex-start", sm: "center" }}
-        spacing={1}
-        mb={2}
+    <Accordion
+      expanded={expanded}
+      onChange={(_, nextExpanded) => setExpanded(nextExpanded)}
+      disableGutters
+      elevation={0}
+      sx={{
+        mt: 3,
+        borderTop: "1px solid #e2e8f0",
+        backgroundColor: "transparent",
+        "&::before": { display: "none" },
+      }}
+    >
+      <AccordionSummary
+        expandIcon={<ExpandMoreRoundedIcon />}
+        aria-controls="ra-subscription-history-content"
+        id="ra-subscription-history-header"
+        sx={{
+          px: 0,
+          py: 0.75,
+          "& .MuiAccordionSummary-content": { my: 1.25 },
+        }}
       >
         <Box>
           <Typography variant="h6" fontWeight={700}>
             Subscription &amp; Payment History
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Payments, renewals and subscription status changes.
+            Expand to view payments, renewals and subscription activity.
           </Typography>
         </Box>
-        <Button
-          size="small"
-          variant="outlined"
-          onClick={() => void loadHistory()}
-          disabled={loading}
-        >
-          Refresh
-        </Button>
-      </Stack>
+      </AccordionSummary>
 
-      {error && (
-        <Alert
-          severity="error"
-          action={
-            <Button
-              color="inherit"
-              size="small"
-              onClick={() => void loadHistory()}
-            >
-              Retry
-            </Button>
-          }
-          sx={{ mb: 2 }}
-        >
-          {error}
-        </Alert>
-      )}
-
-      {loading ? (
-        <Stack alignItems="center" py={4}>
-          <CircularProgress size={28} />
+      <AccordionDetails id="ra-subscription-history-content" sx={{ px: 0, pt: 0.5, pb: 0 }}>
+        <Stack direction="row" justifyContent="flex-end" mb={2}>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => void loadHistory()}
+            disabled={loading}
+          >
+            Refresh
+          </Button>
         </Stack>
-      ) : (
-        <Stack spacing={3}>
+
+        {error && (
+          <Alert
+            severity="error"
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => void loadHistory()}
+              >
+                Retry
+              </Button>
+            }
+            sx={{ mb: 2 }}
+          >
+            {error}
+          </Alert>
+        )}
+
+        {loading ? (
+          <Stack alignItems="center" py={4}>
+            <CircularProgress size={28} />
+          </Stack>
+        ) : (
+          <Stack spacing={3}>
           <Box>
             <Typography variant="subtitle1" fontWeight={700} mb={1}>
               Payments
@@ -272,9 +295,10 @@ const RASubscriptionHistory = () => {
               </Stack>
             )}
           </Box>
-        </Stack>
-      )}
-    </Box>
+          </Stack>
+        )}
+      </AccordionDetails>
+    </Accordion>
   );
 };
 
