@@ -138,6 +138,7 @@ const AppLayout = () => {
         component="main"
         sx={{
           flexGrow: 1,
+          minWidth: 0,
           mt: 8,
           p: 3,
           width: {

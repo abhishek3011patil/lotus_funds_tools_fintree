@@ -1414,7 +1414,83 @@ export const getRegistrationById = async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      `SELECT * FROM ra_details WHERE id=$1`,
+      `
+        SELECT
+          details.*,
+          application.id AS registration_application_id,
+          application.status AS registration_status,
+          application.created_at AS registration_created_at,
+          application.paid_at AS registration_paid_at,
+          selection.plan_code_snapshot AS payment_plan_code,
+          selection.plan_name_snapshot AS payment_plan_name,
+          selection.tier_code_snapshot AS payment_tier_code,
+          selection.price_paise_snapshot AS payment_plan_price_paise,
+          selection.currency_snapshot AS payment_plan_currency,
+          selection.duration_days_snapshot AS payment_plan_duration_days,
+          selection.selected_at AS payment_plan_selected_at,
+          payment_order.id AS payment_order_id,
+          payment_order.provider AS payment_provider,
+          payment_order.provider_order_id AS payment_provider_order_id,
+          payment_order.status AS payment_status,
+          payment_order.amount_paise AS payment_amount_paise,
+          TRIM(payment_order.currency) AS payment_currency,
+          payment_order.receipt AS payment_receipt,
+          payment_order.paid_at AS payment_paid_at,
+          payment_order.failed_at AS payment_failed_at,
+          payment_order.failure_reason AS payment_failure_reason,
+          payment_order.created_at AS payment_created_at,
+          payment_order.updated_at AS payment_updated_at,
+          payment_transaction.provider_payment_id,
+          payment_transaction.status AS payment_transaction_status,
+          payment_transaction.created_at AS payment_transaction_created_at,
+          subscription.id AS subscription_id,
+          subscription.status AS subscription_status,
+          subscription.starts_at AS subscription_starts_at,
+          subscription.expires_at AS subscription_expires_at,
+          subscription.cancelled_at AS subscription_cancelled_at,
+          subscription.cancellation_reason AS subscription_cancellation_reason
+        FROM ra_details details
+        LEFT JOIN LATERAL (
+          SELECT registration_application.*
+          FROM registration_applications registration_application
+          WHERE registration_application.entity_id = details.id
+            AND registration_application.applicant_type = 'RA'
+          ORDER BY registration_application.created_at DESC
+          LIMIT 1
+        ) application ON true
+        LEFT JOIN LATERAL (
+          SELECT plan_selection.*
+          FROM registration_plan_selections plan_selection
+          WHERE plan_selection.registration_application_id = application.id
+          ORDER BY
+            (plan_selection.replaced_at IS NULL) DESC,
+            plan_selection.selected_at DESC
+          LIMIT 1
+        ) selection ON true
+        LEFT JOIN LATERAL (
+          SELECT registration_payment.*
+          FROM payment_orders registration_payment
+          WHERE registration_payment.registration_application_id = application.id
+          ORDER BY registration_payment.created_at DESC
+          LIMIT 1
+        ) payment_order ON true
+        LEFT JOIN LATERAL (
+          SELECT transaction.*
+          FROM payment_transactions transaction
+          WHERE transaction.payment_order_id = payment_order.id
+            AND transaction.transaction_type = 'PAYMENT'
+          ORDER BY transaction.created_at DESC
+          LIMIT 1
+        ) payment_transaction ON true
+        LEFT JOIN LATERAL (
+          SELECT registration_subscription.*
+          FROM subscriptions registration_subscription
+          WHERE registration_subscription.registration_application_id = application.id
+          ORDER BY registration_subscription.created_at DESC
+          LIMIT 1
+        ) subscription ON true
+        WHERE details.id = $1
+      `,
       [id]
     );
 
@@ -1444,7 +1520,83 @@ export const getBrokerById = async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      `SELECT * FROM broker_details WHERE id = $1`,
+      `
+        SELECT
+          details.*,
+          application.id AS registration_application_id,
+          application.status AS registration_status,
+          application.created_at AS registration_created_at,
+          application.paid_at AS registration_paid_at,
+          selection.plan_code_snapshot AS payment_plan_code,
+          selection.plan_name_snapshot AS payment_plan_name,
+          selection.tier_code_snapshot AS payment_tier_code,
+          selection.price_paise_snapshot AS payment_plan_price_paise,
+          selection.currency_snapshot AS payment_plan_currency,
+          selection.duration_days_snapshot AS payment_plan_duration_days,
+          selection.selected_at AS payment_plan_selected_at,
+          payment_order.id AS payment_order_id,
+          payment_order.provider AS payment_provider,
+          payment_order.provider_order_id AS payment_provider_order_id,
+          payment_order.status AS payment_status,
+          payment_order.amount_paise AS payment_amount_paise,
+          TRIM(payment_order.currency) AS payment_currency,
+          payment_order.receipt AS payment_receipt,
+          payment_order.paid_at AS payment_paid_at,
+          payment_order.failed_at AS payment_failed_at,
+          payment_order.failure_reason AS payment_failure_reason,
+          payment_order.created_at AS payment_created_at,
+          payment_order.updated_at AS payment_updated_at,
+          payment_transaction.provider_payment_id,
+          payment_transaction.status AS payment_transaction_status,
+          payment_transaction.created_at AS payment_transaction_created_at,
+          subscription.id AS subscription_id,
+          subscription.status AS subscription_status,
+          subscription.starts_at AS subscription_starts_at,
+          subscription.expires_at AS subscription_expires_at,
+          subscription.cancelled_at AS subscription_cancelled_at,
+          subscription.cancellation_reason AS subscription_cancellation_reason
+        FROM broker_details details
+        LEFT JOIN LATERAL (
+          SELECT registration_application.*
+          FROM registration_applications registration_application
+          WHERE registration_application.entity_id = details.id
+            AND registration_application.applicant_type = 'BROKER'
+          ORDER BY registration_application.created_at DESC
+          LIMIT 1
+        ) application ON true
+        LEFT JOIN LATERAL (
+          SELECT plan_selection.*
+          FROM registration_plan_selections plan_selection
+          WHERE plan_selection.registration_application_id = application.id
+          ORDER BY
+            (plan_selection.replaced_at IS NULL) DESC,
+            plan_selection.selected_at DESC
+          LIMIT 1
+        ) selection ON true
+        LEFT JOIN LATERAL (
+          SELECT registration_payment.*
+          FROM payment_orders registration_payment
+          WHERE registration_payment.registration_application_id = application.id
+          ORDER BY registration_payment.created_at DESC
+          LIMIT 1
+        ) payment_order ON true
+        LEFT JOIN LATERAL (
+          SELECT transaction.*
+          FROM payment_transactions transaction
+          WHERE transaction.payment_order_id = payment_order.id
+            AND transaction.transaction_type = 'PAYMENT'
+          ORDER BY transaction.created_at DESC
+          LIMIT 1
+        ) payment_transaction ON true
+        LEFT JOIN LATERAL (
+          SELECT registration_subscription.*
+          FROM subscriptions registration_subscription
+          WHERE registration_subscription.registration_application_id = application.id
+          ORDER BY registration_subscription.created_at DESC
+          LIMIT 1
+        ) subscription ON true
+        WHERE details.id = $1
+      `,
       [id]
     );
 

@@ -40,7 +40,7 @@ beforeEach(async () => {
 });
 
 describe("independent authentication request limits", () => {
-  it("keeps login, OTP and session checks available after the API budget is exhausted", async () => {
+  it("keeps login and OTP available after the API budget is exhausted", async () => {
     for (let i = 0; i < 300; i++) {
       await request(app).get("/api/history").expect(200);
     }
@@ -49,9 +49,18 @@ describe("independent authentication request limits", () => {
     await request(app).get("/api/auth-extra").expect(429);
     await request(app).post("/api/auth/login").send({}).expect(200);
     await request(app).post("/api/auth/send-otp").send({}).expect(200);
-    await request(app).get("/api/auth/me").expect(200);
+    await request(app).get("/api/auth/me").expect(429);
     // Match Express's case-insensitive and trailing-slash route handling.
     await request(app).post("/API/AUTH/LOGIN/").send({}).expect(200);
+  });
+
+  it("does not let session reads exhaust the login and OTP budget", async () => {
+    for (let i = 0; i < 300; i++) {
+      await request(app).get("/API/AUTH/ME/").expect(200);
+    }
+    await request(app).get("/api/auth/me").expect(429);
+    await request(app).post("/api/auth/login").send({}).expect(200);
+    await request(app).post("/api/auth/send-otp").send({}).expect(200);
   });
 
   it("limits failed logins and returns Retry-After without counting successful OTP challenges", async () => {

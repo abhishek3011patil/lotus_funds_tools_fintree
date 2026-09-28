@@ -1,5 +1,6 @@
 import { useEffect, useState, ChangeEvent } from "react";
 import { useParams } from "react-router-dom";
+import ProfilePictureUpload from "../components/setting/ProfilePictureUpload";
 import {
   Box,
   Button,
@@ -10,6 +11,7 @@ import {
   Snackbar,
   Alert,
   Checkbox,
+  Chip,
   FormControlLabel,
   List,
   ListItemButton,
@@ -28,6 +30,7 @@ import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import GavelOutlinedIcon from "@mui/icons-material/GavelOutlined";
 import FolderSharedOutlinedIcon from "@mui/icons-material/FolderSharedOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Registration = {
@@ -76,7 +79,7 @@ const EditPage = () => {
   const [errorMsg, setErrorMsg] = useState("");
   const [serverErrors, setServerErrors] = useState<{ [key: string]: string }>({});
 
-  const [activeTab, setActiveTab] = useState("basic-info");
+  const [activeTab, setActiveTab] = useState("payment-info");
   const [associatedRAs, setAssociatedRAs] = useState<any[]>([]);
 
   const isRA = type?.toUpperCase() === "RA";
@@ -327,6 +330,60 @@ const fetchData = async () => {
 
   if (!data) return <Box sx={{ p: 4 }}>Loading profile...</Box>;
 
+  const formatDateTime = (value: unknown): string => {
+    if (!value) return "—";
+    const parsed = new Date(String(value));
+    if (Number.isNaN(parsed.getTime())) return "—";
+    return parsed.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const formatMoney = (amountPaise: unknown, currency: unknown): string => {
+    const amount = Number(amountPaise);
+    if (!Number.isFinite(amount)) return "—";
+    try {
+      return new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: String(currency || "INR").trim(),
+      }).format(amount / 100);
+    } catch {
+      return `${String(currency || "INR").trim()} ${(amount / 100).toFixed(2)}`;
+    }
+  };
+
+  const paymentStatus = String(data.payment_status || "NOT_STARTED").toUpperCase();
+  const paymentStatusColor =
+    paymentStatus === "PAID"
+      ? "success"
+      : paymentStatus === "FAILED"
+        ? "error"
+        : paymentStatus === "CREATED" || paymentStatus === "PENDING"
+          ? "warning"
+          : "default";
+
+  const paymentDetails = [
+    ["Selected plan", data.payment_plan_name || "No plan selected"],
+    ["Plan code / tier", [data.payment_plan_code, data.payment_tier_code].filter(Boolean).join(" / ") || "—"],
+    ["Plan duration", data.payment_plan_duration_days ? `${data.payment_plan_duration_days} days` : "—"],
+    ["Amount", formatMoney(data.payment_amount_paise ?? data.payment_plan_price_paise, data.payment_currency ?? data.payment_plan_currency)],
+    ["Payment provider", data.payment_provider || "—"],
+    ["Provider order ID", data.payment_provider_order_id || "—"],
+    ["Provider payment ID", data.provider_payment_id || "—"],
+    ["Receipt", data.payment_receipt || "—"],
+    ["Payment created", formatDateTime(data.payment_created_at)],
+    ["Paid at", formatDateTime(data.payment_paid_at || data.registration_paid_at)],
+    ["Last updated", formatDateTime(data.payment_updated_at)],
+    ["Registration status", data.registration_status || "Legacy / unavailable"],
+    ["Subscription status", data.subscription_status || "Not created"],
+    ["Subscription starts", formatDateTime(data.subscription_starts_at)],
+    ["Subscription expires", formatDateTime(data.subscription_expires_at)],
+  ];
+
   // ── Field Configurations ───────────────────────────────────────────────────
   const raBasicFields = [
     "salutation",
@@ -397,7 +454,6 @@ const fetchData = async () => {
   ];
 
   const raFileFields = [
-    { key: "profile_image", label: "Profile Image" },
     { key: "pan_card", label: "PAN Card" },
     { key: "address_proof_document", label: "Address Proof" },
     { key: "sebi_certificate", label: "SEBI Certificate" },
@@ -479,6 +535,7 @@ const fetchData = async () => {
   // ── Navigation Items List for Sidebar ─────────────────────────────────────
   const navItems = isRA
     ? [
+        { id: "payment-info", label: "Payment & Plan", icon: <ReceiptLongOutlinedIcon /> },
         { id: "basic-info", label: "Basic Info", icon: <PersonOutlineIcon /> },
         { id: "address-info", label: "Address", icon: <HomeOutlinedIcon /> },
         { id: "sebi-info", label: "SEBI & NISM", icon: <VerifiedUserOutlinedIcon /> },
@@ -488,6 +545,7 @@ const fetchData = async () => {
         { id: "documents", label: "Documents", icon: <FolderSharedOutlinedIcon /> },
       ]
     : [
+        { id: "payment-info", label: "Payment & Plan", icon: <ReceiptLongOutlinedIcon /> },
         { id: "basic-info", label: "Basic Info", icon: <PersonOutlineIcon /> },
         { id: "address-info", label: "Address", icon: <HomeOutlinedIcon /> },
         { id: "sebi-info", label: "SEBI & Exchanges", icon: <VerifiedUserOutlinedIcon /> },
@@ -532,6 +590,13 @@ const fetchData = async () => {
         </Alert>
       </Snackbar>
 
+      {isRA && <ProfilePictureUpload
+        currentFilename={data?.profile_image}
+        value={files.profile_image}
+        name={[fields.first_name, fields.surname].filter(Boolean).join(" ")}
+        helperText="Your picture will be updated when you save this registration."
+        onChange={file => setFiles(previous => { const next = { ...previous }; if (file) next.profile_image = file; else delete next.profile_image; return next; })}
+      />}
       {/* ── MAIN LAYOUT: SIDEBAR + CONTENT ── */}
       <Grid container spacing={4}>
         
@@ -593,6 +658,39 @@ const fetchData = async () => {
         {/* Right Form Content Pane */}
         <Grid item xs={12} md={8.5} lg={9}>
           <Grid container spacing={3}>
+            <Grid item xs={12} id="payment-info">
+              <Paper sx={{ p: 3, borderRadius: "16px", border: "1px solid #e2e8f0" }} elevation={0}>
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
+                  <Box>
+                    <Typography variant="h6" fontWeight={700}>Payment, Plan & Subscription</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Read-only billing evidence used during approval and account review.
+                    </Typography>
+                  </Box>
+                  <Chip label={paymentStatus.replace(/_/g, " ")} color={paymentStatusColor} sx={{ fontWeight: 700 }} />
+                </Box>
+                <Divider sx={{ my: 3 }} />
+                <Grid container spacing={2}>
+                  {paymentDetails.map(([label, value]) => (
+                    <Grid item xs={12} sm={6} md={4} key={String(label)}>
+                      <Typography variant="caption" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        {label}
+                      </Typography>
+                      <Typography variant="body2" fontWeight={600} sx={{ mt: 0.5, overflowWrap: "anywhere" }}>
+                        {value}
+                      </Typography>
+                    </Grid>
+                  ))}
+                </Grid>
+                {(data.payment_failure_reason || data.subscription_cancellation_reason) && (
+                  <Alert severity={data.payment_failure_reason ? "error" : "warning"} sx={{ mt: 3 }}>
+                    {data.payment_failure_reason
+                      ? `Payment failure: ${data.payment_failure_reason}`
+                      : `Subscription cancellation: ${data.subscription_cancellation_reason}`}
+                  </Alert>
+                )}
+              </Paper>
+            </Grid>
             
             {/* ── BASIC INFORMATION ── */}
             <Grid item xs={12} id="basic-info">

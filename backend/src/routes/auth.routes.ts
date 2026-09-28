@@ -1,5 +1,6 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
+import { isSessionCheck } from "../middlewares/rateLimit.middleware";
 
 import {
   login,
@@ -34,6 +35,8 @@ console.log("✅ AUTH ROUTES LOADED");
 router.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 300,
+  // Session reads are covered by the API limiter, independently of login/OTP.
+  skip: (req) => (req.method === "GET" || req.method === "HEAD") && isSessionCheck(req.path),
   standardHeaders: true,
   legacyHeaders: false,
   message: {

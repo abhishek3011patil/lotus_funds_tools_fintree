@@ -12,6 +12,7 @@ import {
   FormControlLabel,
 } from "@mui/material";
 import Grid from "@mui/material/GridLegacy";
+import RAProfilePicture from "../components/setting/RAProfilePicture";
 
 type Registration = {
   [key: string]: any;
@@ -158,7 +159,6 @@ Object.keys(fields).forEach((key) => {
 });
 
     const fileKeys = [
-      "profile_image",
       "pan_card",
       "address_proof_document",
       "sebi_certificate",
@@ -269,7 +269,6 @@ for (const pair of formData.entries()) {
   ];
 
   const raFileFields = [
-    { key: "profile_image", label: "Profile Image" },
     { key: "pan_card", label: "PAN Card" },
     { key: "address_proof_document", label: "Address Proof" },
     { key: "sebi_certificate", label: "SEBI Certificate" },
@@ -305,6 +304,10 @@ for (const pair of formData.entries()) {
         <Alert severity="error">{errorMsg}</Alert>
       </Snackbar>
 
+      <RAProfilePicture profile={data} onSaved={filename => {
+        setData(previous => ({ ...previous, profile_image: filename }));
+        setFields(previous => ({ ...previous, profile_image: filename }));
+      }} />
       <Grid container spacing={3}>
         <Grid item xs={12}>
           <Paper sx={{ p: 3 }}>
