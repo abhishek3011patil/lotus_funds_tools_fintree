@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import { createApiRateLimiter } from "./middlewares/rateLimit.middleware";
+import rateLimit from "express-rate-limit";
 import path from "path";
 import fs from "fs";
 import { authenticate, AuthRequest } from "./middlewares/auth.middleware";
@@ -33,6 +33,7 @@ import clientAccountRoutes from "./routes/clientAccount/clientAccount.routes";
 import raDashboardRoutes from "./routes/raDashboard/raDashboard.routes";
 import clientRegistrationRoutes from "./routes/clientRegistration/clientRegistration.routes";
 import aadhaarKycRoutes from "./routes/aadhaarKyc.routes";
+
 
 
 const app = express();
@@ -88,14 +89,34 @@ app.use(
           "https://api.razorpay.com",
           "https://*.razorpay.com",
         ],
-        // Authenticated profile pictures and media previews use object URLs.
-        imgSrc: ["'self'", "data:", "blob:", "https://*.razorpay.com"],
+        imgSrc: ["'self'", "data:", "https://*.razorpay.com"],
       },
     },
   })
 );
 
-app.use(createApiRateLimiter());
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  // These authenticated read-only endpoints are polled in the UI and can
+  // otherwise exhaust the shared per-IP allowance during normal use.
+  skip: (req) =>
+    req.method === "GET" &&
+    [
+      "/api/telegram/status",
+      "/notifications/unread-count",
+      "/api/subscription-notifications/unread-count",
+    ].includes(req.path),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many requests. Please try again later.",
+  },
+});
+
+
+app.use(limiter);
 
 /*
  * Razorpay webhook must receive the raw request body.
