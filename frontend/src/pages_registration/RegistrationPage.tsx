@@ -23,7 +23,6 @@ import axios from "axios";
 import type { SelectChangeEvent } from "@mui/material";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import RARegistrationDevTools from "../dev/RARegistrationDevTools";
 import InputAdornment from "@mui/material/InputAdornment";
 
 
@@ -938,17 +937,6 @@ const cities = selectedState
       <Paper sx={styles.paper} elevation={0}>
         {invitationInfo && <Alert severity="info" sx={{ mb: 2 }}>Registering with {invitationInfo.brokerName}. Your RA account will be associated with this broker. {invitationInfo.email ? `Use ${invitationInfo.email} for this registration.` : ""}</Alert>}
         <Box sx={styles.stepperBox}>
-
-          {/* testing */}
-            
- {import.meta.env.DEV && (
-  <RARegistrationDevTools
-    setForm={setFormData}
-    setStep={setCurrentStep}
-    finalStep={7}
-  />
-)} 
-    {/* testing */}
 
           <Box sx={currentStep > 1 ? styles.stepDone : styles.stepActive}>
             {currentStep > 1 ? <CheckCircleIcon sx={{ fontSize: { xs: 22, md: 40 } }} />: <Box sx={{ border: '2px solid rgba(255,255,255,0.4)', borderRadius: '50%', width: 35, height: 35, display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 800 }}>01</Box>}
