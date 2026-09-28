@@ -16,6 +16,15 @@ export type RASettingsSection =
   | "telegram-participants"
   | "telegram-connection";
 
+export const isRASettingsSection = (value: string | undefined): value is RASettingsSection =>
+  value === "account" ||
+  value === "subscription" ||
+  value === "security" ||
+  value === "research" ||
+  value === "whatsapp" ||
+  value === "telegram-participants" ||
+  value === "telegram-connection";
+
 type RASettingsNavigationProps = {
   activeSection: RASettingsSection;
   onNavigate: (section: RASettingsSection) => void;

@@ -263,6 +263,7 @@ const AppRoutes = () => {
   }
 />
 <Route path="/settings" element={<Settings />} />
+<Route path="/settings/:section" element={<Settings />} />
 
 <Route path="/notifications" element={<RANotification />} />
 

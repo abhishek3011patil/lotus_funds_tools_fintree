@@ -1,9 +1,8 @@
-import { useState } from "react";
 import { Alert, AlertTitle, Box, Button, IconButton, Paper, Stack, Typography } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import ChangePassword from "../common/ChangePassword";
 import TelegramConnection from "./common/TelegramConnection";
 import RASettingsDisclaimer from "../common/RASettingsDisclaimer";
@@ -13,6 +12,7 @@ import RASubscriptionStatus from "../components/setting/RA_setting_component/RAS
 import RASubscriptionHistory from "../components/setting/RA_setting_component/RASubscriptionHistory";
 import ResearchCallTemplateBuilder from "../components/setting/ResearchCallTemplateBuilder";
 import RASettingsNavigation, {
+  isRASettingsSection,
   type RASettingsSection,
 } from "../components/setting/RASettingsNavigation";
 import { useTelegramNotification } from "../hooks/useTelegramNotification";
@@ -28,15 +28,85 @@ const cardSx = {
 
 const Settings = () => {
   const navigate = useNavigate();
-  const [activeSection, setActiveSection] = useState<RASettingsSection>("account");
+  const { section } = useParams<{ section?: string }>();
+  const activeSection: RASettingsSection = isRASettingsSection(section) ? section : "account";
   const { telegramDisconnected, hideNotification } = useTelegramNotification();
 
   const handleNavigate = (section: RASettingsSection) => {
-    setActiveSection(section);
-    document.getElementById(`ra-settings-${section}`)?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
+    navigate(`/settings/${section}`);
+  };
+
+  const telegramAlert = telegramDisconnected ? (
+    <Alert
+      severity="error"
+      sx={{ borderRadius: 2.5 }}
+      action={
+        <IconButton color="inherit" size="small" onClick={hideNotification} aria-label="Dismiss Telegram alert">
+          <CloseIcon fontSize="inherit" />
+        </IconButton>
+      }
+    >
+      <AlertTitle>Telegram not connected</AlertTitle>
+      Connect Telegram before sending research calls through that channel.
+    </Alert>
+  ) : null;
+
+  const renderActiveSection = () => {
+    switch (activeSection) {
+      case "subscription":
+        return (
+          <Paper variant="outlined" sx={cardSx}>
+            <RASubscriptionStatus />
+            <RASubscriptionHistory />
+          </Paper>
+        );
+      case "security":
+        return <Paper variant="outlined" sx={cardSx}><ChangePassword /></Paper>;
+      case "research":
+        return (
+          <Stack spacing={2.5}>
+            <Paper variant="outlined" sx={cardSx}><RASettingsDisclaimer /></Paper>
+            <Paper variant="outlined" sx={cardSx}><ResearchCallTemplateBuilder /></Paper>
+          </Stack>
+        );
+      case "whatsapp":
+        return <Paper variant="outlined" sx={cardSx}><WhatsAppParticipants /></Paper>;
+      case "telegram-participants":
+        return (
+          <Stack spacing={2.5}>
+            {telegramAlert}
+            <Paper variant="outlined" sx={cardSx}><ManageParticipants /></Paper>
+          </Stack>
+        );
+      case "telegram-connection":
+        return (
+          <Stack spacing={2.5}>
+            {telegramAlert}
+            <Paper variant="outlined" sx={cardSx}><TelegramConnection /></Paper>
+          </Stack>
+        );
+      case "account":
+      default:
+        return (
+          <Stack spacing={2.5}>
+            <RAProfilePicture />
+            <Paper variant="outlined" sx={cardSx}>
+              <Typography variant="h6" fontWeight={800}>Profile and account</Typography>
+              <Typography variant="body2" color="text.secondary" mt={0.5} mb={2.5}>
+                Review your approved profile or request changes to your public analyst details.
+              </Typography>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+                <Button variant="contained" startIcon={<PersonOutlineRoundedIcon />} onClick={() => navigate("/ra/profile")} sx={{ textTransform: "none", bgcolor: "#5271FF", fontWeight: 700 }}>
+                  View profile
+                </Button>
+                <Button variant="outlined" startIcon={<EditOutlinedIcon />} onClick={() => navigate("/ra/profile/edit")} sx={{ textTransform: "none", fontWeight: 700 }}>
+                  Request profile edit
+                </Button>
+              </Stack>
+            </Paper>
+          </Stack>
+        );
+    }
   };
 
   return (
@@ -54,64 +124,7 @@ const Settings = () => {
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "230px minmax(0, 1fr)" }, gap: 2.5, alignItems: "start" }}>
           <RASettingsNavigation activeSection={activeSection} onNavigate={handleNavigate} />
 
-          <Stack spacing={2.5} minWidth={0}>
-            <RAProfilePicture />
-            <Paper id="ra-settings-account" variant="outlined" sx={cardSx}>
-              <Typography variant="h6" fontWeight={800}>Profile and account</Typography>
-              <Typography variant="body2" color="text.secondary" mt={0.5} mb={2.5}>
-                Review your approved profile or request changes to your public analyst details.
-              </Typography>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                <Button variant="contained" startIcon={<PersonOutlineRoundedIcon />} onClick={() => navigate("/ra/profile")} sx={{ textTransform: "none", bgcolor: "#5271FF", fontWeight: 700 }}>
-                  View profile
-                </Button>
-                <Button variant="outlined" startIcon={<EditOutlinedIcon />} onClick={() => navigate("/ra/profile/edit")} sx={{ textTransform: "none", fontWeight: 700 }}>
-                  Request profile edit
-                </Button>
-              </Stack>
-            </Paper>
-
-            <Paper id="ra-settings-subscription" variant="outlined" sx={cardSx}>
-              <RASubscriptionStatus />
-              <RASubscriptionHistory />
-            </Paper>
-
-            <Paper id="ra-settings-security" variant="outlined" sx={cardSx}>
-              <ChangePassword />
-            </Paper>
-
-            <Stack id="ra-settings-research" spacing={2.5} sx={{ scrollMarginTop: 2 }}>
-              <Paper variant="outlined" sx={cardSx}><RASettingsDisclaimer /></Paper>
-              <Paper variant="outlined" sx={cardSx}><ResearchCallTemplateBuilder /></Paper>
-            </Stack>
-
-            <Paper id="ra-settings-whatsapp" variant="outlined" sx={cardSx}>
-              <WhatsAppParticipants />
-            </Paper>
-
-            {telegramDisconnected && (
-              <Alert
-                severity="error"
-                sx={{ borderRadius: 2.5 }}
-                action={
-                  <IconButton color="inherit" size="small" onClick={hideNotification} aria-label="Dismiss Telegram alert">
-                    <CloseIcon fontSize="inherit" />
-                  </IconButton>
-                }
-              >
-                <AlertTitle>Telegram not connected</AlertTitle>
-                Connect Telegram before sending research calls through that channel.
-              </Alert>
-            )}
-
-            <Paper id="ra-settings-telegram-participants" variant="outlined" sx={cardSx}>
-              <ManageParticipants />
-            </Paper>
-
-            <Paper id="ra-settings-telegram-connection" variant="outlined" sx={cardSx}>
-              <TelegramConnection />
-            </Paper>
-          </Stack>
+          <Box minWidth={0}>{renderActiveSection()}</Box>
         </Box>
       </Box>
     </Box>
