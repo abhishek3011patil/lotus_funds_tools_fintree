@@ -23,7 +23,7 @@ const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
     const token = localStorage.getItem("token");
 
     if (!token) {
-      sessionStorage.setItem("postLoginPath", `${location.pathname}${location.search}`);
+      sessionStorage.setItem("postLoginPath", `${location.pathname}${location.search}${location.hash}`);
       setStatus("unauth");
       return;
     }
@@ -56,7 +56,7 @@ const ProtectedRoute: React.FC<Props> = ({ children, allowedRoles }) => {
   console.error("Auth check failed:", message || error.message);
   setStatus("error");
 });
-  }, [allowedRoles, location.pathname, location.search]);
+  }, [allowedRoles, location.pathname, location.search, location.hash]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Verify the stored session whenever the protected destination changes.

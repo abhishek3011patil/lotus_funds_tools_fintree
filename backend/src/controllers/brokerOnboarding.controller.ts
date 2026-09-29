@@ -21,17 +21,20 @@ export const requireBroker = async (req: AuthRequest, res: Response, next: NextF
 
 const analystColumns = `ra.id, concat_ws(' ', ra.first_name, ra.surname) AS name,
   ra.sebi_reg_no AS "sebiRegistration", ra.expertise AS category,
-  ra.sebi_expiry_date AS "registrationExpiry",
-  CASE WHEN lower(ra.status) = 'approved' AND u.is_active = true THEN 'ACTIVE'
+  ra.sebi_expiry_date AS "registrationExpiry"`;
+
+const analystAccountStatus = `CASE WHEN lower(ra.status) = 'approved' AND u.is_active = true THEN 'ACTIVE'
        WHEN lower(ra.status) = 'rejected' THEN 'REJECTED'
-       WHEN ra.user_id IS NOT NULL THEN 'INACTIVE' ELSE 'PENDING' END AS status`;
+       WHEN ra.user_id IS NOT NULL THEN 'INACTIVE' ELSE 'PENDING' END`;
 
 export const listBrokerAnalysts = async (_req: AuthRequest, res: Response) => {
   const result = await pool.query(
-    `SELECT ${analystColumns}, link.onboarding_method AS "onboardingMethod", link.created_at AS "joinedAt"
+    `SELECT ${analystColumns},
+       CASE WHEN link.status = 'PENDING' THEN 'PENDING' ELSE (${analystAccountStatus}) END AS status,
+       link.onboarding_method AS "onboardingMethod", link.created_at AS "joinedAt"
      FROM broker_research_analysts link JOIN ra_details ra ON ra.id = link.ra_id
      LEFT JOIN users u ON u.id = ra.user_id
-     WHERE link.broker_id = $1 AND link.status = 'ACTIVE' ORDER BY link.created_at DESC`,
+     WHERE link.broker_id = $1 AND link.status IN ('ACTIVE', 'PENDING') ORDER BY link.created_at DESC`,
     [res.locals.broker.id]
   );
   res.json(result.rows);
@@ -39,14 +42,16 @@ export const listBrokerAnalysts = async (_req: AuthRequest, res: Response) => {
 
 export const searchExistingAnalysts = async (req: AuthRequest, res: Response) => {
   const search = String(req.query.search || "").trim().slice(0, 100);
-  if (search.length < 2) return res.json([]);
+  if (search.length === 1) return res.json([]);
   const result = await pool.query(
-    `SELECT ${analystColumns} FROM ra_details ra JOIN users u ON u.id = ra.user_id
+    `SELECT ${analystColumns}, ${analystAccountStatus} AS status FROM ra_details ra JOIN users u ON u.id = ra.user_id
      WHERE lower(ra.status) = 'approved' AND u.is_active = true
-       AND (concat_ws(' ', ra.first_name, ra.surname) ILIKE $2 OR ra.sebi_reg_no ILIKE $2)
+       AND ($2 = '' OR concat_ws(' ', ra.first_name, ra.surname) ILIKE $3 OR ra.sebi_reg_no ILIKE $3)
        AND NOT EXISTS (SELECT 1 FROM broker_research_analysts link
-         WHERE link.broker_id = $1 AND link.ra_id = ra.id AND link.status = 'ACTIVE')
-     ORDER BY ra.first_name, ra.surname LIMIT 25`, [res.locals.broker.id, `%${search}%`]
+         WHERE link.broker_id = $1 AND link.ra_id = ra.id AND link.status IN ('ACTIVE', 'PENDING'))
+     ORDER BY ra.first_name, ra.surname
+     LIMIT CASE WHEN $2 = '' THEN 8 ELSE 25 END`,
+    [res.locals.broker.id, search, `%${search}%`]
   );
   res.json(result.rows);
 };
@@ -55,14 +60,121 @@ export const addExistingAnalyst = async (req: AuthRequest, res: Response) => {
   const raId = String(req.body.raId || "");
   if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(raId)) return res.status(400).json({ message: "Select a valid Research Analyst." });
   const result = await pool.query(
-    `INSERT INTO broker_research_analysts (broker_id, ra_id, onboarding_method)
-     SELECT $1, ra.id, 'EXISTING' FROM ra_details ra JOIN users u ON u.id = ra.user_id
-     WHERE ra.id = $2 AND lower(ra.status) = 'approved' AND u.is_active = true
-     ON CONFLICT (broker_id, ra_id) DO UPDATE SET status = 'ACTIVE', updated_at = now()
-     RETURNING ra_id`, [res.locals.broker.id, raId]
+    `WITH eligible AS (
+       SELECT ra.id, ra.user_id, u.email, concat_ws(' ', ra.first_name, ra.surname) AS name
+       FROM ra_details ra JOIN users u ON u.id = ra.user_id
+       WHERE ra.id = $2 AND lower(ra.status) = 'approved' AND u.is_active = true
+     ), requested AS (
+       INSERT INTO broker_research_analysts (broker_id, ra_id, onboarding_method, status)
+       SELECT $1, id, 'EXISTING', 'PENDING' FROM eligible
+       ON CONFLICT (broker_id, ra_id) DO UPDATE
+         SET status = 'PENDING', onboarding_method = 'EXISTING', updated_at = now()
+         WHERE broker_research_analysts.status IN ('INACTIVE', 'REJECTED')
+       RETURNING ra_id
+     ), notified AS (
+       INSERT INTO subscription_notifications (
+         user_id, subscription_id, client_ra_subscription_id,
+         notification_key, type, title, message
+       )
+       SELECT eligible.user_id, NULL, NULL,
+         CONCAT('BROKER_RA_CONNECTION_REQUEST:', $1::text, ':', $2::text, ':', EXTRACT(EPOCH FROM NOW())::text),
+         'Broker Connection Request',
+         'New broker connection request',
+         CONCAT($3::text, ' wants to add you as a Research Analyst. Review the request from Clients > Brokers.')
+       FROM eligible JOIN requested ON requested.ra_id = eligible.id
+       ON CONFLICT DO NOTHING
+       RETURNING id
+     )
+     SELECT eligible.email, eligible.name FROM eligible
+     JOIN requested ON requested.ra_id = eligible.id`,
+    [res.locals.broker.id, raId, res.locals.broker.legal_name]
   );
-  if (!result.rows.length) return res.status(404).json({ message: "An active, approved Research Analyst was not found." });
-  res.status(201).json({ message: "Research Analyst added." });
+  if (!result.rows.length) {
+    return res.status(409).json({ message: "This Research Analyst already has an active or pending connection with your brokerage." });
+  }
+
+  const frontendUrl = String(process.env.FRONTEND_URL || "").replace(/\/$/, "");
+  let emailSent = false;
+  if (frontendUrl && result.rows[0].email) {
+    try {
+      const delivery = await emailService.send("BROKER_RA_CONNECTION_REQUEST", result.rows[0].email, {
+        raName: result.rows[0].name,
+        brokerName: res.locals.broker.legal_name,
+        requestsUrl: `${frontendUrl}/ra/clients#brokers`,
+      });
+      emailSent = delivery.sent;
+    } catch { /* The in-app request remains available when email delivery fails. */ }
+  }
+
+  return res.status(201).json({ message: "Connection request sent to the Research Analyst.", emailSent });
+};
+
+export const listRAConnectionRequests = async (req: AuthRequest, res: Response) => {
+  const result = await pool.query(
+    `SELECT b.id AS "brokerId", b.legal_name AS "brokerName",
+       link.created_at AS "requestedAt", link.status
+     FROM broker_research_analysts link
+     JOIN ra_details ra ON ra.id = link.ra_id
+     JOIN broker_details b ON b.id = link.broker_id
+     WHERE ra.user_id = $1 AND link.status = 'PENDING'
+     ORDER BY link.updated_at DESC`,
+    [req.user!.id]
+  );
+  return res.json(result.rows);
+};
+
+export const listRAConnectedBrokers = async (req: AuthRequest, res: Response) => {
+  const result = await pool.query(
+    `SELECT b.id AS "brokerId", b.legal_name AS "brokerName",
+       link.updated_at AS "connectedAt", link.status
+     FROM broker_research_analysts link
+     JOIN ra_details ra ON ra.id = link.ra_id
+     JOIN broker_details b ON b.id = link.broker_id
+     WHERE ra.user_id = $1 AND link.status = 'ACTIVE'
+     ORDER BY link.updated_at DESC`,
+    [req.user!.id]
+  );
+  return res.json(result.rows);
+};
+
+export const removeRAConnectedBroker = async (req: AuthRequest, res: Response) => {
+  const brokerId = String(req.params.brokerId || "");
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(brokerId)) {
+    return res.status(400).json({ message: "Select a valid broker connection." });
+  }
+  const result = await pool.query(
+    `UPDATE broker_research_analysts link SET status = 'INACTIVE', updated_at = now()
+     FROM ra_details ra
+     WHERE link.broker_id = $2 AND link.ra_id = ra.id
+       AND ra.user_id = $1 AND link.status = 'ACTIVE'
+     RETURNING link.broker_id`,
+    [req.user!.id, brokerId]
+  );
+  if (!result.rows.length) return res.status(404).json({ message: "Connected broker was not found." });
+  return res.status(204).send();
+};
+
+export const respondToRAConnectionRequest = async (req: AuthRequest, res: Response) => {
+  const brokerId = String(req.params.brokerId || "");
+  const action = String(req.body.action || "").toUpperCase();
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(brokerId)) {
+    return res.status(400).json({ message: "Select a valid broker request." });
+  }
+  if (!["ACCEPT", "DECLINE"].includes(action)) {
+    return res.status(400).json({ message: "Choose whether to accept or decline the request." });
+  }
+
+  const nextStatus = action === "ACCEPT" ? "ACTIVE" : "REJECTED";
+  const result = await pool.query(
+    `UPDATE broker_research_analysts link SET status = $3, updated_at = now()
+     FROM ra_details ra
+     WHERE link.broker_id = $2 AND link.ra_id = ra.id
+       AND ra.user_id = $1 AND link.status = 'PENDING'
+     RETURNING link.broker_id`,
+    [req.user!.id, brokerId, nextStatus]
+  );
+  if (!result.rows.length) return res.status(404).json({ message: "Pending broker request was not found." });
+  return res.json({ message: action === "ACCEPT" ? "Broker request accepted." : "Broker request declined." });
 };
 
 export const removeBrokerAnalyst = async (req: AuthRequest, res: Response) => {

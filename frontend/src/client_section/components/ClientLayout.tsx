@@ -34,7 +34,7 @@ const drawerWidth = 240;
 const sidebarItems = [
   { name: 'Dashboard', path: '/client/dashboard', icon: DashboardIcon },
   { name: 'Recommendations', path: '/client/recommendations', icon: CheckBoxIcon },
-  { name: 'Research Analysts', path: '/client/analysts', icon: GroupsRoundedIcon },
+  { name: 'Marketplace', path: '/client/analysts', icon: GroupsRoundedIcon },
   { name: 'Insights', path: '/client/insights', icon: AutoStoriesRoundedIcon },
   { name: 'Notifications', path: '/client/notifications', icon: NotificationsIcon },
   { name: 'Profile', path: '/client/profile', icon: PersonIcon },

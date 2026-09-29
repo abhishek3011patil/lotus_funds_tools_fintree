@@ -174,6 +174,14 @@ const renderers: TemplateRendererMap = {
       paragraph(`${data.brokerName} has invited you to register as a Research Analyst. This link expires in 7 days.`) +
       linkButton("Register as a Research Analyst", data.registrationUrl)),
   }),
+  BROKER_RA_CONNECTION_REQUEST: (data) => ({
+    subject: "New broker connection request",
+    text: `Hello ${data.raName},\n\n${data.brokerName} would like to connect with you on Lotus Funds. Review the request here: ${data.requestsUrl}`,
+    html: brandedLayout("New broker connection request",
+      paragraph(`Hello ${data.raName},`) +
+      paragraph(`${data.brokerName} would like to connect with you on Lotus Funds.`) +
+      linkButton("Review broker request", data.requestsUrl)),
+  }),
   RA_REGISTRATION_RECEIVED: (data) =>
     registrationReceived("Research Analyst", data),
   RA_APPROVED: (data) =>

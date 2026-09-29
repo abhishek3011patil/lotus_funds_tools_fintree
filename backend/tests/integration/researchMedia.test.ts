@@ -29,7 +29,7 @@ const app = express();
 app.use(express.json());
 app.use((req, _res, next) => { (req as any).user = { id: "test-ra", role: "RESEARCH_ANALYST" }; next(); });
 app.post("/calls", recommendationUpload, createResearchCall);
-app.post("/errata", createErrata);
+app.post("/errata", recommendationUpload, createErrata);
 app.get("/all", getRecommendationHistory);
 app.get("/my", getMyRecommendationHistory);
 app.use((error: any, _req: any, res: any, _next: any) => res.status(400).json({ code: error.code, message: error.message }));
@@ -138,5 +138,35 @@ describe("recommendation attachments", () => {
     const response = await request(app).post("/errata").send({ call_id: "original", updates: {}, errata_reason: "Correct entry", message_text: "Correction" });
     expect(response.status).toBe(201);
     expect(copied).toEqual(attachments);
+  });
+
+  it("appends newly uploaded media to retained errata attachments", async () => {
+    const existingAttachments = [{ url: "/uploads/chart.png", name: "chart.png" }];
+    const existing = { id: "original", status: "PUBLISHED", attachments: existingAttachments, file_url: "/uploads/chart.png" };
+    let copied: any;
+    const query = vi.fn(async (sql: string, values?: any[]) => {
+      if (sql.includes("FOR UPDATE")) return { rows: [existing], rowCount: 1 };
+      if (sql.includes("next_version")) return { rows: [{ next_version: 2 }] };
+      if (sql.includes("INSERT INTO research_calls")) {
+        copied = JSON.parse(values![36]);
+        return { rows: [{ id: "correction", symbol: "TEST", attachments: copied }] };
+      }
+      return { rows: [] };
+    });
+    vi.mocked(pool.connect).mockResolvedValue({ query, release: vi.fn() } as never);
+
+    const response = await request(app).post("/errata")
+      .field("call_id", "original")
+      .field("updates", JSON.stringify({}))
+      .field("underlying_study_values", JSON.stringify([]))
+      .field("errata_reason", "Add corrected chart")
+      .field("message_text", "Correction")
+      .attach("files", Buffer.from("new chart"), { filename: `${prefix}-errata.png`, contentType: "image/png" });
+
+    expect(response.status).toBe(201);
+    expect(copied).toHaveLength(2);
+    expect(copied[0]).toEqual(existingAttachments[0]);
+    expect(copied[1]).toMatchObject({ name: `${prefix}-errata.png`, mimeType: "image/png" });
+    expect((await testFiles()).some(name => name.includes(`${prefix}-errata`))).toBe(true);
   });
 });

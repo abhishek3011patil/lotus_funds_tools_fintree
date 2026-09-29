@@ -10,6 +10,16 @@ import {
   type AuthRequest,
 } from "../../middlewares/auth.middleware";
 import type { NextFunction, Response } from "express";
+import {
+  cancelBrokerSubscription,
+  createBrokerSubscriptionOrder,
+  listClientBrokers,
+  verifyBrokerSubscriptionPayment,
+} from "../../controllers/clientAnalystSubscriptions/clientBrokerSubscription.controller";
+import {
+  getClientAnalystProfile,
+  getClientBrokerProfile,
+} from "../../controllers/clientAnalystSubscriptions/clientMarketplaceProfile.controller";
 
 const router = Router();
 
@@ -26,7 +36,13 @@ const requireClient = (
 };
 
 router.use(authenticate, requireClient);
+router.get("/brokers", listClientBrokers);
+router.get("/brokers/:brokerId/profile", getClientBrokerProfile);
+router.patch("/brokers/:brokerId/cancel", cancelBrokerSubscription);
+router.post("/brokers/:brokerId/order", createBrokerSubscriptionOrder);
+router.post("/brokers/payment/verify", verifyBrokerSubscriptionPayment);
 router.get("/", listClientAnalysts);
+router.get("/:raUserId/profile", getClientAnalystProfile);
 router.patch("/:raUserId/cancel", cancelAnalystSubscription);
 router.post("/:raUserId/order", createAnalystSubscriptionOrder);
 router.post("/payment/verify", verifyAnalystSubscriptionPayment);

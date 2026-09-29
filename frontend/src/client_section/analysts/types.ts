@@ -28,6 +28,74 @@ export interface AnalystListResponse {
   };
 }
 
+export interface ClientBroker {
+  id: string;
+  name: string;
+  legalName: string;
+  entityType: string | null;
+  sebiRegistrationNumber: string | null;
+  category: string | null;
+  exchanges: string | null;
+  segments: string | null;
+  analystCount: number;
+  recommendationCount: number;
+  liveCallCount: number;
+  isSubscribed: boolean;
+  subscriptionExpiresAt: string | null;
+  pricePaise: number;
+  currency: string;
+  durationDays: number;
+}
+
+export interface BrokerListResponse {
+  success: boolean;
+  brokers: ClientBroker[];
+  pagination: AnalystListResponse["pagination"];
+}
+
+export interface MarketplacePerformance {
+  total: number;
+  accuracy: number;
+  strike: number;
+  rr: number | null;
+  active: number;
+  exited: number;
+  profit: number;
+  adverse: number;
+  sl: number;
+  early: number;
+  last: Array<"g" | "r" | "n">;
+}
+
+export interface MarketplaceProfile {
+  type: "analyst" | "broker";
+  id: string;
+  name: string;
+  organization?: string | null;
+  legalName?: string | null;
+  shortBio?: string | null;
+  entityType?: string | null;
+  website?: string | null;
+  sebiRegistrationNumber?: string | null;
+  nismCertificateNumber?: string | null;
+  category?: string | null;
+  registrationDate?: string | null;
+  registrationValidity?: string | null;
+  marketExperience?: string | null;
+  expertise?: string | null;
+  markets?: string | null;
+  exchanges?: string | null;
+  segments?: string | null;
+  analysts?: Array<{ id: string; name: string }>;
+}
+
+export interface MarketplaceProfileResponse {
+  success: boolean;
+  profile: MarketplaceProfile;
+  performancePeriod: "monthly" | "yearly";
+  performance: MarketplacePerformance;
+}
+
 export interface AnalystOrderResponse {
   success: boolean;
   order: {

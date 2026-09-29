@@ -5,18 +5,26 @@ import {
   Pagination,
   Snackbar,
   Stack,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 import AnalystCard from "../components/AnalystCard";
+import BrokerCard from "../components/BrokerCard";
+import MarketplaceProfileDialog from "../components/MarketplaceProfileDialog";
 import AnalystSearch from "../components/AnalystSearch";
 import {
   cancelAnalystSubscription,
+  cancelBrokerSubscription,
   createAnalystOrder,
+  createBrokerOrder,
   fetchClientAnalysts,
+  fetchClientBrokers,
   verifyAnalystPayment,
+  verifyBrokerPayment,
 } from "../api";
 import { openAnalystCheckout } from "../razorpay";
-import type { ClientAnalyst } from "../types";
+import type { ClientAnalyst, ClientBroker } from "../types";
 import { ClientAnalystsSkeleton } from "../../components/ClientPageSkeletons";
 
 const getErrorMessage = (error: unknown) => {
@@ -28,6 +36,8 @@ const getErrorMessage = (error: unknown) => {
 
 const ClientAnalystsPage = () => {
   const [analysts, setAnalysts] = useState<ClientAnalyst[]>([]);
+  const [brokers, setBrokers] = useState<ClientBroker[]>([]);
+  const [marketplaceType, setMarketplaceType] = useState<"analysts" | "brokers">("analysts");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -38,6 +48,9 @@ const ClientAnalystsPage = () => {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [profileSelection, setProfileSelection] = useState<{
+    type: "analyst" | "broker"; id: string; name: string;
+  } | null>(null);
 
   useEffect(() => {
     const normalizedSearch = search.trim();
@@ -55,9 +68,14 @@ const ClientAnalystsPage = () => {
   useEffect(() => {
     const controller = new AbortController();
 
-    fetchClientAnalysts(debouncedSearch, page, controller.signal)
+    const request = marketplaceType === "analysts"
+      ? fetchClientAnalysts(debouncedSearch, page, controller.signal)
+      : fetchClientBrokers(debouncedSearch, page, controller.signal);
+
+    request
       .then((result) => {
-        setAnalysts(result.analysts);
+        if ("analysts" in result) setAnalysts(result.analysts);
+        else setBrokers(result.brokers);
         setTotal(result.pagination.total);
         setTotalPages(result.pagination.totalPages);
       })
@@ -71,7 +89,7 @@ const ClientAnalystsPage = () => {
       });
 
     return () => controller.abort();
-  }, [debouncedSearch, page]);
+  }, [debouncedSearch, page, marketplaceType]);
 
   const handleSubscribe = async (analyst: ClientAnalyst) => {
     setSubscribingId(analyst.id);
@@ -92,6 +110,31 @@ const ClientAnalystsPage = () => {
     } finally {
       setSubscribingId(null);
     }
+  };
+
+  const handleBrokerSubscribe = async (broker: ClientBroker) => {
+    setSubscribingId(broker.id); setError(null);
+    try {
+      const order = await createBrokerOrder(broker.id);
+      const payment = await openAnalystCheckout(order);
+      await verifyBrokerPayment(payment);
+      setBrokers(current => current.map(item => item.id === broker.id ? { ...item, isSubscribed: true } : item));
+      setNotice(`You are now subscribed to ${broker.name}.`);
+    } catch (subscribeError) {
+      const message = getErrorMessage(subscribeError);
+      if (message !== "Razorpay Checkout was closed.") setError(message);
+    } finally { setSubscribingId(null); }
+  };
+
+  const handleBrokerCancel = async (broker: ClientBroker) => {
+    if (!window.confirm(`Cancel your subscription to ${broker.name}? You will immediately lose access to its analysts' calls.`)) return;
+    setCancellingId(broker.id); setError(null);
+    try {
+      await cancelBrokerSubscription(broker.id);
+      setBrokers(current => current.map(item => item.id === broker.id ? { ...item, isSubscribed: false, subscriptionExpiresAt: null } : item));
+      setNotice(`Your subscription to ${broker.name} was cancelled.`);
+    } catch (cancelError) { setError(getErrorMessage(cancelError)); }
+    finally { setCancellingId(null); }
   };
 
   const handleCancel = async (analyst: ClientAnalyst) => {
@@ -133,16 +176,30 @@ const ClientAnalystsPage = () => {
             component="h1"
             sx={{ color: "#172033", fontSize: { xs: 26, md: 32 }, fontWeight: 800 }}
           >
-            Research Analysts
+            Marketplace
           </Typography>
           <Typography sx={{ color: "#64748B", mt: 0.6 }}>
-            Discover verified analysts and subscribe securely through Razorpay.
+            Discover verified Research Analysts and brokers, then subscribe securely through Razorpay.
           </Typography>
         </Box>
         <Box sx={{ width: { xs: "100%", md: 560 } }}>
-          <AnalystSearch value={search} onChange={setSearch} />
+          <AnalystSearch value={search} onChange={setSearch} marketplaceType={marketplaceType} />
         </Box>
       </Stack>
+
+      <ToggleButtonGroup
+        exclusive
+        value={marketplaceType}
+        onChange={(_event, value: "analysts" | "brokers" | null) => {
+          if (!value) return;
+          setMarketplaceType(value); setPage(1); setLoading(true); setError(null);
+        }}
+        aria-label="Marketplace category"
+        sx={{ mb: 3, bgcolor: "#FFF", "& .MuiToggleButton-root": { px: 3, py: 1, textTransform: "none", fontWeight: 750 } }}
+      >
+        <ToggleButton value="analysts">Research Analysts</ToggleButton>
+        <ToggleButton value="brokers">Brokers</ToggleButton>
+      </ToggleButtonGroup>
 
       {error && (
         <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2.5 }}>
@@ -152,13 +209,13 @@ const ClientAnalystsPage = () => {
 
       {!loading && (
         <Typography sx={{ color: "#64748B", fontSize: 13.5, mb: 1.75 }}>
-          {total} verified analyst{total === 1 ? "" : "s"}
+          {total} verified {marketplaceType === "analysts" ? `analyst${total === 1 ? "" : "s"}` : `broker${total === 1 ? "" : "s"}`}
         </Typography>
       )}
 
       {loading ? (
         <ClientAnalystsSkeleton />
-      ) : analysts.length === 0 ? (
+      ) : (marketplaceType === "analysts" ? analysts.length === 0 : brokers.length === 0) ? (
         <Box
           sx={{
             minHeight: 280,
@@ -173,10 +230,10 @@ const ClientAnalystsPage = () => {
         >
           <Box>
             <Typography sx={{ fontWeight: 800, fontSize: 18 }}>
-              No analysts found
+              No {marketplaceType === "analysts" ? "analysts" : "brokers"} found
             </Typography>
             <Typography sx={{ color: "#64748B", mt: 0.5 }}>
-              Try another name, market, expertise, or SEBI registration number.
+              Try another name, category, market, or SEBI registration number.
             </Typography>
           </Box>
         </Box>
@@ -192,16 +249,9 @@ const ClientAnalystsPage = () => {
             gap: 2.25,
           }}
         >
-          {analysts.map((analyst) => (
-            <AnalystCard
-              key={analyst.id}
-              analyst={analyst}
-              subscribing={subscribingId === analyst.id}
-              cancelling={cancellingId === analyst.id}
-              onSubscribe={handleSubscribe}
-              onCancel={handleCancel}
-            />
-          ))}
+          {marketplaceType === "analysts"
+            ? analysts.map((analyst) => <AnalystCard key={analyst.id} analyst={analyst} subscribing={subscribingId === analyst.id} cancelling={cancellingId === analyst.id} onSubscribe={handleSubscribe} onCancel={handleCancel} onViewProfile={(item) => setProfileSelection({ type: "analyst", id: item.id, name: item.name })} />)
+            : brokers.map((broker) => <BrokerCard key={broker.id} broker={broker} subscribing={subscribingId === broker.id} cancelling={cancellingId === broker.id} onSubscribe={handleBrokerSubscribe} onCancel={handleBrokerCancel} onViewProfile={(item) => setProfileSelection({ type: "broker", id: item.id, name: item.name })} />)}
         </Box>
       )}
 
@@ -226,6 +276,7 @@ const ClientAnalystsPage = () => {
         onClose={() => setNotice(null)}
         message={notice}
       />
+      <MarketplaceProfileDialog selection={profileSelection} onClose={() => setProfileSelection(null)} />
     </Box>
   );
 };

@@ -57,6 +57,7 @@ router.post(
   requireSubscriptionFeature(
     "RA_RESEARCH_CALLS"
   ),
+  recommendationUpload,
   createErrata
 );
 router.get(

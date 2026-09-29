@@ -1,16 +1,16 @@
 # Broker–RA onboarding
 
-Apply `backend/migrations/20260922_broker_ra_onboarding.sql` before deploying the API. The repository migration runner (`npm run migrate --prefix backend`) includes this idempotent migration. It has been applied to the local development database.
+Apply the repository migrations through `backend/migrations/20260929_broker_ra_connection_requests.sql` before deploying the API. The migration runner (`npm run migrate --prefix backend`) applies them in order.
 
 - `broker_research_analysts` links `broker_details.id` to `ra_details.id`. Its composite primary key prevents duplicate associations and supports one RA working with multiple brokers. It records association status, onboarding method and timestamps.
 - `broker_ra_invitations` stores a SHA-256 token hash, optional recipient email, broker, onboarding method, seven-day expiry and consumption details. Raw tokens are returned only when generating the link.
 - Invited registration creates the RA, registration application and association and consumes the token in one database transaction. A row lock prevents concurrent token reuse. The existing payment and administrator approval flow remains required for new RA accounts.
-- Existing RA lookup includes approved, active accounts; adding an existing association is idempotent. Broker identity comes from authentication, not request parameters.
+- Existing RA lookup includes approved, active accounts. Selecting one creates a pending connection request; the association becomes active only when that RA accepts it. Broker identity comes from authentication, not request parameters.
 - Research Calls joins the broker association to `ra_details.user_id` and then `research_calls.ra_user_id`. It shows latest published/closed calls, including existing history, and excludes drafts. Original calls are not copied or reassigned.
 
 The Add dialog supports opening the registration form, generating/copying or emailing a registration link, and searching for an existing RA. Email delivery needs the existing email configuration and `FRONTEND_URL`; a failed delivery leaves the generated link available for copying and is reported in the UI.
 
-Each associated RA also has a **Remove** action with confirmation. `DELETE /api/broker/research-analysts/:raId` marks only the authenticated broker's association `INACTIVE`. The RA account, registration and calls remain intact, as do other brokers' associations. The removed RA and their calls disappear from this broker's lists. An approved, active RA can be added again through **Add existing RA**, which reactivates the existing association. No additional database migration is required.
+The RA sees pending requests under **Connections → Brokers** and receives an email linking directly to that view. Accepting changes the association to `ACTIVE`; declining changes it to `REJECTED`. Until acceptance, the broker cannot see that RA's calls. An associated RA also has a **Remove** action with confirmation. `DELETE /api/broker/research-analysts/:raId` marks only the authenticated broker's association `INACTIVE`; it does not change the RA account, registration, calls, or other broker relationships.
 
 Research Calls reuses the RA Performance `RecommendationHistory` component with broker-scoped records, without fetching global history or falling back to sample records. The existing broker dashboard and other mock-backed broker pages are outside this change.
 

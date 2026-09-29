@@ -714,6 +714,11 @@ export const createErrata = async (
   req: AuthRequest,
   res: Response
 ) => {
+  const files = Array.isArray(req.files)
+    ? req.files
+    : Object.values(req.files || {}).flat();
+  if (req.file) files.push(req.file);
+  let attachmentsSaved = false;
   const client = await pool.connect();
 
   try {
@@ -721,11 +726,23 @@ export const createErrata = async (
 
     const {
   call_id,
-  updates,
+  updates: submittedUpdates,
   message_text,
   errata_reason,
-   underlying_study_values,
+  underlying_study_values: submittedUnderlyingStudyValues,
 } = req.body;
+
+let updates = submittedUpdates;
+let underlying_study_values = submittedUnderlyingStudyValues;
+try {
+  if (typeof updates === "string") updates = JSON.parse(updates);
+  if (typeof underlying_study_values === "string") {
+    underlying_study_values = JSON.parse(underlying_study_values);
+  }
+} catch {
+  await client.query("ROLLBACK");
+  return res.status(400).json({ message: "Errata details are invalid." });
+}
 
 
 
@@ -812,6 +829,16 @@ const callResult = await client.query(
 }
 
     const existingCall = callResult.rows[0];
+    const existingAttachments = Array.isArray(existingCall.attachments)
+      ? existingCall.attachments
+      : [];
+    const newAttachments = files.map(file => ({
+      url: `/uploads/${file.filename}`,
+      name: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+    }));
+    const attachments = [...existingAttachments, ...newAttachments];
 
     // =========================================================
     // 2️⃣ VALIDATE STATUS
@@ -1037,7 +1064,7 @@ const insertResult = await client.query(
 
     errata_reason.trim(),
 
-    existingCall.file_url,
+    existingCall.file_url ?? files[0]?.path ?? null,
     existingCall.disclaimer_snapshot,
     existingCall.disclaimer_snapshot_at,
 
@@ -1051,7 +1078,7 @@ const insertResult = await client.query(
 
     rootId,
     true,
-    JSON.stringify(existingCall.attachments || []),
+    JSON.stringify(attachments),
   ]
 );
 
@@ -1075,6 +1102,7 @@ if (whatsappMessage) {
 }
 
   await client.query("COMMIT");
+  attachmentsSaved = true;
 
   try {
   await recordUnderlyingStudySelections({
@@ -1127,6 +1155,11 @@ return res.status(201).json({
   });
 } finally {
     client.release();
+    if (!attachmentsSaved) {
+      await Promise.all(files.map(file => unlink(file.path).catch(error => {
+        if (error.code !== "ENOENT") console.error("ERRATA UPLOAD CLEANUP ERROR:", error);
+      })));
+    }
   }
 };
 

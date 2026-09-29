@@ -726,24 +726,30 @@ const finalDisplayName =
         research_remarks: trimmedRemark,
       };
 
+      const errataFormData = new FormData();
+      selectedFiles.forEach(file => errataFormData.append("files", file));
+      errataFormData.append("call_id", errataSourceId);
+      errataFormData.append("updates", JSON.stringify(updates));
+      errataFormData.append(
+        "underlying_study_values",
+        JSON.stringify(form.underlyingStudy.map((study) => study.value))
+      );
+      errataFormData.append("errata_reason", trimmedRemark);
+      errataFormData.append("message_text", finalPreparedMessage.message);
+      if (finalPreparedMessage.templateVersion !== null) {
+        errataFormData.append("message_template_version", String(finalPreparedMessage.templateVersion));
+      }
+      if (finalPreparedMessage.templateSnapshot !== null) {
+        errataFormData.append("message_template_snapshot", JSON.stringify(finalPreparedMessage.templateSnapshot));
+      }
+
       const errataResponse = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/research/calls/errata`,
-        {
-          call_id: errataSourceId,
-          updates,
-          underlying_study_values:
-      form.underlyingStudy.map(
-        (study) => study.value
-      ),
-          errata_reason: trimmedRemark,
-          message_text: finalPreparedMessage.message,
-          message_template_version: finalPreparedMessage.templateVersion,
-          message_template_snapshot: finalPreparedMessage.templateSnapshot,
-        },
+        errataFormData,
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+            "Content-Type": "multipart/form-data",
           },
         }
       );
@@ -3603,12 +3609,11 @@ sx={{
     minWidth: { xs: "100%", sm: 180 },
   }}
 >
-            {isErrataMode ? (
+            <RecommendationMediaUpload files={selectedFiles} onChange={setSelectedFiles} disabled={isSubmitting || previewLoading} />
+            {isErrataMode && (
               <Typography variant="caption" color="text.secondary">
-                Existing attachments are retained for this correction.
+                Existing attachments are retained; new uploads are added to this correction.
               </Typography>
-            ) : (
-              <RecommendationMediaUpload files={selectedFiles} onChange={setSelectedFiles} disabled={isSubmitting || previewLoading} />
             )}
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <Typography sx={{ fontSize: '0.65rem', fontWeight: 600 }}>Is this an Algo Powered Recommendation?</Typography>

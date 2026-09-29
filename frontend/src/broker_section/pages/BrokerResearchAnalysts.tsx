@@ -57,17 +57,21 @@ const BrokerResearchAnalysts = () => {
     } catch (err) { setDialogError(onboardingError(err)); }
     finally { setBusy(false); }
   };
-  const findAnalysts = async () => {
+  const findAnalysts = async (term = search.trim()) => {
     setBusy(true); setDialogError(""); setResults([]); setSearched(false);
-    try { setResults(await searchBrokerAnalysts(search.trim())); setSearched(true); }
+    try { setResults(await searchBrokerAnalysts(term)); setSearched(Boolean(term)); }
     catch (err) { setDialogError(onboardingError(err)); }
     finally { setBusy(false); }
+  };
+  const openExisting = () => {
+    setDialog("existing"); setSearch(""); setResults([]); setSearched(false); setDialogError("");
+    void findAnalysts("");
   };
   const addExisting = async (ra: AssociatedAnalyst) => {
     setBusy(true); setDialogError("");
     try {
       await addBrokerAnalyst(ra.id); setDialog(null);
-      setNotice(`${ra.name} added. Their published calls are now available in Research Calls.`);
+      setNotice(`Connection request sent to ${ra.name}. Their published calls will become available after they accept it.`);
       await load();
     } catch (err) { setDialogError(onboardingError(err)); }
     finally { setBusy(false); }
@@ -129,7 +133,7 @@ const BrokerResearchAnalysts = () => {
           {[
             { title: "Add here", text: "Open the RA registration form and complete their details.", icon: <PersonAddOutlinedIcon />, action: directRegistration },
             { title: "Send registration link", text: "Email or copy a secure link for the RA to register.", icon: <LinkOutlinedIcon />, action: () => setDialog("link") },
-            { title: "Add existing RA", text: "Find and associate an RA already registered on the platform.", icon: <GroupAddOutlinedIcon />, action: () => setDialog("existing") },
+            { title: "Add existing RA", text: "Find and associate an RA already registered on the platform.", icon: <GroupAddOutlinedIcon />, action: openExisting },
           ].map(option => <Button key={option.title} variant="outlined" disabled={busy} onClick={option.action} startIcon={option.icon} sx={{ p: 2, justifyContent: "flex-start", textAlign: "left", textTransform: "none", borderColor: "#E2E8F0" }}>
             <Box><Typography fontWeight={700}>{option.title}</Typography><Typography variant="body2" color="text.secondary">{option.text}</Typography></Box>
           </Button>)}
@@ -151,10 +155,15 @@ const BrokerResearchAnalysts = () => {
         {dialog === "existing" && <Stack spacing={2} sx={{ pt: 1 }}>
           <Typography color="text.secondary">Search active RAs by name or SEBI registration number. Already associated RAs are excluded.</Typography>
           <Box component="form" onSubmit={e => { e.preventDefault(); if (search.trim().length >= 2 && !busy) void findAnalysts(); }} sx={{ display: "flex", gap: 1 }}>
-            <TextField autoFocus size="small" fullWidth label="Name or SEBI registration" value={search} disabled={busy} onChange={e => { setSearch(e.target.value); setSearched(false); setResults([]); }} />
+            <TextField autoFocus size="small" fullWidth label="Name or SEBI registration" value={search} disabled={busy} onChange={e => {
+              const value = e.target.value; setSearch(value); setSearched(false);
+              if (!value.trim()) void findAnalysts("");
+              else setResults([]);
+            }} />
             <Button type="submit" variant="outlined" disabled={busy || search.trim().length < 2}>Search</Button>
           </Box>
           {searched && results.length === 0 && <Alert severity="info">No matching RAs available to add.</Alert>}
+          {!busy && results.length > 0 && <Typography variant="subtitle2" color="text.secondary">{searched ? "Search results" : "Suggested Research Analysts"}</Typography>}
           {results.map(ra => <Stack key={ra.id} direction="row" justifyContent="space-between" alignItems="center" sx={{ border: "1px solid #E2E8F0", borderRadius: 1, p: 1.5 }}>
             <Box><Typography fontWeight={600}>{ra.name}</Typography><Typography variant="body2" color="text.secondary">{ra.sebiRegistration}</Typography></Box>
             <Button disabled={busy} onClick={() => void addExisting(ra)} aria-label={`Add ${ra.name}`}>Add</Button>

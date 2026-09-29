@@ -6,7 +6,7 @@ vi.mock("../../src/db", () => ({ pool: { query: vi.fn(), connect: vi.fn() } }));
 vi.mock("../../src/services/email", () => ({ emailService: { send: vi.fn() } }));
 import { pool } from "../../src/db";
 import { emailService } from "../../src/services/email";
-import { requireBroker, addExistingAnalyst, removeBrokerAnalyst, createBrokerInvitation, listBrokerCalls, getBrokerInvitation } from "../../src/controllers/brokerOnboarding.controller";
+import { requireBroker, addExistingAnalyst, removeBrokerAnalyst, createBrokerInvitation, listBrokerCalls, getBrokerInvitation, listRAConnectionRequests, respondToRAConnectionRequest, searchExistingAnalysts, listRAConnectedBrokers, removeRAConnectedBroker } from "../../src/controllers/brokerOnboarding.controller";
 import { hashBrokerInvitation, InvalidBrokerInvitation, registerRAWithBrokerInvitation } from "../../src/services/brokerOnboarding.service";
 
 const app = express();
@@ -15,9 +15,18 @@ app.use((req, _res, next) => { (req as any).user = { id: "broker-user", role: re
 app.get("/invite/:token", getBrokerInvitation);
 app.use(requireBroker);
 app.post("/analysts", addExistingAnalyst);
+app.get("/analysts/search", searchExistingAnalysts);
 app.delete("/analysts/:raId", removeBrokerAnalyst);
 app.post("/invitations", createBrokerInvitation);
 app.get("/calls", listBrokerCalls);
+
+const raApp = express();
+raApp.use(express.json());
+raApp.use((req, _res, next) => { (req as any).user = { id: "ra-user", role: "RESEARCH_ANALYST" }; next(); });
+raApp.get("/broker-requests", listRAConnectionRequests);
+raApp.patch("/broker-requests/:brokerId", respondToRAConnectionRequest);
+raApp.get("/broker-connections", listRAConnectedBrokers);
+raApp.delete("/broker-connections/:brokerId", removeRAConnectedBroker);
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -41,13 +50,38 @@ describe("broker onboarding boundaries", () => {
     expect(sql).toContain("rc.status IN ('PUBLISHED', 'CLOSED')");
     expect(sql).toContain("rc.is_latest IS TRUE");
   });
-  it("makes existing associations idempotent and validates RA eligibility", async () => {
+  it("creates a pending request for an eligible RA and emails a link to the Brokers view", async () => {
     const raId = "00000000-0000-4000-8000-000000000001";
+    vi.stubEnv("FRONTEND_URL", "https://example.test");
+    vi.mocked(pool.query)
+      .mockResolvedValueOnce({ rows: [{ id: "broker-one", legal_name: "Broker One" }] } as any)
+      .mockResolvedValueOnce({ rows: [{ email: "ra@example.test", name: "RA One" }] } as any);
+    vi.mocked(emailService.send).mockResolvedValue({ sent: true, skipped: false });
     await request(app).post("/analysts").send({ raId, brokerId: "other-broker" }).expect(201);
     const [sql, values] = vi.mocked(pool.query).mock.calls[1] as any;
-    expect(values).toEqual(["broker-one", raId]);
+    expect(values).toEqual(["broker-one", raId, "Broker One"]);
     expect(sql).toContain("ON CONFLICT (broker_id, ra_id)");
     expect(sql).toContain("lower(ra.status) = 'approved' AND u.is_active = true");
+    expect(sql).toContain("'PENDING'");
+    expect(sql).toContain("INSERT INTO subscription_notifications");
+    expect(sql).toContain("'Broker Connection Request'");
+    expect(emailService.send).toHaveBeenCalledWith("BROKER_RA_CONNECTION_REQUEST", "ra@example.test", {
+      raName: "RA One",
+      brokerName: "Broker One",
+      requestsUrl: "https://example.test/ra/clients#brokers",
+    });
+    vi.unstubAllEnvs();
+  });
+  it("shows a short list of available approved RAs before a search is entered", async () => {
+    vi.mocked(pool.query)
+      .mockResolvedValueOnce({ rows: [{ id: "broker-one", legal_name: "Broker One" }] } as any)
+      .mockResolvedValueOnce({ rows: [{ id: "ra-one", name: "RA One" }] } as any);
+    const response = await request(app).get("/analysts/search").expect(200);
+    expect(response.body).toEqual([{ id: "ra-one", name: "RA One" }]);
+    const [sql, values] = vi.mocked(pool.query).mock.calls[1] as any;
+    expect(values).toEqual(["broker-one", "", "%%"]);
+    expect(sql).toContain("LIMIT CASE WHEN $2 = '' THEN 8 ELSE 25 END");
+    expect(sql).toContain("link.status IN ('ACTIVE', 'PENDING')");
   });
   it("stores only a hashed invitation token and reports email failure truthfully", async () => {
     vi.stubEnv("FRONTEND_URL", "https://example.test");
@@ -63,6 +97,49 @@ describe("broker onboarding boundaries", () => {
   it("rejects expired or consumed invitations", async () => {
     vi.mocked(pool.query).mockResolvedValue({ rows: [] } as any);
     await request(app).get(`/invite/${"a".repeat(64)}`).expect(410);
+  });
+});
+
+describe("RA broker connection requests", () => {
+  const brokerId = "00000000-0000-4000-8000-000000000002";
+
+  it("lists only pending requests for the signed-in RA", async () => {
+    vi.mocked(pool.query).mockResolvedValueOnce({ rows: [] } as any);
+    await request(raApp).get("/broker-requests").expect(200);
+    const [sql, values] = vi.mocked(pool.query).mock.calls[0] as any;
+    expect(values).toEqual(["ra-user"]);
+    expect(sql).toContain("ra.user_id = $1");
+    expect(sql).toContain("link.status = 'PENDING'");
+  });
+
+  it.each([
+    ["ACCEPT", "ACTIVE"],
+    ["DECLINE", "REJECTED"],
+  ])("scopes %s to the signed-in RA and changes only a pending request", async (action, expectedStatus) => {
+    vi.mocked(pool.query).mockResolvedValueOnce({ rows: [{ broker_id: brokerId }] } as any);
+    await request(raApp).patch(`/broker-requests/${brokerId}`).send({ action }).expect(200);
+    const [sql, values] = vi.mocked(pool.query).mock.calls[0] as any;
+    expect(values).toEqual(["ra-user", brokerId, expectedStatus]);
+    expect(sql).toContain("ra.user_id = $1");
+    expect(sql).toContain("link.status = 'PENDING'");
+  });
+
+  it("lists only active broker connections for the signed-in RA", async () => {
+    vi.mocked(pool.query).mockResolvedValueOnce({ rows: [{ brokerId, brokerName: "Broker One", status: "ACTIVE" }] } as any);
+    const response = await request(raApp).get("/broker-connections").expect(200);
+    expect(response.body).toHaveLength(1);
+    const [sql, values] = vi.mocked(pool.query).mock.calls[0] as any;
+    expect(values).toEqual(["ra-user"]);
+    expect(sql).toContain("ra.user_id = $1 AND link.status = 'ACTIVE'");
+  });
+
+  it("allows the signed-in RA to remove only an active broker connection", async () => {
+    vi.mocked(pool.query).mockResolvedValueOnce({ rows: [{ broker_id: brokerId }] } as any);
+    await request(raApp).delete(`/broker-connections/${brokerId}`).expect(204);
+    const [sql, values] = vi.mocked(pool.query).mock.calls[0] as any;
+    expect(values).toEqual(["ra-user", brokerId]);
+    expect(sql).toContain("ra.user_id = $1 AND link.status = 'ACTIVE'");
+    expect(sql).toContain("SET status = 'INACTIVE'");
   });
 });
 

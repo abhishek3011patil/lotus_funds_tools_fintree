@@ -119,7 +119,7 @@ const RANotification = () => {
             Notifications
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Account subscription and client subscriber updates.
+            Account, client subscriber, and broker connection updates.
           </Typography>
         </Box>
         {unreadCount > 0 && (
@@ -154,7 +154,7 @@ const RANotification = () => {
       ) : notifications.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: "center" }} elevation={1}>
           <Typography variant="body2" color="text.secondary">
-            No subscription notifications available right now.
+            No notifications available right now.
           </Typography>
         </Paper>
       ) : (
@@ -222,15 +222,19 @@ const RANotification = () => {
                     event.stopPropagation();
                     void markRead(notification);
 navigate(
-  notification.client_ra_subscription_id
-    ? "/ra/clients"
-    : "/settings"
+  notification.type === "Broker Connection Request"
+    ? "/ra/clients#brokers"
+    : notification.client_ra_subscription_id
+      ? "/ra/clients"
+      : "/settings"
 );
                   }}
                 >
-                  {notification.client_ra_subscription_id
-                    ? "View clients"
-                    : "Open subscription settings"}
+                  {notification.type === "Broker Connection Request"
+                    ? "View broker requests"
+                    : notification.client_ra_subscription_id
+                      ? "View clients"
+                      : "Open subscription settings"}
                 </Button>
               </CardContent>
             </Card>

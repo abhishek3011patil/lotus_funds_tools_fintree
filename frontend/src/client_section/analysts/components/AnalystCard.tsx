@@ -17,6 +17,7 @@ interface AnalystCardProps {
   cancelling: boolean;
   onSubscribe: (analyst: ClientAnalyst) => void;
   onCancel: (analyst: ClientAnalyst) => void;
+  onViewProfile: (analyst: ClientAnalyst) => void;
 }
 
 const getApiOrigin = () =>
@@ -35,6 +36,7 @@ const AnalystCard = ({
   cancelling,
   onSubscribe,
   onCancel,
+  onViewProfile,
 }: AnalystCardProps) => {
 const [imageUrl, setImageUrl] = useState<string>();
 
@@ -287,6 +289,13 @@ useEffect(() => {
       </Box>
 
       {/* Footer: Price + Plan + Button */}
+      <Button
+        variant="outlined"
+        onClick={() => onViewProfile(analyst)}
+        sx={{ mb: 1.5, borderRadius: "12px", textTransform: "none", fontWeight: 800, borderColor: "#D7DEEA", color: "#334155" }}
+      >
+        View Profile
+      </Button>
       <Box
         sx={{
           mt: "auto",

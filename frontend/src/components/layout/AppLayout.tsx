@@ -84,7 +84,7 @@ const AppLayout = () => {
       icon: <CheckBoxIcon sx={{ mr: 1.5 }} />,
     },
     {
-      label: "Clients",
+      label: "Connections",
       path: "/ra/clients",
       icon: <PeopleAltIcon sx={{ mr: 1.5 }} />,
     },

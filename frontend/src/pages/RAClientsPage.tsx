@@ -40,6 +40,20 @@ type Client = {
   whatsappAdded: boolean;
 };
 
+type BrokerRequest = {
+  brokerId: string;
+  brokerName: string;
+  requestedAt: string;
+  status: "PENDING";
+};
+
+type BrokerConnection = {
+  brokerId: string;
+  brokerName: string;
+  connectedAt: string;
+  status: "ACTIVE";
+};
+
 const date = (value: string | null) => value ? new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
 export default function RAClientsPage() {
@@ -48,6 +62,17 @@ export default function RAClientsPage() {
   const [status, setStatus] = useState("ACTIVE");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [brokerRequests, setBrokerRequests] = useState<BrokerRequest[]>([]);
+  const [brokerConnections, setBrokerConnections] = useState<BrokerConnection[]>([]);
+  const [brokerSearch, setBrokerSearch] = useState("");
+  const [requestsLoading, setRequestsLoading] = useState(true);
+  const [requestError, setRequestError] = useState("");
+  const [requestNotice, setRequestNotice] = useState("");
+  const [respondingBrokerId, setRespondingBrokerId] = useState("");
+  const [removingBrokerId, setRemovingBrokerId] = useState("");
+  const [connectionView, setConnectionView] = useState<"clients" | "brokers">(
+    window.location.hash === "#brokers" ? "brokers" : "clients"
+  );
   const [telegramDialogOpen, setTelegramDialogOpen] = useState(false);
 const [selectedClientId, setSelectedClientId] = useState("");
 const [telegramPhone, setTelegramPhone] = useState("");
@@ -273,13 +298,88 @@ const handleConfirmRemoveWhatsApp = async () => {
     return () => { mounted = false; };
   }, [status, search]);
 
+  const loadBrokerRelationships = async () => {
+    setRequestsLoading(true);
+    setRequestError("");
+    try {
+      const [requestsResponse, connectionsResponse] = await Promise.all([
+        api.get<BrokerRequest[]>("/ra/dashboard/broker-requests"),
+        api.get<BrokerConnection[]>("/ra/dashboard/broker-connections"),
+      ]);
+      setBrokerRequests(requestsResponse.data);
+      setBrokerConnections(connectionsResponse.data);
+    } catch {
+      setRequestError("Unable to load broker connections right now.");
+    } finally {
+      setRequestsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadBrokerRelationships();
+  }, []);
+
+  useEffect(() => {
+    if (window.location.hash === "#brokers") {
+      setConnectionView("brokers");
+    }
+  }, []);
+
+  const respondToBrokerRequest = async (request: BrokerRequest, action: "ACCEPT" | "DECLINE") => {
+    setRespondingBrokerId(request.brokerId);
+    setRequestError("");
+    setRequestNotice("");
+    try {
+      await api.patch(`/ra/dashboard/broker-requests/${encodeURIComponent(request.brokerId)}`, { action });
+      await loadBrokerRelationships();
+      setRequestNotice(`${request.brokerName}'s request was ${action === "ACCEPT" ? "accepted" : "declined"}.`);
+    } catch (requestResponseError: any) {
+      setRequestError(requestResponseError?.response?.data?.message || "Unable to update the broker request.");
+    } finally {
+      setRespondingBrokerId("");
+    }
+  };
+
+  const removeBrokerConnection = async (connection: BrokerConnection) => {
+    if (!window.confirm(`Remove ${connection.brokerName} from your connected brokers? They will no longer have access to your research calls.`)) return;
+    setRemovingBrokerId(connection.brokerId);
+    setRequestError(""); setRequestNotice("");
+    try {
+      await api.delete(`/ra/dashboard/broker-connections/${encodeURIComponent(connection.brokerId)}`);
+      setBrokerConnections((current) => current.filter((item) => item.brokerId !== connection.brokerId));
+      setRequestNotice(`${connection.brokerName} was removed from your connected brokers.`);
+    } catch (removeError: any) {
+      setRequestError(removeError?.response?.data?.message || "Unable to remove the broker connection.");
+    } finally {
+      setRemovingBrokerId("");
+    }
+  };
+
   const activeCount = useMemo(() => clients.filter((client) => client.status === "ACTIVE").length, [clients]);
+  const filteredBrokerConnections = useMemo(() => {
+    const query = brokerSearch.trim().toLowerCase();
+    return query
+      ? brokerConnections.filter((connection) => connection.brokerName.toLowerCase().includes(query))
+      : brokerConnections;
+  }, [brokerConnections, brokerSearch]);
+
+  const changeConnectionView = (view: "clients" | "brokers") => {
+    setConnectionView(view);
+    window.history.replaceState(null, "", view === "brokers" ? "#brokers" : window.location.pathname + window.location.search);
+  };
 
   return <Box sx={{ maxWidth: 1400, mx: "auto" }}>
     <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={2} sx={{ mb: 3 }}>
-      <Box><Typography variant="h4" sx={{ fontWeight: 750, color: "#172554" }}>Clients</Typography><Typography color="text.secondary" sx={{ mt: .5 }}>Manage relationships, subscriptions, and client activity.</Typography></Box>
-      <TextField size="small" placeholder="Search clients" value={search} onChange={(event) => setSearch(event.target.value)} sx={{ width: { xs: "100%", md: 300 } }} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }} />
+      <Box><Typography variant="h4" sx={{ fontWeight: 750, color: "#172554" }}>Connections</Typography><Typography color="text.secondary" sx={{ mt: .5 }}>Manage your clients and broker relationships.</Typography></Box>
+      {connectionView === "clients" && <TextField size="small" placeholder="Search clients" value={search} onChange={(event) => setSearch(event.target.value)} sx={{ width: { xs: "100%", md: 300 } }} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }} />}
     </Stack>
+    <Paper variant="outlined" sx={{ borderRadius: 3, mb: 3 }}>
+      <Tabs value={connectionView} onChange={(_, value: "clients" | "brokers") => changeConnectionView(value)} aria-label="Connection type">
+        <Tab value="clients" label="Clients" />
+        <Tab value="brokers" label={`Brokers${brokerRequests.length ? ` (${brokerRequests.length})` : ""}`} />
+      </Tabs>
+    </Paper>
+    {connectionView === "clients" ? <>
     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
     <Paper variant="outlined" sx={{ borderRadius: 3, overflow: "hidden" }}>
       <Tabs value={status} onChange={(_, value) => setStatus(value)} sx={{ px: 2, borderBottom: "1px solid #e5e7eb" }}>
@@ -524,6 +624,78 @@ const handleConfirmRemoveWhatsApp = async () => {
         </Box>
       </Box>
        </Paper>
+    </> : (
+
+    <Box id="broker-requests">
+      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ mb: 2 }}>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 750, color: "#172554" }}>Broker connection requests</Typography>
+          <Typography color="text.secondary" sx={{ mt: .5 }}>Accept a broker before they can access your published research calls.</Typography>
+        </Box>
+        {brokerRequests.length > 0 && <Chip color="primary" label={`${brokerRequests.length} pending`} />}
+      </Stack>
+      {requestNotice && <Alert severity="success" onClose={() => setRequestNotice("")} sx={{ mb: 2 }}>{requestNotice}</Alert>}
+      {requestError && <Alert severity="error" action={<Button onClick={() => void loadBrokerRelationships()}>Retry</Button>} sx={{ mb: 2 }}>{requestError}</Alert>}
+      <Typography variant="h6" sx={{ fontWeight: 750, mb: 1 }}>Pending requests</Typography>
+      <Paper variant="outlined" sx={{ borderRadius: 3, overflow: "hidden" }}>
+        {requestsLoading ? (
+          <Stack alignItems="center" sx={{ py: 6 }}><CircularProgress size={28} /></Stack>
+        ) : brokerRequests.length === 0 ? (
+          <Stack alignItems="center" sx={{ py: 6, px: 3, textAlign: "center" }}>
+            <Typography fontWeight={700}>No pending broker requests</Typography>
+            <Typography color="text.secondary">New connection requests will appear here.</Typography>
+          </Stack>
+        ) : brokerRequests.map((request) => (
+          <Stack key={request.brokerId} direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={2} sx={{ px: 3, py: 2.5, borderTop: "1px solid #eef2f7", "&:first-of-type": { borderTop: 0 } }}>
+            <Box>
+              <Typography fontWeight={750}>{request.brokerName}</Typography>
+              <Typography variant="body2" color="text.secondary">Requested {date(request.requestedAt)}</Typography>
+            </Box>
+            <Stack direction="row" spacing={1}>
+              <Button variant="outlined" color="inherit" disabled={Boolean(respondingBrokerId)} onClick={() => void respondToBrokerRequest(request, "DECLINE")}>Decline</Button>
+              <Button variant="contained" disabled={Boolean(respondingBrokerId)} onClick={() => void respondToBrokerRequest(request, "ACCEPT")}>
+                {respondingBrokerId === request.brokerId ? <CircularProgress size={20} color="inherit" /> : "Accept"}
+              </Button>
+            </Stack>
+          </Stack>
+        ))}
+      </Paper>
+      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ mt: 3, mb: 1 }}>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Typography variant="h6" sx={{ fontWeight: 750 }}>Connected brokers</Typography>
+          {brokerConnections.length > 0 && <Chip color="success" variant="outlined" label={`${brokerConnections.length} connected`} />}
+        </Stack>
+        <TextField
+          size="small"
+          placeholder="Search connected brokers"
+          value={brokerSearch}
+          onChange={(event) => setBrokerSearch(event.target.value)}
+          sx={{ width: { xs: "100%", sm: 280 } }}
+          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
+        />
+      </Stack>
+      <Paper variant="outlined" sx={{ borderRadius: 3, overflow: "hidden" }}>
+        {requestsLoading ? (
+          <Stack alignItems="center" sx={{ py: 6 }}><CircularProgress size={28} /></Stack>
+        ) : filteredBrokerConnections.length === 0 ? (
+          <Stack alignItems="center" sx={{ py: 6, px: 3, textAlign: "center" }}>
+            <Typography fontWeight={700}>{brokerConnections.length ? "No matching brokers" : "No connected brokers"}</Typography>
+            <Typography color="text.secondary">{brokerConnections.length ? "Try another broker name." : "Brokers you accept will appear here."}</Typography>
+          </Stack>
+        ) : filteredBrokerConnections.map((connection) => (
+          <Stack key={connection.brokerId} direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={2} sx={{ px: 3, py: 2.5, borderTop: "1px solid #eef2f7", "&:first-of-type": { borderTop: 0 } }}>
+            <Box>
+              <Stack direction="row" spacing={1} alignItems="center"><Typography fontWeight={750}>{connection.brokerName}</Typography><Chip size="small" color="success" label="Connected" /></Stack>
+              <Typography variant="body2" color="text.secondary">Connected {date(connection.connectedAt)}</Typography>
+            </Box>
+            <Button variant="outlined" color="error" disabled={Boolean(removingBrokerId)} onClick={() => void removeBrokerConnection(connection)}>
+              {removingBrokerId === connection.brokerId ? <CircularProgress size={20} color="inherit" /> : "Remove"}
+            </Button>
+          </Stack>
+        ))}
+      </Paper>
+    </Box>
+    )}
 
     <Dialog
       open={telegramDialogOpen}
