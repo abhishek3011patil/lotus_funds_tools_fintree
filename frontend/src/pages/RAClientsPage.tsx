@@ -27,8 +27,14 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
 type Client = {
-  id: string; subscriptionId: string; name: string; email: string | null;
-  status: string; startsAt: string | null; expiresAt: string | null;
+  id: string;
+  subscriptionId: string;
+  name: string;
+  email: string | null;
+  phoneNumber: string | null;
+  status: string;
+  startsAt: string | null;
+  expiresAt: string | null;
   subscribedAt: string | null;
   telegramAdded: boolean;
   whatsappAdded: boolean;
@@ -56,21 +62,36 @@ const [whatsappSaving, setWhatsappSaving] = useState(false);
 const [whatsappDeleteDialogOpen, setWhatsappDeleteDialogOpen] = useState(false);
 const [whatsappDeleteClientId, setWhatsappDeleteClientId] = useState("");
 const [whatsappDeleteSaving, setWhatsappDeleteSaving] = useState(false);
+const [telegramDialogError, setTelegramDialogError] = useState("");
+const [whatsappDialogError, setWhatsappDialogError] = useState("");
 
 
 const handleAddTelegram = (clientId: string) => {
+  const client = clients.find((client) => client.id === clientId);
   setSelectedClientId(clientId);
-  setTelegramPhone("");
+  setTelegramPhone(client?.phoneNumber || "");
+  setTelegramDialogError("");
   setTelegramDialogOpen(true);
 };
 
 const handleConfirmAddTelegram = async () => {
   if (!selectedClientId) return;
 
-  if (!telegramPhone.trim()) {
-    setError("Please enter the client's phone number.");
-    return;
-  }
+ const phone = telegramPhone.trim();
+
+if (!phone) {
+  setTelegramDialogError("Please enter the client's phone number.");
+  return;
+}
+
+if (!phone.startsWith("+91")) {
+  setTelegramDialogError(
+    "Please enter a valid Indian phone number starting with +91."
+  );
+  return;
+}
+
+setTelegramDialogError("");
 
   try {
     setTelegramSaving(true);
@@ -78,7 +99,7 @@ const handleConfirmAddTelegram = async () => {
 
     await api.post("/telegram/ra-client/add", {
       clientUserId: selectedClientId,
-      telegramPhone: telegramPhone.trim(),
+      telegramPhone: phone,
     });
 
     setClients((currentClients) =>
@@ -93,10 +114,10 @@ const handleConfirmAddTelegram = async () => {
     setTelegramPhone("");
     setSelectedClientId("");
   } catch (error: any) {
-    setError(
-      error?.response?.data?.message ||
-        "Unable to add client to Telegram."
-    );
+    setTelegramDialogError(
+  error?.response?.data?.message ||
+    "Unable to add client to Telegram."
+);
   } finally {
     setTelegramSaving(false);
   }
@@ -140,18 +161,29 @@ const handleConfirmRemoveTelegram = async () => {
 };
 
 const handleAddWhatsApp = (clientId: string) => {
+  const client = clients.find((client) => client.id === clientId);
   setWhatsappClientId(clientId);
-  setWhatsappPhone("");
+  setWhatsappPhone(client?.phoneNumber || "");
+  setWhatsappDialogError("");
   setWhatsappDialogOpen(true);
 };
 
 const handleConfirmAddWhatsApp = async () => {
-  if (!whatsappClientId) return;
+const phone = whatsappPhone.trim();
 
-  if (!whatsappPhone.trim()) {
-    setError("Please enter the client's phone number.");
-    return;
-  }
+if (!phone) {
+  setWhatsappDialogError("Please enter the client's phone number.");
+  return;
+}
+
+if (!phone.startsWith("+91")) {
+  setWhatsappDialogError(
+    "Please enter a valid Indian phone number starting with +91."
+  );
+  return;
+}
+
+setWhatsappDialogError("");
 
   try {
     setWhatsappSaving(true);
@@ -163,7 +195,7 @@ const handleConfirmAddWhatsApp = async () => {
 
     await api.post("/whatsapp/ra-client/add", {
       clientUserId: whatsappClientId,
-      phoneNumber: whatsappPhone.trim(),
+      phoneNumber: phone,
       participantName: selectedClient?.name || "",
     });
 
@@ -527,6 +559,16 @@ const handleConfirmRemoveWhatsApp = async () => {
   }
   disabled={telegramSaving}
 />
+
+{telegramDialogError && (
+  <Typography
+    color="error"
+    variant="body2"
+    sx={{ mt: 1 }}
+  >
+    {telegramDialogError}
+  </Typography>
+)}
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -627,6 +669,17 @@ const handleConfirmRemoveWhatsApp = async () => {
       }
       disabled={whatsappSaving}
     />
+
+    {whatsappDialogError && (
+  <Typography
+    color="error"
+    variant="body2"
+    sx={{ mt: 1 }}
+  >
+    {whatsappDialogError}
+  </Typography>
+)}
+
   </DialogContent>
 
   <DialogActions sx={{ px: 3, pb: 2 }}>

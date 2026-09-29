@@ -8,7 +8,8 @@ import {
   getWhatsAppParticipantsByRA,
   testWhatsAppMessage,
   addRAClientToWhatsApp, 
-  removeRAClientFromWhatsApp
+  removeRAClientFromWhatsApp,
+  uploadWhatsAppExcel
 } from "../controllers/whatsapp.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 
@@ -58,4 +59,11 @@ router.post(
   authenticate,
   testWhatsAppMessage
 );
+
+router.post(
+  "/upload-excel/:raId",
+  authenticate,
+  uploadWhatsAppExcel
+);
+
 export default router;

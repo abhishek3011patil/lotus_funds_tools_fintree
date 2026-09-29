@@ -104,6 +104,12 @@ export const listRaSubscribedClients = async (
      subscription.client_user_id,
      client.name,
      client.email,
+       (
+    SELECT cp.phone_number
+    FROM client_profiles cp
+    WHERE cp.user_id = subscription.client_user_id
+    LIMIT 1
+  ) AS phone_number,
      CASE
        WHEN subscription.status = 'ACTIVE' AND subscription.expires_at <= NOW()
          THEN 'EXPIRED'
@@ -151,6 +157,7 @@ export const listRaSubscribedClients = async (
         subscriptionId: row.id,
         name: row.name || "Client",
         email: row.email || null,
+        phoneNumber: row.phone_number || null,
         status: row.status,
         startsAt: row.starts_at,
         expiresAt: row.expires_at,

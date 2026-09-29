@@ -3,6 +3,15 @@ import { pool } from "../db";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { createAuditLog } from "../utils/auditLogger";
 import axios from "axios";
+import multer from "multer";
+import * as XLSX from "xlsx";
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5 MB
+  },
+});
 
 const whatsappApiVersion =
   process.env.WHATSAPP_API_VERSION?.trim() || "v23.0";
@@ -958,5 +967,242 @@ export const removeRAClientFromWhatsApp = async (
     });
   }
 };
+export const uploadWhatsAppExcel = [
+  upload.single("file"),
+
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { raId } = req.params;
+
+      if (!raId || raId === "undefined" || raId === "null") {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid RA ID",
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "Excel file is required",
+        });
+      }
+
+      // Check that selected RA exists
+      const raCheck = await pool.query(
+        `
+        SELECT id
+        FROM users
+        WHERE id = $1
+          AND role = 'RESEARCH_ANALYST'
+        `,
+        [raId]
+      );
+
+      if (raCheck.rowCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Research Analyst not found",
+        });
+      }
+
+      // Read Excel file
+      const workbook = XLSX.read(req.file.buffer, {
+        type: "buffer",
+      });
+
+      const sheetName = workbook.SheetNames[0];
+
+      if (!sheetName) {
+        return res.status(400).json({
+          success: false,
+          message: "Excel file does not contain a sheet",
+        });
+      }
+
+      const worksheet = workbook.Sheets[sheetName];
+
+      const rows = XLSX.utils.sheet_to_json<Record<string, any>>(
+        worksheet,
+        {
+          defval: "",
+        }
+      );
+
+      if (rows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Excel file is empty",
+        });
+      }
+
+      let added = 0;
+      let skipped = 0;
+      let invalid = 0;
+
+      const errors: string[] = [];
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+
+        /*
+         * Template columns:
+         * Name
+         * Phone Number
+         */
+
+        const name = String(
+          row["Name"] ||
+          row["name"] ||
+          row["Participant Name"] ||
+          row["participant_name"] ||
+          ""
+        ).trim();
+
+        const rawPhone = String(
+          row["Phone Number"] ||
+          row["phone_number"] ||
+          row["Phone"] ||
+          row["phone"] ||
+          ""
+        ).trim();
+
+        if (!name || !rawPhone) {
+          invalid++;
+
+          errors.push(
+            `Row ${i + 2}: Name and Phone Number are required`
+          );
+
+          continue;
+        }
+
+        const phone = normalizePhone(rawPhone);
+
+        if (!isValidPhone(phone)) {
+          invalid++;
+
+          errors.push(
+            `Row ${i + 2}: Invalid phone number`
+          );
+
+          continue;
+        }
+
+        // Check duplicate for this RA
+        const existing = await pool.query(
+          `
+          SELECT id
+          FROM whatsapp_participants
+          WHERE ra_user_id = $1
+            AND phone_number = $2
+          LIMIT 1
+          `,
+          [raId, phone]
+        );
+
+        if (existing.rows.length > 0) {
+          skipped++;
+          continue;
+        }
+
+        try {
+          await pool.query(
+            `
+            INSERT INTO whatsapp_participants
+            (
+              ra_user_id,
+              participant_name,
+              phone_number,
+              consent_confirmed,
+              consent_source,
+              consent_confirmed_at,
+              is_active,
+              created_by
+            )
+            VALUES
+            (
+              $1,
+              $2,
+              $3,
+              TRUE,
+              'EXCEL_UPLOAD',
+              NOW(),
+              TRUE,
+              $4
+            )
+            `,
+            [
+              raId,
+              name,
+              phone,
+              req.user?.id,
+            ]
+          );
+
+          added++;
+        } catch (error: any) {
+          // Duplicate phone number
+          if (error?.code === "23505") {
+            skipped++;
+          } else {
+            console.error(
+              `Failed to insert Excel row ${i + 2}:`,
+              error
+            );
+
+            invalid++;
+
+            errors.push(
+              `Row ${i + 2}: Failed to insert participant`
+            );
+          }
+        }
+      }
+
+      await createAuditLog({
+        userId: req.user?.id,
+        action: "UPLOAD_PARTICIPANTS_EXCEL",
+        module: "WHATSAPP",
+        targetEntity: raId,
+        targetType: "RESEARCH_ANALYST",
+        description: "Uploaded WhatsApp participants using Excel",
+        reason: "Bulk participant upload",
+        oldValue: null,
+        newValue: {
+          totalRows: rows.length,
+          added,
+          skipped,
+          invalid,
+        },
+        status: "SUCCESS",
+        ipAddress: req.ip,
+        device: req.headers["user-agent"],
+      } as any);
+
+      return res.status(200).json({
+        success: true,
+        message: `Excel processed successfully. ${added} participant(s) added, ${skipped} skipped, ${invalid} invalid.`,
+        data: {
+          totalRows: rows.length,
+          added,
+          skipped,
+          invalid,
+          errors,
+        },
+      });
+    } catch (error: any) {
+      console.error(
+        "WhatsApp Excel upload error:",
+        error?.message || error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to process WhatsApp Excel file",
+      });
+    }
+  },
+];
 
 

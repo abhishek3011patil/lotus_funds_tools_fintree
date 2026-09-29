@@ -118,15 +118,27 @@ const handleExcelUpload = async (
 
   if (!file) return;
 
+  if (!file.name.toLowerCase().endsWith(".xlsx") &&
+      !file.name.toLowerCase().endsWith(".xls")) {
+    alert("Please upload only .xlsx or .xls file.");
+    e.target.value = "";
+    return;
+  }
+
   try {
+    setLoading(true);
+
     const token = localStorage.getItem("token");
 
     const formData = new FormData();
     formData.append("file", file);
 
-    if (raId) {
-      formData.append("user_id", raId);
+    if (raId && raId.trim()) {
+      formData.append("user_id", raId.trim());
     }
+
+    // Send selected entity type also
+    formData.append("entity_type", entityType);
 
     const res = await axios.post(
       `${import.meta.env.VITE_API_URL}/api/telegram/upload-excel`,
@@ -134,73 +146,70 @@ const handleExcelUpload = async (
       {
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
         },
       }
     );
 
     const { summary, results } = res.data;
 
-const failed = results.filter(
-  (x: any) => x.status === "failed"
-);
+    const failed = (results || []).filter(
+      (x: any) => x.status === "failed"
+    );
 
-let message =
-`Success : ${summary.success}
-Failed : ${summary.failed}`;
+    let message =
+      `Success : ${summary?.success || 0}\n` +
+      `Failed : ${summary?.failed || 0}`;
 
-if (failed.length) {
+    if (failed.length > 0) {
+      message += "\n\nFailed:\n";
 
-   message += "\n\nFailed:\n";
+      failed.forEach((f: any) => {
+        message += `${f.participant || "Unknown"} : ${
+          f.error || "Unknown error"
+        }\n`;
+      });
+    }
 
-   failed.forEach((f:any)=>{
+    alert(message);
 
-      message += `${f.participant} : ${f.error}\n`;
-
-   });
-
-}
-
-alert(message);
-
-onSaved?.();
-
+    // Refresh Telegram participant list
     onSaved?.();
+
   } catch (err: any) {
-    console.error(err);
+    console.error("Telegram Excel upload error:", err);
 
     alert(
-      err.response?.data?.message || "Upload failed"
+      err.response?.data?.message ||
+      err.response?.data?.error ||
+      "Telegram Excel upload failed"
     );
+  } finally {
+    setLoading(false);
+
+    // Allow same file to be selected again
+    e.target.value = "";
   }
 };
 
-const downloadTemplate = async () => {
-  const token = localStorage.getItem("token");
-
-  const response = await axios.get(
-    `${import.meta.env.VITE_API_URL}/api/telegram/download-template`,
+const downloadTemplate = () => {
+  const data = [
     {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      responseType: "blob",
-    }
+      username: "",
+      phone_number: "",
+    },
+  ];
+
+  const worksheet = XLSX.utils.json_to_sheet(data);
+
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    "Telegram Participants"
   );
 
-  const url = window.URL.createObjectURL(
-    new Blob([response.data])
-  );
-
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = "Telegram_Template.xlsx";
-
-  document.body.appendChild(link);
-  link.click();
-
-  link.remove();
+  XLSX.writeFile(workbook, "Telegram_Template.xlsx");
 };
 
  return (
@@ -375,60 +384,71 @@ const downloadTemplate = async () => {
           }}
         >
           {/* Save */}
-          <Button
-            variant="contained"
-            size="large"
-            startIcon={<SendIcon />}
-            onClick={handleSave}
-            disabled={loading}
-            sx={{
-              backgroundColor: "#22C55E",
-              "&:hover": {
-                backgroundColor: "#1a9d4b",
-              },
-              textTransform: "none",
-              px: 4,
-              fontWeight: "600",
-              fontSize: 15,
-              width: { xs: "100%", sm: "auto" },
-              maxWidth: "100%",
-              boxSizing: "border-box",
-            }}
-          >
-            {loading ? "Saving..." : "Save Details"}
-          </Button>
+         <Button
+  variant="contained"
+  size="small"
+  startIcon={<SendIcon />}
+  onClick={handleSave}
+  disabled={loading}
+  sx={{
+    backgroundColor: "#22C55E",
+    "&:hover": {
+      backgroundColor: "#1a9d4b",
+    },
+    textTransform: "none",
+    px: 2,
+    py: 0.8,
+    minWidth: "auto",
+    width: { xs: "100%", sm: "auto" },
+    maxWidth: "100%",
+    fontSize: "14px",
+    whiteSpace: "nowrap",
+    boxSizing: "border-box",
+  }}
+>
+  {loading ? "Saving..." : "Save Details"}
+</Button>
 
           {/* Add Excel */}
-          <Button
-            variant="outlined"
-            size="large"
-            onClick={() => fileInputRef.current?.click()}
-            sx={{
-              textTransform: "none",
-              width: { xs: "100%", sm: "auto" },
-              maxWidth: "100%",
-              boxSizing: "border-box",
-            }}
-          >
-            Add Excel
-          </Button>
+         <Button
+  variant="outlined"
+  size="small"
+  onClick={() => fileInputRef.current?.click()}
+  sx={{
+    textTransform: "none",
+    px: 2,
+    py: 0.8,
+    minWidth: "auto",
+    width: { xs: "100%", sm: "auto" },
+    maxWidth: "100%",
+    fontSize: "14px",
+    whiteSpace: "nowrap",
+    boxSizing: "border-box",
+  }}
+>
+  Add Excel
+</Button>
 
           {/* Download Excel */}
-          <Button
-            variant="outlined"
-            size="large"
-            component="a"
-            href="/excel_sheets/telegram-sheets.xlsx"
-            download="telegram-sheets.xlsx"
-            sx={{
-              textTransform: "none",
-              width: { xs: "100%", sm: "auto" },
-              maxWidth: "100%",
-              boxSizing: "border-box",
-            }}
-          >
-            Download Excel
-          </Button>
+         <Button
+  variant="outlined"
+  size="small"
+  startIcon={<DownloadIcon />}
+  onClick={downloadTemplate}
+  sx={{
+    textTransform: "none",
+    px: 2,
+    py: 0.8,
+    minWidth: "auto",
+    width: { xs: "100%", sm: "auto" },
+    maxWidth: "100%",
+    fontSize: "14px",
+    whiteSpace: "nowrap",
+    boxSizing: "border-box",
+  }}
+>
+  Download Excel
+</Button>
 
           <input
             ref={fileInputRef}
