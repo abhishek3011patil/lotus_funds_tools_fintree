@@ -102,8 +102,8 @@ const [aadhaarMessage, setAadhaarMessage] = useState("");
       return;
     }
 
-    if (file && file.size > 5 * 1024 * 1024) {
-      setNotice("Profile picture must be smaller than 5 MB.");
+    if (file && file.size > 15 * 1024 * 1024) {
+      setNotice("Profile picture must be smaller than 15 MB.");
       event.target.value = "";
       return;
     }
@@ -327,7 +327,7 @@ setSubmitting(true);
                   <input hidden type="file" accept="image/*" onChange={handlePicture} />
                 </Button>
                 <Typography variant="caption" color="text.secondary" display="block" mt={0.8}>
-                  JPG, PNG or WEBP, up to 5 MB.
+                  JPG, PNG or WEBP, up to 15 MB.
                 </Typography>
                 {profilePicture && (
                   <Stack direction="row" spacing={0.5} alignItems="center" mt={0.4}>

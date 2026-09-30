@@ -316,9 +316,12 @@ app.use((err: any, _req: any, res: any, _next: any) => {
 
   if (err instanceof multer.MulterError) {
     if (err.code === "LIMIT_FILE_SIZE") {
+      const profileImageFields = new Set(["profilePicture", "profile_image"]);
       return res.status(400).json({
         success: false,
-        message: "File size must be less than 5 MB.",
+        message: profileImageFields.has(String(err.field || ""))
+          ? "Profile picture must be smaller than 15 MB."
+          : "File size must be less than 5 MB.",
       });
     }
 
@@ -335,7 +338,7 @@ app.use((err: any, _req: any, res: any, _next: any) => {
     });
   }
 
-  if (err.message?.includes("Invalid file type")) {
+  if (err.message?.includes("Invalid file type") || err.message?.includes("Invalid profile picture")) {
     return res.status(400).json({
       success: false,
       message: err.message,
