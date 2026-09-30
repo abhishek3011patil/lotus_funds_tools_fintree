@@ -109,10 +109,9 @@ export default function MarketplaceProfileDialog({ selection, onClose }: {
           {websiteUrl && <Stack direction="row" alignItems="center" spacing={.5} sx={{ mt: 2 }}><OpenInNewRoundedIcon sx={{ fontSize: 16, color: "#5B73FF" }} /><Typography component="a" href={websiteUrl} target="_blank" rel="noreferrer" sx={{ color: "#4F63E7", fontWeight: 700, fontSize: 14 }}>{profile.website}</Typography></Stack>}
           {profile.type === "broker" && Boolean(profile.analysts?.length) && <Box sx={{ mt: 2.5 }}><Typography sx={{ color: "#64748B", fontSize: 12, fontWeight: 750, mb: 1 }}>ASSOCIATED ANALYSTS</Typography><Stack direction="row" gap={1} flexWrap="wrap">{profile.analysts?.map((analyst) => <Chip key={analyst.id} label={analyst.name} />)}</Stack></Box>}
 
-          <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="space-between" spacing={1.5} sx={{ mt: 3.5, mb: 1.75 }}>
+          {profile.type === "analyst" && <><Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "stretch", sm: "center" }} justifyContent="space-between" spacing={1.5} sx={{ mt: 3.5, mb: 1.75 }}>
             <Box>
               <Typography sx={{ fontWeight: 800, fontSize: 17 }}>Performance</Typography>
-              {profile.type === "broker" && <Typography sx={{ color: "#64748B", fontSize: 12.5, mt: .25 }}>Aggregated from associated analysts</Typography>}
             </Box>
             <ToggleButtonGroup
               exclusive
@@ -140,6 +139,7 @@ export default function MarketplaceProfileDialog({ selection, onClose }: {
             <Typography sx={{ color: "#64748B", fontSize: 12.5, fontWeight: 700 }}>Last outcomes</Typography>
             {performance.last.length === 0 ? <Typography sx={{ color: "#94A3B8", fontSize: 12.5 }}>No exited calls yet</Typography> : performance.last.map((outcome, index) => <Box key={index} title={outcome === "g" ? "Profitable" : outcome === "r" ? "Adverse" : "Neutral"} sx={{ width: 11, height: 11, borderRadius: "50%", bgcolor: outcome === "g" ? "#22C55E" : outcome === "r" ? "#EF4444" : "#CBD5E1" }} />)}
           </Stack>
+          </>}
         </>}
       </DialogContent>
     </Dialog>

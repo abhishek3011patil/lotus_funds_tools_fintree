@@ -15,6 +15,7 @@ interface Props {
 }
 
 const SIZE = 512;
+const MAX_PROFILE_IMAGE_BYTES = 15 * 1024 * 1024;
 const clamp = (n: number) => Math.max(-1, Math.min(1, n));
 
 export default function ProfilePictureUpload({ currentFilename, value, onChange, name, helperText, onSave }: Props) {
@@ -94,7 +95,7 @@ export default function ProfilePictureUpload({ currentFilename, value, onChange,
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setError("Choose a JPG, PNG, or WebP image."); return;
     }
-    if (file.size > 5 * 1024 * 1024) { setError("Choose an image smaller than 5 MB."); return; }
+    if (file.size > MAX_PROFILE_IMAGE_BYTES) { setError("Choose an image smaller than 15 MB."); return; }
     const version = ++loadVersion.current;
     setLoading(true);
     const url = URL.createObjectURL(file);
@@ -136,7 +137,7 @@ export default function ProfilePictureUpload({ currentFilename, value, onChange,
           {(value || (currentUrl && !currentMissing)) && <Button disabled={loading} onClick={() => { const file = value || (currentBlob.current && new File([currentBlob.current], "profile-picture", { type: currentBlob.current.type })); void choose(file); }} sx={{ textTransform: "none" }}>Adjust picture</Button>}
           {value && <Button onClick={() => { onChange(undefined); setError(""); }} sx={{ textTransform: "none" }}>Undo change</Button>}
         </Stack>
-        <Typography variant="caption" color="text.secondary" display="block" mt={1}>JPG, PNG or WebP · Up to 5 MB · Saved as 512 × 512 px</Typography>
+        <Typography variant="caption" color="text.secondary" display="block" mt={1}>JPG, PNG or WebP · Up to 15 MB · Saved as 512 × 512 px</Typography>
         <Typography variant="body2" color="text.secondary" mt={1}>{helperText}</Typography>
       </Box>
     </Stack>

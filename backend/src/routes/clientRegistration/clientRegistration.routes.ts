@@ -5,7 +5,7 @@ import {
   getClientsForAdmin,
   registerClient,
 } from "../../controllers/clientRegistration/clientRegistration.controller";
-import { upload } from "../../middlewares/upload";
+import { profileImageUpload } from "../../middlewares/upload";
 import { authenticate } from "../../middlewares/auth.middleware";
 import { requireAdmin } from "../../middlewares/admin.middleware";
 
@@ -33,7 +33,7 @@ router.put(
 router.post(
   "/",
   clientRegistrationLimiter,
-  upload.single("profilePicture"),
+  profileImageUpload.single("profilePicture"),
   registerClient
 );
 

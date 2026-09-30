@@ -77,6 +77,23 @@ export const upload = multer({
   },
 });
 
+// Profile photos may come directly from modern phones and cameras. Keep the
+// broader registration-proof limit unchanged while allowing larger images.
+export const profileImageUpload = multer({
+  storage,
+  limits: { fileSize: 15 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    const extension = path.extname(file.originalname).toLowerCase();
+    const allowedImageMimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const allowedImageExtensions = [".jpg", ".jpeg", ".png", ".webp"];
+
+    if (!allowedImageMimeTypes.includes(file.mimetype) || !allowedImageExtensions.includes(extension)) {
+      return cb(new Error("Invalid profile picture. Use JPG, JPEG, PNG or WEBP."));
+    }
+    cb(null, true);
+  },
+});
+
 // Recommendation attachments have a broader allowlist than registration proofs.
 export const recommendationMimeTypes: Record<string, string[]> = {
   ".jpg": ["image/jpeg", "image/jpg"],
