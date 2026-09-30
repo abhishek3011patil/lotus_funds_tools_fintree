@@ -11,7 +11,16 @@ import { authenticate } from "../middlewares/auth.middleware";
 import { requireAdmin } from "../middlewares/admin.middleware";
 import rateLimit from "express-rate-limit";
 import { requireBroker, listBrokerAnalysts, searchExistingAnalysts, addExistingAnalyst, removeBrokerAnalyst,
-  createBrokerInvitation, getBrokerInvitation, listBrokerCalls } from "../controllers/brokerOnboarding.controller";
+  createBrokerInvitation, getBrokerInvitation, listBrokerCalls, publishBrokerCall } from "../controllers/brokerOnboarding.controller";
+import {
+  addBrokerClientToTelegram,
+  addBrokerClientToWhatsApp,
+  createBrokerClient,
+  listBrokerClientDeliveries,
+  listBrokerClients,
+  removeBrokerClientFromTelegram,
+  removeBrokerClientFromWhatsApp,
+} from "../controllers/brokerClients.controller";
 import { pool } from "../db";
 
 const router = express.Router();
@@ -23,6 +32,14 @@ router.post("/research-analysts", authenticate, requireBroker, addExistingAnalys
 router.delete("/research-analysts/:raId", authenticate, requireBroker, removeBrokerAnalyst);
 router.post("/ra-invitations", authenticate, requireBroker, invitationLimiter, createBrokerInvitation);
 router.get("/research-calls", authenticate, requireBroker, listBrokerCalls);
+router.post("/research-calls/:callId/publish", authenticate, requireBroker, publishBrokerCall);
+router.get("/clients", authenticate, requireBroker, listBrokerClients);
+router.post("/clients", authenticate, requireBroker, createBrokerClient);
+router.get("/clients/:clientId/deliveries", authenticate, requireBroker, listBrokerClientDeliveries);
+router.post("/clients/:clientId/whatsapp", authenticate, requireBroker, addBrokerClientToWhatsApp);
+router.delete("/clients/:clientId/whatsapp", authenticate, requireBroker, removeBrokerClientFromWhatsApp);
+router.post("/clients/:clientId/telegram", authenticate, requireBroker, addBrokerClientToTelegram);
+router.delete("/clients/:clientId/telegram", authenticate, requireBroker, removeBrokerClientFromTelegram);
 
 router.post(
   "/register-broker",

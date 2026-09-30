@@ -23,9 +23,9 @@ export const brokerResearchAnalysts: BrokerResearchAnalyst[] = [
 ];
 
 export const brokerClients: BrokerClient[] = [
-  { id: "client-1", displayName: "Client Aster", reference: "BR-1048", status: "ACTIVE", joinedAt: "2026-04-12" },
-  { id: "client-2", displayName: "Client Birch", reference: "BR-1084", status: "ACTIVE", joinedAt: "2026-05-03" },
-  { id: "client-3", displayName: "Client Cedar", reference: "BR-1121", status: "INACTIVE", joinedAt: "2026-06-19" },
+  { id: "client-1", clientUserId: null, source: "MANUAL", name: "Client Aster", email: null, phoneNumber: "919999999991", aadhaarMasked: "XXXXXXXX1234", panMasked: "XXXXXX1234", status: "ACTIVE", createdAt: "2026-04-12", whatsappAdded: false, telegramAdded: false, receivedCallCount: 0, lastDeliveryAt: null },
+  { id: "client-2", clientUserId: null, source: "MANUAL", name: "Client Birch", email: null, phoneNumber: "919999999992", aadhaarMasked: "XXXXXXXX5678", panMasked: "XXXXXX5678", status: "ACTIVE", createdAt: "2026-05-03", whatsappAdded: false, telegramAdded: false, receivedCallCount: 0, lastDeliveryAt: null },
+  { id: "client-3", clientUserId: null, source: "MANUAL", name: "Client Cedar", email: null, phoneNumber: "919999999993", aadhaarMasked: "XXXXXXXX9012", panMasked: "XXXXXX9012", status: "INACTIVE", createdAt: "2026-06-19", whatsappAdded: false, telegramAdded: false, receivedCallCount: 0, lastDeliveryAt: null },
 ];
 
 export const brokerPerformance: BrokerPerformanceRow[] = [

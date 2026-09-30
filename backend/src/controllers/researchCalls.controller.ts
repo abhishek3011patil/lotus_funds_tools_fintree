@@ -6,6 +6,7 @@ import { AuthRequest } from "../middlewares/auth.middleware";
 import { Router } from "express";
 import { createAuditLog } from "../utils/auditLogger";
 import { queueWhatsAppResearchCall } from "../services/deliveryQueue.service";
+import { distributeBrokerCallUpdate } from "../services/brokerDelivery.service";
 import {
   getResearchCallTemplate,
   parseResearchCallTemplateSnapshot,
@@ -1090,6 +1091,13 @@ if (whatsappMessage) {
     researchCallId: errataCall.id,
     originalCallId: rootId,
     raUserId: req.user!.id,
+    eventType: "RESEARCH_CALL_ERRATA",
+    message: whatsappMessage,
+    client,
+  });
+  await distributeBrokerCallUpdate({
+    researchCallId: errataCall.id,
+    rootCallId: rootId,
     eventType: "RESEARCH_CALL_ERRATA",
     message: whatsappMessage,
     client,

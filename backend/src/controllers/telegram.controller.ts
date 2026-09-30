@@ -967,7 +967,7 @@ export const sendOtp = async (req: AuthRequest, res: Response) => {
       phoneNumber
     );
 
-    const userId = Number(req.user!.id);
+    const userId = req.user!.id;
 
     // ✅ store client temporarily
     setClient(userId, client);
@@ -1001,13 +1001,13 @@ export const verifyOtp = async (req: AuthRequest, res: Response) => {
   try {
     const { code } = req.body;
 
-    const data = otpStore.get(Number(req.user!.id));
+    const data = otpStore.get(req.user!.id);
 
     if (!data) {
       return res.status(400).json({ message: "OTP session expired" });
     }
 
-    const client = getClient(Number(req.user!.id));
+    const client = getClient(req.user!.id);
 
     if (!client) {
       return res.status(400).json({ message: "Session expired" });
@@ -1030,8 +1030,8 @@ export const verifyOtp = async (req: AuthRequest, res: Response) => {
       [sessionString, req.user!.id]
     );
 
-    deleteClient(Number(req.user!.id));
-    otpStore.delete(Number(req.user!.id));
+    deleteClient(req.user!.id);
+    otpStore.delete(req.user!.id);
 
     return res.json({ success: true });
 

@@ -10,7 +10,9 @@ import {
 } from "@mui/material";
 import axios from "axios";
 
-const TelegramConnection = () => {
+const TelegramConnection = ({ storageScope = "ra" }: { storageScope?: string }) => {
+    const stepKey = `tg_step_${storageScope}`;
+    const phoneKey = `tg_phone_${storageScope}`;
     const [step, setStep] = useState<"phone" | "otp" | "connected">("phone");
     const [phone, setPhone] = useState("");
     const [otp, setOtp] = useState("");
@@ -20,14 +22,14 @@ const TelegramConnection = () => {
 
     // 🔁 Restore from localStorage
     useEffect(() => {
-        const savedStep = localStorage.getItem("tg_step");
-        const savedPhone = localStorage.getItem("tg_phone");
+        const savedStep = localStorage.getItem(stepKey);
+        const savedPhone = localStorage.getItem(phoneKey);
 
         if (savedStep === "phone" || savedStep === "otp" || savedStep === "connected") {
             setStep(savedStep);
         }
         if (savedPhone) setPhone(savedPhone);
-    }, []);
+    }, [phoneKey, stepKey]);
 
     // ⏳ Cooldown timer
     useEffect(() => {
@@ -52,7 +54,7 @@ const TelegramConnection = () => {
 
                 if (res.data.connected) {
                     setStep("connected");
-                    localStorage.setItem("tg_step", "connected");
+                    localStorage.setItem(stepKey, "connected");
                 }
             } catch (err) {
                 console.error(err);
@@ -60,7 +62,7 @@ const TelegramConnection = () => {
         };
 
         checkTelegram();
-    }, []);
+    }, [stepKey]);
 
  return (
         <Box sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 3 }}>
@@ -136,8 +138,8 @@ const TelegramConnection = () => {
                                         setCooldown(30);
 
                                         // ✅ persist
-                                        localStorage.setItem("tg_step", "otp");
-                                        localStorage.setItem("tg_phone", phone);
+                                        localStorage.setItem(stepKey, "otp");
+                                        localStorage.setItem(phoneKey, phone);
 
                                     } catch (err: unknown) {
                                         if (axios.isAxiosError(err)) {
@@ -202,10 +204,10 @@ const TelegramConnection = () => {
                                         setStep("connected");
 
                                         // ✅ persist
-                                        localStorage.setItem("tg_step", "connected");
+                                        localStorage.setItem(stepKey, "connected");
 
                                         // ❌ remove phone (optional)
-                                        localStorage.removeItem("tg_phone");
+                                        localStorage.removeItem(phoneKey);
 
                                     } catch (err: unknown) {
                                         if (axios.isAxiosError(err)) {
@@ -228,7 +230,7 @@ const TelegramConnection = () => {
                                 variant="outlined"
                                 onClick={() => {
                                     setStep("phone");
-                                    localStorage.setItem("tg_step", "phone");
+                                    localStorage.setItem(stepKey, "phone");
                                 }}
                             >
                                 Change Number
@@ -259,8 +261,8 @@ const TelegramConnection = () => {
                                 setOtp("");
 
                                 // ✅ clear localStorage
-                                localStorage.removeItem("tg_step");
-                                localStorage.removeItem("tg_phone");
+                                localStorage.removeItem(stepKey);
+                                localStorage.removeItem(phoneKey);
                             }}
                         >
                             Reconnect

@@ -1,10 +1,46 @@
-import { Button, Chip, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
+import { Button, Chip, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import TelegramIcon from "@mui/icons-material/Telegram";
+import HistoryIcon from "@mui/icons-material/History";
+import type { ReactNode } from "react";
 import type { BrokerClient } from "../types/broker.types";
 
-const BrokerClientTable = ({ clients, onEdit, onDeactivate }: { clients: BrokerClient[]; onEdit: (client: BrokerClient) => void; onDeactivate: (client: BrokerClient) => void }) => (
-  <TableContainer component={Paper} variant="outlined"><Table size="small" aria-label="Broker clients"><TableHead><TableRow><TableCell>Display name</TableCell><TableCell>Reference</TableCell><TableCell>Joined</TableCell><TableCell>Status</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead>
-    <TableBody>{clients.map((client) => <TableRow key={client.id}><TableCell>{client.displayName}</TableCell><TableCell>{client.reference}</TableCell><TableCell>{client.joinedAt}</TableCell><TableCell><Chip size="small" label={client.status} color={client.status === "ACTIVE" ? "success" : "default"} /></TableCell><TableCell align="right"><Button size="small" onClick={() => onEdit(client)}>Edit</Button>{client.status === "ACTIVE" && <Button size="small" color="error" onClick={() => onDeactivate(client)}>Deactivate</Button>}</TableCell></TableRow>)}</TableBody>
-  </Table></TableContainer>
+const date = (value: string | null) => value
+  ? new Date(value).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+  : "—";
+
+const ChannelButton = ({ added, label, icon, onClick }: { added: boolean; label: string; icon: ReactNode; onClick: () => void }) => (
+  <Button size="small" variant={added ? "outlined" : "contained"} color={added ? "success" : "primary"} startIcon={icon} onClick={onClick}>
+    {added ? `${label} added` : `Add ${label}`}
+  </Button>
+);
+
+const BrokerClientTable = ({ clients, busyId, onChannel, onHistory }: {
+  clients: BrokerClient[];
+  busyId: string;
+  onChannel: (client: BrokerClient, channel: "whatsapp" | "telegram") => void;
+  onHistory: (client: BrokerClient) => void;
+}) => (
+  <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
+    <Table size="small" aria-label="Broker clients" sx={{ minWidth: 1250 }}>
+      <TableHead><TableRow>
+        <TableCell>Client</TableCell><TableCell>Source</TableCell><TableCell>Status</TableCell><TableCell>Phone</TableCell><TableCell>KYC</TableCell>
+        <TableCell>WhatsApp</TableCell><TableCell>Telegram</TableCell><TableCell>Calls received</TableCell><TableCell>Last delivery</TableCell><TableCell>History</TableCell>
+      </TableRow></TableHead>
+      <TableBody>{clients.map(client => <TableRow key={client.id} hover>
+        <TableCell><Typography fontWeight={750}>{client.name}</Typography><Typography variant="caption" color="text.secondary">{client.email || "No email"}</Typography></TableCell>
+        <TableCell><Chip size="small" label={client.source === "PORTAL" ? "Portal" : "Broker added"} color={client.source === "PORTAL" ? "primary" : "default"} variant="outlined" /></TableCell>
+        <TableCell><Chip size="small" label={client.status} color={client.status === "ACTIVE" ? "success" : "default"} /></TableCell>
+        <TableCell>{client.phoneNumber ? `+${client.phoneNumber}` : "—"}</TableCell>
+        <TableCell><Stack spacing={.25}><Typography variant="caption">Aadhaar: {client.aadhaarMasked || "—"}</Typography><Typography variant="caption">PAN: {client.panMasked || "—"}</Typography></Stack></TableCell>
+        <TableCell><ChannelButton added={client.whatsappAdded} label="WhatsApp" icon={<WhatsAppIcon />} onClick={() => onChannel(client, "whatsapp")} /></TableCell>
+        <TableCell><ChannelButton added={client.telegramAdded} label="Telegram" icon={<TelegramIcon />} onClick={() => onChannel(client, "telegram")} /></TableCell>
+        <TableCell><Chip size="small" label={client.receivedCallCount || 0} color={client.receivedCallCount ? "success" : "default"} /></TableCell>
+        <TableCell>{date(client.lastDeliveryAt)}</TableCell>
+        <TableCell><Button size="small" startIcon={<HistoryIcon />} disabled={busyId === client.id} onClick={() => onHistory(client)}>View</Button></TableCell>
+      </TableRow>)}</TableBody>
+    </Table>
+  </TableContainer>
 );
 
 export default BrokerClientTable;

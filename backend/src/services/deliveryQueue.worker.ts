@@ -38,6 +38,7 @@ type WhatsAppJob = {
   status: string;
   message: string;
   attempts: number;
+  broker_delivery_id: string | null;
 };
 
 const valueOrNA = (value: unknown): string => {
@@ -241,7 +242,9 @@ const getNextPendingJob =
   };
 
 const markJobSent = async (
-  jobId: string
+  jobId: string,
+  brokerDeliveryId: string | null,
+  providerMessageId: string | null,
 ): Promise<void> => {
   await pool.query(
     `
@@ -254,6 +257,13 @@ const markJobSent = async (
     `,
     [jobId]
   );
+  if (brokerDeliveryId) {
+    await pool.query(
+      `UPDATE broker_call_deliveries SET status = 'SENT', provider_message_id = $1,
+         error_message = NULL, sent_at = NOW(), updated_at = NOW() WHERE id = $2`,
+      [providerMessageId, brokerDeliveryId],
+    );
+  }
 };
 
 const markJobFailed = async (
@@ -276,6 +286,13 @@ const markJobFailed = async (
     `,
     [nextStatus, errorMessage, job.id]
   );
+  if (job.broker_delivery_id && nextStatus === "FAILED") {
+    await pool.query(
+      `UPDATE broker_call_deliveries SET status = 'FAILED', error_message = $1,
+         updated_at = NOW() WHERE id = $2`,
+      [errorMessage, job.broker_delivery_id],
+    );
+  }
 };
 
 const extractErrorMessage = (error: any): string => {
@@ -371,7 +388,7 @@ if (!message) {
     const providerMessageId =
       response.data.messages?.[0]?.id || null;
 
-    await markJobSent(job.id);
+    await markJobSent(job.id, job.broker_delivery_id, providerMessageId);
 
     console.log("✅ WHATSAPP JOB SENT:", {
       jobId: job.id,

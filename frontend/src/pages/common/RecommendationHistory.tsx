@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import {
   Box,
   Paper,
@@ -42,7 +42,8 @@ import {
   type TableExportColumn,
 } from "../../utils/tableExport.utils";
 
-interface HistoryRecord {
+export interface HistoryRecord {
+  id?: string;
   attachments?: RecommendationAttachment[];
   file_url?: string | null;
   dateTime: string;
@@ -64,10 +65,15 @@ interface HistoryRecord {
   created_by?: string;
   username?: string;
   version_type?: string;
+  published_message_text?: string | null;
+  broker_name?: string;
+  broker_sebi_registration?: string | null;
+  broker_published?: boolean;
 
 }
 
 export interface ApiHistoryRecord {
+  id?: string;
   attachments?: RecommendationAttachment[];
   file_url?: string | null;
   date_time?: string;
@@ -86,6 +92,10 @@ export interface ApiHistoryRecord {
   expiry_date?: string | null;
   version_type?: string;
    researcherName?: string;
+  published_message_text?: string | null;
+  broker_name?: string;
+  broker_sebi_registration?: string | null;
+  broker_published?: boolean;
 }
 
 // Added Prop Interface
@@ -102,6 +112,7 @@ interface RecommendationHistoryProps {
 fromDate?: string;
 toDate?: string;
 sortBy?: string;
+renderRowActions?: (record: HistoryRecord) => ReactNode;
 }
 
 const CLIENT_HISTORY_STORAGE_KEY = "clientRecommendationHistory";
@@ -122,8 +133,10 @@ export default function RecommendationHistory({
   fromDate = "",
   toDate = "",
   sortBy = "latest",
+  renderRowActions,
 }: RecommendationHistoryProps) {
   const mapApiRowToHistory = (row: ApiHistoryRecord): HistoryRecord => ({
+    id: row.id,
     attachments: row.attachments,
     file_url: row.file_url,
     dateTime: row.date_time || "",
@@ -142,6 +155,10 @@ export default function RecommendationHistory({
     researcher_name: row.researcher_name,
 
     researcherName: row.researcherName,
+    published_message_text: row.published_message_text,
+    broker_name: row.broker_name,
+    broker_sebi_registration: row.broker_sebi_registration,
+    broker_published: row.broker_published,
   });
 
   // State
@@ -1470,13 +1487,14 @@ const handleReset = () => {
                 <TableCell align="right" sx={historyHeadStyle}>Profit / Loss</TableCell>
                 <TableCell sx={historyHeadStyle}>Researcher Name</TableCell>
                 {showMedia && <TableCell sx={historyHeadStyle}>Media</TableCell>}
+                {renderRowActions && <TableCell sx={historyHeadStyle}>Options</TableCell>}
               </TableRow>
             </TableHead>
 
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={showMedia ? 14 : 13} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={13 + (showMedia ? 1 : 0) + (renderRowActions ? 1 : 0)} align="center" sx={{ py: 4 }}>
                     <LoadingPage
                       title="Loading"
                       subtitle="Fetching recommendation history..."
@@ -1487,7 +1505,7 @@ const handleReset = () => {
                 </TableRow>
               ) : paginatedData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={showMedia ? 14 : 13} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={13 + (showMedia ? 1 : 0) + (renderRowActions ? 1 : 0)} align="center" sx={{ py: 4 }}>
                     No records found
                   </TableCell>
                 </TableRow>
@@ -1616,6 +1634,7 @@ const handleReset = () => {
                         <RecommendationMediaButton filePath={row.file_url} attachments={row.attachments} symbol={row.symbol} />
                       </TableCell>
                     )}
+                    {renderRowActions && <TableCell sx={historyBodyStyle}>{renderRowActions(row)}</TableCell>}
                   </TableRow>
                 ))
               )}
