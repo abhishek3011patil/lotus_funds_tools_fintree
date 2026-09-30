@@ -6,6 +6,7 @@ import { SubscriptionStatusCard } from "../../components/subscription";
 import type { SubscriptionDetails } from "../../types/subscription";
 import type { BrokerAccount } from "../types/brokerAccount";
 import { changeMyBrokerPassword, getMyBrokerAccount, getMyBrokerSubscription } from "../services/brokerAccount.service";
+import ProfilePictureUpload from "../../components/setting/ProfilePictureUpload";
 
 const BrokerSettings = () => {
   const navigate = useNavigate();

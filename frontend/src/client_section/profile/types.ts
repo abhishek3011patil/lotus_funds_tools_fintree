@@ -6,6 +6,7 @@ export type ClientProfile = {
   role: string;
   status: string;
   memberSince: string;
+  avatarUrl?: string | null;
 };
 
 export type ClientProfileResponse = { success: boolean; data: ClientProfile };
