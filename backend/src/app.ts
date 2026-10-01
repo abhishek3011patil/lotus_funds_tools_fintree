@@ -5,7 +5,7 @@ import { createApiRateLimiter } from "./middlewares/rateLimit.middleware";
 import path from "path";
 import fs from "fs";
 import { authenticate, AuthRequest } from "./middlewares/auth.middleware";
-import { pool } from "./db";
+import { canAccessUploadedFile } from "./services/uploadAccess.service";
 
 
 import researchRoutes from "./routes/researchCalls.routes";
@@ -182,45 +182,14 @@ app.get("/uploads/:filename", authenticate, async (req: AuthRequest, res) => {
       role === "ADMIN" ||
       role === "SUPERADMIN";
 
-    if (!isAdmin) {
-      // Profile images can be viewed by authenticated users
-      const profileImageResult = await pool.query(
-        `
-        SELECT user_id
-        FROM ra_details
-        WHERE profile_image = $1
-        LIMIT 1
-        `,
-        [filename]
-      );
-
-      // If it is not a profile image,
-      // apply strict authorization for private documents.
-      if (profileImageResult.rows.length === 0) {
-        const result = await pool.query(
-          `
-          SELECT user_id
-          FROM ra_details
-          WHERE user_id = $1
-            AND (
-              pan_card = $2
-              OR address_proof_document = $2
-              OR sebi_certificate = $2
-              OR sebi_receipt = $2
-              OR nism_certificate = $2
-              OR cancelled_cheque = $2
-            )
-          LIMIT 1
-          `,
-          [req.user.id, filename]
-        );
-
-        if (result.rows.length === 0) {
-          return res.status(403).json({
-            message: "You are not authorized to view this file",
-          });
-        }
-      }
+    if (!isAdmin && !(await canAccessUploadedFile({
+      filename,
+      userId: req.user.id,
+      role,
+    }))) {
+      return res.status(403).json({
+        message: "You are not authorized to view this file",
+      });
     }
 
     const filePath = path.join(process.cwd(), "uploads", filename);
