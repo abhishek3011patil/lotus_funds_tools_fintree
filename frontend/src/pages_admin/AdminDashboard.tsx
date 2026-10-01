@@ -27,7 +27,6 @@ import SendIcon from "@mui/icons-material/Send";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import TelegramSearch from "./Admin common/TelegramSearch";
 import * as XLSX from "xlsx";
-import { openAuthenticatedUploads } from "../utils/authenticatedUpload.utils";
 
 type AdminRow = {
   id: string;
@@ -92,7 +91,6 @@ type Participant = {
 };
 
 const ITEMS_PER_PAGE = 10;
-
 const AdminDashboard = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<"ra" | "broker" | "client">("ra");
@@ -100,7 +98,6 @@ const AdminDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [filterTab, setFilterTab] = useState<"all" | "approved" | "requests" | "suspended">("all");
-  
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [clientFilter, setClientFilter] = useState<"all" | "active" | "suspended">("all");
   const [clientPage, setClientPage] = useState(1);
@@ -108,10 +105,8 @@ const AdminDashboard = () => {
   const [clientSuspendReason, setClientSuspendReason] = useState("");
   const [suspendingClient, setSuspendingClient] = useState(false);
   const [activatingClient, setActivatingClient] = useState(false);
-  
   const [brokers, setBrokers] = useState<BrokerRow[]>([]);
   const [brokerPage, setBrokerPage] = useState(1);
-
   const [selectedRA, setSelectedRA] = useState<AdminRow | null>(null);
   const [resendingPasswordLink, setResendingPasswordLink] = useState(false);
   const [panelMode, setPanelMode] = useState<"ra" | "participant" | "whatsapp">("ra");
@@ -119,12 +114,10 @@ const AdminDashboard = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmType, setConfirmType] = useState<"RA" | "BROKER" | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
-
   const [whatsappName, setWhatsappName] = useState("");
   const [whatsappPhone, setWhatsappPhone] = useState("");
   const [whatsappParticipantsList, setWhatsappParticipantsList] = useState<Participant[]>([]);
   const [whatsappParticipant, setWhatsappParticipant] = useState<Participant | null>(null);
-
   const [participantsList, setParticipantsList] = useState<Participant[]>([]);
   const [participant, setParticipant] = useState<Participant | null>(null);
   const [participantLoading, setParticipantLoading] = useState(false);
@@ -187,27 +180,47 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleActivate = async (userId: string) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/admin/activate/ra/${userId}`,
-        {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      const result = await response.json();
-      if (!response.ok) {
-        alert(result.message || "Failed to activate RA");
-        return;
+const handleActivate = async (userId: string) => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/admin/activate/ra/${userId}`,
+      {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
       }
-      alert("RA activated successfully");
-      loadRegistrations();
-    } catch (error) {
-      alert("Failed to activate RA");
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      alert(result.message || "Failed to activate RA");
+      return;
     }
-  };
+
+    // Immediately update the currently open side panel
+    // so it does not keep showing the old suspended/inactive status.
+    setSelectedRA((prev) =>
+      prev
+        ? {
+            ...prev,
+            status: "active",
+            raStatus: "active",
+            suspendReason: "",
+            suspended_at: "",
+          }
+        : prev
+    );
+
+    // Refresh the dashboard table with the latest data
+    await loadRegistrations();
+
+    alert("RA activated successfully");
+  } catch (error) {
+    alert("Failed to activate RA");
+  }
+};
 
   const loadClients = async () => {
     try {
@@ -357,8 +370,8 @@ const AdminDashboard = () => {
   const paginatedBrokers = filteredBrokers.slice((brokerPage - 1) * ITEMS_PER_PAGE, brokerPage * ITEMS_PER_PAGE);
 
   /* ================= FILE VIEW ================= */
-  const openFile = async (file?: string | string[]) => {
-    if (!file || (typeof file === "string" && file.trim() === "") || (Array.isArray(file) && file.length === 0)) {
+  const openFile = async (file?: string) => {
+    if (!file || file.trim() === "") {
       alert("File not uploaded");
       return;
     }
@@ -366,13 +379,14 @@ const AdminDashboard = () => {
     if (!token) return alert("Please login to view this file.");
 
     try {
-      await openAuthenticatedUploads(file, {
-        apiBaseUrl: import.meta.env.VITE_API_URL,
-        token,
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(file)}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
+      if (!response.ok) return alert("You are not authorized to view this file.");
+      const blob = await response.blob();
+      window.open(URL.createObjectURL(blob), "_blank");
     } catch (error) {
-      console.error("Error opening file:", error);
-      alert(error instanceof Error ? error.message : "Unable to open file.");
+      alert("Unable to open file.");
     }
   };
 
@@ -675,21 +689,46 @@ const handleDownloadWhatsAppTemplate = () => {
     alert(data.message || "Operation completed");
   };
 
-  const handleSuspend = async (userId: string) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/suspend-user`, {
+const handleSuspend = async (userId: string) => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/admin/suspend-user`,
+      {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ userId, suspendReason }),
-      });
-      if (!response.ok) return alert("Failed to suspend user");
-      alert("User suspended successfully");
-      window.location.reload();
-    } catch {
-      alert("Failed to suspend user");
+      }
+    );
+
+    if (!response.ok) {
+      return alert("Failed to suspend user");
     }
-  };
+
+    // Update the currently selected user immediately
+    setSelectedRA((prev) =>
+      prev
+        ? {
+            ...prev,
+            status: "suspended",
+            raStatus: "suspended",
+            suspendReason: suspendReason || "",
+          }
+        : prev
+    );
+
+    // Refresh the table data
+    await loadRegistrations();
+
+    alert("User suspended successfully");
+  } catch {
+    alert("Failed to suspend user");
+  }
+};
 
   const handleResendPasswordLink = async (userId: string) => {
     if (resendingPasswordLink) return;
