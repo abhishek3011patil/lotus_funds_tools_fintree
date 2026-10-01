@@ -26,9 +26,13 @@ test.beforeEach(async ({ page }) => {
     }
     if (pathname === "/api/broker/ra-invitations") json = { registrationPath: `/registration?brokerInvite=${token}`, expiresAt: "2026-09-29T10:00:00Z", emailSent: Boolean(route.request().postDataJSON()?.sendEmail) };
     if (pathname === `/api/broker/ra-invitations/${token}`) json = { brokerName: "Test Brokerage", email: null };
-    if (pathname === "/api/broker/research-calls") json = linked ? [{ date_time: "2026-09-22T09:00:00Z", action: "BUY", exchange: "NSE", type: "Cash", category: "Intraday", instrument: "Example equity", symbol: "TESTCALL", entry: 100, status: "PUBLISHED", researcher_name: ra.name }] : [];
+    if (pathname === "/api/broker/research-calls") json = linked ? [{ date_time: "2026-09-22T09:00:00Z", action: "BUY", exchange: "NSE", type: "Cash", category: "Intraday", instrument: "Example equity", symbol: "TESTCALL", entry: 100, status: "PUBLISHED", researcher_name: ra.name, attachments: [{ url: "/uploads/broker-call-chart.png", name: "broker-call-chart.png", mimeType: "image/png" }] }] : [];
     await route.fulfill({ json });
   });
+  await page.route("**/uploads/**", route => route.fulfill({
+    contentType: "image/png",
+    body: Buffer.from("broker-call-media"),
+  }));
 });
 
 test("adds an existing RA and shows their calls in the performance table", async ({ page }) => {
@@ -50,6 +54,29 @@ test("adds an existing RA and shows their calls in the performance table", async
   await page.getByLabel("Search calls, symbols or Research Analysts").fill("missing");
   await expect(page.getByText("No records found", { exact: true })).toBeVisible();
   expect(unscoped).toEqual([]);
+});
+
+test("opens media attached to an associated RA's call", async ({ page }) => {
+  await page.goto("/broker/research-analysts");
+  await page.getByRole("button", { name: "Add Research Analyst", exact: true }).click();
+  await page.getByRole("button", { name: /^Add existing RA/ }).click();
+  await page.getByLabel("Name or SEBI registration").fill("Ananya");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await page.getByRole("button", { name: "Add Ananya Research", exact: true }).click();
+
+  await page.goto("/broker/research-calls");
+  await page.getByRole("button", { name: "View media for TESTCALL (1 file)", exact: true }).click();
+
+  const mediaRequest = page.waitForRequest(request =>
+    new URL(request.url()).pathname === "/uploads/broker-call-chart.png"
+  );
+  const popupOpened = page.waitForEvent("popup");
+  await page.getByRole("button", { name: "Open broker-call-chart.png", exact: true }).click();
+
+  expect((await mediaRequest).headers().authorization).toBe("Bearer broker-test-token");
+  const popup = await popupOpened;
+  await expect(popup).toHaveURL(/^blob:/);
+  await popup.close();
 });
 
 test("confirms removal, hides associated calls, and allows adding the RA again", async ({ page }) => {

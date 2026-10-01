@@ -160,7 +160,6 @@ export const saveTelegramUser = async (
     );
 
     const sessionString = sessionResult.rows[0]?.telegram_session;
-    console.log("SESSION =", sessionString);
 
     // ✅ Default values
     let resolvedTelegramId =
