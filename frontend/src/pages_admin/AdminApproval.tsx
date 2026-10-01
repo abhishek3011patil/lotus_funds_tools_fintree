@@ -23,6 +23,7 @@ import DialogActions from "@mui/material/DialogActions";
 import { useNavigate } from "react-router-dom";
 
 import AdminFilter, { type AdminFilterValue } from "../assets/adminFilter";
+import { openAuthenticatedUploads } from "../utils/authenticatedUpload.utils";
 
 type AdminRow = {
   id: string;
@@ -274,40 +275,14 @@ const openFile = async (file?: string | string[]) => {
     return;
   }
 
-  const fileArray = Array.isArray(file)
-    ? file
-    : file.split(",");
-
-  for (const f of fileArray) {
-    const cleanFile = f.trim();
-
-    if (!cleanFile) continue;
-
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(cleanFile)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("File access failed:", errorText);
-        alert("You are not authorized to view this file.");
-        continue;
-      }
-
-      const blob = await response.blob();
-      const fileUrl = URL.createObjectURL(blob);
-
-      window.open(fileUrl, "_blank");
-    } catch (error) {
-      console.error("Error opening file:", error);
-      alert("Unable to open file.");
-    }
+  try {
+    await openAuthenticatedUploads(file, {
+      apiBaseUrl: import.meta.env.VITE_API_URL,
+      token,
+    });
+  } catch (error) {
+    console.error("Error opening file:", error);
+    alert(error instanceof Error ? error.message : "Unable to open file.");
   }
 };
 

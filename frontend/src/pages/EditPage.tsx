@@ -31,6 +31,7 @@ import GavelOutlinedIcon from "@mui/icons-material/GavelOutlined";
 import FolderSharedOutlinedIcon from "@mui/icons-material/FolderSharedOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
+import { openAuthenticatedUploads } from "../utils/authenticatedUpload.utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Registration = {
@@ -289,7 +290,7 @@ const fetchData = async () => {
     }
   };
 
-  const openFile = async (file?: string) => {
+  const openFile = async (file?: string | string[]) => {
     if (!file) {
       alert("File not uploaded");
       return;
@@ -301,30 +302,14 @@ const fetchData = async () => {
       return;
     }
 
-    const filesToOpen = file.split(",");
-
-    for (const f of filesToOpen) {
-      const clean = f.trim();
-      if (!clean) continue;
-
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(clean)}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-
-        if (!response.ok) {
-          alert("You are not authorized to view this file.");
-          continue;
-        }
-
-        const blob = await response.blob();
-        const fileUrl = URL.createObjectURL(blob);
-        window.open(fileUrl, "_blank");
-      } catch (error) {
-        console.error("Error opening file:", error);
-        alert("Unable to open file.");
-      }
+    try {
+      await openAuthenticatedUploads(file, {
+        apiBaseUrl: import.meta.env.VITE_API_URL,
+        token,
+      });
+    } catch (error) {
+      console.error("Error opening file:", error);
+      alert(error instanceof Error ? error.message : "Unable to open file.");
     }
   };
 

@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import Grid from "@mui/material/GridLegacy";
 import RAProfilePicture from "../components/setting/RAProfilePicture";
+import { openAuthenticatedUploads } from "../utils/authenticatedUpload.utils";
 
 type Registration = {
   [key: string]: any;
@@ -107,29 +108,13 @@ const openFile = async (file?: string) => {
   }
 
   try {
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(file)}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("File access failed:", errorText);
-      alert("You are not authorized to view this file.");
-      return;
-    }
-
-    const blob = await response.blob();
-    const fileUrl = URL.createObjectURL(blob);
-
-    window.open(fileUrl, "_blank");
+    await openAuthenticatedUploads(file, {
+      apiBaseUrl: import.meta.env.VITE_API_URL,
+      token,
+    });
   } catch (error) {
     console.error("Error opening file:", error);
-    alert("Unable to open file.");
+    alert(error instanceof Error ? error.message : "Unable to open file.");
   }
 };
 
