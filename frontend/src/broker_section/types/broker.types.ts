@@ -34,10 +34,32 @@ export interface BrokerResearchAnalyst {
 
 export interface BrokerClient {
   id: string;
-  displayName: string;
-  reference: string;
+  clientUserId: string | null;
+  source: "PORTAL" | "MANUAL";
+  name: string;
+  email: string | null;
+  phoneNumber: string;
+  aadhaarMasked: string | null;
+  panMasked: string | null;
   status: "ACTIVE" | "INACTIVE";
-  joinedAt: string;
+  createdAt: string;
+  whatsappAdded: boolean;
+  telegramAdded: boolean;
+  receivedCallCount: number;
+  lastDeliveryAt: string | null;
+}
+
+export interface BrokerClientDelivery {
+  id: string;
+  eventType: "RESEARCH_CALL_PUBLISHED" | "RESEARCH_CALL_ERRATA" | "RESEARCH_CALL_EXITED";
+  channel: "WHATSAPP" | "TELEGRAM";
+  status: "QUEUED" | "SENT" | "FAILED";
+  queuedAt: string;
+  sentAt: string | null;
+  errorMessage: string | null;
+  symbol: string;
+  instrument: string;
+  researchAnalyst: string;
 }
 
 export interface BrokerPerformanceRow {

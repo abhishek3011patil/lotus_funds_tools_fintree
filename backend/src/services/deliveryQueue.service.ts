@@ -12,6 +12,10 @@ type QueueWhatsAppResearchCallInput = {
   message: string;
   originalCallId?: string | null;
   client?: PoolClient;
+  brokerDelivery?: {
+    brokerId: string;
+    rootCallId: string;
+  };
 };
 
 export const queueWhatsAppResearchCall = async ({
@@ -21,6 +25,7 @@ export const queueWhatsAppResearchCall = async ({
   message,
   originalCallId = null,
   client,
+  brokerDelivery,
 }: QueueWhatsAppResearchCallInput) => {
   const db = client ?? pool;
 
@@ -28,7 +33,8 @@ export const queueWhatsAppResearchCall = async ({
     `
       SELECT
         id,
-        phone_number
+        phone_number,
+        broker_client_id
       FROM whatsapp_participants
       WHERE ra_user_id = $1
         AND consent_confirmed = TRUE
@@ -48,6 +54,21 @@ export const queueWhatsAppResearchCall = async ({
   }
 
   for (const participant of participantsResult.rows) {
+    let brokerDeliveryId: string | null = null;
+    if (brokerDelivery && participant.broker_client_id) {
+      const deliveryResult = await db.query(
+        `INSERT INTO broker_call_deliveries
+           (broker_id, broker_client_id, research_call_id, root_call_id, event_type, channel, message_text, status)
+         VALUES ($1, $2, $3, $4, $5, 'WHATSAPP', $6, 'QUEUED')
+         ON CONFLICT (broker_client_id, research_call_id, event_type, channel) DO UPDATE SET
+           message_text = EXCLUDED.message_text, status = 'QUEUED', error_message = NULL,
+           provider_message_id = NULL, queued_at = NOW(), sent_at = NULL, updated_at = NOW()
+         RETURNING id`,
+        [brokerDelivery.brokerId, participant.broker_client_id, researchCallId,
+          brokerDelivery.rootCallId, eventType, message],
+      );
+      brokerDeliveryId = deliveryResult.rows[0]?.id || null;
+    }
     await db.query(
       `
         INSERT INTO whatsapp_message_jobs (
@@ -63,6 +84,7 @@ export const queueWhatsAppResearchCall = async ({
           error_message,
           created_at,
           updated_at
+          ,broker_delivery_id
         )
         VALUES (
           $1,$2,$3,$4,$5,$6,$7,
@@ -70,7 +92,8 @@ export const queueWhatsAppResearchCall = async ({
           0,
           NULL,
           NOW(),
-          NOW()
+          NOW(),
+          $8
         )
       `,
       [
@@ -81,6 +104,7 @@ export const queueWhatsAppResearchCall = async ({
         participant.phone_number,
         eventType,
         message,
+        brokerDeliveryId,
       ]
     );
   }

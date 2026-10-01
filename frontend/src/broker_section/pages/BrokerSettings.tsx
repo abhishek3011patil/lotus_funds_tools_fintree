@@ -6,6 +6,7 @@ import { SubscriptionStatusCard } from "../../components/subscription";
 import type { SubscriptionDetails } from "../../types/subscription";
 import type { BrokerAccount } from "../types/brokerAccount";
 import { changeMyBrokerPassword, getMyBrokerAccount, getMyBrokerSubscription } from "../services/brokerAccount.service";
+import TelegramConnection from "../../pages/common/TelegramConnection";
 
 const BrokerSettings = () => {
   const navigate = useNavigate();
@@ -57,7 +58,7 @@ const BrokerSettings = () => {
       <Box><Typography variant="h4" fontWeight={800}>Broker Settings</Typography><Typography color="text.secondary">Manage your account, subscription, and login security.</Typography></Box>
       <Card variant="outlined" sx={{ borderRadius: 3 }}>
         <Tabs value={tab} onChange={(_, next) => setTab(next)} variant="scrollable" scrollButtons="auto" sx={{ borderBottom: 1, borderColor: "divider", px: 2 }}>
-          <Tab label="Account" /><Tab label="Subscription" /><Tab label="Security" />
+          <Tab label="Account" /><Tab label="Subscription" /><Tab label="Security" /><Tab label="Telegram" />
         </Tabs>
         <CardContent sx={{ p: { xs: 2, md: 3 } }}>
           {tab === 0 && <Stack spacing={2.5}>
@@ -81,6 +82,7 @@ const BrokerSettings = () => {
               <Box><Button type="submit" variant="contained" disabled={saving}>{saving ? "Saving..." : "Change password"}</Button></Box>
             </Stack>
           </Box>}
+          {tab === 3 && <Box><Alert severity="info" sx={{ mb: 2 }}>Connect the broker's Telegram account before adding client phone numbers to Telegram delivery.</Alert><TelegramConnection storageScope="broker" /></Box>}
         </CardContent>
       </Card>
     </Stack>

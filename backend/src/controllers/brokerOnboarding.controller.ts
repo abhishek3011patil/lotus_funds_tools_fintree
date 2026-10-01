@@ -4,6 +4,7 @@ import type { AuthRequest } from "../middlewares/auth.middleware";
 import { pool } from "../db";
 import { hashBrokerInvitation } from "../services/brokerOnboarding.service";
 import { emailService } from "../services/email";
+import { deliverBrokerPublication } from "../services/brokerDelivery.service";
 
 export const requireBroker = async (req: AuthRequest, res: Response, next: NextFunction) => {
   if (req.user?.role !== "BROKER") return res.status(403).json({ message: "Broker access required." });
@@ -237,16 +238,84 @@ export const listBrokerCalls = async (_req: AuthRequest, res: Response) => {
        rc.call_type AS type, rc.trade_type AS category, rc.display_name AS instrument,
        rc.symbol, rc.expiry_date AS expiry, coalesce(rc.entry_price, rc.entry_price_low, rc.entry_price_upper) AS entry,
        rc.exit_price, rc.status, rc.version_type, rc.attachments, rc.file_url,
+       rc.published_message_text, COALESCE(rc.parent_call_id, rc.id) AS root_call_id,
+       COALESCE(NULLIF(TRIM(b.trade_name), ''), b.legal_name) AS broker_name,
+       b.sebi_registration_no AS broker_sebi_registration,
+       (publication.id IS NOT NULL AND publication.status = 'ACTIVE') AS broker_published,
        concat_ws(' ', ra.first_name, ra.surname) AS researcher_name,
        CASE WHEN rc.exit_price IS NULL THEN 0
          WHEN upper(rc.action) = 'SELL' THEN coalesce(rc.entry_price, rc.entry_price_low, rc.entry_price_upper) - rc.exit_price
          ELSE rc.exit_price - coalesce(rc.entry_price, rc.entry_price_low, rc.entry_price_upper) END AS profit_loss
      FROM broker_research_analysts link
+     JOIN broker_details b ON b.id = link.broker_id
      JOIN ra_details ra ON ra.id = link.ra_id
      JOIN research_calls rc ON rc.ra_user_id = ra.user_id
+     LEFT JOIN broker_call_publications publication
+       ON publication.broker_id = link.broker_id
+      AND publication.root_call_id = COALESCE(rc.parent_call_id, rc.id)
      WHERE link.broker_id = $1 AND link.status = 'ACTIVE'
        AND rc.status IN ('PUBLISHED', 'CLOSED') AND rc.is_latest IS TRUE
      ORDER BY rc.created_at DESC, rc.id`, [res.locals.broker.id]
   );
   res.json(result.rows);
+};
+
+export const publishBrokerCall = async (req: AuthRequest, res: Response) => {
+  const callId = String(req.params.callId || "");
+  const message = String(req.body?.message || "").trim();
+  if (!/^[a-f0-9-]{36}$/i.test(callId)) return res.status(400).json({ message: "Select a valid research call." });
+  if (!message || message.length > 12000) return res.status(400).json({ message: "Review the call message before publishing." });
+
+  const db = await pool.connect();
+  try {
+    await db.query("BEGIN");
+    const result = await db.query(
+      `SELECT rc.id, COALESCE(rc.parent_call_id, rc.id) AS root_call_id
+       FROM research_calls rc
+       JOIN ra_details ra ON ra.user_id = rc.ra_user_id
+       JOIN broker_research_analysts link ON link.ra_id = ra.id
+       WHERE rc.id = $1 AND rc.is_latest = TRUE AND rc.status = 'PUBLISHED'
+         AND link.broker_id = $2 AND link.status = 'ACTIVE'
+       FOR UPDATE OF rc`,
+      [callId, res.locals.broker.id],
+    );
+    if (!result.rows[0]) {
+      await db.query("ROLLBACK");
+      return res.status(404).json({ message: "This associated Research Analyst call is no longer available." });
+    }
+    const call = result.rows[0];
+    const publication = await db.query(
+      `INSERT INTO broker_call_publications (broker_id, research_call_id, root_call_id, message_text)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (broker_id, root_call_id) DO NOTHING
+       RETURNING id`,
+      [res.locals.broker.id, call.id, call.root_call_id, message],
+    );
+    if (!publication.rows[0]) {
+      await db.query("ROLLBACK");
+      return res.status(409).json({ message: "This call has already been published by your brokerage." });
+    }
+    const delivery = await deliverBrokerPublication({
+      brokerId: res.locals.broker.id,
+      brokerUserId: req.user!.id,
+      researchCallId: call.id,
+      rootCallId: call.root_call_id,
+      eventType: "RESEARCH_CALL_PUBLISHED",
+      message,
+      client: db,
+    });
+    await db.query("COMMIT");
+    return res.status(201).json({
+      success: true,
+      message: "Call published to the broker's enabled client channels.",
+      publicationId: publication.rows[0].id,
+      delivery: { whatsappQueued: delivery.whatsappQueued, telegramQueued: delivery.telegramQueued },
+    });
+  } catch (error) {
+    await db.query("ROLLBACK").catch(() => undefined);
+    console.error("BROKER CALL PUBLISH ERROR", error);
+    return res.status(500).json({ message: "Unable to publish this call." });
+  } finally {
+    db.release();
+  }
 };

@@ -3,6 +3,7 @@ import { pool } from "../db";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { createAuditLog } from "../utils/auditLogger";
 import { queueWhatsAppResearchCall } from "../services/deliveryQueue.service";
+import { distributeBrokerCallUpdate } from "../services/brokerDelivery.service";
 const getClientIp = (req: any): string => {
   let ip =
     req.headers?.["x-forwarded-for"] ||
@@ -182,6 +183,14 @@ export const exitResearchCall = async (
       eventType: "RESEARCH_CALL_EXITED",
       message: trimmedMessage,
       originalCallId: exitedCall.parent_call_id || exitedCall.id,
+      client,
+    });
+
+    await distributeBrokerCallUpdate({
+      researchCallId: exitedCall.id,
+      rootCallId: exitedCall.parent_call_id || exitedCall.id,
+      eventType: "RESEARCH_CALL_EXITED",
+      message: trimmedMessage,
       client,
     });
 

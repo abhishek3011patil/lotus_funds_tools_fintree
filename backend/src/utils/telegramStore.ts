@@ -5,14 +5,14 @@ type OtpData = {
 };
 
 // store per RA user
-const store = new Map<number, OtpData>();
+const store = new Map<string, OtpData>();
 
 export const otpStore = {
-  set: (userId: number, data: OtpData) => {
+  set: (userId: string, data: OtpData) => {
     store.set(userId, data);
   },
 
-  get: (userId: number): OtpData | undefined => {
+  get: (userId: string): OtpData | undefined => {
     const data = store.get(userId);
 
     if (!data) return undefined;
@@ -26,7 +26,7 @@ export const otpStore = {
     return data;
   },
 
-  delete: (userId: number) => {
+  delete: (userId: string) => {
     store.delete(userId);
   }
 };

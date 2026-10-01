@@ -27,6 +27,7 @@ import SendIcon from "@mui/icons-material/Send";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import TelegramSearch from "./Admin common/TelegramSearch";
 import * as XLSX from "xlsx";
+import { openAuthenticatedUploads } from "../utils/authenticatedUpload.utils";
 
 type AdminRow = {
   id: string;
@@ -356,8 +357,8 @@ const AdminDashboard = () => {
   const paginatedBrokers = filteredBrokers.slice((brokerPage - 1) * ITEMS_PER_PAGE, brokerPage * ITEMS_PER_PAGE);
 
   /* ================= FILE VIEW ================= */
-  const openFile = async (file?: string) => {
-    if (!file || file.trim() === "") {
+  const openFile = async (file?: string | string[]) => {
+    if (!file || (typeof file === "string" && file.trim() === "") || (Array.isArray(file) && file.length === 0)) {
       alert("File not uploaded");
       return;
     }
@@ -365,14 +366,13 @@ const AdminDashboard = () => {
     if (!token) return alert("Please login to view this file.");
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/uploads/${encodeURIComponent(file)}`, {
-        headers: { Authorization: `Bearer ${token}` },
+      await openAuthenticatedUploads(file, {
+        apiBaseUrl: import.meta.env.VITE_API_URL,
+        token,
       });
-      if (!response.ok) return alert("You are not authorized to view this file.");
-      const blob = await response.blob();
-      window.open(URL.createObjectURL(blob), "_blank");
     } catch (error) {
-      alert("Unable to open file.");
+      console.error("Error opening file:", error);
+      alert(error instanceof Error ? error.message : "Unable to open file.");
     }
   };
 

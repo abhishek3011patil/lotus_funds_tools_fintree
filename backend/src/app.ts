@@ -79,7 +79,11 @@ app.use(
 
     contentSecurityPolicy: {
       directives: {
-        scriptSrc: ["'self'", "https://checkout.razorpay.com"],
+        scriptSrc: [
+          "'self'",
+          "https://checkout.razorpay.com",
+          "https://cdn.razorpay.com",
+        ],
         frameSrc: [
           "'self'",
           "https://api.razorpay.com",
