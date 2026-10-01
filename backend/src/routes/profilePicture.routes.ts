@@ -8,7 +8,7 @@ import { pool } from "../db";
 import { authenticate, AuthRequest } from "../middlewares/auth.middleware";
 
 const router = express.Router();
-const MAX_PROFILE_IMAGE_BYTES = 15 * 1024 * 1024;
+const MAX_PROFILE_IMAGE_BYTES = 25 * 1024 * 1024;
 const imageUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_PROFILE_IMAGE_BYTES, files: 1, fields: 0 },

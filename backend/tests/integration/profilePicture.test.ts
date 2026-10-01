@@ -50,7 +50,7 @@ describe("immediate RA profile picture update", () => {
     await request(app).put("/profile-picture").set("Authorization", "Bearer test").attach("profile_image", Buffer.from("<html>not an image</html>"), "fake.png").expect(400);
     await request(app).put("/profile-picture").set("Authorization", "Bearer test").expect(400);
     await request(app).put("/profile-picture").set("Authorization", "Bearer test").field("user_id", "another-ra").attach("profile_image", png, "photo.png").expect(400);
-    await request(app).put("/profile-picture").set("Authorization", "Bearer test").attach("profile_image", Buffer.alloc(5 * 1024 * 1024 + 1), "photo.png").expect(400);
+    await request(app).put("/profile-picture").set("Authorization", "Bearer test").attach("profile_image", Buffer.alloc(25 * 1024 * 1024 + 1), "photo.png").expect(400);
     expect(mocks.writeFile).not.toHaveBeenCalled(); expect(mocks.query).not.toHaveBeenCalled();
   });
   it("removes the new file when the RA is inactive or missing", async () => {

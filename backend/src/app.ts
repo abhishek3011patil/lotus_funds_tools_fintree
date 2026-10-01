@@ -272,7 +272,7 @@ app.use((err: any, _req: any, res: any, _next: any) => {
       return res.status(400).json({
         success: false,
         message: profileImageFields.has(String(err.field || ""))
-          ? "Profile picture must be smaller than 15 MB."
+          ? "Profile picture must be smaller than 25 MB."
           : "File size must be less than 5 MB.",
       });
     }

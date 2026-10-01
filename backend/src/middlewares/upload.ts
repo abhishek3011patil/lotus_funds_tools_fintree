@@ -81,7 +81,7 @@ export const upload = multer({
 // broader registration-proof limit unchanged while allowing larger images.
 export const profileImageUpload = multer({
   storage,
-  limits: { fileSize: 15 * 1024 * 1024, files: 1 },
+  limits: { fileSize: 25 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => {
     const extension = path.extname(file.originalname).toLowerCase();
     const allowedImageMimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
