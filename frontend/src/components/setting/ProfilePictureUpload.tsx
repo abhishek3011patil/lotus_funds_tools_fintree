@@ -11,6 +11,7 @@ interface Props {
   onChange: (file?: File) => void;
   name: string;
   helperText: string;
+  description?: string;
   onSave?: (file: File) => Promise<void>;
 }
 
@@ -18,7 +19,7 @@ const SIZE = 512;
 const MAX_PROFILE_IMAGE_BYTES = 15 * 1024 * 1024;
 const clamp = (n: number) => Math.max(-1, Math.min(1, n));
 
-export default function ProfilePictureUpload({ currentFilename, value, onChange, name, helperText, onSave }: Props) {
+export default function ProfilePictureUpload({ currentFilename, value, onChange, name, helperText, description = "Choose a clear photo, then crop and resize it before saving.", onSave }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const currentBlob = useRef<Blob | undefined>(undefined);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -131,7 +132,7 @@ export default function ProfilePictureUpload({ currentFilename, value, onChange,
       <Avatar src={selectedUrl || currentUrl} alt={`${name || "Research Analyst"} profile picture`} slotProps={{ img: { onError: () => setCurrentMissing(true) } }} sx={{ width: 104, height: 104, bgcolor: "#E0E7FF", color: "#4054B2", fontSize: 36, fontWeight: 700, border: "4px solid white", boxShadow: "0 4px 18px #18213A12" }}>{(name || "RA").slice(0, 1).toUpperCase()}</Avatar>
       <Box flex={1} minWidth={0}>
         <Stack direction="row" gap={1} alignItems="center" flexWrap="wrap"><Typography variant="h6" fontWeight={800}>Profile picture</Typography>{value && <Chip label="Ready to submit" size="small" color="primary" variant="outlined" />}</Stack>
-        <Typography variant="body2" color="text.secondary" mt={0.5}>Put a face to your research. Crop and resize your photo before saving.</Typography>
+        <Typography variant="body2" color="text.secondary" mt={0.5}>{description}</Typography>
         <Stack direction="row" spacing={1} mt={2} flexWrap="wrap" useFlexGap>
           <Button variant="contained" startIcon={<AddAPhotoOutlinedIcon />} disabled={loading} onClick={() => input.current?.click()} sx={{ textTransform: "none", boxShadow: "none" }}>{loading ? "Opening image..." : "Upload picture"}</Button>
           {(value || (currentUrl && !currentMissing)) && <Button disabled={loading} onClick={() => { const file = value || (currentBlob.current && new File([currentBlob.current], "profile-picture", { type: currentBlob.current.type })); void choose(file); }} sx={{ textTransform: "none" }}>Adjust picture</Button>}

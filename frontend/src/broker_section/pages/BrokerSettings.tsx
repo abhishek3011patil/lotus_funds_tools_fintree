@@ -7,6 +7,7 @@ import type { SubscriptionDetails } from "../../types/subscription";
 import type { BrokerAccount } from "../types/brokerAccount";
 import { changeMyBrokerPassword, getMyBrokerAccount, getMyBrokerSubscription } from "../services/brokerAccount.service";
 import TelegramConnection from "../../pages/common/TelegramConnection";
+import AccountProfilePicture from "../../components/setting/AccountProfilePicture";
 
 const BrokerSettings = () => {
   const navigate = useNavigate();
@@ -62,6 +63,11 @@ const BrokerSettings = () => {
         </Tabs>
         <CardContent sx={{ p: { xs: 2, md: 3 } }}>
           {tab === 0 && <Stack spacing={2.5}>
+            <AccountProfilePicture
+              currentFilename={broker.profileImage}
+              name={broker.organization.tradeName || broker.organization.legalName || broker.account.name}
+              onSaved={(filename) => setBroker((current) => current ? { ...current, profileImage: filename } : current)}
+            />
             <Alert severity="info">Registration details are read-only after submission. Contact the administrator if an approved detail needs correction.</Alert>
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, sm: 6 }}><Typography variant="caption" color="text.secondary">Account name</Typography><Typography fontWeight={600}>{broker.account.name}</Typography></Grid>

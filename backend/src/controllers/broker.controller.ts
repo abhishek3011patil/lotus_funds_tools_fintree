@@ -410,6 +410,7 @@ export const getMyBrokerProfile = async (
       success: true,
       broker: {
         id: broker.id,
+        profileImage: uploadedFileUrl(broker.profile_image),
         account: {
           userId,
           name: broker.account_name,

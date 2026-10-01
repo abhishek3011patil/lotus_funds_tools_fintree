@@ -24,6 +24,14 @@ export const canAccessUploadedFile = async ({
          WHERE profile_image = $1
        )
        OR EXISTS (
+         SELECT 1 FROM client_profiles
+         WHERE profile_image = $1
+       )
+       OR EXISTS (
+         SELECT 1 FROM broker_details
+         WHERE profile_image = $1
+       )
+       OR EXISTS (
          SELECT 1 FROM ra_details
          WHERE user_id = $2
            AND $1 IN (

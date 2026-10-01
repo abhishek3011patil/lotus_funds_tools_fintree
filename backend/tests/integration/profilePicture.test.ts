@@ -31,10 +31,20 @@ describe("immediate RA profile picture update", () => {
     expect(sql).not.toMatch(/INSERT|profile_update_requests/);
     expect(mocks.unlink).not.toHaveBeenCalled();
   });
-  it("requires authentication and RA access before processing files", async () => {
+  it("requires authentication and a supported profile role before processing files", async () => {
     await request(app).put("/profile-picture").attach("profile_image", png, "photo.png").expect(401);
-    await request(app).put("/profile-picture").set("Authorization", "Bearer test").set("x-test-role", "CLIENT").attach("profile_image", png, "photo.png").expect(403);
+    await request(app).put("/profile-picture").set("Authorization", "Bearer test").set("x-test-role", "ADMIN").attach("profile_image", png, "photo.png").expect(403);
     expect(mocks.writeFile).not.toHaveBeenCalled(); expect(mocks.query).not.toHaveBeenCalled();
+  });
+  it.each([
+    ["CLIENT", "client_profiles"],
+    ["BROKER", "broker_details"],
+  ])("changes the authenticated %s picture", async (role, table) => {
+    const result = await request(app).put("/profile-picture").set("Authorization", "Bearer test").set("x-test-role", role).attach("profile_image", png, "photo.png").expect(200);
+    const [sql, values] = mocks.query.mock.calls[0];
+    expect(sql).toContain(`UPDATE ${table}`);
+    expect(sql).toContain(`u.role = '${role}'`);
+    expect(values).toEqual([result.body.profileImage, "signed-in-ra"]);
   });
   it("rejects non-images, missing files, extra profile fields, and oversized files", async () => {
     await request(app).put("/profile-picture").set("Authorization", "Bearer test").attach("profile_image", Buffer.from("<html>not an image</html>"), "fake.png").expect(400);

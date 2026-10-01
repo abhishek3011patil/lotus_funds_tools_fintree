@@ -9,7 +9,6 @@ import {
   ListItemIcon,
   ListItemText,
   Typography,
-  Avatar,
   Button,
   AppBar,
   Toolbar,
@@ -32,6 +31,7 @@ import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import { getLoginRoute } from '../../utils/authRedirect';
 import api from '../../utils/axio';
+import AuthenticatedAvatar from '../../components/common/AuthenticatedAvatar';
 
 const drawerWidth = 240;
 
@@ -61,6 +61,20 @@ export const BrokerLayout = () => {
 
   const username = localStorage.getItem('username') || 'Broker';
   const initial = username.charAt(0).toUpperCase();
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    api.get('/broker/me', { signal: controller.signal })
+      .then((response) => setProfileImage(response.data?.broker?.profileImage || null))
+      .catch(() => {});
+    const updatePicture = (event: Event) => setProfileImage((event as CustomEvent<string>).detail || null);
+    window.addEventListener('profile-picture-updated', updatePicture);
+    return () => {
+      controller.abort();
+      window.removeEventListener('profile-picture-updated', updatePicture);
+    };
+  }, []);
 
   // Dynamic live time state for top-right header
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -180,7 +194,9 @@ const drawerContent = (
         gap: 1.5,
       }}
     >
-      <Avatar
+      <AuthenticatedAvatar
+        filename={profileImage}
+        alt={`${username} profile picture`}
         sx={{
           bgcolor: '#FFFFFF',
           color: '#5271FF',
@@ -191,7 +207,7 @@ const drawerContent = (
         }}
       >
         {initial}
-      </Avatar>
+      </AuthenticatedAvatar>
 
       <Box sx={{ overflow: 'hidden' }}>
         <Typography

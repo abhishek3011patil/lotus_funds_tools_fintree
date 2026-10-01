@@ -27,6 +27,7 @@ import SendIcon from "@mui/icons-material/Send";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import TelegramSearch from "./Admin common/TelegramSearch";
 import * as XLSX from "xlsx";
+import AuthenticatedAvatar from "../components/common/AuthenticatedAvatar";
 
 type AdminRow = {
   id: string;
@@ -69,6 +70,7 @@ type ClientRow = {
 
 type BrokerRow = {
   id: string;
+  profileImage?: string;
   legalName: string;
   tradeName: string;
   email: string;
@@ -261,6 +263,7 @@ const handleActivate = async (userId: string) => {
       setBrokers(
         data.map((broker: any) => ({
           id: String(broker.id),
+          profileImage: broker.profile_image || "",
           legalName: broker.legal_name || "N/A",
           tradeName: broker.trade_name || "",
           email: broker.email || "",
@@ -1106,12 +1109,15 @@ const handleSuspend = async (userId: string) => {
                 {paginatedBrokers.map((broker) => (
                   <TableRow key={broker.id} hover>
                     <TableCell>
-                      <Typography variant="body2" fontWeight={600}>
-                        {broker.legalName}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {broker.tradeName || "No trade name"}
-                      </Typography>
+                      <Stack direction="row" spacing={1.25} alignItems="center">
+                        <AuthenticatedAvatar filename={broker.profileImage} alt={`${broker.legalName} profile picture`} sx={{ width: 38, height: 38, bgcolor: "#5271FF", fontSize: 15, fontWeight: 700 }}>
+                          {broker.legalName.slice(0, 1).toUpperCase()}
+                        </AuthenticatedAvatar>
+                        <Box>
+                          <Typography variant="body2" fontWeight={600}>{broker.legalName}</Typography>
+                          <Typography variant="caption" color="text.secondary">{broker.tradeName || "No trade name"}</Typography>
+                        </Box>
+                      </Stack>
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">{broker.email || "-"}</Typography>
@@ -1215,7 +1221,14 @@ const handleSuspend = async (userId: string) => {
               <TableBody>
                 {paginatedClients.map((client) => (
                   <TableRow key={client.id} hover>
-                    <TableCell sx={{ fontWeight: 500 }}>{client.name}</TableCell>
+                    <TableCell sx={{ fontWeight: 500 }}>
+                      <Stack direction="row" spacing={1.25} alignItems="center">
+                        <AuthenticatedAvatar filename={client.profileImage} alt={`${client.name} profile picture`} sx={{ width: 38, height: 38, bgcolor: "#5271FF", fontSize: 15, fontWeight: 700 }}>
+                          {client.name.slice(0, 1).toUpperCase()}
+                        </AuthenticatedAvatar>
+                        <Typography variant="body2" fontWeight={600}>{client.name}</Typography>
+                      </Stack>
+                    </TableCell>
                     <TableCell>{client.email || "-"}</TableCell>
                     <TableCell>{client.phone || "-"}</TableCell>
                     <TableCell>
@@ -1602,6 +1615,12 @@ const handleSuspend = async (userId: string) => {
         <DialogContent dividers>
           {selectedClient && (
             <Stack spacing={2}>
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <AuthenticatedAvatar filename={selectedClient.profileImage} alt={`${selectedClient.name} profile picture`} sx={{ width: 64, height: 64, bgcolor: "#5271FF", fontSize: 24, fontWeight: 700 }}>
+                  {selectedClient.name.slice(0, 1).toUpperCase()}
+                </AuthenticatedAvatar>
+                <Box><Typography fontWeight={700}>{selectedClient.name}</Typography><Typography variant="body2" color="text.secondary">Client profile picture</Typography></Box>
+              </Stack>
               <Box sx={{ display: "grid", gridTemplateColumns: { xs: "100px 1fr", sm: "140px 1fr" }, gap: 1 }}>
                 <Typography color="text.secondary">Name:</Typography>
                 <Typography fontWeight={500}>{selectedClient.name}</Typography>

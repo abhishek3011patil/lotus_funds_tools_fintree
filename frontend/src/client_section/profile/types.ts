@@ -3,6 +3,7 @@ export type ClientProfile = {
   name: string;
   username: string | null;
   email: string;
+  profileImage: string | null;
   role: string;
   status: string;
   memberSince: string;
