@@ -11,15 +11,19 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControlLabel,
+  InputAdornment,
+  Pagination,
   Paper,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   createAudienceGroup,
   deleteAudienceGroup,
@@ -35,6 +39,69 @@ const apiMessage = (error: unknown, fallback: string) =>
   axios.isAxiosError<{ message?: string }>(error) ? error.response?.data?.message || fallback : fallback;
 
 const memberKey = (type: AudienceMemberType, id: string) => `${type}:${id}`;
+const RECIPIENTS_PER_PAGE = 6;
+
+type RecipientPickerProps = {
+  type: AudienceMemberType;
+  title: string;
+  items: AudienceConnection[];
+  selected: Set<string>;
+  onToggle: (type: AudienceMemberType, id: string) => void;
+  emptyMessage: string;
+  helper?: string;
+};
+
+const RecipientPicker = ({ type, title, items, selected, onToggle, emptyMessage, helper }: RecipientPickerProps) => {
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const normalizedQuery = query.trim().toLowerCase();
+  const filtered = useMemo(() => items.filter(item => [
+    item.name, item.email, item.sebiRegistration, item.entityType, item.channelDetail,
+  ].some(value => String(value || "").toLowerCase().includes(normalizedQuery))), [items, normalizedQuery]);
+  const pageCount = Math.max(1, Math.ceil(filtered.length / RECIPIENTS_PER_PAGE));
+  const safePage = Math.min(page, pageCount);
+  const visible = filtered.slice((safePage - 1) * RECIPIENTS_PER_PAGE, safePage * RECIPIENTS_PER_PAGE);
+  const selectedCount = items.filter(item => selected.has(memberKey(type, item.id))).length;
+  const allVisibleSelected = visible.length > 0 && visible.every(item => selected.has(memberKey(type, item.id)));
+
+  const detail = (item: AudienceConnection) => {
+    if (type === "CLIENT") return item.email || "Connected client";
+    if (type === "BROKER") return item.sebiRegistration || "Connected broker";
+    if (type === "TELEGRAM") return `${item.entityType || "Telegram"} · ${item.channelDetail || "Active participant"}`;
+    return item.channelDetail || "WhatsApp participant";
+  };
+
+  return <Stack spacing={1.5} sx={{ pt: 2 }}>
+    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} gap={1}>
+      <Box><Typography fontWeight={800}>{title}</Typography>{helper && <Typography variant="caption" color="text.secondary">{helper}</Typography>}</Box>
+      <Chip size="small" color={selectedCount ? "primary" : "default"} label={`${selectedCount} selected`} />
+    </Stack>
+    <TextField
+      size="small"
+      fullWidth
+      value={query}
+      onChange={event => { setQuery(event.target.value); setPage(1); }}
+      label={`Search ${title.toLowerCase()}`}
+      placeholder="Search by name or contact detail"
+      InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon fontSize="small" /></InputAdornment> }}
+    />
+    <Stack direction="row" justifyContent="space-between" alignItems="center">
+      <Typography variant="caption" color="text.secondary">{filtered.length} of {items.length} available</Typography>
+      {visible.length > 0 && <Button size="small" onClick={() => visible.forEach(item => {
+        const isSelected = selected.has(memberKey(type, item.id));
+        if (allVisibleSelected ? isSelected : !isSelected) onToggle(type, item.id);
+      })}>{allVisibleSelected ? "Clear this page" : "Select this page"}</Button>}
+    </Stack>
+    {items.length === 0 ? <Paper variant="outlined" sx={{ p: 3, textAlign: "center", bgcolor: "background.default" }}><Typography color="text.secondary">{emptyMessage}</Typography></Paper>
+      : filtered.length === 0 ? <Paper variant="outlined" sx={{ p: 3, textAlign: "center", bgcolor: "background.default" }}><Typography color="text.secondary">No matches for “{query}”.</Typography></Paper>
+      : <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, gap: 1 }}>
+        {visible.map(item => <Paper key={item.id} variant="outlined" sx={{ px: 1.25, py: .5, borderColor: selected.has(memberKey(type, item.id)) ? "primary.main" : "divider", bgcolor: selected.has(memberKey(type, item.id)) ? "action.selected" : "background.paper" }}>
+          <FormControlLabel sx={{ m: 0, width: "100%", alignItems: "flex-start" }} control={<Checkbox checked={selected.has(memberKey(type, item.id))} onChange={() => onToggle(type, item.id)} />} label={<Box sx={{ py: .75, minWidth: 0 }}><Typography noWrap fontWeight={650}>{item.name}</Typography><Typography noWrap variant="caption" color="text.secondary">{detail(item)}</Typography></Box>} />
+        </Paper>)}
+      </Box>}
+    {pageCount > 1 && <Pagination count={pageCount} page={safePage} onChange={(_, nextPage) => setPage(nextPage)} size="small" color="primary" sx={{ alignSelf: "center", pt: .5 }} />}
+  </Stack>;
+};
 
 const AudienceGroupsPanel = () => {
   const [groups, setGroups] = useState<AudienceGroup[]>([]);
@@ -52,6 +119,8 @@ const AudienceGroupsPanel = () => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [dialogError, setDialogError] = useState("");
+  const [recipientTab, setRecipientTab] = useState<AudienceMemberType>("CLIENT");
+  const [editorSession, setEditorSession] = useState(0);
   const [deleteTarget, setDeleteTarget] = useState<AudienceGroup | null>(null);
 
   const load = useCallback(async () => {
@@ -72,7 +141,7 @@ const AudienceGroupsPanel = () => {
   const openEditor = (group?: AudienceGroup) => {
     setEditing(group || null); setName(group?.name || ""); setDescription(group?.description || "");
     setSelected(new Set((group?.members || []).map(member => memberKey(member.type, member.id))));
-    setDialogError(""); setDialogOpen(true);
+    setDialogError(""); setRecipientTab("CLIENT"); setEditorSession(current => current + 1); setDialogOpen(true);
   };
 
   const toggle = (type: AudienceMemberType, id: string) => {
@@ -129,24 +198,32 @@ const AudienceGroupsPanel = () => {
         })}
       </Box>}
 
-    <Dialog open={dialogOpen} onClose={() => { if (!saving) setDialogOpen(false); }} fullWidth maxWidth="sm">
+    <Dialog open={dialogOpen} onClose={() => { if (!saving) setDialogOpen(false); }} fullWidth maxWidth="md">
       <DialogTitle>{editing ? "Edit audience group" : "Create audience group"}</DialogTitle>
-      <DialogContent dividers><Stack spacing={2}>
+      <DialogContent dividers><Stack spacing={2} key={editorSession}>
         {dialogError && <Alert severity="error">{dialogError}</Alert>}
-        <TextField autoFocus label="Group name" value={name} onChange={event => setName(event.target.value)} inputProps={{ maxLength: 80 }} required />
-        <TextField label="Description" value={description} onChange={event => setDescription(event.target.value)} inputProps={{ maxLength: 240 }} multiline minRows={2} />
-        <Typography fontWeight={750}>Clients</Typography>
-        {clients.length === 0 ? <Typography color="text.secondary">No active client connections.</Typography> : clients.map(client => <FormControlLabel key={client.id} control={<Checkbox checked={selected.has(memberKey("CLIENT", client.id))} onChange={() => toggle("CLIENT", client.id)} />} label={<Box><Typography>{client.name}</Typography><Typography variant="caption" color="text.secondary">{client.email || "Connected client"}</Typography></Box>} />)}
-        <Divider />
-        <Typography fontWeight={750}>Brokers</Typography>
-        {brokers.length === 0 ? <Typography color="text.secondary">No active broker connections.</Typography> : brokers.map(broker => <FormControlLabel key={broker.id} control={<Checkbox checked={selected.has(memberKey("BROKER", broker.id))} onChange={() => toggle("BROKER", broker.id)} />} label={<Box><Typography>{broker.name}</Typography><Typography variant="caption" color="text.secondary">{broker.sebiRegistration || "Connected broker"}</Typography></Box>} />)}
-        <Divider />
-        <Typography fontWeight={750}>Telegram participants</Typography>
-        {telegramParticipants.length === 0 ? <Typography color="text.secondary">No active Telegram participants. Add them from Settings first.</Typography> : telegramParticipants.map(participant => <FormControlLabel key={participant.id} control={<Checkbox checked={selected.has(memberKey("TELEGRAM", participant.id))} onChange={() => toggle("TELEGRAM", participant.id)} />} label={<Box><Typography>{participant.name}</Typography><Typography variant="caption" color="text.secondary">{participant.entityType || "Telegram"} · {participant.channelDetail || "Active participant"}</Typography></Box>} />)}
-        <Divider />
-        <Typography fontWeight={750}>WhatsApp participants</Typography>
-        <Typography variant="caption" color="text.secondary">Only active participants with confirmed consent are available.</Typography>
-        {whatsAppParticipants.length === 0 ? <Typography color="text.secondary">No eligible WhatsApp participants. Add or confirm them from Settings first.</Typography> : whatsAppParticipants.map(participant => <FormControlLabel key={participant.id} control={<Checkbox checked={selected.has(memberKey("WHATSAPP", participant.id))} onChange={() => toggle("WHATSAPP", participant.id)} />} label={<Box><Typography>{participant.name}</Typography><Typography variant="caption" color="text.secondary">{participant.channelDetail || "WhatsApp participant"}</Typography></Box>} />)}
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(0, 1fr) minmax(0, 1.4fr)" }, gap: 1.5 }}>
+          <TextField autoFocus label="Group name" value={name} onChange={event => setName(event.target.value)} inputProps={{ maxLength: 80 }} required />
+          <TextField label="Description" value={description} onChange={event => setDescription(event.target.value)} inputProps={{ maxLength: 240 }} />
+        </Box>
+        <Paper variant="outlined" sx={{ px: 1.5, py: 1.25, bgcolor: "background.default" }}>
+          <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ sm: "center" }} justifyContent="space-between" gap={1}>
+            <Box><Typography fontWeight={800}>Choose recipients</Typography><Typography variant="body2" color="text.secondary">Search and select recipients from each channel.</Typography></Box>
+            <Chip color={selected.size ? "primary" : "default"} label={`${selected.size} total selected`} />
+          </Stack>
+        </Paper>
+        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+          <Tabs value={recipientTab} onChange={(_, value: AudienceMemberType) => setRecipientTab(value)} variant="scrollable" scrollButtons="auto" aria-label="Recipient type">
+            <Tab value="CLIENT" label={`Clients (${clients.filter(item => selected.has(memberKey("CLIENT", item.id))).length}/${clients.length})`} />
+            <Tab value="BROKER" label={`Brokers (${brokers.filter(item => selected.has(memberKey("BROKER", item.id))).length}/${brokers.length})`} />
+            <Tab value="TELEGRAM" label={`Telegram (${telegramParticipants.filter(item => selected.has(memberKey("TELEGRAM", item.id))).length}/${telegramParticipants.length})`} />
+            <Tab value="WHATSAPP" label={`WhatsApp (${whatsAppParticipants.filter(item => selected.has(memberKey("WHATSAPP", item.id))).length}/${whatsAppParticipants.length})`} />
+          </Tabs>
+        </Box>
+        <Box hidden={recipientTab !== "CLIENT"}><RecipientPicker type="CLIENT" title="Clients" items={clients} selected={selected} onToggle={toggle} emptyMessage="No active client connections." /></Box>
+        <Box hidden={recipientTab !== "BROKER"}><RecipientPicker type="BROKER" title="Brokers" items={brokers} selected={selected} onToggle={toggle} emptyMessage="No active broker connections." /></Box>
+        <Box hidden={recipientTab !== "TELEGRAM"}><RecipientPicker type="TELEGRAM" title="Telegram participants" items={telegramParticipants} selected={selected} onToggle={toggle} emptyMessage="No active Telegram participants. Add them from Settings first." /></Box>
+        <Box hidden={recipientTab !== "WHATSAPP"}><RecipientPicker type="WHATSAPP" title="WhatsApp participants" items={whatsAppParticipants} selected={selected} onToggle={toggle} emptyMessage="No eligible WhatsApp participants. Add or confirm them from Settings first." helper="Only active participants with confirmed consent are available." /></Box>
       </Stack></DialogContent>
       <DialogActions><Button disabled={saving} onClick={() => setDialogOpen(false)}>Cancel</Button><Button variant="contained" disabled={saving} onClick={() => void save()}>{saving ? "Saving..." : "Save group"}</Button></DialogActions>
     </Dialog>

@@ -22,7 +22,14 @@ test("analyst creates a mixed platform and channel audience group", async ({ pag
     if (pathname === "/api/ra/dashboard/broker-connections") return route.fulfill({ json: [] });
     if (pathname === "/api/ra/dashboard/audience-groups/connections") {
       return route.fulfill({ json: {
-        clients: [{ id: clientId, name: "Client One", email: "client@example.test" }],
+        clients: [
+          { id: clientId, name: "Client One", email: "client@example.test" },
+          ...Array.from({ length: 7 }, (_, index) => ({
+            id: `00000000-0000-4000-8000-00000000002${index}`,
+            name: `Additional Client ${index + 1}`,
+            email: `additional${index + 1}@example.test`,
+          })),
+        ],
         brokers: [{ id: brokerId, name: "Broker One", sebiRegistration: "INZ000000001" }],
         telegram: [{ id: telegramId, name: "Telegram One", entityType: "USER", channelDetail: "123456" }],
         whatsapp: [{ id: whatsappId, name: "WhatsApp One", channelDetail: "+919999999999" }],
@@ -44,9 +51,15 @@ test("analyst creates a mixed platform and channel audience group", async ({ pag
   const dialog = page.getByRole("dialog", { name: "Create audience group" });
   await dialog.getByLabel("Group name").fill("Priority Desk");
   await dialog.getByLabel("Description").fill("Priority distribution");
+  await expect(dialog.getByRole("button", { name: "Go to page 2" })).toBeVisible();
+  await dialog.getByLabel("Search clients").fill("Client One");
+  await expect(dialog.getByText("1 of 8 available")).toBeVisible();
   await dialog.getByLabel(/Client One/).check();
+  await dialog.getByRole("tab", { name: /^Brokers/ }).click();
   await dialog.getByLabel(/Broker One/).check();
+  await dialog.getByRole("tab", { name: /^Telegram/ }).click();
   await dialog.getByLabel(/Telegram One/).check();
+  await dialog.getByRole("tab", { name: /^WhatsApp/ }).click();
   await dialog.getByLabel(/WhatsApp One/).check();
   await dialog.getByRole("button", { name: "Save group", exact: true }).click();
 
