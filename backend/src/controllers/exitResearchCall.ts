@@ -4,6 +4,7 @@ import { AuthRequest } from "../middlewares/auth.middleware";
 import { createAuditLog } from "../utils/auditLogger";
 import { queueWhatsAppResearchCall } from "../services/deliveryQueue.service";
 import { distributeBrokerCallUpdate } from "../services/brokerDelivery.service";
+import { audienceClientIds } from "../services/researchAudience.service";
 const getClientIp = (req: any): string => {
   let ip =
     req.headers?.["x-forwarded-for"] ||
@@ -176,6 +177,9 @@ export const exitResearchCall = async (
     }
 
     const exitedCall = result.rows[0];
+    const audienceRecipients = Array.isArray(exitedCall.audience_recipient_snapshot)
+      ? exitedCall.audience_recipient_snapshot
+      : [];
 
     await queueWhatsAppResearchCall({
       researchCallId: exitedCall.id,
@@ -184,6 +188,9 @@ export const exitResearchCall = async (
       message: trimmedMessage,
       originalCallId: exitedCall.parent_call_id || exitedCall.id,
       client,
+      clientUserIds: exitedCall.audience_mode === "GROUPS"
+        ? audienceClientIds(audienceRecipients)
+        : undefined,
     });
 
     await distributeBrokerCallUpdate({

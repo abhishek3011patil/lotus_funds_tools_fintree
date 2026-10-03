@@ -1,9 +1,11 @@
 import {
+  Alert,
   Autocomplete,
   Box,
   Button,
   FormControl,
   FormControlLabel,
+  InputLabel,
   MenuItem,
   Paper,
   Radio,
@@ -68,6 +70,11 @@ import { formatResearchCallMessage } from "../utils/researchCallTemplate.utils";
 import { fetchResearchCallTemplates } from "../services/researchCallTemplate.service";
 import RiskRewardSummary from "../components/page_Mainapp/RiskRewardSummary";
 import { calculateCallRiskReward, formatRiskReward } from "../utils/riskReward.utils";
+import {
+  fetchAudienceConnections,
+  fetchAudienceGroups,
+  type AudienceGroup,
+} from "../services/audienceGroups.service";
 
 
 const BUY_COLOR = "#22c55e";
@@ -177,6 +184,13 @@ const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
 const [previewLoading, setPreviewLoading] = useState(false);
 const [preparedPreview, setPreparedPreview] =
   useState<PreparedResearchCallMessage | null>(null);
+const [pendingDraftPublish, setPendingDraftPublish] = useState<any | null>(null);
+const [audienceGroups, setAudienceGroups] = useState<AudienceGroup[]>([]);
+const [audienceMode, setAudienceMode] = useState<"ALL_CONNECTED" | "GROUPS">("ALL_CONNECTED");
+const [selectedAudienceGroupIds, setSelectedAudienceGroupIds] = useState<string[]>([]);
+const [audienceLoading, setAudienceLoading] = useState(true);
+const [audienceError, setAudienceError] = useState("");
+const [allAudienceCounts, setAllAudienceCounts] = useState({ clients: 0, brokers: 0 });
 const [showPublishPreview, setShowPublishPreview] = useState(() => {
   try {
     return sessionStorage.getItem(PUBLISH_PREVIEW_SESSION_KEY) !== "false";
@@ -330,6 +344,10 @@ function formReducer(
     underlyingStudyText.length > MAX_UNDERLYING_STUDY_LENGTH;
   const tooManyUnderlyingStudies =
     form.underlyingStudy.length > MAX_UNDERLYING_STUDIES;
+  const selectedAudienceGroups = audienceGroups.filter(group => selectedAudienceGroupIds.includes(group.id));
+  const selectedAudienceMembers = new Map(selectedAudienceGroups.flatMap(group => group.members).map(member => [`${member.type}:${member.id}`, member]));
+  const selectedAudienceClientCount = [...selectedAudienceMembers.values()].filter(member => member.type === "CLIENT").length;
+  const selectedAudienceBrokerCount = [...selectedAudienceMembers.values()].filter(member => member.type === "BROKER").length;
 
   const panelBg = form.action === "BUY" ? "#eef9ee" : "#fee2e2";
   const panelBorder = form.action === "BUY" ? "#7ac77a" : SELL_COLOR;
@@ -349,6 +367,8 @@ function formReducer(
   setPreviewDialogOpen(false);
   setPreparedPreview(null);
   setPreviewLoading(false);
+  setAudienceMode("ALL_CONNECTED");
+  setSelectedAudienceGroupIds([]);
 
 };
 
@@ -792,6 +812,7 @@ const finalDisplayName =
           `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
           {
             message: finalPreparedMessage.message,
+            researchCallId: errataResponse.data?.data?.id,
           },
           {
             headers: {
@@ -889,6 +910,8 @@ const finalDisplayName =
       is_algo: false,
       has_vested_interest: false,
       research_remarks: form.remark.trim() || null,
+      audience_mode: audienceMode,
+      audience_group_ids: JSON.stringify(audienceMode === "GROUPS" ? selectedAudienceGroupIds : []),
     };
 
     const formData = new FormData();
@@ -901,7 +924,7 @@ const finalDisplayName =
       }
     });
 
-    await axios.post(
+    const createResponse = await axios.post(
       `${import.meta.env.VITE_API_URL}/api/research/calls`,
       formData,
       {
@@ -934,6 +957,7 @@ const finalDisplayName =
         `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
         {
           message: finalPreparedMessage.message,
+          researchCallId: createResponse.data?.id,
         },
         {
           headers: {
@@ -1209,6 +1233,22 @@ const handleUnderlyingStudyChange = (
 
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    setAudienceLoading(true);
+    Promise.all([fetchAudienceGroups(), fetchAudienceConnections()])
+      .then(([groups, connections]) => {
+        if (!active) return;
+        setAudienceGroups(groups);
+        setAllAudienceCounts({ clients: connections.clients.length, brokers: connections.brokers.length });
+      })
+      .catch(() => {
+        if (active) setAudienceError("Audience groups could not be loaded. You can still publish to all connected recipients.");
+      })
+      .finally(() => { if (active) setAudienceLoading(false); });
+    return () => { active = false; };
+  }, []);
+
 
   const formatIndianDateTime = (
     value: string | Date
@@ -1450,6 +1490,7 @@ https://lotusfunds.com/disclaimer&disclosure
       `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
       {
         message: exitMessage,
+        researchCallId: item.id,
       },
       {
         headers: {
@@ -1682,7 +1723,7 @@ const validateAndPublish = async (
   event.preventDefault();
   if (isSubmitting || previewLoading || !validatePublishForm()) return;
 
-  if (showPublishPreview) {
+  if (!isErrataMode || showPublishPreview) {
     await prepareAndOpenPreview();
     return;
   }
@@ -1704,10 +1745,87 @@ const handleClosePreview = () => {
   if (isSubmitting) return;
   setPreviewDialogOpen(false);
   setPreparedPreview(null);
+  setPendingDraftPublish(null);
+};
+
+const publishTrackedDraft = async (
+  item: any,
+  preparedMessage: PreparedResearchCallMessage
+) => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    alert("Please login again");
+    return;
+  }
+
+  if (audienceMode === "GROUPS" && selectedAudienceGroupIds.length === 0) {
+    setAudienceError("Select at least one group before publishing.");
+    return;
+  }
+
+  setIsSubmitting(true);
+  try {
+    await axios.patch(
+      `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/publish`,
+      {
+        message_text: preparedMessage.message,
+        audience_mode: audienceMode,
+        audience_group_ids: audienceMode === "GROUPS" ? selectedAudienceGroupIds : [],
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    setRecommendations((previous) =>
+      previous.map((recommendation) =>
+        recommendation.id === item.id
+          ? { ...recommendation, status: "PUBLISHED" }
+          : recommendation
+      )
+    );
+
+    try {
+      const telegramStatus = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/telegram/status`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (telegramStatus.data?.connected) {
+        await axios.post(
+          `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
+          { message: preparedMessage.message, researchCallId: item.id },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        alert("Call published successfully ✅");
+      } else {
+        alert("Call published, but Telegram is not connected");
+      }
+    } catch (telegramError: any) {
+      console.error("DRAFT TELEGRAM ERROR:", telegramError?.response?.data || telegramError);
+      alert("Call published, but Telegram sending failed");
+    }
+
+    setPreviewDialogOpen(false);
+    setPreparedPreview(null);
+    setPendingDraftPublish(null);
+    await fetchRecommendations();
+  } catch (error: any) {
+    console.error("Draft publish failed:", error?.response?.data || error);
+    alert(error?.response?.data?.message || "Unable to publish the call");
+  } finally {
+    setIsSubmitting(false);
+  }
 };
 
 const handleConfirmPreview = async () => {
   if (!preparedPreview || isSubmitting) return;
+  if (!isErrataMode && audienceMode === "GROUPS" && selectedAudienceGroupIds.length === 0) {
+    setAudienceError("Select at least one group before publishing.");
+    return;
+  }
+  if (pendingDraftPublish) {
+    await publishTrackedDraft(pendingDraftPublish, preparedPreview);
+    return;
+  }
   await handleSubmit(preparedPreview);
 };
 
@@ -2120,20 +2238,6 @@ const handleInitiate = useCallback(
         return;
       }
 
-      const telegramStatus = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/telegram/status`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!telegramStatus.data.connected) {
-        alert("Please connect Telegram first");
-        return;
-      }
-
       const getEntry = () => {
         if (!item.entry) return "-";
 
@@ -2239,41 +2343,14 @@ Read Full Disclaimer / Disclosure at:
 https://lotusfunds.com/disclaimer&disclosure
 `.trim();
 
-      console.log("FINAL PUBLISH MESSAGE:", publishMessage);
-
-      await axios.patch(
-        `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/publish`,
-        {
-          message_text: publishMessage,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      setRecommendations((prev) =>
-        prev.map((rec) =>
-          rec.id === item.id
-            ? { ...rec, status: "PUBLISHED" }
-            : rec
-        )
-      );
-
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
-        {
-          message: publishMessage,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      alert("Call initiated successfully ✅");
+      setPendingDraftPublish(item);
+      setPreparedPreview({
+        message: publishMessage,
+        templateVersion: null,
+        templateSnapshot: null,
+      });
+      setAudienceError("");
+      setPreviewDialogOpen(true);
     } catch (err: any) {
       console.error(
         "Initiate failed:",
@@ -3758,6 +3835,33 @@ sx={{
       : "Research Call Message Preview"}
   </DialogTitle>
   <DialogContent dividers>
+    {!isErrataMode && <Paper variant="outlined" sx={{ p: 2, mb: 2, bgcolor: "#FBFCFF" }}>
+      <Typography fontWeight={800}>Select audience</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>Choose who can see and receive this research call. The final recipient list is saved with the call.</Typography>
+      {audienceError && <Alert severity="warning" onClose={() => setAudienceError("")} sx={{ mb: 1.5 }}>{audienceError}</Alert>}
+      <RadioGroup value={audienceMode} onChange={event => { setAudienceMode(event.target.value as "ALL_CONNECTED" | "GROUPS"); setAudienceError(""); }}>
+        <FormControlLabel value="ALL_CONNECTED" control={<Radio />} label={`All connected recipients (${allAudienceCounts.clients} clients, ${allAudienceCounts.brokers} brokers)`} />
+        <FormControlLabel value="GROUPS" control={<Radio />} label="Selected groups" />
+      </RadioGroup>
+      {audienceMode === "GROUPS" && <FormControl fullWidth size="small" sx={{ mt: 1 }} disabled={audienceLoading || audienceGroups.length === 0}>
+        <InputLabel id="audience-groups-label">Groups</InputLabel>
+        <Select
+          labelId="audience-groups-label"
+          multiple
+          label="Groups"
+          value={selectedAudienceGroupIds}
+          onChange={event => {
+            const value = event.target.value;
+            setSelectedAudienceGroupIds(typeof value === "string" ? value.split(",") : value);
+            setAudienceError("");
+          }}
+          renderValue={selected => audienceGroups.filter(group => selected.includes(group.id)).map(group => group.name).join(", ")}
+        >
+          {audienceGroups.map(group => <MenuItem key={group.id} value={group.id}><Checkbox checked={selectedAudienceGroupIds.includes(group.id)} />{group.name} ({group.members.length})</MenuItem>)}
+        </Select>
+        <FormHelperText>{audienceGroups.length === 0 ? "Create a group from Connections > Groups first." : `${selectedAudienceClientCount} clients and ${selectedAudienceBrokerCount} brokers selected`}</FormHelperText>
+      </FormControl>}
+    </Paper>}
     <Paper
       component="pre"
       variant="outlined"
@@ -3777,7 +3881,7 @@ sx={{
     >
       {preparedPreview?.message || ""}
     </Paper>
-    <FormControlLabel
+    {isErrataMode && <FormControlLabel
       sx={{ mt: 1.5 }}
       control={
         <Checkbox
@@ -3786,7 +3890,7 @@ sx={{
         />
       }
       label="Show preview before publishing"
-    />
+    />}
   </DialogContent>
   <DialogActions>
     <Button onClick={handleClosePreview} disabled={isSubmitting}>
@@ -3795,7 +3899,7 @@ sx={{
     <Button
       variant="contained"
       onClick={handleConfirmPreview}
-      disabled={isSubmitting || !preparedPreview}
+      disabled={isSubmitting || !preparedPreview || (!isErrataMode && audienceMode === "GROUPS" && selectedAudienceGroupIds.length === 0)}
     >
       {isSubmitting
         ? isErrataMode

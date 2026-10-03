@@ -25,6 +25,7 @@ import api from "../utils/axio";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import AudienceGroupsPanel from "../components/connections/AudienceGroupsPanel";
 
 type Client = {
   id: string;
@@ -70,8 +71,8 @@ export default function RAClientsPage() {
   const [requestNotice, setRequestNotice] = useState("");
   const [respondingBrokerId, setRespondingBrokerId] = useState("");
   const [removingBrokerId, setRemovingBrokerId] = useState("");
-  const [connectionView, setConnectionView] = useState<"clients" | "brokers">(
-    window.location.hash === "#brokers" ? "brokers" : "clients"
+  const [connectionView, setConnectionView] = useState<"clients" | "brokers" | "groups">(
+    window.location.hash === "#brokers" ? "brokers" : window.location.hash === "#groups" ? "groups" : "clients"
   );
   const [telegramDialogOpen, setTelegramDialogOpen] = useState(false);
 const [selectedClientId, setSelectedClientId] = useState("");
@@ -322,6 +323,8 @@ const handleConfirmRemoveWhatsApp = async () => {
   useEffect(() => {
     if (window.location.hash === "#brokers") {
       setConnectionView("brokers");
+    } else if (window.location.hash === "#groups") {
+      setConnectionView("groups");
     }
   }, []);
 
@@ -363,9 +366,9 @@ const handleConfirmRemoveWhatsApp = async () => {
       : brokerConnections;
   }, [brokerConnections, brokerSearch]);
 
-  const changeConnectionView = (view: "clients" | "brokers") => {
+  const changeConnectionView = (view: "clients" | "brokers" | "groups") => {
     setConnectionView(view);
-    window.history.replaceState(null, "", view === "brokers" ? "#brokers" : window.location.pathname + window.location.search);
+    window.history.replaceState(null, "", view === "brokers" ? "#brokers" : view === "groups" ? "#groups" : window.location.pathname + window.location.search);
   };
 
   return <Box sx={{ maxWidth: 1400, mx: "auto" }}>
@@ -374,9 +377,10 @@ const handleConfirmRemoveWhatsApp = async () => {
       {connectionView === "clients" && <TextField size="small" placeholder="Search clients" value={search} onChange={(event) => setSearch(event.target.value)} sx={{ width: { xs: "100%", md: 300 } }} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }} />}
     </Stack>
     <Paper variant="outlined" sx={{ borderRadius: 3, mb: 3 }}>
-      <Tabs value={connectionView} onChange={(_, value: "clients" | "brokers") => changeConnectionView(value)} aria-label="Connection type">
+      <Tabs value={connectionView} onChange={(_, value: "clients" | "brokers" | "groups") => changeConnectionView(value)} aria-label="Connection type">
         <Tab value="clients" label="Clients" />
         <Tab value="brokers" label={`Brokers${brokerRequests.length ? ` (${brokerRequests.length})` : ""}`} />
+        <Tab value="groups" label="Groups" />
       </Tabs>
     </Paper>
     {connectionView === "clients" ? <>
@@ -624,7 +628,7 @@ const handleConfirmRemoveWhatsApp = async () => {
         </Box>
       </Box>
        </Paper>
-    </> : (
+    </> : connectionView === "groups" ? <AudienceGroupsPanel /> : (
 
     <Box id="broker-requests">
       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1} sx={{ mb: 2 }}>

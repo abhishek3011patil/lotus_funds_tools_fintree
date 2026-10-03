@@ -255,6 +255,12 @@ export const listBrokerCalls = async (_req: AuthRequest, res: Response) => {
       AND publication.root_call_id = COALESCE(rc.parent_call_id, rc.id)
      WHERE link.broker_id = $1 AND link.status = 'ACTIVE'
        AND rc.status IN ('PUBLISHED', 'CLOSED') AND rc.is_latest IS TRUE
+       AND (
+         COALESCE(rc.audience_mode, 'ALL_CONNECTED') = 'ALL_CONNECTED'
+         OR rc.audience_recipient_snapshot @> jsonb_build_array(
+           jsonb_build_object('type', 'BROKER', 'id', link.broker_id::text)
+         )
+       )
      ORDER BY rc.created_at DESC, rc.id`, [res.locals.broker.id]
   );
   res.json(result.rows);
@@ -276,6 +282,12 @@ export const publishBrokerCall = async (req: AuthRequest, res: Response) => {
        JOIN broker_research_analysts link ON link.ra_id = ra.id
        WHERE rc.id = $1 AND rc.is_latest = TRUE AND rc.status = 'PUBLISHED'
          AND link.broker_id = $2 AND link.status = 'ACTIVE'
+         AND (
+           COALESCE(rc.audience_mode, 'ALL_CONNECTED') = 'ALL_CONNECTED'
+           OR rc.audience_recipient_snapshot @> jsonb_build_array(
+             jsonb_build_object('type', 'BROKER', 'id', link.broker_id::text)
+           )
+         )
        FOR UPDATE OF rc`,
       [callId, res.locals.broker.id],
     );

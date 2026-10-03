@@ -97,7 +97,13 @@ export const getClientRecommendationsFeed = async (
         )
         AND ($5 = 'ALL' OR research_call.ra_user_id::text = $5)
         AND ($6 = 'ALL' OR UPPER(COALESCE(research_call.action, '')) = $6)
-        AND ($7 = 'ALL' OR UPPER(COALESCE(research_call.exchange_type, '')) = $7)`;
+        AND ($7 = 'ALL' OR UPPER(COALESCE(research_call.exchange_type, '')) = $7)
+        AND (
+          COALESCE(research_call.audience_mode, 'ALL_CONNECTED') = 'ALL_CONNECTED'
+          OR research_call.audience_recipient_snapshot @> jsonb_build_array(
+            jsonb_build_object('type', 'CLIENT', 'id', $8::text)
+          )
+        )`;
 
     const callFields = `
       SELECT
@@ -148,29 +154,29 @@ export const getClientRecommendationsFeed = async (
         `SELECT COUNT(*)::int AS total
          ${baseFrom}
          AND research_call.ra_user_id = ANY($1::uuid[])`,
-        [allowedRAIds, status, search, searchPattern, raId, action, exchange]
+        [allowedRAIds, status, search, searchPattern, raId, action, exchange, req.user!.id]
       ),
       pool.query(
         `${callFields}
          ${baseFrom}
          AND research_call.ra_user_id = ANY($1::uuid[])
          ORDER BY research_call.created_at DESC
-         LIMIT $8 OFFSET $9`,
-        [allowedRAIds, status, search, searchPattern, raId, action, exchange, limit, subscribedOffset]
+         LIMIT $9 OFFSET $10`,
+        [allowedRAIds, status, search, searchPattern, raId, action, exchange, req.user!.id, limit, subscribedOffset]
       ),
       pool.query(
         `SELECT COUNT(*)::int AS total
          ${baseFrom}
          AND NOT (research_call.ra_user_id = ANY($1::uuid[]))`,
-        [allowedRAIds, status, search, searchPattern, raId, action, exchange]
+        [allowedRAIds, status, search, searchPattern, raId, action, exchange, req.user!.id]
       ),
       pool.query(
         `${callFields}
          ${baseFrom}
          AND NOT (research_call.ra_user_id = ANY($1::uuid[]))
          ORDER BY research_call.created_at DESC
-         LIMIT $8 OFFSET $9`,
-        [allowedRAIds, status, search, searchPattern, raId, action, exchange, limit, discoverOffset]
+         LIMIT $9 OFFSET $10`,
+        [allowedRAIds, status, search, searchPattern, raId, action, exchange, req.user!.id, limit, discoverOffset]
       ),
     ]);
 

@@ -3,6 +3,11 @@ import { Request, Response } from "express";
 import { pool } from "../db";
 import {AuthRequest} from "../middlewares/auth.middleware";
 import { createClient } from "../utils/telegramClientFactory";
+import {
+  audienceClientIds,
+  parseAudienceSelection,
+  resolveResearchAudience,
+} from "../services/researchAudience.service";
 import { otpStore } from "../utils/telegramStore";
 import { Api } from "telegram";
 import { createAuditLog } from "../utils/auditLogger";
@@ -758,9 +763,6 @@ export const sendMessageToRAClients = async (
   res: Response
 ) => {
   try {
-    console.log("SEND RA MESSAGE HIT");
-    console.log("BODY RECEIVED:", req.body);
-
     const raId = req.user?.id;
     const { message: frontendMessage } = req.body;
 
@@ -776,6 +778,39 @@ export const sendMessageToRAClients = async (
         success: false,
         message: "Message is required",
       });
+    }
+
+    let selectedClientIds: string[] | undefined;
+    const researchCallId = String(req.body?.researchCallId || "");
+    if (/^[a-f0-9-]{36}$/i.test(researchCallId)) {
+      const callAudience = await pool.query(
+        `SELECT audience_mode, audience_recipient_snapshot FROM research_calls
+         WHERE id = $1 AND ra_user_id = $2`,
+        [researchCallId, raId],
+      );
+      const call = callAudience.rows[0];
+      if (!call) return res.status(404).json({ success: false, message: "Research call audience was not found." });
+      if (call.audience_mode === "GROUPS") {
+        selectedClientIds = audienceClientIds(Array.isArray(call.audience_recipient_snapshot) ? call.audience_recipient_snapshot : []);
+      }
+    } else {
+      const audienceSelection = parseAudienceSelection(req.body || {});
+      if (audienceSelection.mode === "GROUPS") {
+      try {
+        const audience = await resolveResearchAudience({
+          raUserId: raId,
+          mode: audienceSelection.mode,
+          groupIds: audienceSelection.groupIds,
+          db: pool,
+        });
+        selectedClientIds = audienceClientIds(audience.recipients);
+      } catch (audienceError) {
+        return res.status(400).json({
+          success: false,
+          message: audienceError instanceof Error ? audienceError.message : "Invalid research audience.",
+        });
+      }
+      }
     }
 
    const [sessionResult, usersResult] = await Promise.all([
@@ -800,8 +835,9 @@ export const sendMessageToRAClients = async (
         FROM telegram_users
         WHERE user_id = $1
          AND is_active = TRUE
+         ${selectedClientIds ? "AND client_user_id = ANY($2::uuid[])" : ""}
         `,
-        [raId]
+        selectedClientIds ? [raId, selectedClientIds] : [raId]
       ),
     ]);
 
@@ -817,6 +853,14 @@ export const sendMessageToRAClients = async (
     }
 
    
+
+    if (users.length === 0 && selectedClientIds) {
+      return res.status(202).json({
+        success: true,
+        message: "No selected clients have an active Telegram destination.",
+        stats: { total: 0 },
+      });
+    }
 
     if (users.length === 0) {
       return res.status(400).json({

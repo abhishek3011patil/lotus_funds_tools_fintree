@@ -17,6 +17,11 @@ import {
   validateUnderlyingStudySubmission,
 } from "../services/underlyingStudyPreferences.service";
 import { calculateResearchCallRiskReward } from "../services/researchCallRiskReward.service";
+import {
+  audienceClientIds,
+  parseAudienceSelection,
+  resolveResearchAudience,
+} from "../services/researchAudience.service";
 
 const getClientIp = (req: any): string => {
   let ip =
@@ -184,6 +189,29 @@ export const createResearchCall = async (
       storedMessageTemplate?.template ??
       null;
 
+    const requestedAudience = parseAudienceSelection(req.body || {});
+    let resolvedAudience: Awaited<ReturnType<typeof resolveResearchAudience>> = {
+      mode: "ALL_CONNECTED",
+      selectedGroups: [] as Array<{ id: string; name: string }>,
+      recipients: [] as Array<{ type: "CLIENT" | "BROKER"; id: string; name: string }>,
+    };
+    if (normalizedStatus === "PUBLISHED") {
+      try {
+        resolvedAudience = await resolveResearchAudience({
+          raUserId: req.user!.id,
+          mode: requestedAudience.mode,
+          groupIds: requestedAudience.groupIds,
+          db: pool,
+        });
+      } catch (audienceError) {
+        return res.status(400).json({
+          success: false,
+          code: "INVALID_RESEARCH_AUDIENCE",
+          message: audienceError instanceof Error ? audienceError.message : "Invalid research audience.",
+        });
+      }
+    }
+
       console.log("DISPLAY NAME DEBUG:", {
   value: display_name,
   length:
@@ -226,13 +254,16 @@ export const createResearchCall = async (
         message_template_version,
         message_template_snapshot,
         attachments,
-        risk_reward_ratio
+        risk_reward_ratio,
+        audience_mode,
+        audience_groups_snapshot,
+        audience_recipient_snapshot
       )
       VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
         $11,$12,$13,$14,$15,$16,$17,$18,$19,
         $20,$21,$22,$23,$24,$25,$26,$27,$28,
-        $29,$30,$31,$32,$33
+        $29,$30,$31,$32,$33,$34,$35,$36
       )
       RETURNING *;
     `;
@@ -276,6 +307,9 @@ export const createResearchCall = async (
         : null,
       JSON.stringify(attachments),
       riskRewardRatio,
+      resolvedAudience.mode,
+      JSON.stringify(resolvedAudience.selectedGroups),
+      JSON.stringify(resolvedAudience.recipients),
     ];
 
 const { rows } = await pool.query(query, values);
@@ -307,20 +341,9 @@ const raResult = await pool.query(
 
 const raName = raResult.rows[0]?.name || "Research Analyst";
 
-// Temporary: notify all active clients
-// TODO: Replace this query with subscribed clients of this RA
-const clientResult = await pool.query(
-  `
-  SELECT id
-  FROM users
-  WHERE role = 'CLIENT'
-    AND is_active = true
-  `
-);
-
-for (const client of clientResult.rows) {
+for (const clientId of audienceClientIds(resolvedAudience.recipients)) {
   await createClientNotification({
-    userId: client.id,
+    userId: clientId,
     type: "New Recommendation",
     title: `${createdCall.action} Recommendation`,
     message: `${raName} published a ${createdCall.action} call on ${createdCall.symbol}.`,
@@ -350,6 +373,9 @@ for (const client of clientResult.rows) {
             raUserId: req.user!.id,
             eventType: "RESEARCH_CALL_PUBLISHED",
             message: whatsappMessage,
+            clientUserIds: resolvedAudience.mode === "GROUPS"
+              ? audienceClientIds(resolvedAudience.recipients)
+              : undefined,
           });
         } catch (queueError) {
           console.error(
@@ -1018,7 +1044,10 @@ const insertResult = await client.query(
     parent_call_id,
     is_latest,
     attachments,
-    risk_reward_ratio
+    risk_reward_ratio,
+    audience_mode,
+    audience_groups_snapshot,
+    audience_recipient_snapshot
   )
   VALUES (
     $1,
@@ -1072,7 +1101,10 @@ const insertResult = await client.query(
     $35,
     $36,
     $37,
-    $38
+    $38,
+    $39,
+    $40,
+    $41
   )
   RETURNING *
   `,
@@ -1135,6 +1167,9 @@ const insertResult = await client.query(
     true,
     JSON.stringify(attachments),
     riskRewardRatio,
+    existingCall.audience_mode || "ALL_CONNECTED",
+    JSON.stringify(existingCall.audience_groups_snapshot || []),
+    JSON.stringify(existingCall.audience_recipient_snapshot || []),
   ]
 );
 
@@ -1142,6 +1177,9 @@ const errataCall = insertResult.rows[0];
 const whatsappMessage = publishedErrataMessage || "";
 
 if (whatsappMessage) {
+  const inheritedRecipients = Array.isArray(existingCall.audience_recipient_snapshot)
+    ? existingCall.audience_recipient_snapshot
+    : [];
   await queueWhatsAppResearchCall({
     researchCallId: errataCall.id,
     originalCallId: rootId,
@@ -1149,6 +1187,9 @@ if (whatsappMessage) {
     eventType: "RESEARCH_CALL_ERRATA",
     message: whatsappMessage,
     client,
+    clientUserIds: existingCall.audience_mode === "GROUPS"
+      ? audienceClientIds(inheritedRecipients)
+      : undefined,
   });
   await distributeBrokerCallUpdate({
     researchCallId: errataCall.id,
@@ -1408,6 +1449,23 @@ export const publishDraftCall = async (
       });
     }
 
+    const requestedAudience = parseAudienceSelection(req.body || {});
+    let resolvedAudience: Awaited<ReturnType<typeof resolveResearchAudience>>;
+    try {
+      resolvedAudience = await resolveResearchAudience({
+        raUserId,
+        mode: requestedAudience.mode,
+        groupIds: requestedAudience.groupIds,
+        db: pool,
+      });
+    } catch (audienceError) {
+      return res.status(400).json({
+        success: false,
+        code: "INVALID_RESEARCH_AUDIENCE",
+        message: audienceError instanceof Error ? audienceError.message : "Invalid research audience.",
+      });
+    }
+
     const result = await pool.query(
       `
       UPDATE research_calls
@@ -1415,7 +1473,10 @@ export const publishDraftCall = async (
         status = 'PUBLISHED',
         published_message_text = $3,
         message_template_version = NULL,
-        message_template_snapshot = NULL
+        message_template_snapshot = NULL,
+        audience_mode = $4,
+        audience_groups_snapshot = $5::jsonb,
+        audience_recipient_snapshot = $6::jsonb
       WHERE id = $1
         AND status = 'DRAFT'
         AND ra_user_id = $2
@@ -1423,7 +1484,8 @@ export const publishDraftCall = async (
         AND CHAR_LENGTH(underlying_study) <= 255
       RETURNING *
       `,
-      [id, raUserId, messageText]
+      [id, raUserId, messageText, resolvedAudience.mode,
+        JSON.stringify(resolvedAudience.selectedGroups), JSON.stringify(resolvedAudience.recipients)]
     );
 
     if ((result.rowCount ?? 0) === 0) {
@@ -1441,6 +1503,9 @@ export const publishDraftCall = async (
         raUserId,
         eventType: "RESEARCH_CALL_PUBLISHED",
         message: messageText,
+        clientUserIds: resolvedAudience.mode === "GROUPS"
+          ? audienceClientIds(resolvedAudience.recipients)
+          : undefined,
       });
 
       console.log("WHATSAPP PUBLISH QUEUED:", {
