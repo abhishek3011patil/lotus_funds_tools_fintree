@@ -5,6 +5,7 @@ import {AuthRequest} from "../middlewares/auth.middleware";
 import { createClient } from "../utils/telegramClientFactory";
 import {
   audienceClientIds,
+  audienceTelegramParticipantIds,
   parseAudienceSelection,
   resolveResearchAudience,
 } from "../services/researchAudience.service";
@@ -781,6 +782,7 @@ export const sendMessageToRAClients = async (
     }
 
     let selectedClientIds: string[] | undefined;
+    let selectedParticipantIds: string[] | undefined;
     const researchCallId = String(req.body?.researchCallId || "");
     if (/^[a-f0-9-]{36}$/i.test(researchCallId)) {
       const callAudience = await pool.query(
@@ -791,7 +793,9 @@ export const sendMessageToRAClients = async (
       const call = callAudience.rows[0];
       if (!call) return res.status(404).json({ success: false, message: "Research call audience was not found." });
       if (call.audience_mode === "GROUPS") {
-        selectedClientIds = audienceClientIds(Array.isArray(call.audience_recipient_snapshot) ? call.audience_recipient_snapshot : []);
+        const recipients = Array.isArray(call.audience_recipient_snapshot) ? call.audience_recipient_snapshot : [];
+        selectedClientIds = audienceClientIds(recipients);
+        selectedParticipantIds = audienceTelegramParticipantIds(recipients);
       }
     } else {
       const audienceSelection = parseAudienceSelection(req.body || {});
@@ -804,6 +808,7 @@ export const sendMessageToRAClients = async (
           db: pool,
         });
         selectedClientIds = audienceClientIds(audience.recipients);
+        selectedParticipantIds = audienceTelegramParticipantIds(audience.recipients);
       } catch (audienceError) {
         return res.status(400).json({
           success: false,
@@ -813,6 +818,7 @@ export const sendMessageToRAClients = async (
       }
     }
 
+   const audienceFiltered = selectedClientIds !== undefined || selectedParticipantIds !== undefined;
    const [sessionResult, usersResult] = await Promise.all([
       pool.query(
         `
@@ -835,9 +841,9 @@ export const sendMessageToRAClients = async (
         FROM telegram_users
         WHERE user_id = $1
          AND is_active = TRUE
-         ${selectedClientIds ? "AND client_user_id = ANY($2::uuid[])" : ""}
+         ${audienceFiltered ? "AND (client_user_id = ANY($2::uuid[]) OR id = ANY($3::uuid[]))" : ""}
         `,
-        selectedClientIds ? [raId, selectedClientIds] : [raId]
+        audienceFiltered ? [raId, selectedClientIds ?? [], selectedParticipantIds ?? []] : [raId]
       ),
     ]);
 
@@ -854,10 +860,10 @@ export const sendMessageToRAClients = async (
 
    
 
-    if (users.length === 0 && selectedClientIds) {
+    if (users.length === 0 && audienceFiltered) {
       return res.status(202).json({
         success: true,
-        message: "No selected clients have an active Telegram destination.",
+        message: "No selected recipients have an active Telegram destination.",
         stats: { total: 0 },
       });
     }

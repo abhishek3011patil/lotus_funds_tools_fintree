@@ -4,7 +4,7 @@ import { AuthRequest } from "../middlewares/auth.middleware";
 import { createAuditLog } from "../utils/auditLogger";
 import { queueWhatsAppResearchCall } from "../services/deliveryQueue.service";
 import { distributeBrokerCallUpdate } from "../services/brokerDelivery.service";
-import { audienceClientIds } from "../services/researchAudience.service";
+import { audienceClientIds, audienceWhatsAppParticipantIds } from "../services/researchAudience.service";
 const getClientIp = (req: any): string => {
   let ip =
     req.headers?.["x-forwarded-for"] ||
@@ -190,6 +190,9 @@ export const exitResearchCall = async (
       client,
       clientUserIds: exitedCall.audience_mode === "GROUPS"
         ? audienceClientIds(audienceRecipients)
+        : undefined,
+      participantIds: exitedCall.audience_mode === "GROUPS"
+        ? audienceWhatsAppParticipantIds(audienceRecipients)
         : undefined,
     });
 

@@ -19,6 +19,7 @@ import {
 import { calculateResearchCallRiskReward } from "../services/researchCallRiskReward.service";
 import {
   audienceClientIds,
+  audienceWhatsAppParticipantIds,
   parseAudienceSelection,
   resolveResearchAudience,
 } from "../services/researchAudience.service";
@@ -193,7 +194,7 @@ export const createResearchCall = async (
     let resolvedAudience: Awaited<ReturnType<typeof resolveResearchAudience>> = {
       mode: "ALL_CONNECTED",
       selectedGroups: [] as Array<{ id: string; name: string }>,
-      recipients: [] as Array<{ type: "CLIENT" | "BROKER"; id: string; name: string }>,
+      recipients: [],
     };
     if (normalizedStatus === "PUBLISHED") {
       try {
@@ -375,6 +376,9 @@ for (const clientId of audienceClientIds(resolvedAudience.recipients)) {
             message: whatsappMessage,
             clientUserIds: resolvedAudience.mode === "GROUPS"
               ? audienceClientIds(resolvedAudience.recipients)
+              : undefined,
+            participantIds: resolvedAudience.mode === "GROUPS"
+              ? audienceWhatsAppParticipantIds(resolvedAudience.recipients)
               : undefined,
           });
         } catch (queueError) {
@@ -1190,6 +1194,9 @@ if (whatsappMessage) {
     clientUserIds: existingCall.audience_mode === "GROUPS"
       ? audienceClientIds(inheritedRecipients)
       : undefined,
+    participantIds: existingCall.audience_mode === "GROUPS"
+      ? audienceWhatsAppParticipantIds(inheritedRecipients)
+      : undefined,
   });
   await distributeBrokerCallUpdate({
     researchCallId: errataCall.id,
@@ -1505,6 +1512,9 @@ export const publishDraftCall = async (
         message: messageText,
         clientUserIds: resolvedAudience.mode === "GROUPS"
           ? audienceClientIds(resolvedAudience.recipients)
+          : undefined,
+        participantIds: resolvedAudience.mode === "GROUPS"
+          ? audienceWhatsAppParticipantIds(resolvedAudience.recipients)
           : undefined,
       });
 

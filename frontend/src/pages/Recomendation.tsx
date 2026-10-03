@@ -190,7 +190,7 @@ const [audienceMode, setAudienceMode] = useState<"ALL_CONNECTED" | "GROUPS">("AL
 const [selectedAudienceGroupIds, setSelectedAudienceGroupIds] = useState<string[]>([]);
 const [audienceLoading, setAudienceLoading] = useState(true);
 const [audienceError, setAudienceError] = useState("");
-const [allAudienceCounts, setAllAudienceCounts] = useState({ clients: 0, brokers: 0 });
+const [allAudienceCounts, setAllAudienceCounts] = useState({ clients: 0, brokers: 0, telegram: 0, whatsapp: 0 });
 const [showPublishPreview, setShowPublishPreview] = useState(() => {
   try {
     return sessionStorage.getItem(PUBLISH_PREVIEW_SESSION_KEY) !== "false";
@@ -348,6 +348,8 @@ function formReducer(
   const selectedAudienceMembers = new Map(selectedAudienceGroups.flatMap(group => group.members).map(member => [`${member.type}:${member.id}`, member]));
   const selectedAudienceClientCount = [...selectedAudienceMembers.values()].filter(member => member.type === "CLIENT").length;
   const selectedAudienceBrokerCount = [...selectedAudienceMembers.values()].filter(member => member.type === "BROKER").length;
+  const selectedAudienceTelegramCount = [...selectedAudienceMembers.values()].filter(member => member.type === "TELEGRAM").length;
+  const selectedAudienceWhatsAppCount = [...selectedAudienceMembers.values()].filter(member => member.type === "WHATSAPP").length;
 
   const panelBg = form.action === "BUY" ? "#eef9ee" : "#fee2e2";
   const panelBorder = form.action === "BUY" ? "#7ac77a" : SELL_COLOR;
@@ -1240,7 +1242,12 @@ const handleUnderlyingStudyChange = (
       .then(([groups, connections]) => {
         if (!active) return;
         setAudienceGroups(groups);
-        setAllAudienceCounts({ clients: connections.clients.length, brokers: connections.brokers.length });
+        setAllAudienceCounts({
+          clients: connections.clients.length,
+          brokers: connections.brokers.length,
+          telegram: connections.telegram.length,
+          whatsapp: connections.whatsapp.length,
+        });
       })
       .catch(() => {
         if (active) setAudienceError("Audience groups could not be loaded. You can still publish to all connected recipients.");
@@ -3840,7 +3847,7 @@ sx={{
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>Choose who can see and receive this research call. The final recipient list is saved with the call.</Typography>
       {audienceError && <Alert severity="warning" onClose={() => setAudienceError("")} sx={{ mb: 1.5 }}>{audienceError}</Alert>}
       <RadioGroup value={audienceMode} onChange={event => { setAudienceMode(event.target.value as "ALL_CONNECTED" | "GROUPS"); setAudienceError(""); }}>
-        <FormControlLabel value="ALL_CONNECTED" control={<Radio />} label={`All connected recipients (${allAudienceCounts.clients} clients, ${allAudienceCounts.brokers} brokers)`} />
+        <FormControlLabel value="ALL_CONNECTED" control={<Radio />} label={`All connected recipients (${allAudienceCounts.clients} clients, ${allAudienceCounts.brokers} brokers, ${allAudienceCounts.telegram} Telegram, ${allAudienceCounts.whatsapp} WhatsApp)`} />
         <FormControlLabel value="GROUPS" control={<Radio />} label="Selected groups" />
       </RadioGroup>
       {audienceMode === "GROUPS" && <FormControl fullWidth size="small" sx={{ mt: 1 }} disabled={audienceLoading || audienceGroups.length === 0}>
@@ -3859,7 +3866,7 @@ sx={{
         >
           {audienceGroups.map(group => <MenuItem key={group.id} value={group.id}><Checkbox checked={selectedAudienceGroupIds.includes(group.id)} />{group.name} ({group.members.length})</MenuItem>)}
         </Select>
-        <FormHelperText>{audienceGroups.length === 0 ? "Create a group from Connections > Groups first." : `${selectedAudienceClientCount} clients and ${selectedAudienceBrokerCount} brokers selected`}</FormHelperText>
+        <FormHelperText>{audienceGroups.length === 0 ? "Create a group from Connections > Groups first." : `${selectedAudienceClientCount} clients, ${selectedAudienceBrokerCount} brokers, ${selectedAudienceTelegramCount} Telegram and ${selectedAudienceWhatsAppCount} WhatsApp selected`}</FormHelperText>
       </FormControl>}
     </Paper>}
     <Paper

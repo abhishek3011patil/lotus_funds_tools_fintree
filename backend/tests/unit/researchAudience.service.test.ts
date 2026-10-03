@@ -4,6 +4,8 @@ import { parseAudienceSelection, resolveResearchAudience } from "../../src/servi
 const groupA = "00000000-0000-4000-8000-000000000001";
 const clientA = "00000000-0000-4000-8000-000000000002";
 const brokerA = "00000000-0000-4000-8000-000000000003";
+const telegramA = "00000000-0000-4000-8000-000000000004";
+const whatsappA = "00000000-0000-4000-8000-000000000005";
 
 describe("research audience", () => {
   it("defaults to every connected recipient", () => {
@@ -15,11 +17,13 @@ describe("research audience", () => {
       .toEqual({ mode: "GROUPS", groupIds: [groupA] });
   });
 
-  it("resolves a mixed group into immutable client and broker recipients", async () => {
+  it("resolves a mixed group into immutable platform and channel recipients", async () => {
     const query = vi.fn()
       .mockResolvedValueOnce({ rows: [{ id: groupA, name: "Priority" }] })
       .mockResolvedValueOnce({ rows: [{ id: clientA, name: "Client One" }] })
-      .mockResolvedValueOnce({ rows: [{ id: brokerA, name: "Broker One" }] });
+      .mockResolvedValueOnce({ rows: [{ id: brokerA, name: "Broker One" }] })
+      .mockResolvedValueOnce({ rows: [{ id: telegramA, name: "Telegram One" }] })
+      .mockResolvedValueOnce({ rows: [{ id: whatsappA, name: "WhatsApp One" }] });
     const result = await resolveResearchAudience({
       raUserId: "ra-user",
       mode: "GROUPS",
@@ -30,6 +34,8 @@ describe("research audience", () => {
     expect(result.recipients).toEqual([
       { type: "CLIENT", id: clientA, name: "Client One" },
       { type: "BROKER", id: brokerA, name: "Broker One" },
+      { type: "TELEGRAM", id: telegramA, name: "Telegram One" },
+      { type: "WHATSAPP", id: whatsappA, name: "WhatsApp One" },
     ]);
   });
 

@@ -2,7 +2,11 @@ import type { Pool, PoolClient } from "pg";
 
 type Queryable = Pick<Pool | PoolClient, "query">;
 export type AudienceMode = "ALL_CONNECTED" | "GROUPS";
-export type AudienceRecipient = { type: "CLIENT" | "BROKER"; id: string; name: string };
+export type AudienceRecipient = {
+  type: "CLIENT" | "BROKER" | "TELEGRAM" | "WHATSAPP";
+  id: string;
+  name: string;
+};
 export type AudienceGroupSnapshot = { id: string; name: string };
 
 const uuidPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
@@ -97,13 +101,48 @@ export const resolveResearchAudience = async ({
     mode === "ALL_CONNECTED" ? [raUserId] : [raUserId, groupIds],
   );
 
+  const telegramResult = await db.query(
+    mode === "ALL_CONNECTED"
+      ? `SELECT participant.id,
+           COALESCE(NULLIF(TRIM(participant.telegram_client_name), ''), 'Telegram ' || participant.telegram_user_id::text) AS name
+         FROM telegram_users participant
+         WHERE participant.user_id = $1 AND participant.is_active = TRUE`
+      : `SELECT DISTINCT participant.id,
+           COALESCE(NULLIF(TRIM(participant.telegram_client_name), ''), 'Telegram ' || participant.telegram_user_id::text) AS name
+         FROM ra_audience_group_members member
+         JOIN ra_audience_groups audience_group ON audience_group.id = member.group_id
+         JOIN telegram_users participant ON participant.id = member.telegram_participant_id
+         WHERE audience_group.ra_user_id = $1 AND audience_group.id = ANY($2::uuid[])
+           AND member.member_type = 'TELEGRAM' AND participant.user_id = audience_group.ra_user_id
+           AND participant.is_active = TRUE`,
+    mode === "ALL_CONNECTED" ? [raUserId] : [raUserId, groupIds],
+  );
+
+  const whatsappResult = await db.query(
+    mode === "ALL_CONNECTED"
+      ? `SELECT participant.id, participant.participant_name AS name
+         FROM whatsapp_participants participant
+         WHERE participant.ra_user_id = $1 AND participant.is_active = TRUE
+           AND participant.consent_confirmed = TRUE`
+      : `SELECT DISTINCT participant.id, participant.participant_name AS name
+         FROM ra_audience_group_members member
+         JOIN ra_audience_groups audience_group ON audience_group.id = member.group_id
+         JOIN whatsapp_participants participant ON participant.id = member.whatsapp_participant_id
+         WHERE audience_group.ra_user_id = $1 AND audience_group.id = ANY($2::uuid[])
+           AND member.member_type = 'WHATSAPP' AND participant.ra_user_id = audience_group.ra_user_id
+           AND participant.is_active = TRUE AND participant.consent_confirmed = TRUE`,
+    mode === "ALL_CONNECTED" ? [raUserId] : [raUserId, groupIds],
+  );
+
   const recipients: AudienceRecipient[] = [
     ...clientResult.rows.map(row => ({ type: "CLIENT" as const, id: row.id, name: row.name })),
     ...brokerResult.rows.map(row => ({ type: "BROKER" as const, id: row.id, name: row.name })),
+    ...telegramResult.rows.map(row => ({ type: "TELEGRAM" as const, id: row.id, name: row.name })),
+    ...whatsappResult.rows.map(row => ({ type: "WHATSAPP" as const, id: row.id, name: row.name })),
   ];
 
   if (mode === "GROUPS" && recipients.length === 0) {
-    throw new Error("The selected groups have no active client or broker connections.");
+    throw new Error("The selected groups have no active recipients.");
   }
 
   return { mode, selectedGroups, recipients };
@@ -111,3 +150,9 @@ export const resolveResearchAudience = async ({
 
 export const audienceClientIds = (recipients: AudienceRecipient[]) =>
   recipients.filter(recipient => recipient.type === "CLIENT").map(recipient => recipient.id);
+
+export const audienceTelegramParticipantIds = (recipients: AudienceRecipient[]) =>
+  recipients.filter(recipient => recipient.type === "TELEGRAM").map(recipient => recipient.id);
+
+export const audienceWhatsAppParticipantIds = (recipients: AudienceRecipient[]) =>
+  recipients.filter(recipient => recipient.type === "WHATSAPP").map(recipient => recipient.id);

@@ -40,6 +40,8 @@ const AudienceGroupsPanel = () => {
   const [groups, setGroups] = useState<AudienceGroup[]>([]);
   const [clients, setClients] = useState<AudienceConnection[]>([]);
   const [brokers, setBrokers] = useState<AudienceConnection[]>([]);
+  const [telegramParticipants, setTelegramParticipants] = useState<AudienceConnection[]>([]);
+  const [whatsAppParticipants, setWhatsAppParticipants] = useState<AudienceConnection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -57,6 +59,7 @@ const AudienceGroupsPanel = () => {
     try {
       const [nextGroups, connections] = await Promise.all([fetchAudienceGroups(), fetchAudienceConnections()]);
       setGroups(nextGroups); setClients(connections.clients); setBrokers(connections.brokers);
+      setTelegramParticipants(connections.telegram); setWhatsAppParticipants(connections.whatsapp);
     } catch (requestError) { setError(apiMessage(requestError, "Unable to load audience groups.")); }
     finally { setLoading(false); }
   }, []);
@@ -84,7 +87,7 @@ const AudienceGroupsPanel = () => {
 
   const save = async () => {
     if (name.trim().length < 2) { setDialogError("Enter a group name with at least 2 characters."); return; }
-    if (selectedMembers.length === 0) { setDialogError("Select at least one client or broker."); return; }
+    if (selectedMembers.length === 0) { setDialogError("Select at least one recipient."); return; }
     setSaving(true); setDialogError("");
     const input = { name: name.trim(), description: description.trim(), members: selectedMembers };
     try {
@@ -106,7 +109,7 @@ const AudienceGroupsPanel = () => {
 
   return <Stack spacing={2.5}>
     <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} gap={2}>
-      <Box><Typography variant="h5">Audience groups</Typography><Typography color="text.secondary">Combine connected clients and brokers, then select a group when publishing a call.</Typography></Box>
+      <Box><Typography variant="h5">Audience groups</Typography><Typography color="text.secondary">Combine clients, brokers, and channel participants, then select a group when publishing a call.</Typography></Box>
       <Button variant="contained" startIcon={<AddIcon />} onClick={() => openEditor()}>Create group</Button>
     </Stack>
     {notice && <Alert severity="success" onClose={() => setNotice("")}>{notice}</Alert>}
@@ -116,8 +119,10 @@ const AudienceGroupsPanel = () => {
         {groups.map(group => {
           const clientCount = group.members.filter(member => member.type === "CLIENT").length;
           const brokerCount = group.members.filter(member => member.type === "BROKER").length;
+          const telegramCount = group.members.filter(member => member.type === "TELEGRAM").length;
+          const whatsAppCount = group.members.filter(member => member.type === "WHATSAPP").length;
           return <Paper key={group.id} variant="outlined" sx={{ p: 2.5 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={2}><Box><Typography variant="h6">{group.name}</Typography><Typography variant="body2" color="text.secondary">{group.description || "No description"}</Typography></Box><Stack direction="row" spacing={.5}><Chip size="small" label={`${clientCount} clients`} /><Chip size="small" label={`${brokerCount} brokers`} /></Stack></Stack>
+            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={2}><Box><Typography variant="h6">{group.name}</Typography><Typography variant="body2" color="text.secondary">{group.description || "No description"}</Typography></Box><Stack direction="row" spacing={.5} useFlexGap flexWrap="wrap" justifyContent="flex-end"><Chip size="small" label={`${clientCount} clients`} /><Chip size="small" label={`${brokerCount} brokers`} /><Chip size="small" label={`${telegramCount} Telegram`} /><Chip size="small" label={`${whatsAppCount} WhatsApp`} /></Stack></Stack>
             <Stack direction="row" spacing={.75} useFlexGap flexWrap="wrap" sx={{ mt: 2 }}>{group.members.slice(0, 6).map(member => <Chip key={memberKey(member.type, member.id)} size="small" variant="outlined" label={member.name} />)}{group.members.length > 6 && <Chip size="small" label={`+${group.members.length - 6} more`} />}</Stack>
             <Stack direction="row" spacing={1} sx={{ mt: 2.5 }}><Button size="small" variant="outlined" onClick={() => openEditor(group)}>Edit</Button><Button size="small" color="error" onClick={() => setDeleteTarget(group)}>Delete</Button></Stack>
           </Paper>;
@@ -135,6 +140,13 @@ const AudienceGroupsPanel = () => {
         <Divider />
         <Typography fontWeight={750}>Brokers</Typography>
         {brokers.length === 0 ? <Typography color="text.secondary">No active broker connections.</Typography> : brokers.map(broker => <FormControlLabel key={broker.id} control={<Checkbox checked={selected.has(memberKey("BROKER", broker.id))} onChange={() => toggle("BROKER", broker.id)} />} label={<Box><Typography>{broker.name}</Typography><Typography variant="caption" color="text.secondary">{broker.sebiRegistration || "Connected broker"}</Typography></Box>} />)}
+        <Divider />
+        <Typography fontWeight={750}>Telegram participants</Typography>
+        {telegramParticipants.length === 0 ? <Typography color="text.secondary">No active Telegram participants. Add them from Settings first.</Typography> : telegramParticipants.map(participant => <FormControlLabel key={participant.id} control={<Checkbox checked={selected.has(memberKey("TELEGRAM", participant.id))} onChange={() => toggle("TELEGRAM", participant.id)} />} label={<Box><Typography>{participant.name}</Typography><Typography variant="caption" color="text.secondary">{participant.entityType || "Telegram"} · {participant.channelDetail || "Active participant"}</Typography></Box>} />)}
+        <Divider />
+        <Typography fontWeight={750}>WhatsApp participants</Typography>
+        <Typography variant="caption" color="text.secondary">Only active participants with confirmed consent are available.</Typography>
+        {whatsAppParticipants.length === 0 ? <Typography color="text.secondary">No eligible WhatsApp participants. Add or confirm them from Settings first.</Typography> : whatsAppParticipants.map(participant => <FormControlLabel key={participant.id} control={<Checkbox checked={selected.has(memberKey("WHATSAPP", participant.id))} onChange={() => toggle("WHATSAPP", participant.id)} />} label={<Box><Typography>{participant.name}</Typography><Typography variant="caption" color="text.secondary">{participant.channelDetail || "WhatsApp participant"}</Typography></Box>} />)}
       </Stack></DialogContent>
       <DialogActions><Button disabled={saving} onClick={() => setDialogOpen(false)}>Cancel</Button><Button variant="contained" disabled={saving} onClick={() => void save()}>{saving ? "Saving..." : "Save group"}</Button></DialogActions>
     </Dialog>

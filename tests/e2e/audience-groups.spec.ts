@@ -3,8 +3,10 @@ import { expect, test } from "@playwright/test";
 const clientId = "00000000-0000-4000-8000-000000000011";
 const brokerId = "00000000-0000-4000-8000-000000000012";
 const groupId = "00000000-0000-4000-8000-000000000013";
+const telegramId = "00000000-0000-4000-8000-000000000014";
+const whatsappId = "00000000-0000-4000-8000-000000000015";
 
-test("analyst creates a mixed client and broker audience group", async ({ page }) => {
+test("analyst creates a mixed platform and channel audience group", async ({ page }) => {
   let created = false;
   let submitted: any = null;
   await page.addInitScript(() => {
@@ -19,7 +21,12 @@ test("analyst creates a mixed client and broker audience group", async ({ page }
     if (pathname === "/api/ra/dashboard/broker-requests") return route.fulfill({ json: [] });
     if (pathname === "/api/ra/dashboard/broker-connections") return route.fulfill({ json: [] });
     if (pathname === "/api/ra/dashboard/audience-groups/connections") {
-      return route.fulfill({ json: { clients: [{ id: clientId, name: "Client One", email: "client@example.test" }], brokers: [{ id: brokerId, name: "Broker One", sebiRegistration: "INZ000000001" }] } });
+      return route.fulfill({ json: {
+        clients: [{ id: clientId, name: "Client One", email: "client@example.test" }],
+        brokers: [{ id: brokerId, name: "Broker One", sebiRegistration: "INZ000000001" }],
+        telegram: [{ id: telegramId, name: "Telegram One", entityType: "USER", channelDetail: "123456" }],
+        whatsapp: [{ id: whatsappId, name: "WhatsApp One", channelDetail: "+919999999999" }],
+      } });
     }
     if (pathname === "/api/ra/dashboard/audience-groups" && route.request().method() === "POST") {
       submitted = route.request().postDataJSON(); created = true;
@@ -39,12 +46,19 @@ test("analyst creates a mixed client and broker audience group", async ({ page }
   await dialog.getByLabel("Description").fill("Priority distribution");
   await dialog.getByLabel(/Client One/).check();
   await dialog.getByLabel(/Broker One/).check();
+  await dialog.getByLabel(/Telegram One/).check();
+  await dialog.getByLabel(/WhatsApp One/).check();
   await dialog.getByRole("button", { name: "Save group", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: "Priority Desk" })).toBeVisible();
   expect(submitted).toMatchObject({
     name: "Priority Desk",
-    members: [{ type: "CLIENT", id: clientId }, { type: "BROKER", id: brokerId }],
+    members: [
+      { type: "CLIENT", id: clientId },
+      { type: "BROKER", id: brokerId },
+      { type: "TELEGRAM", id: telegramId },
+      { type: "WHATSAPP", id: whatsappId },
+    ],
   });
 });
 
@@ -83,6 +97,6 @@ test("publish preview requires and summarizes the selected audience groups", asy
   await dialog.getByRole("combobox", { name: "Groups" }).click();
   await page.getByRole("option", { name: /Priority Desk/ }).click();
   await page.keyboard.press("Escape");
-  await expect(dialog.getByText("1 clients and 1 brokers selected")).toBeVisible();
+  await expect(dialog.getByText("1 clients, 1 brokers, 0 Telegram and 0 WhatsApp selected")).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Publish Call", exact: true })).toBeEnabled();
 });
