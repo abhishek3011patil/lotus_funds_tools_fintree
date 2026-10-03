@@ -28,7 +28,7 @@ const callData = {
 
 const raData = {
   fullName: "Sample Analyst",
-  organizationName: "Lotus Funds",
+  organizationName: "Tarkashh",
   sebiRegistrationNumber: "INH000000000",
   disclaimer: "Mandatory sample disclaimer.",
   disclaimerLink:

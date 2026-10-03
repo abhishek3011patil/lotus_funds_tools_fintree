@@ -77,6 +77,17 @@ interface ExcelParticipant {
   telegram_user_id?: string;
 }
 
+const isAdminRole = (role?: string): boolean =>
+  ["ADMIN", "SUPERADMIN", "SUPER_ADMIN"].includes(
+    String(role || "").trim().toUpperCase()
+  );
+
+const canAccessRA = (req: AuthRequest, raId: string): boolean => {
+  const role = String(req.user?.role || "").trim().toUpperCase();
+  return isAdminRole(role) ||
+    (role === "RESEARCH_ANALYST" && req.user?.id === raId);
+};
+
 /* =========================================================
    GET ALL TELEGRAM PARTICIPANTS (GET /api/telegram/participants)
    ========================================================= */
@@ -103,9 +114,6 @@ export const saveTelegramUser = async (
   req: AuthRequest,
   res: Response
 ) => {
-   console.log("=== SAVE USER ===");
-  console.log("req.user:", req.user);
-  console.log("req.body:", req.body);
   try {
     const {
       telegram_user_id,
@@ -114,18 +122,20 @@ export const saveTelegramUser = async (
       user_id,
     } = req.body;
 
-    // ✅ Validate RA ID
-    if (!user_id) {
-      return res.status(400).json({
+    const role = String(req.user?.role || "").trim().toUpperCase();
+    const raUserId = isAdminRole(role) ? String(user_id || "") : req.user?.id;
+
+    if (!raUserId || !canAccessRA(req, raUserId)) {
+      return res.status(403).json({
         success: false,
-        message: "RA ID (user_id) is required",
+        message: "You cannot manage Telegram participants for this analyst",
       });
     }
 
     // ✅ Ensure RA exists
     const userCheck = await pool.query(
       `SELECT id FROM users WHERE id = $1`,
-      [user_id]
+      [raUserId]
     );
 
     if (userCheck.rows.length === 0) {
@@ -156,7 +166,7 @@ export const saveTelegramUser = async (
       FROM users
       WHERE id = $1
       `,
-      [user_id]
+      [raUserId]
     );
 
     const sessionString = sessionResult.rows[0]?.telegram_session;
@@ -293,13 +303,13 @@ export const saveTelegramUser = async (
         resolvedTelegramId,
         resolvedUsername,
         phone_number || "",
-        user_id,
+        raUserId,
         entityType,
       ]
     );
 
     // ✅ AUDIT LOG (ADMIN ONLY)
-    if (req.user?.role === "ADMIN") {
+    if (isAdminRole(req.user?.role)) {
 
       await createAuditLog({
         adminId: req.user?.id,
@@ -322,7 +332,7 @@ export const saveTelegramUser = async (
         targetType: entityType,
 
         description:
-          `Admin added Telegram ${entityType} for RA ID ${user_id}`,
+          `Admin added Telegram ${entityType} for RA ID ${raUserId}`,
 
         status: "SUCCESS",
 
@@ -370,13 +380,17 @@ export const saveTelegramUser = async (
 export const updateParticipant = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
-    const role = req.user?.role; // ✅ IMPORTANT
+    const role = String(req.user?.role || "").trim().toUpperCase();
     const { id } = req.params;
 
     const { telegram_client_name, phone_number } = req.body;
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!isAdminRole(role) && role !== "RESEARCH_ANALYST") {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     if (!id) {
@@ -392,7 +406,7 @@ export const updateParticipant = async (req: AuthRequest, res: Response) => {
 );
 
     // ✅ ADMIN can update ANY participant
-    if (role === "ADMIN") {
+    if (isAdminRole(role)) {
       query = `
         UPDATE telegram_users
         SET 
@@ -423,7 +437,7 @@ export const updateParticipant = async (req: AuthRequest, res: Response) => {
     }
 
     // ✅ AUDIT LOG
-if (role === "ADMIN") {
+if (isAdminRole(role)) {
   await createAuditLog({
     adminId: req.user?.id,
 
@@ -476,7 +490,7 @@ export const updateParticipantStatus = async (
 ) => {
   try {
     const userId = req.user?.id;
-    const role = req.user?.role;
+    const role = String(req.user?.role || "").trim().toUpperCase();
     const { id } = req.params;
     const { is_active } = req.body;
 
@@ -484,6 +498,13 @@ export const updateParticipantStatus = async (
       return res.status(401).json({
         success: false,
         message: "Unauthorized",
+      });
+    }
+
+    if (!isAdminRole(role) && role !== "RESEARCH_ANALYST") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied",
       });
     }
 
@@ -505,7 +526,7 @@ export const updateParticipantStatus = async (
     let values: any[];
 
     // ADMIN can update any participant
-    if (role === "ADMIN") {
+    if (isAdminRole(role)) {
       query = `
         UPDATE telegram_users
         SET is_active = $1
@@ -566,11 +587,15 @@ export const updateParticipantStatus = async (
 export const deleteParticipant = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
-    const role = req.user?.role; // ✅ IMPORTANT
+    const role = String(req.user?.role || "").trim().toUpperCase();
     const { id } = req.params;
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!isAdminRole(role) && role !== "RESEARCH_ANALYST") {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     if (!id || id === "undefined") {
@@ -586,7 +611,7 @@ export const deleteParticipant = async (req: AuthRequest, res: Response) => {
 );
 
     // ✅ ADMIN can delete ANY participant
-    if (role === "ADMIN") {
+    if (isAdminRole(role)) {
       query = `
         DELETE FROM telegram_users
         WHERE id = $1
@@ -611,7 +636,7 @@ export const deleteParticipant = async (req: AuthRequest, res: Response) => {
     }
 
     // ✅ AUDIT LOG
-if (role === "ADMIN") {
+if (isAdminRole(role)) {
   await createAuditLog({
     adminId: req.user?.id,
 
@@ -656,12 +681,12 @@ if (role === "ADMIN") {
    GET TELEGRAM PARTICIPANTS BY RESEARCH ANALYST (GET /api/telegram/ra/:raId)
    ========================================================= */
 export const getParticipantsByRA = async (
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) => {
   try {
 
-    const { raId } = req.params;
+    const raId = String(req.params.raId || "");
 
     if (
       !raId ||
@@ -671,6 +696,13 @@ export const getParticipantsByRA = async (
       return res.status(400).json({
         success: false,
         message: "Invalid RA ID",
+      });
+    }
+
+    if (!canAccessRA(req, raId)) {
+      return res.status(403).json({
+        success: false,
+        message: "You cannot view participants for this analyst",
       });
     }
 

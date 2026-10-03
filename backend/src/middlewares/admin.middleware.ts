@@ -13,7 +13,9 @@ export const requireAdmin = (
     }
 
     // 2️⃣ Check role
-if (!req.user?.role || !["ADMIN", "SUPERADMIN"].includes(req.user.role)) {
+const role = String(req.user?.role || "").trim().toUpperCase();
+
+if (!["ADMIN", "SUPERADMIN", "SUPER_ADMIN"].includes(role)) {
   return res.status(403).json({
     success: false,
     message: "Access denied",

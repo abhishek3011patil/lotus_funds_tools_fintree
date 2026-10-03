@@ -71,9 +71,9 @@ const run = async (): Promise<void> => {
     from: emailUser,
     to: recipient,
     subject:
-      "Lotus Funds email configuration test",
+      "Tarkashh email configuration test",
     text:
-      "This is a test email from the Lotus Funds backend email diagnostics.",
+      "This is a test email from the Tarkashh backend email diagnostics.",
   });
 
   console.info("TEST EMAIL DELIVERY:", {

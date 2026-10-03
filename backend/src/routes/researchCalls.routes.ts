@@ -93,11 +93,6 @@ router.patch(
 
 
 
-router.get("/test", (req, res) => {
-    console.log("TEST ROUTE HIT");
-    res.json({ ok: true });
-});
-
 
 router.get(
   "/history/all",

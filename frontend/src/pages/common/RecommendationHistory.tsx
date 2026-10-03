@@ -1468,8 +1468,22 @@ const handleReset = () => {
 )}
         </Box>
 
-        {/* Table - Kept Exactly As You Had It */}
-        <TableContainer>
+        <Stack spacing={1.5} sx={{ display: { xs: "flex", md: "none" }, p: 1.5 }}>
+          {loading && <LoadingPage title="Loading" subtitle="Fetching recommendation history..." fullScreen={false} size={44} />}
+          {!loading && paginatedData.length === 0 && <Paper variant="outlined" sx={{ p: 3, textAlign: "center" }}><Typography color="text.secondary">No records found</Typography></Paper>}
+          {!loading && paginatedData.map((row, idx) => <Paper key={`${row.id || row.symbol}-${idx}`} variant="outlined" sx={{ p: 2 }}>
+            <Stack direction="row" justifyContent="space-between" gap={1} alignItems="flex-start">
+              <Box><Typography fontWeight={800}>{row.symbol}</Typography><Typography variant="caption" color="text.secondary">{row.instrument} · {row.exchange}</Typography></Box>
+              <Box sx={{ px: 1.25, py: .4, borderRadius: 1, fontSize: 12, fontWeight: 800, bgcolor: row.action.toUpperCase() === "BUY" ? "success.light" : row.action.toUpperCase() === "SELL" ? "error.light" : "grey.100", color: row.action.toUpperCase() === "BUY" ? "success.dark" : row.action.toUpperCase() === "SELL" ? "error.dark" : "text.primary" }}>{row.action}</Box>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between" sx={{ mt: 1.5 }}><Typography variant="body2">Entry: {row.entry}</Typography><Typography variant="body2">Exit: {row.exit_price}</Typography></Stack>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1 }}><Typography variant="caption" color="text.secondary">{formatDateTime(row.dateTime)}</Typography><Typography variant="caption" fontWeight={750}>{row.status}</Typography></Stack>
+            <Typography variant="caption" color="text.secondary" display="block">Researcher: {getResearcherName(row)}</Typography>
+            {(showMedia || renderRowActions) && <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1.5 }}>{showMedia && <RecommendationMediaButton filePath={row.file_url} attachments={row.attachments} symbol={row.symbol} />}{renderRowActions && renderRowActions(row)}</Stack>}
+          </Paper>)}
+        </Stack>
+
+        <TableContainer sx={{ display: { xs: "none", md: "block" } }}>
           <Table stickyHeader size="small">
             <TableHead>
               <TableRow>

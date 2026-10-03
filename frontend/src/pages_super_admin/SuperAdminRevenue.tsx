@@ -1,4 +1,5 @@
-import { Alert } from "@mui/material";
-import AdminPageShell, { AdminMetricCards } from "../components/admin/AdminPageShell";
-const SuperAdminRevenue = () => <AdminPageShell title="Subscription & Revenue" subtitle="Platform-wide commercial overview."><AdminMetricCards items={[{ label: "Monthly revenue", value: "₹18.4L" }, { label: "Active subscriptions", value: 842 }, { label: "Renewals due in 30 days", value: 61 }]} /><Alert severity="info" sx={{ mt: 2 }}>Mock values only; payment and renewal APIs are not called.</Alert></AdminPageShell>;
+import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
+import AdminPageShell from "../components/admin/AdminPageShell";
+import ProductState from "../components/common/ProductState";
+const SuperAdminRevenue = () => <AdminPageShell title="Subscription & Revenue" subtitle="Platform-wide commercial overview."><ProductState kind="unavailable" icon={<PaymentsOutlinedIcon fontSize="large" />} title="Revenue reporting is not connected" description="Revenue, renewal, and subscription totals will appear when the audited payment reporting API is available. Mock commercial values have been removed." /></AdminPageShell>;
 export default SuperAdminRevenue;

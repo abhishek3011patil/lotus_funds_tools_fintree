@@ -26,7 +26,7 @@ const brandedLayout = (
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border:1px solid #e5e7eb;border-radius:8px">
             <tr>
               <td style="padding:20px 24px;background:#1d4ed8;color:#ffffff;font-size:20px;font-weight:bold">
-                Lotus Funds
+                Tarkashh
               </td>
             </tr>
             <tr>
@@ -35,7 +35,7 @@ const brandedLayout = (
                   title
                 )}</h1>
                 ${bodyHtml}
-                <p style="margin:24px 0 0;color:#6b7280;font-size:12px">This is an automated Lotus Funds notification.</p>
+                <p style="margin:24px 0 0;color:#6b7280;font-size:12px">This is an automated Tarkashh notification.</p>
               </td>
             </tr>
           </table>
@@ -176,10 +176,10 @@ const renderers: TemplateRendererMap = {
   }),
   BROKER_RA_CONNECTION_REQUEST: (data) => ({
     subject: "New broker connection request",
-    text: `Hello ${data.raName},\n\n${data.brokerName} would like to connect with you on Lotus Funds. Review the request here: ${data.requestsUrl}`,
+    text: `Hello ${data.raName},\n\n${data.brokerName} would like to connect with you on Tarkashh. Review the request here: ${data.requestsUrl}`,
     html: brandedLayout("New broker connection request",
       paragraph(`Hello ${data.raName},`) +
-      paragraph(`${data.brokerName} would like to connect with you on Lotus Funds.`) +
+      paragraph(`${data.brokerName} would like to connect with you on Tarkashh.`) +
       linkButton("Review broker request", data.requestsUrl)),
   }),
   RA_REGISTRATION_RECEIVED: (data) =>
@@ -260,12 +260,12 @@ const renderers: TemplateRendererMap = {
     const subject = "Subscription expiry reminder";
     return {
       subject,
-      text: `Hello ${data.name},\n\nYour Lotus Funds subscription expires on ${data.expiryDate}.`,
+      text: `Hello ${data.name},\n\nYour Tarkashh subscription expires on ${data.expiryDate}.`,
       html: brandedLayout(
         subject,
         paragraph(`Hello ${data.name},`) +
           paragraph(
-            `Your Lotus Funds subscription expires on ${data.expiryDate}.`
+            `Your Tarkashh subscription expires on ${data.expiryDate}.`
           )
       ),
     };
@@ -274,12 +274,12 @@ const renderers: TemplateRendererMap = {
     const subject = "Subscription expired";
     return {
       subject,
-      text: `Hello ${data.name},\n\nYour Lotus Funds subscription expired on ${data.expiryDate}.`,
+      text: `Hello ${data.name},\n\nYour Tarkashh subscription expired on ${data.expiryDate}.`,
       html: brandedLayout(
         subject,
         paragraph(`Hello ${data.name},`) +
           paragraph(
-            `Your Lotus Funds subscription expired on ${data.expiryDate}.`
+            `Your Tarkashh subscription expired on ${data.expiryDate}.`
           )
       ),
     };

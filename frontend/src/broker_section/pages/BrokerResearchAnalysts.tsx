@@ -7,6 +7,7 @@ import LinkOutlinedIcon from "@mui/icons-material/LinkOutlined";
 import GroupAddOutlinedIcon from "@mui/icons-material/GroupAddOutlined";
 import BrokerPageHeader from "../components/BrokerPageHeader";
 import { addBrokerAnalyst, createBrokerInvitation, getBrokerAnalysts, onboardingError, removeBrokerAnalyst, searchBrokerAnalysts, type AssociatedAnalyst, type BrokerInvitation } from "../services/brokerOnboarding.service";
+import { formatIndiaDate } from "../../utils/formatters";
 
 const BrokerResearchAnalysts = () => {
   const navigate = useNavigate();
@@ -97,7 +98,17 @@ const BrokerResearchAnalysts = () => {
     </Stack>
     {notice && <Alert severity="success" onClose={() => setNotice("")} sx={{ mb: 2 }}>{notice}</Alert>}
     {error && <Alert severity="error" action={<Button onClick={() => void load()}>Retry</Button>} sx={{ mb: 2 }}>{error}</Alert>}
-    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 1, borderColor: "#E9E9EE" }}>
+    <Stack spacing={1.5} sx={{ display: { xs: "flex", md: "none" } }}>
+      {loading && <Paper variant="outlined" sx={{ p: 4, textAlign: "center" }}><CircularProgress size={24} aria-label="Loading Research Analysts" /></Paper>}
+      {!loading && analysts.length === 0 && <Paper variant="outlined" sx={{ p: 3, textAlign: "center" }}><Typography color="text.secondary">No Research Analysts added yet.</Typography></Paper>}
+      {!loading && analysts.map(ra => <Paper key={ra.id} variant="outlined" sx={{ p: 2 }}>
+        <Stack direction="row" justifyContent="space-between" gap={1} alignItems="flex-start"><Box><Typography fontWeight={700}>{ra.name}</Typography><Typography variant="caption" color="text.secondary">{ra.sebiRegistration || "No SEBI registration"}</Typography></Box><Chip size="small" label={ra.status === "PENDING" ? "Pending" : ra.status} color={ra.status === "ACTIVE" ? "success" : ra.status === "REJECTED" ? "error" : "warning"} /></Stack>
+        <Typography variant="body2" sx={{ mt: 1.5 }}>{ra.category || "Expertise not provided"}</Typography>
+        <Typography variant="caption" color="text.secondary">Registration expiry: {formatIndiaDate(ra.registrationExpiry)}</Typography>
+        <Button fullWidth size="small" color="error" sx={{ mt: 1.5 }} disabled={removing} aria-label={`Remove ${ra.name}`} onClick={() => { setRemoveError(""); setRemoveTarget(ra); }}>Remove</Button>
+      </Paper>)}
+    </Stack>
+    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 1, borderColor: "#E9E9EE", display: { xs: "none", md: "block" } }}>
       <Table size="small" aria-label="Associated Research Analysts" sx={{ minWidth: 720, "& th": { bgcolor: "#F9FAFB", fontWeight: 700, fontSize: 12, py: 2, whiteSpace: "nowrap" }, "& td": { fontSize: 13, py: 1.8 } }}>
         <TableHead><TableRow><TableCell>Name</TableCell><TableCell>SEBI registration</TableCell><TableCell>Expertise</TableCell><TableCell>Registration expiry</TableCell><TableCell>Onboarding</TableCell><TableCell>Status</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead>
         <TableBody>
@@ -105,7 +116,7 @@ const BrokerResearchAnalysts = () => {
             : analysts.length === 0 ? <TableRow><TableCell colSpan={7} align="center" sx={{ py: 5 }}>No Research Analysts added yet. Use Add Research Analyst to get started.</TableCell></TableRow>
               : analysts.map(ra => <TableRow key={ra.id} hover>
                 <TableCell sx={{ fontWeight: 600 }}>{ra.name}</TableCell><TableCell>{ra.sebiRegistration || "—"}</TableCell>
-                <TableCell>{ra.category || "—"}</TableCell><TableCell>{ra.registrationExpiry ? new Date(ra.registrationExpiry).toLocaleDateString("en-IN") : "—"}</TableCell>
+                <TableCell>{ra.category || "—"}</TableCell><TableCell>{formatIndiaDate(ra.registrationExpiry)}</TableCell>
                 <TableCell>{{ DIRECT: "Added here", LINK: "Registration link", EXISTING: "Existing RA" }[ra.onboardingMethod || "EXISTING"]}</TableCell>
                 <TableCell><Chip size="small" label={ra.status === "PENDING" ? "Pending onboarding" : ra.status} color={ra.status === "ACTIVE" ? "success" : ra.status === "REJECTED" ? "error" : "warning"} /></TableCell>
                 <TableCell align="right"><Button size="small" color="error" disabled={removing} aria-label={`Remove ${ra.name}`} onClick={() => { setRemoveError(""); setRemoveTarget(ra); }}>Remove</Button></TableCell>

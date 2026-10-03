@@ -26,7 +26,6 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import InputAdornment from "@mui/material/InputAdornment";
 
 
-import { State, City } from "country-state-city";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   saveRARegistrationSession,
@@ -44,6 +43,19 @@ const navigate = useNavigate();
   const stepStorageKey = brokerInvite ? `raRegistrationStep:${brokerInvite}` : "raRegistrationStep";
   const brokerReturnPath = brokerInvite && localStorage.getItem("role") === "BROKER" ? "/broker/research-analysts" : "/login";
   const [currentStep, setCurrentStep] = useState(1);
+  const [locationData, setLocationData] = useState<{
+    State: { getStatesOfCountry: (countryCode: string) => Array<{ name: string; isoCode: string }> };
+    City: { getCitiesOfState: (countryCode: string, stateCode: string) => Array<{ name: string }> };
+  } | null>(null);
+
+  useEffect(() => {
+    if (currentStep !== 1 || locationData) return;
+    let active = true;
+    void import("country-state-city").then(module => {
+      if (active) setLocationData({ State: module.State, City: module.City });
+    });
+    return () => { active = false; };
+  }, [currentStep, locationData]);
 
   const exitRegistration = () => {
     const shouldExit = window.confirm(
@@ -918,13 +930,13 @@ const styles = {
     "&:hover": { bgcolor: "#3D56CA" }
   },
 };
-const states = State.getStatesOfCountry("IN");
+const states = locationData?.State.getStatesOfCountry("IN") ?? [];
 const selectedState = states.find(
   (s) => s.name === formData.state
 );
 
 const cities = selectedState
-  ? City.getCitiesOfState("IN", selectedState.isoCode)
+  ? locationData?.City.getCitiesOfState("IN", selectedState.isoCode) ?? []
   : [];
 
   if (brokerInvite && !invitationInfo) return <Box sx={{ p: 4 }}>

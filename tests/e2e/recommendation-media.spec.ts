@@ -53,7 +53,7 @@ test("recommendation picker adds, removes and validates multiple attachments", a
 
 test("performance viewer shows all attachments and keeps legacy media available", async ({ page }, testInfo) => {
   await page.goto("/performance");
-  await expect(page.getByRole("row").filter({ hasText: "EMPTY" }).getByText("No media")).toBeVisible();
+  await expect(page.getByText("No media", { exact: true }).filter({ visible: true }).first()).toBeVisible();
   await page.getByRole("button", { name: "View media for MULTI (4 files)", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("button", { name: "View Image", exact: true })).toHaveCount(2);

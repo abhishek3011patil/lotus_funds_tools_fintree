@@ -88,7 +88,7 @@ export const getEmailConfig = (
     ),
     fromName:
       environment.EMAIL_FROM_NAME?.trim() ||
-      "Lotus Funds",
+      "Tarkashh",
     fromAddress:
       environment.EMAIL_FROM_ADDRESS?.trim() || user,
   };

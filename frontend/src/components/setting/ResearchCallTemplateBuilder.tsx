@@ -338,7 +338,7 @@ const PREVIEW_CALL = {
 
 const PREVIEW_RA = {
   fullName: "Aarav Sharma",
-  organizationName: "Lotus Funds",
+  organizationName: "Tarkashh",
   sebiRegistrationNumber: "INH000000000",
   contactNumber: "+91 90000 00000",
   email: "analyst@example.com",

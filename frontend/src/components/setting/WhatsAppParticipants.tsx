@@ -103,7 +103,7 @@ Your Research Analyst may send research calls to you today through this WhatsApp
 
 This is only a test message. No investment action is required.
 
-- Lotus Funds`;
+- Tarkashh`;
 
     const response = await axios.post(
       `${import.meta.env.VITE_API_URL}/api/whatsapp/test-message`,

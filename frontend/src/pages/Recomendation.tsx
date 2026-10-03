@@ -66,6 +66,8 @@ import axios from "axios";
 import RemarksField from "../components/page_Mainapp/RemarksField";
 import { formatResearchCallMessage } from "../utils/researchCallTemplate.utils";
 import { fetchResearchCallTemplates } from "../services/researchCallTemplate.service";
+import RiskRewardSummary from "../components/page_Mainapp/RiskRewardSummary";
+import { calculateCallRiskReward, formatRiskReward } from "../utils/riskReward.utils";
 
 
 const BUY_COLOR = "#22c55e";
@@ -73,6 +75,9 @@ const SELL_COLOR = "#ef4444";
 const PUBLISH_PREVIEW_SESSION_KEY = "researchCallShowPublishPreview";
 const MAX_UNDERLYING_STUDY_LENGTH = 255;
 const MAX_UNDERLYING_STUDIES = 20;
+
+const appendRiskReward = (message: string, ratio: number | null) =>
+  ratio === null ? message : `${message}\n\nRisk : Reward: ${formatRiskReward(ratio)}`;
 
 type PreparedResearchCallMessage = {
   message: string;
@@ -309,6 +314,15 @@ function formReducer(
 }
 
   const [form, dispatch] = useReducer(formReducer, initialForm);
+  const riskRewardRatio = calculateCallRiskReward({
+    action: form.action,
+    entry: form.entry,
+    entryLow: form.entryLow,
+    entryUpper: form.entryUpper,
+    target: form.target,
+    stopLoss: form.stopLoss,
+    rangeEnabled: form.rangeEnabled,
+  });
   const underlyingStudyText = form.underlyingStudy
     .map((study) => study.label)
     .join(", ");
@@ -474,7 +488,7 @@ https://lotusfunds.com/disclaimer&disclosure
     if (errataTemplate) {
       try {
         return {
-          message: formatResearchCallMessage(
+          message: appendRiskReward(formatResearchCallMessage(
             errataTemplate,
             {
               publishedAt,
@@ -503,7 +517,7 @@ https://lotusfunds.com/disclaimer&disclosure
             },
             raTemplateData,
             "ERRATA"
-          ),
+          ), riskRewardRatio),
           templateVersion: errataTemplate.version,
           templateSnapshot: errataTemplate,
         };
@@ -513,7 +527,7 @@ https://lotusfunds.com/disclaimer&disclosure
     }
 
     return {
-      message: defaultErrataMessage,
+      message: appendRiskReward(defaultErrataMessage, riskRewardRatio),
       templateVersion: null,
       templateSnapshot: null,
     };
@@ -580,7 +594,7 @@ https://lotusfunds.com/disclaimer&disclosure
   if (newCallTemplate) {
     try {
       return {
-        message: formatResearchCallMessage(
+        message: appendRiskReward(formatResearchCallMessage(
           newCallTemplate,
           {
             publishedAt,
@@ -613,7 +627,7 @@ https://lotusfunds.com/disclaimer&disclosure
           },
           raTemplateData,
           "NEW_CALL"
-        ),
+        ), riskRewardRatio),
         templateVersion: newCallTemplate.version,
         templateSnapshot: JSON.stringify(newCallTemplate),
       };
@@ -623,7 +637,7 @@ https://lotusfunds.com/disclaimer&disclosure
   }
 
   return {
-    message: defaultPublishMessage,
+    message: appendRiskReward(defaultPublishMessage, riskRewardRatio),
     templateVersion: null,
     templateSnapshot: null,
   };
@@ -1330,7 +1344,7 @@ const handleExit = useCallback(
     "N/A";
 
   const organizationName =
-    raDetails.org_name || "Lotus Funds";
+    raDetails.org_name || "Tarkashh";
 
 
 
@@ -3587,6 +3601,8 @@ sx={{
     value={form.remark}
     onCommit={commitRemark}
   />
+
+        <RiskRewardSummary ratio={riskRewardRatio} />
 
   {isErrataMode && (
     <Typography

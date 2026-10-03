@@ -34,7 +34,7 @@ const isValidPhone = (phone: string): boolean => {
 const isAdminRole = (role?: string): boolean => {
   const normalizedRole = String(role || "").toUpperCase();
 
-  return ["ADMIN", "SUPER_ADMIN"].includes(normalizedRole);
+  return ["ADMIN", "SUPERADMIN", "SUPER_ADMIN"].includes(normalizedRole);
 };
 
 const resolveRAUserId = (
@@ -50,8 +50,11 @@ const resolveRAUserId = (
     return requestedRAId;
   }
 
-  // RA can manage only their own participants.
-  return req.user.id;
+  // An RA can manage only their own participants. Other roles have no
+  // participant-management scope.
+  return String(req.user.role || "").toUpperCase() === "RESEARCH_ANALYST"
+    ? req.user.id
+    : null;
 };
 
 /* ================= GET PARTICIPANTS ================= */
@@ -530,7 +533,7 @@ if (oldParticipant.rowCount === 0) {
    GET WHATSAPP PARTICIPANTS BY RESEARCH ANALYST (GET /api/whatsapp/ra/:raId)
    ========================================================= */
 export const getWhatsAppParticipantsByRA = async (
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) => {
   try {
@@ -544,6 +547,15 @@ export const getWhatsAppParticipantsByRA = async (
       return res.status(400).json({
         success: false,
         message: "Invalid RA ID",
+      });
+    }
+
+    const role = String(req.user?.role || "").trim().toUpperCase();
+    if (!isAdminRole(role) &&
+        !(role === "RESEARCH_ANALYST" && req.user?.id === raId)) {
+      return res.status(403).json({
+        success: false,
+        message: "You cannot view participants for this analyst",
       });
     }
 
@@ -568,7 +580,7 @@ export const getWhatsAppParticipantsByRA = async (
     );
 
     await createAuditLog({
-  userId: (req as AuthRequest).user?.id,
+  userId: req.user?.id,
   action: "VIEW_PARTICIPANTS",
   module: "WHATSAPP",
   targetEntity: raId,

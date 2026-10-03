@@ -99,7 +99,7 @@ const sendExistingOrder = (
       keyId: process.env.RAZORPAY_KEY_ID,
       businessName:
         process.env.RAZORPAY_CHECKOUT_NAME ||
-        "Lotus Funds",
+        "Tarkashh",
       description: selection.plan_name_snapshot,
       prefill: {
         email: application.email,
@@ -614,7 +614,7 @@ export const createRegistrationOrder = async (
         keyId: process.env.RAZORPAY_KEY_ID,
         businessName:
           process.env.RAZORPAY_CHECKOUT_NAME ||
-          "Lotus Funds",
+          "Tarkashh",
         description:
           registration.plan_name_snapshot,
         prefill: {
