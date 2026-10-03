@@ -45,7 +45,6 @@ import {
   useCallback,
   useReducer,
   startTransition,
-  type ChangeEvent,
   type MouseEvent,
 } from "react";
 import { FormHelperText } from "@mui/material";
@@ -79,7 +78,6 @@ import {
 
 const BUY_COLOR = "#22c55e";
 const SELL_COLOR = "#ef4444";
-const PUBLISH_PREVIEW_SESSION_KEY = "researchCallShowPublishPreview";
 const MAX_UNDERLYING_STUDY_LENGTH = 255;
 const MAX_UNDERLYING_STUDIES = 20;
 
@@ -191,13 +189,6 @@ const [selectedAudienceGroupIds, setSelectedAudienceGroupIds] = useState<string[
 const [audienceLoading, setAudienceLoading] = useState(true);
 const [audienceError, setAudienceError] = useState("");
 const [allAudienceCounts, setAllAudienceCounts] = useState({ clients: 0, brokers: 0, telegram: 0, whatsapp: 0 });
-const [showPublishPreview, setShowPublishPreview] = useState(() => {
-  try {
-    return sessionStorage.getItem(PUBLISH_PREVIEW_SESSION_KEY) !== "false";
-  } catch {
-    return true;
-  }
-});
 
 const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
 const [versionHistory, setVersionHistory] = useState<any[]>([]);
@@ -778,6 +769,11 @@ const finalDisplayName =
       if (finalPreparedMessage.templateSnapshot !== null) {
         errataFormData.append("message_template_snapshot", JSON.stringify(finalPreparedMessage.templateSnapshot));
       }
+      errataFormData.append("audience_mode", audienceMode);
+      errataFormData.append(
+        "audience_group_ids",
+        JSON.stringify(audienceMode === "GROUPS" ? selectedAudienceGroupIds : [])
+      );
 
       const errataResponse = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/research/calls/errata`,
@@ -1625,6 +1621,13 @@ const handleViewHistory = useCallback(async (item: any) => {
       dispatch({ type: "SET_FORM", payload: formUpdate });
       setIsErrataMode(true);
       setErrataSourceId(item.id);
+      setAudienceMode(item.audience_mode === "GROUPS" ? "GROUPS" : "ALL_CONNECTED");
+      setSelectedAudienceGroupIds(
+        item.audience_mode === "GROUPS" && Array.isArray(item.audience_groups_snapshot)
+          ? item.audience_groups_snapshot.map((group: { id?: unknown }) => String(group.id || "")).filter(Boolean)
+          : []
+      );
+      setAudienceError("");
       setDirectValue(item.name || item.symbol || "");
     });
 
@@ -1730,13 +1733,7 @@ const validateAndPublish = async (
   event.preventDefault();
   if (isSubmitting || previewLoading || !validatePublishForm()) return;
 
-  if (!isErrataMode || showPublishPreview) {
-    await prepareAndOpenPreview();
-    return;
-  }
-
-  await handleSubmit();
-  setWasValidated(false);
+  await prepareAndOpenPreview();
 };
 
 const validateAndPreview = async (
@@ -1825,7 +1822,7 @@ const publishTrackedDraft = async (
 
 const handleConfirmPreview = async () => {
   if (!preparedPreview || isSubmitting) return;
-  if (!isErrataMode && audienceMode === "GROUPS" && selectedAudienceGroupIds.length === 0) {
+  if (audienceMode === "GROUPS" && selectedAudienceGroupIds.length === 0) {
     setAudienceError("Select at least one group before publishing.");
     return;
   }
@@ -1834,18 +1831,6 @@ const handleConfirmPreview = async () => {
     return;
   }
   await handleSubmit(preparedPreview);
-};
-
-const handleShowPublishPreviewChange = (
-  event: ChangeEvent<HTMLInputElement>
-) => {
-  const checked = event.target.checked;
-  setShowPublishPreview(checked);
-  try {
-    sessionStorage.setItem(PUBLISH_PREVIEW_SESSION_KEY, String(checked));
-  } catch {
-    // Keep the in-memory preference if session storage is unavailable.
-  }
 };
 
 
@@ -3842,9 +3827,9 @@ sx={{
       : "Research Call Message Preview"}
   </DialogTitle>
   <DialogContent dividers>
-    {!isErrataMode && <Paper variant="outlined" sx={{ p: 2, mb: 2, bgcolor: "#FBFCFF" }}>
+    <Paper variant="outlined" sx={{ p: 2, mb: 2, bgcolor: "#FBFCFF" }}>
       <Typography fontWeight={800}>Select audience</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>Choose who can see and receive this research call. The final recipient list is saved with the call.</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{isErrataMode ? "Confirm who should receive this correction. The original call’s audience is preselected." : "Choose who can see and receive this research call. The final recipient list is saved with the call."}</Typography>
       {audienceError && <Alert severity="warning" onClose={() => setAudienceError("")} sx={{ mb: 1.5 }}>{audienceError}</Alert>}
       <RadioGroup value={audienceMode} onChange={event => { setAudienceMode(event.target.value as "ALL_CONNECTED" | "GROUPS"); setAudienceError(""); }}>
         <FormControlLabel value="ALL_CONNECTED" control={<Radio />} label={`All connected recipients (${allAudienceCounts.clients} clients, ${allAudienceCounts.brokers} brokers, ${allAudienceCounts.telegram} Telegram, ${allAudienceCounts.whatsapp} WhatsApp)`} />
@@ -3868,7 +3853,7 @@ sx={{
         </Select>
         <FormHelperText>{audienceGroups.length === 0 ? "Create a group from Connections > Groups first." : `${selectedAudienceClientCount} clients, ${selectedAudienceBrokerCount} brokers, ${selectedAudienceTelegramCount} Telegram and ${selectedAudienceWhatsAppCount} WhatsApp selected`}</FormHelperText>
       </FormControl>}
-    </Paper>}
+    </Paper>
     <Paper
       component="pre"
       variant="outlined"
@@ -3888,16 +3873,6 @@ sx={{
     >
       {preparedPreview?.message || ""}
     </Paper>
-    {isErrataMode && <FormControlLabel
-      sx={{ mt: 1.5 }}
-      control={
-        <Checkbox
-          checked={showPublishPreview}
-          onChange={handleShowPublishPreviewChange}
-        />
-      }
-      label="Show preview before publishing"
-    />}
   </DialogContent>
   <DialogActions>
     <Button onClick={handleClosePreview} disabled={isSubmitting}>
@@ -3906,7 +3881,7 @@ sx={{
     <Button
       variant="contained"
       onClick={handleConfirmPreview}
-      disabled={isSubmitting || !preparedPreview || (!isErrataMode && audienceMode === "GROUPS" && selectedAudienceGroupIds.length === 0)}
+      disabled={isSubmitting || !preparedPreview || (audienceMode === "GROUPS" && selectedAudienceGroupIds.length === 0)}
     >
       {isSubmitting
         ? isErrataMode

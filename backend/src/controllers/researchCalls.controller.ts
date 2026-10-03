@@ -647,6 +647,8 @@ export const getResearchCalls = async (req: AuthRequest, res: Response) => {
     },
 
     remarks: row.research_remarks,
+    audience_mode: row.audience_mode,
+    audience_groups_snapshot: row.audience_groups_snapshot,
 }));
 
         return res.json(formatted);
@@ -910,6 +912,35 @@ if (existingCall.status !== "PUBLISHED") {
   });
 }
 
+let errataAudience = {
+  mode: existingCall.audience_mode === "GROUPS" ? "GROUPS" as const : "ALL_CONNECTED" as const,
+  selectedGroups: Array.isArray(existingCall.audience_groups_snapshot)
+    ? existingCall.audience_groups_snapshot
+    : [],
+  recipients: Array.isArray(existingCall.audience_recipient_snapshot)
+    ? existingCall.audience_recipient_snapshot
+    : [],
+};
+
+if (req.body?.audience_mode !== undefined) {
+  const requestedAudience = parseAudienceSelection(req.body || {});
+  try {
+    errataAudience = await resolveResearchAudience({
+      raUserId: userId,
+      mode: requestedAudience.mode,
+      groupIds: requestedAudience.groupIds,
+      db: client,
+    });
+  } catch (audienceError) {
+    await client.query("ROLLBACK");
+    return res.status(400).json({
+      success: false,
+      code: "INVALID_RESEARCH_AUDIENCE",
+      message: audienceError instanceof Error ? audienceError.message : "Invalid Errata audience.",
+    });
+  }
+}
+
     // =========================================================
     // 3️⃣ DETERMINE ROOT CALL
     // =========================================================
@@ -1171,9 +1202,9 @@ const insertResult = await client.query(
     true,
     JSON.stringify(attachments),
     riskRewardRatio,
-    existingCall.audience_mode || "ALL_CONNECTED",
-    JSON.stringify(existingCall.audience_groups_snapshot || []),
-    JSON.stringify(existingCall.audience_recipient_snapshot || []),
+    errataAudience.mode,
+    JSON.stringify(errataAudience.selectedGroups),
+    JSON.stringify(errataAudience.recipients),
   ]
 );
 
@@ -1181,9 +1212,6 @@ const errataCall = insertResult.rows[0];
 const whatsappMessage = publishedErrataMessage || "";
 
 if (whatsappMessage) {
-  const inheritedRecipients = Array.isArray(existingCall.audience_recipient_snapshot)
-    ? existingCall.audience_recipient_snapshot
-    : [];
   await queueWhatsAppResearchCall({
     researchCallId: errataCall.id,
     originalCallId: rootId,
@@ -1191,11 +1219,11 @@ if (whatsappMessage) {
     eventType: "RESEARCH_CALL_ERRATA",
     message: whatsappMessage,
     client,
-    clientUserIds: existingCall.audience_mode === "GROUPS"
-      ? audienceClientIds(inheritedRecipients)
+    clientUserIds: errataAudience.mode === "GROUPS"
+      ? audienceClientIds(errataAudience.recipients)
       : undefined,
-    participantIds: existingCall.audience_mode === "GROUPS"
-      ? audienceWhatsAppParticipantIds(inheritedRecipients)
+    participantIds: errataAudience.mode === "GROUPS"
+      ? audienceWhatsAppParticipantIds(errataAudience.recipients)
       : undefined,
   });
   await distributeBrokerCallUpdate({
