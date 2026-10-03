@@ -127,7 +127,7 @@ test("errata preview preselects the original groups and allows changing them", a
     if (pathname === "/api/research/calls/my") {
       return route.fulfill({ json: [{
         id: "00000000-0000-4000-8000-000000000099",
-        status: "PUBLISHED", created_at: "2026-10-03T08:00:00.000Z", version_type: "ORIGINAL",
+        status: "PUBLISHED", created_at: "2026-10-03T08:00:00.000Z", version_type: "ERRATA",
         exchange: "NSE", instrument: "STOCK", symbol: "TEST", name: "Test Limited",
         action: "BUY", call_type: "Cash", trade_type: "Short Term",
         entry: { ideal: "100", low: null, high: null }, targets: ["110"], stop_losses: ["95"],
@@ -149,7 +149,10 @@ test("errata preview preselects the original groups and allows changing them", a
   });
 
   await page.goto("/recommendations");
-  await page.getByRole("button", { name: "Modify/Errata", exact: true }).click();
+  const errataRow = page.getByRole("row").filter({ hasText: "Test Limited" });
+  await expect(errataRow).toHaveCSS("background-color", "rgb(255, 248, 225)");
+  await expect(errataRow.getByText("ERRATA", { exact: true })).toBeVisible();
+  await errataRow.getByRole("button", { name: "Modify/Errata", exact: true }).click();
   await page.getByPlaceholder("Research Analyst's Remarks").fill("Correcting the target");
   await page.getByPlaceholder("Research Analyst's Remarks").blur();
   await page.getByRole("button", { name: "Preview Errata", exact: true }).click();

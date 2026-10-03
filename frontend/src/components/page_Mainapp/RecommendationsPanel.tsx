@@ -16,6 +16,7 @@ import {
   TableRow,
   Button,
 } from "@mui/material";
+import { errataBadgeSx, errataRowSx, isErrataVersion } from "../../utils/errataPresentation";
 import ExitRecommendationDialog from "./ExitRecommendationDialog";
 import LoadingPage from "../../common/LoadingPage";
 
@@ -235,6 +236,7 @@ const closeExitDialog = useCallback(() => {
                                             const dateObj = new Date(
                                                 item.created_at
                                             );
+                                            const isErrata = isErrataVersion(item.version_type);
 
                                             return (
                                                 <TableRow
@@ -248,6 +250,7 @@ const closeExitDialog = useCallback(() => {
                                                             backgroundColor:
                                                                 "#fcfcfc",
                                                         },
+                                                        ...(isErrata ? errataRowSx : {}),
                                                     }}
                                                 >
                                                     {/* DATE */}
@@ -324,26 +327,9 @@ const closeExitDialog = useCallback(() => {
                                                             </Typography>
 
                                                             {/* ERRATA BADGE */}
-                                                            {String(
-                                                                item.version_type
-                                                            ).toUpperCase() ===
-                                                                "ERRATA" && (
+                                                            {isErrata && (
                                                                 <Box
-                                                                    sx={{
-                                                                        backgroundColor:
-                                                                            "#fff3e0",
-                                                                        color:
-                                                                            "#e65100",
-                                                                        px: 1,
-                                                                        py: 0.2,
-                                                                        borderRadius:
-                                                                            "4px",
-                                                                        fontSize:
-                                                                            "0.6rem",
-                                                                        fontWeight: 700,
-                                                                        border:
-                                                                            "1px solid #ffcc80",
-                                                                    }}
+                                                                    sx={errataBadgeSx}
                                                                 >
                                                                     ERRATA
                                                                 </Box>

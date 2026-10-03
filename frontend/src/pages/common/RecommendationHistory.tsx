@@ -22,6 +22,7 @@ DialogContent,
 DialogActions,
 TextField,
 } from "@mui/material";
+import { errataBadgeSx, errataRowSx, isErrataVersion } from "../../utils/errataPresentation";
 import LoadingPage from "../../common/LoadingPage";
 
 
@@ -1525,7 +1526,7 @@ const handleReset = () => {
                 </TableRow>
               ) : (
                 paginatedData.map((row, idx) => (
-                  <TableRow key={idx} sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
+                  <TableRow key={idx} sx={{ "&:last-child td, &:last-child th": { border: 0 }, ...(isErrataVersion(row.version_type) ? errataRowSx : {}) }}>
                     <TableCell sx={historyBodyStyle}>{formatDateTime(row.dateTime)}</TableCell>
                     <TableCell sx={historyBodyStyle}>
                       <Box
@@ -1608,18 +1609,9 @@ const handleReset = () => {
       {row.status}
     </Box>
 
- {row.version_type?.toUpperCase() === "ERRATA" && (
+ {isErrataVersion(row.version_type) && (
   <Box
-    sx={{
-      display: "inline-block",
-      px: 1,
-      py: 0.5,
-      borderRadius: "4px",
-      fontSize: "0.7rem",
-      fontWeight: 700,
-      backgroundColor: "#f4d9a3",
-      color: "#ea0909",
-    }}
+    sx={errataBadgeSx}
   >
     ERRATA
   </Box>
