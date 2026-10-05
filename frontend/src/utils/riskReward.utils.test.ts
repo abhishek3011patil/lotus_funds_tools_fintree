@@ -17,4 +17,27 @@ describe("call risk/reward", () => {
       target: "120", stopLoss: "110", rangeEnabled: false,
     })).toBeNull();
   });
+
+  it("recalculates when the analyst tunes entry, target, or stop loss", () => {
+    const prices = {
+      action: "BUY" as const,
+      entry: "100",
+      entryLow: "",
+      entryUpper: "",
+      target: "120",
+      stopLoss: "90",
+      rangeEnabled: false,
+    };
+
+    expect(formatRiskReward(calculateCallRiskReward(prices))).toBe("1 : 2.00");
+    expect(formatRiskReward(calculateCallRiskReward({ ...prices, target: "130" }))).toBe("1 : 3.00");
+    expect(formatRiskReward(calculateCallRiskReward({ ...prices, stopLoss: "95" }))).toBe("1 : 4.00");
+    expect(formatRiskReward(calculateCallRiskReward({ ...prices, entry: "105" }))).toBe("1 : 1.00");
+    expect(formatRiskReward(calculateCallRiskReward({
+      ...prices,
+      rangeEnabled: true,
+      entryLow: "98",
+      entryUpper: "102",
+    }))).toBe("1 : 1.50");
+  });
 });

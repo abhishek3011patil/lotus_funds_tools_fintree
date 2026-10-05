@@ -328,6 +328,13 @@ function formReducer(
     stopLoss: form.stopLoss,
     rangeEnabled: form.rangeEnabled,
   });
+  const riskRewardReady = Boolean(
+    form.target.trim() &&
+    form.stopLoss.trim() &&
+    (form.rangeEnabled
+      ? form.entryLow.trim() && form.entryUpper.trim()
+      : form.entry.trim())
+  );
   const underlyingStudyText = form.underlyingStudy
     .map((study) => study.label)
     .join(", ");
@@ -2730,14 +2737,12 @@ const getMainPriceError = useCallback(
   ]
 );
 
-const commitMainPrice = useCallback(
+const changeMainPrice = useCallback(
   (field: MainPriceField, value: string) => {
-    startTransition(() => {
-      dispatch({
-        type: "SET_FIELD",
-        field,
-        value,
-      });
+    dispatch({
+      type: "SET_FIELD",
+      field,
+      value,
     });
   },
   []
@@ -2753,17 +2758,15 @@ const commitRemark = useCallback((value: string) => {
   });
 }, []);
 
-const commitAdditionalPrice = useCallback(
+const changeAdditionalPrice = useCallback(
   (
     field: AdditionalPriceField,
     value: string
   ) => {
-    startTransition(() => {
-      dispatch({
-        type: "SET_FIELD",
-        field,
-        value,
-      });
+    dispatch({
+      type: "SET_FIELD",
+      field,
+      value,
     });
   },
   []
@@ -3440,7 +3443,7 @@ sx={{
 <PriceSection
   values={mainPriceValues}
   wasValidated={wasValidated}
-  onCommit={commitMainPrice}
+  onChange={changeMainPrice}
   getError={getMainPriceError}
 />
 
@@ -3450,7 +3453,7 @@ sx={{
   toggles={additionalPriceToggles}
   wasValidated={wasValidated}
   onToggle={toggleAdditionalSection}
-  onCommit={commitAdditionalPrice}
+  onChange={changeAdditionalPrice}
   getError={getAdditionalPriceError}
 />
 
@@ -3463,7 +3466,15 @@ sx={{
             mb: 1
           }}
         >
-          {/* TOP PART: Holding Period */}
+          {/* Holding Period and live Risk : Reward */}
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) minmax(300px, 0.72fr)" },
+              gap: 1.5,
+              alignItems: "stretch",
+            }}
+          >
           <Box sx={{ width: "100%",
     maxWidth: "100%",
     overflowX: { xs: "auto", md: "visible" },
@@ -3527,7 +3538,10 @@ sx={{
             </FormControl>
           </Box>
 
-          {/* BOTTOM PART: Rationale (Now appears under Holding Period) */}
+          <RiskRewardSummary ratio={riskRewardRatio} ready={riskRewardReady} />
+          </Box>
+
+          {/* Rationale */}
           <Box sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 0.5 }}>
             <Typography sx={{ fontSize: '0.7rem', fontWeight: 700 }}>Rationale</Typography>
             <Box sx={{ width: "100%" }}>
@@ -3670,8 +3684,6 @@ sx={{
     value={form.remark}
     onCommit={commitRemark}
   />
-
-        <RiskRewardSummary ratio={riskRewardRatio} />
 
   {isErrataMode && (
     <Typography

@@ -51,7 +51,7 @@ type AdditionalPriceSectionProps = {
     field: AdditionalToggleField
   ) => void;
 
-  onCommit: (
+  onChange: (
     field: AdditionalPriceField,
     value: string
   ) => void;
@@ -106,25 +106,11 @@ const AdditionalPriceSection = memo(
     toggles,
     wasValidated,
     onToggle,
-    onCommit,
+    onChange,
     getError,
   }: AdditionalPriceSectionProps) => {
-   
- const [localValues, setLocalValues] =
-      useState<AdditionalPriceValues>(values);
 const [localToggles, setLocalToggles] =
   useState<ToggleValues>(toggles);
-
-    useEffect(() => {
-      setLocalValues(values);
-    }, [
-      values.entryLow,
-      values.entryUpper,
-      values.target2,
-      values.target3,
-      values.stopLoss2,
-      values.stopLoss3,
-    ]);
 
 const handleChange = useCallback(
   (
@@ -135,27 +121,9 @@ const handleChange = useCallback(
 
     if (value.includes("-")) return;
 
-    setLocalValues((previous) => ({
-      ...previous,
-      [field]: value,
-    }));
+    onChange(field, value);
   },
-  []
-);
-
-const handleBlur = useCallback(
-  (field: AdditionalPriceField) => {
-    const localValue = localValues[field];
-    const parentValue = values[field];
-
-    // Do not rerender the parent if nothing changed
-    if (localValue === parentValue) {
-      return;
-    }
-
-    onCommit(field, localValue);
-  },
-  [localValues, values, onCommit]
+  [onChange]
 );
 
 useEffect(() => {
@@ -271,16 +239,15 @@ const handleToggle = useCallback(
               >
                {fields.map(({ field, placeholder }) => {
   const errorMessage = isActive
-    ? getError(field, localValues)
+    ? getError(field, values)
     : null;
 
   return (
     <TextField
       key={field}
       type="number"
-      value={localValues[field]}
+      value={values[field]}
       disabled={!isActive}
-      onBlur={() => handleBlur(field)}
       onChange={(event) =>
         handleChange(field, event)
       }

@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { pool } from "../db";
 import {AuthRequest} from "../middlewares/auth.middleware";
 import { createClient } from "../utils/telegramClientFactory";
+import { loadResearchCallMedia, sendTelegramMessageWithMedia } from "../services/researchCallMedia.service";
 import {
   audienceClientIds,
   audienceTelegramParticipantIds,
@@ -784,6 +785,7 @@ export const sendMessageToRAClients = async (
     let selectedClientIds: string[] | undefined;
     let selectedParticipantIds: string[] | undefined;
     const researchCallId = String(req.body?.researchCallId || "");
+    let media = [] as Awaited<ReturnType<typeof loadResearchCallMedia>>;
     if (/^[a-f0-9-]{36}$/i.test(researchCallId)) {
       const callAudience = await pool.query(
         `SELECT audience_mode, audience_recipient_snapshot FROM research_calls
@@ -792,6 +794,7 @@ export const sendMessageToRAClients = async (
       );
       const call = callAudience.rows[0];
       if (!call) return res.status(404).json({ success: false, message: "Research call audience was not found." });
+      media = await loadResearchCallMedia(researchCallId);
       if (call.audience_mode === "GROUPS") {
         const recipients = Array.isArray(call.audience_recipient_snapshot) ? call.audience_recipient_snapshot : [];
         selectedClientIds = audienceClientIds(recipients);
@@ -904,27 +907,27 @@ export const sendMessageToRAClients = async (
               `📨 Sending to ${u.entity_type}:`,
               u.telegram_client_name || u.telegram_user_id
             );
-let entity: any;
-
-if (
-  u.entity_type === "GROUP" ||
-  u.entity_type === "CHANNEL"
-) {
-  entity = await client.getEntity(u.telegram_client_name);
-} else {
-  entity = await client.getEntity(u.telegram_user_id);
-}
-
-await client.sendMessage(entity, {
-  message: finalMessage,
-});
+            const target = u.entity_type === "GROUP" || u.entity_type === "CHANNEL"
+              ? u.telegram_client_name : u.telegram_user_id;
+            const entity = await client.getEntity(target);
+            const mediaFailures = await sendTelegramMessageWithMedia(client, entity, finalMessage, media);
 
             console.log(
               `✅ Sent to ${u.entity_type}:`,
               u.telegram_client_name
             );
 
-            successCount++;
+            if (mediaFailures.length) {
+              failCount++;
+              failedEntities.push({
+                entity: u.telegram_client_name || u.telegram_user_id,
+                type: u.entity_type,
+                reason: `Message sent, but ${mediaFailures.length} attachment(s) failed`,
+                attachments: mediaFailures,
+              });
+            } else {
+              successCount++;
+            }
 
             await sleep(2000);
           } catch (err: any) {
@@ -942,15 +945,23 @@ await client.sendMessage(entity, {
               await sleep(seconds * 1000);
 
               try {
-                const retryEntity = await client.getEntity(u.telegram_user_id);
-
-                await client.sendMessage(retryEntity, {
-                  message: finalMessage,
-                });
+                const target = u.entity_type === "GROUP" || u.entity_type === "CHANNEL"
+                  ? u.telegram_client_name : u.telegram_user_id;
+                const retryEntity = await client.getEntity(target);
+                const mediaFailures = await sendTelegramMessageWithMedia(client, retryEntity, finalMessage, media);
 
                 console.log("✅ Retry success:", u.telegram_client_name);
-
-                successCount++;
+                if (mediaFailures.length) {
+                  failCount++;
+                  failedEntities.push({
+                    entity: u.telegram_client_name || u.telegram_user_id,
+                    type: u.entity_type,
+                    reason: `Message sent, but ${mediaFailures.length} attachment(s) failed`,
+                    attachments: mediaFailures,
+                  });
+                } else {
+                  successCount++;
+                }
               } catch (retryErr: any) {
                 failCount++;
 

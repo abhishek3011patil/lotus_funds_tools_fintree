@@ -2,6 +2,7 @@ import { pool } from "../db";
 import type { PoolClient } from "pg";
 import { createClient } from "../utils/telegramClientFactory";
 import { queueWhatsAppResearchCall } from "./deliveryQueue.service";
+import { loadResearchCallMedia, sendTelegramMessageWithMedia } from "./researchCallMedia.service";
 
 type BrokerDeliveryEvent =
   | "RESEARCH_CALL_PUBLISHED"
@@ -39,6 +40,7 @@ export const sendTelegramToOwnerParticipants = async (
   const session = ownerResult.rows[0]?.telegram_session;
   const participants = participantsResult.rows;
   if (!session || participants.length === 0) return { queued: 0 };
+  const media = tracking ? await loadResearchCallMedia(tracking.researchCallId, db) : [];
 
   const trackedParticipants = await Promise.all(participants.map(async participant => {
     if (!tracking || !participant.broker_client_id) return { ...participant, deliveryId: null };
@@ -65,13 +67,18 @@ export const sendTelegramToOwnerParticipants = async (
             ? participant.telegram_client_name
             : participant.telegram_user_id;
           const entity = await telegram.getEntity(target);
-          await telegram.sendMessage(entity, { message });
+          const mediaFailures = await sendTelegramMessageWithMedia(telegram, entity, message, media);
           if (participant.deliveryId) {
             await pool.query(
-              `UPDATE broker_call_deliveries SET status = 'SENT', sent_at = NOW(),
-                 error_message = NULL, updated_at = NOW() WHERE id = $1`,
-              [participant.deliveryId],
+              `UPDATE broker_call_deliveries SET status = $1, sent_at = NOW(),
+                 error_message = $2, updated_at = NOW() WHERE id = $3`,
+              [mediaFailures.length ? "FAILED" : "SENT",
+                mediaFailures.length ? `Text sent; attachment delivery failed: ${JSON.stringify(mediaFailures)}` : null,
+                participant.deliveryId],
             );
+          }
+          if (mediaFailures.length) {
+            console.error("BROKER TELEGRAM MEDIA ERROR", { ownerUserId, participant: target, mediaFailures });
           }
         } catch (error) {
           console.error("BROKER TELEGRAM DELIVERY ERROR", {
