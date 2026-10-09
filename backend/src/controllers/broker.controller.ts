@@ -308,6 +308,8 @@ export const getAllBrokers = async (req: Request, res: Response) => {
         subscription.status AS subscription_status,
         subscription.starts_at AS subscription_starts_at,
         subscription.expires_at AS subscription_expires_at,
+        subscription.cancelled_at AS subscription_cancelled_at,
+        subscription.cancellation_reason AS subscription_cancellation_reason,
         plan.display_name AS subscription_plan_name,
         users.status AS user_status,
         (

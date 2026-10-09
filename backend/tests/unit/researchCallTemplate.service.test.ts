@@ -71,6 +71,17 @@ const errataTemplate = {
   ],
 };
 
+const brokerNewCallTemplate = {
+  ...newCallTemplate,
+  blocks: newCallTemplate.blocks.map((block) =>
+    block.fieldKey === "raAttribution"
+      ? fieldBlock("dynamicRaName", true)
+      : block.fieldKey === "disclaimer"
+        ? fieldBlock("brokerDisclaimer", true)
+        : block
+  ),
+};
+
 describe("research-call template validation", () => {
   it("recognizes only supported message types", () => {
     expect(isResearchCallMessageType("NEW_CALL")).toBe(
@@ -100,6 +111,30 @@ describe("research-call template validation", () => {
       isValidResearchCallTemplate(
         newCallTemplate,
         "ERRATA"
+      )
+    ).toBe(false);
+  });
+
+  it("validates broker templates against their dynamic RA and disclaimer blocks", () => {
+    expect(
+      isValidResearchCallTemplate(
+        brokerNewCallTemplate,
+        "NEW_CALL",
+        "BROKER"
+      )
+    ).toBe(true);
+    expect(
+      isValidResearchCallTemplate(
+        brokerNewCallTemplate,
+        "NEW_CALL",
+        "RA"
+      )
+    ).toBe(false);
+    expect(
+      isValidResearchCallTemplate(
+        newCallTemplate,
+        "NEW_CALL",
+        "BROKER"
       )
     ).toBe(false);
   });

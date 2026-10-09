@@ -94,6 +94,20 @@ export const profileImageUpload = multer({
   },
 });
 
+export const contentImageUpload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    const extension = path.extname(file.originalname).toLowerCase();
+    const mimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const extensions = [".jpg", ".jpeg", ".png", ".webp"];
+    if (!mimeTypes.includes(file.mimetype) || !extensions.includes(extension)) {
+      return cb(new Error("Invalid content image. Use JPG, JPEG, PNG or WEBP."));
+    }
+    cb(null, true);
+  },
+});
+
 // Recommendation attachments have a broader allowlist than registration proofs.
 export const recommendationMimeTypes: Record<string, string[]> = {
   ".jpg": ["image/jpeg", "image/jpg"],

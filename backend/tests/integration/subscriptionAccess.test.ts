@@ -105,6 +105,20 @@ const createLimitApp = () => {
   return app;
 };
 
+const createActiveOnlyApp = (role: string) => {
+  const app = express();
+  app.post(
+    "/protected",
+    (req, _res, next) => {
+      (req as any).user = { id: "user-1", role };
+      next();
+    },
+    requireActiveSubscription,
+    (_req, res) => res.status(201).json({ success: true })
+  );
+  return app;
+};
+
 describe("subscription access middleware", () => {
   beforeEach(() => {
     queryMock.mockReset();
@@ -169,6 +183,26 @@ describe("subscription access middleware", () => {
       "Your subscription has expired."
     );
     expect(response.body.nextStep).toBe("RENEW_SUBSCRIPTION");
+  });
+
+  it("blocks broker protected actions after cancellation", async () => {
+    queryMock
+      .mockResolvedValueOnce({ rows: [] } as any)
+      .mockResolvedValueOnce({ rows: [{
+        status: "CANCELLED",
+        starts_at: "2026-07-01T00:00:00.000Z",
+        expires_at: "2027-07-01T00:00:00.000Z",
+        plan_name_snapshot: "Broker Premium",
+        tier_code_snapshot: "PREMIUM",
+      }] } as any);
+
+    const response = await request(createActiveOnlyApp("BROKER"))
+      .post("/protected");
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe("ACTIVE_SUBSCRIPTION_REQUIRED");
+    expect(response.body.nextStep).toBe("RENEW_SUBSCRIPTION");
+    expect(queryMock.mock.calls[0][1]).toEqual(["user-1", "BROKER"]);
   });
 
   it("rejects a plan that does not include research calls", async () => {

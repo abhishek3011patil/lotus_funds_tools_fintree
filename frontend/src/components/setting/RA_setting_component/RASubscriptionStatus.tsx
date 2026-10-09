@@ -17,7 +17,7 @@ import {
   cancelSubscription,
 } from "../../../features/subscriptionCancellation/api";
 import RenewalPlanDialog from "../../../features/subscriptionRenewal/RenewalPlanDialog";
-import type { RAPlan } from "../../../features/raRegistrationSubscription/types";
+import type { RenewalPlan } from "../../../features/subscriptionRenewal/RenewalPlanDialog";
 
 const RASubscriptionStatus = () => {
   const [subscription, setSubscription] =
@@ -87,7 +87,7 @@ const RASubscriptionStatus = () => {
     };
   }, [loadSubscription]);
 
-  const renewSubscription = useCallback(async (plan: RAPlan) => {
+  const renewSubscription = useCallback(async (plan: RenewalPlan) => {
     if (renewing) return;
 
     setRenewing(true);

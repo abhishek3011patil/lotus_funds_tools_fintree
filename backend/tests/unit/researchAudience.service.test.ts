@@ -37,6 +37,9 @@ describe("research audience", () => {
       { type: "TELEGRAM", id: telegramA, name: "Telegram One" },
       { type: "WHATSAPP", id: whatsappA, name: "WhatsApp One" },
     ]);
+    const brokerSql = String(query.mock.calls[2][0]);
+    expect(brokerSql).toContain("platform_subscription.status = 'ACTIVE'");
+    expect(brokerSql).toContain("platform_plan.audience_type = 'BROKER'");
   });
 
   it("rejects missing or empty selected groups", async () => {

@@ -15,18 +15,61 @@ import {
 } from "@mui/material";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import { useEffect, useState } from "react";
-import { getRAPlans } from "../raRegistrationSubscription/api";
-import type { RAPlan } from "../raRegistrationSubscription/types";
+import api from "../../utils/axio";
+
+export type RenewalAudience = "RA" | "BROKER";
+export type RenewalPlan = {
+  id: string;
+  displayName: string;
+  pricePaise: number;
+  currency: string;
+  durationDays: number;
+  features: Array<{ key: string; displayName: string; enabled: boolean }>;
+};
+
+type JsonRecord = Record<string, unknown>;
+
+const isJsonRecord = (value: unknown): value is JsonRecord =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const normalizeRenewalPlan = (value: unknown): RenewalPlan | null => {
+  if (!isJsonRecord(value)) return null;
+  const price = isJsonRecord(value.price) ? value.price : {};
+  const id = String(value.id || "").trim();
+  if (!id) return null;
+
+  const features = Array.isArray(value.features)
+    ? value.features.flatMap((feature): RenewalPlan["features"] => {
+        if (!isJsonRecord(feature)) return [];
+        const key = String(feature.key || "").trim();
+        return [{
+          key,
+          displayName: String(feature.name || feature.displayName || key || "Feature"),
+          enabled: feature.enabled !== false,
+        }];
+      })
+    : [];
+
+  return {
+    id,
+    displayName: String(value.displayName || value.planCode || "Subscription plan"),
+    pricePaise: Number(price.amountPaise ?? value.pricePaise ?? 0),
+    currency: String(price.currency || value.currency || "INR"),
+    durationDays: Number(value.durationDays || 0),
+    features,
+  };
+};
 
 interface RenewalPlanDialogProps {
   open: boolean;
   processingPlanId: string | null;
   currentPlanName?: string | null;
+  audienceType?: RenewalAudience;
   onClose: () => void;
-  onChoose: (plan: RAPlan) => void;
+  onChoose: (plan: RenewalPlan) => void;
 }
 
-const formatPrice = (plan: RAPlan) =>
+const formatPrice = (plan: RenewalPlan) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: plan.currency,
@@ -37,10 +80,11 @@ const RenewalPlanDialog = ({
   open,
   processingPlanId,
   currentPlanName,
+  audienceType = "RA",
   onClose,
   onChoose,
 }: RenewalPlanDialogProps) => {
-  const [plans, setPlans] = useState<RAPlan[]>([]);
+  const [plans, setPlans] = useState<RenewalPlan[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadCount, setReloadCount] = useState(0);
@@ -53,15 +97,22 @@ const RenewalPlanDialog = ({
       setLoading(true);
       setError(null);
 
-      void getRAPlans(controller.signal)
-        .then(setPlans)
+      void api.get<{ plans?: unknown[] }>("/subscription-plans", {
+        params: { audienceType },
+        signal: controller.signal,
+      })
+        .then(({ data }) => setPlans(
+          (data.plans || [])
+            .map(normalizeRenewalPlan)
+            .filter((plan): plan is RenewalPlan => plan !== null)
+        ))
         .catch((requestError: unknown) => {
           if (controller.signal.aborted) return;
           setPlans([]);
           setError(
             requestError instanceof Error
               ? requestError.message
-              : "Unable to load Research Analyst plans."
+              : `Unable to load ${audienceType === "BROKER" ? "Broker" : "Research Analyst"} plans.`
           );
         })
         .finally(() => {
@@ -73,26 +124,26 @@ const RenewalPlanDialog = ({
       window.clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [open, reloadCount]);
+  }, [audienceType, open, reloadCount]);
 
   return (
     <Dialog open={open} onClose={processingPlanId ? undefined : onClose} fullWidth maxWidth="lg">
       <DialogTitle sx={{ fontWeight: 800 }}>Renew subscription</DialogTitle>
       <DialogContent dividers>
         <Typography color="text.secondary" sx={{ mb: 2.5 }}>
-          Choose one of the three Research Analyst tiers for your renewal.
+          Choose an available {audienceType === "BROKER" ? "Broker" : "Research Analyst"} tier for your renewal.
         </Typography>
 
-        <Tabs value="RA" aria-label="Subscription audiences" sx={{ mb: 3 }}>
-          <Tab value="RA" label="Research Analyst" />
-          <Tab value="BROKER" label="Broker" disabled />
+        <Tabs value={audienceType} aria-label="Subscription audiences" sx={{ mb: 3 }}>
+          <Tab value="RA" label="Research Analyst" disabled={audienceType !== "RA"} />
+          <Tab value="BROKER" label="Broker" disabled={audienceType !== "BROKER"} />
           <Tab value="CLIENT" label="Client" disabled />
         </Tabs>
 
         {loading && (
           <Stack alignItems="center" spacing={1.5} sx={{ py: 7 }}>
             <CircularProgress size={32} />
-            <Typography color="text.secondary">Loading RA tiers...</Typography>
+            <Typography color="text.secondary">Loading {audienceType === "BROKER" ? "Broker" : "RA"} tiers...</Typography>
           </Stack>
         )}
 
@@ -168,7 +219,7 @@ const RenewalPlanDialog = ({
         )}
 
         {!loading && !error && plans.length === 0 && (
-          <Alert severity="info">No Research Analyst plans are currently available.</Alert>
+          <Alert severity="info">No {audienceType === "BROKER" ? "Broker" : "Research Analyst"} plans are currently available.</Alert>
         )}
       </DialogContent>
       <DialogActions>

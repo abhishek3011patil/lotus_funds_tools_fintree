@@ -122,7 +122,9 @@ export const getWhatsAppParticipants = async (
     );
 
     await createAuditLog({
-  userId: req.user?.id,
+  adminId: req.user?.id,
+  adminName: req.user?.name,
+  adminRole: req.user?.role,
   action: "VIEW_PARTICIPANTS",
   module: "WHATSAPP",
   targetEntity: raUserId,
@@ -135,8 +137,8 @@ export const getWhatsAppParticipants = async (
   },
   status: "SUCCESS",
   ipAddress: req.ip,
-  device: req.headers["user-agent"],
-} as any);
+  device: req.headers["user-agent"]?.toString(),
+});
 
     return res.status(200).json({
       success: true,
@@ -258,7 +260,9 @@ export const addWhatsAppParticipant = async (
     );
 
    await createAuditLog({
-  userId: req.user.id,
+  adminId: req.user.id,
+  adminName: req.user.name,
+  adminRole: req.user.role,
   action: "ADD_PARTICIPANT",
   module: "WHATSAPP",
   targetEntity: result.rows[0].id,
@@ -269,8 +273,8 @@ export const addWhatsAppParticipant = async (
   newValue: result.rows[0],
   status: "SUCCESS",
   ipAddress: req.ip,
-  device: req.headers["user-agent"],
-} as any);
+  device: req.headers["user-agent"]?.toString(),
+});
 
     return res.status(201).json({
       success: true,
@@ -400,10 +404,12 @@ if (oldParticipant.rowCount === 0) {
     }
 
     await createAuditLog({
-  userId: req.user?.id,
+  adminId: req.user?.id,
+  adminName: req.user?.name,
+  adminRole: req.user?.role,
   action: "UPDATE_PARTICIPANT",
   module: "WHATSAPP",
-  targetEntity: id,
+  targetEntity: id?.toString(),
   targetType: "WHATSAPP_PARTICIPANT",
   description: `Updated participant ${name}`,
   reason: "Participant details modified",
@@ -411,8 +417,8 @@ if (oldParticipant.rowCount === 0) {
   newValue: result.rows[0],
   status: "SUCCESS",
   ipAddress: req.ip,
-  device: req.headers["user-agent"],
-} as any);
+  device: req.headers["user-agent"]?.toString(),
+});
 
     return res.status(200).json({
       success: true,
@@ -501,10 +507,12 @@ if (oldParticipant.rowCount === 0) {
     }
 
     await createAuditLog({
-  userId: req.user?.id,
+  adminId: req.user?.id,
+  adminName: req.user?.name,
+  adminRole: req.user?.role,
   action: "DELETE_PARTICIPANT",
   module: "WHATSAPP",
-  targetEntity: id,
+  targetEntity: id?.toString(),
   targetType: "WHATSAPP_PARTICIPANT",
   description: `Deleted participant ${oldParticipant.rows[0].participant_name}`,
   reason: "Participant removed",
@@ -512,8 +520,8 @@ if (oldParticipant.rowCount === 0) {
   newValue: null,
   status: "SUCCESS",
   ipAddress: req.ip,
-  device: req.headers["user-agent"],
-} as any);
+  device: req.headers["user-agent"]?.toString(),
+});
 
     return res.status(200).json({
       success: true,
@@ -580,10 +588,12 @@ export const getWhatsAppParticipantsByRA = async (
     );
 
     await createAuditLog({
-  userId: req.user?.id,
+  adminId: req.user?.id,
+  adminName: req.user?.name,
+  adminRole: req.user?.role,
   action: "VIEW_PARTICIPANTS",
   module: "WHATSAPP",
-  targetEntity: raId,
+  targetEntity: raId?.toString(),
   targetType: "RESEARCH_ANALYST",
   description: `Viewed WhatsApp participants for RA`,
   reason: "Participant list fetched",
@@ -593,8 +603,8 @@ export const getWhatsAppParticipantsByRA = async (
   },
   status: "SUCCESS",
   ipAddress: req.ip,
-  device: req.headers["user-agent"],
-} as any);
+  device: req.headers["user-agent"]?.toString(),
+});
 
     return res.status(200).json({
       success: true,
@@ -870,10 +880,12 @@ export const addRAClientToWhatsApp = async (
     }
 
     await createAuditLog({
-      userId: req.user?.id,
+      adminId: req.user?.id,
+      adminName: req.user?.name,
+      adminRole: req.user?.role,
       action: "ADD_CLIENT_TO_WHATSAPP",
       module: "WHATSAPP",
-      targetEntity: clientUserId,
+      targetEntity: clientUserId?.toString(),
       targetType: "CLIENT",
       description: `Added client ${name} to WhatsApp`,
       reason: "Client linked from RA Clients page",
@@ -881,8 +893,8 @@ export const addRAClientToWhatsApp = async (
       newValue: result.rows[0],
       status: "SUCCESS",
       ipAddress: req.ip,
-      device: req.headers["user-agent"],
-    } as any);
+      device: req.headers["user-agent"]?.toString(),
+    });
 
     return res.status(200).json({
       success: true,
@@ -945,10 +957,12 @@ export const removeRAClientFromWhatsApp = async (
     }
 
     await createAuditLog({
-      userId: req.user?.id,
+      adminId: req.user?.id,
+      adminName: req.user?.name,
+      adminRole: req.user?.role,
       action: "REMOVE_CLIENT_FROM_WHATSAPP",
       module: "WHATSAPP",
-      targetEntity: clientUserId,
+      targetEntity: clientUserId?.toString(),
       targetType: "CLIENT",
       description: "Removed client from WhatsApp",
       reason: "Client unlinked from RA Clients page",
@@ -956,8 +970,8 @@ export const removeRAClientFromWhatsApp = async (
       newValue: null,
       status: "SUCCESS",
       ipAddress: req.ip,
-      device: req.headers["user-agent"],
-    } as any);
+      device: req.headers["user-agent"]?.toString(),
+    });
 
     return res.status(200).json({
       success: true,
@@ -1173,10 +1187,12 @@ export const uploadWhatsAppExcel = [
       }
 
       await createAuditLog({
-        userId: req.user?.id,
+        adminId: req.user?.id,
+        adminName: req.user?.name,
+        adminRole: req.user?.role,
         action: "UPLOAD_PARTICIPANTS_EXCEL",
         module: "WHATSAPP",
-        targetEntity: raId,
+        targetEntity: raId?.toString(),
         targetType: "RESEARCH_ANALYST",
         description: "Uploaded WhatsApp participants using Excel",
         reason: "Bulk participant upload",
@@ -1189,8 +1205,8 @@ export const uploadWhatsAppExcel = [
         },
         status: "SUCCESS",
         ipAddress: req.ip,
-        device: req.headers["user-agent"],
-      } as any);
+        device: req.headers["user-agent"]?.toString(),
+      });
 
       return res.status(200).json({
         success: true,

@@ -67,6 +67,7 @@ import {
   type CallTemplate,
   type CallTemplateBlock,
   type CallTemplateFieldKey,
+  type CallTemplateOwnerType,
   type ResearchCallMessageType,
 } from "../../utils/researchCallTemplate.utils";
 import {
@@ -283,18 +284,20 @@ const SortableTemplateBlock = ({
 
 const fieldLabel = (
   fieldKey: CallTemplateFieldKey,
-  messageType: ResearchCallMessageType
+  messageType: ResearchCallMessageType,
+  ownerType: CallTemplateOwnerType
 ): string =>
-  getCallTemplateFields(messageType).find(
+  getCallTemplateFields(messageType, ownerType).find(
     (field) => field.key === fieldKey
   )?.label || fieldKey;
 
 const blockLabel = (
   block: CallTemplateBlock,
-  messageType: ResearchCallMessageType
+  messageType: ResearchCallMessageType,
+  ownerType: CallTemplateOwnerType
 ): string => {
   if (block.type === "field") {
-    return fieldLabel(block.fieldKey, messageType);
+    return fieldLabel(block.fieldKey, messageType, ownerType);
   }
 
   if (block.type === "separator") {
@@ -348,38 +351,44 @@ const PREVIEW_RA = {
     "https://lotusfunds.com/disclaimer&disclosure",
 };
 
+const PREVIEW_BROKER = {
+  companyName: "Tarkashh Securities Private Limited",
+  sebiRegistrationNumber: "INZ000000000",
+  disclaimer: "Tarkashh Securities Private Limited is a SEBI-registered broker. Investments in securities markets are subject to market risks. Read all related documents carefully before investing.",
+};
+
 type EditableTemplateMap = Record<
   ResearchCallMessageType,
   CallTemplate
 >;
 
-const loadEditableTemplates = (): EditableTemplateMap => {
+const loadEditableTemplates = (ownerType: CallTemplateOwnerType): EditableTemplateMap => {
   try {
     return {
-      NEW_CALL: loadCallTemplate("NEW_CALL"),
-      ERRATA: loadCallTemplate("ERRATA"),
+      NEW_CALL: loadCallTemplate("NEW_CALL", window.localStorage, ownerType),
+      ERRATA: loadCallTemplate("ERRATA", window.localStorage, ownerType),
     };
   } catch {
     return {
       NEW_CALL:
-        createDefaultCallTemplate("NEW_CALL"),
-      ERRATA: createDefaultCallTemplate("ERRATA"),
+        createDefaultCallTemplate("NEW_CALL", ownerType),
+      ERRATA: createDefaultCallTemplate("ERRATA", ownerType),
     };
   }
 };
 
-const ResearchCallTemplateBuilder = () => {
+const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTemplateOwnerType }) => {
   const [initialAuthToken] = useState(() =>
     localStorage.getItem("token")
   );
   const [messageType, setMessageType] =
     useState<ResearchCallMessageType>("NEW_CALL");
   const [templates, setTemplates] =
-    useState<EditableTemplateMap>(loadEditableTemplates);
+    useState<EditableTemplateMap>(() => loadEditableTemplates(ownerType));
   const [savedSnapshots, setSavedSnapshots] = useState<
     Record<ResearchCallMessageType, string>
   >(() => {
-    const localTemplates = loadEditableTemplates();
+    const localTemplates = loadEditableTemplates(ownerType);
     return {
       NEW_CALL: JSON.stringify(localTemplates.NEW_CALL),
       ERRATA: JSON.stringify(localTemplates.ERRATA),
@@ -430,13 +439,13 @@ const ResearchCallTemplateBuilder = () => {
       };
     }
 
-    fetchResearchCallTemplates(token)
+    fetchResearchCallTemplates(token, ownerType)
       .then((remoteTemplates: ResearchCallTemplateMap) => {
         if (!isMounted) {
           return;
         }
 
-        const localTemplates = loadEditableTemplates();
+        const localTemplates = loadEditableTemplates(ownerType);
         const nextTemplates: EditableTemplateMap = {
           NEW_CALL:
             remoteTemplates.NEW_CALL ??
@@ -453,7 +462,9 @@ const ResearchCallTemplateBuilder = () => {
               try {
                 saveCallTemplate(
                   remoteTemplate,
-                  type
+                  type,
+                  window.localStorage,
+                  ownerType
                 );
               } catch {
                 console.warn(
@@ -491,7 +502,7 @@ const ResearchCallTemplateBuilder = () => {
     return () => {
       isMounted = false;
     };
-  }, [initialAuthToken]);
+  }, [initialAuthToken, ownerType]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -535,7 +546,9 @@ const ResearchCallTemplateBuilder = () => {
         template,
         PREVIEW_CALL,
         PREVIEW_RA,
-        messageType
+        messageType,
+        ownerType,
+        ownerType === "BROKER" ? PREVIEW_BROKER : undefined
       );
     } catch {
       return "The current layout cannot be previewed. Restore the default template.";
@@ -636,7 +649,7 @@ const ResearchCallTemplateBuilder = () => {
   };
 
   const saveTemplate = async () => {
-    if (!isValidCallTemplate(template, messageType)) {
+    if (!isValidCallTemplate(template, messageType, ownerType)) {
       setValidationError(
         "The template is invalid or is missing a mandatory block."
       );
@@ -657,10 +670,11 @@ const ResearchCallTemplateBuilder = () => {
         await saveResearchCallTemplateToApi(
           token,
           messageType,
-          template
+          template,
+          ownerType
         );
       try {
-        saveCallTemplate(savedTemplate, messageType);
+        saveCallTemplate(savedTemplate, messageType, window.localStorage, ownerType);
       } catch {
         console.warn(
           "The server template was saved but could not be cached in this browser."
@@ -674,8 +688,8 @@ const ResearchCallTemplateBuilder = () => {
       setValidationError("");
       setSuccessMessage(
         messageType === "ERRATA"
-          ? "Errata template saved for your RA account."
-          : "New-call template saved for your RA account."
+          ? `Errata template saved for your ${ownerType === "BROKER" ? "broker" : "RA"} account.`
+          : `New-call template saved for your ${ownerType === "BROKER" ? "broker" : "RA"} account.`
       );
     } catch (error) {
       setValidationError(
@@ -690,7 +704,7 @@ const ResearchCallTemplateBuilder = () => {
 
   const resetTemplate = async () => {
     const defaultTemplate =
-      createDefaultCallTemplate(messageType);
+      createDefaultCallTemplate(messageType, ownerType);
     const token = localStorage.getItem("token");
 
     if (!token) {
@@ -706,10 +720,11 @@ const ResearchCallTemplateBuilder = () => {
         await saveResearchCallTemplateToApi(
           token,
           messageType,
-          defaultTemplate
+          defaultTemplate,
+          ownerType
         );
       try {
-        saveCallTemplate(savedTemplate, messageType);
+        saveCallTemplate(savedTemplate, messageType, window.localStorage, ownerType);
       } catch {
         console.warn(
           "The server template was reset but could not be cached in this browser."
@@ -780,7 +795,7 @@ const ResearchCallTemplateBuilder = () => {
                 fontWeight={800}
                 fontSize={{ xs: "1.05rem", sm: "1.25rem" }}
               >
-                Research Call Message Template
+                {ownerType === "BROKER" ? "Broker Call Message Template" : "Research Call Message Template"}
               </Typography>
             </Stack>
             <Typography
@@ -908,7 +923,7 @@ const ResearchCallTemplateBuilder = () => {
               color="text.secondary"
               fontSize="0.75rem"
             >
-              Each layout is saved separately for your RA account.
+              Each layout is saved separately for your {ownerType === "BROKER" ? "broker" : "RA"} account.
             </Typography>
           </Box>
           <ToggleButtonGroup
@@ -1039,7 +1054,8 @@ const ResearchCallTemplateBuilder = () => {
                     block={block}
                     label={blockLabel(
                       block,
-                      messageType
+                      messageType,
+                      ownerType
                     )}
                     onRemove={removeBlock}
                   />
@@ -1083,7 +1099,8 @@ const ResearchCallTemplateBuilder = () => {
                     key={block.id}
                     label={`Restore ${fieldLabel(
                       block.fieldKey,
-                      messageType
+                      messageType,
+                      ownerType
                     )}`}
                     onClick={() =>
                       restoreField(block.fieldKey)

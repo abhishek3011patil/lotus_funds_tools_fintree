@@ -2,8 +2,13 @@ export const CALL_TEMPLATE_STORAGE_KEY =
   "lotusfunds.ra.call-template.v1";
 export const ERRATA_TEMPLATE_STORAGE_KEY =
   "lotusfunds.ra.errata-template.v1";
+export const BROKER_CALL_TEMPLATE_STORAGE_KEY =
+  "lotusfunds.broker.call-template.v1";
+export const BROKER_ERRATA_TEMPLATE_STORAGE_KEY =
+  "lotusfunds.broker.errata-template.v1";
 export const CALL_TEMPLATE_VERSION = 1 as const;
 export const MAX_CUSTOM_BLOCK_LENGTH = 500;
+export type CallTemplateOwnerType = "RA" | "BROKER";
 
 export type ResearchCallMessageType =
   | "NEW_CALL"
@@ -245,16 +250,35 @@ export const ERRATA_TEMPLATE_FIELDS = [
   },
 ] as const;
 
+export const BROKER_CALL_TEMPLATE_FIELDS = CALL_TEMPLATE_FIELDS.map((field) =>
+  field.key === "raAttribution"
+    ? { key: "dynamicRaName" as const, label: "Dynamic Research Analyst name", locked: true }
+    : field.key === "disclaimer"
+      ? { key: "brokerDisclaimer" as const, label: "Dynamic Broker Disclaimer", locked: true }
+      : field
+);
+
+export const BROKER_ERRATA_TEMPLATE_FIELDS = ERRATA_TEMPLATE_FIELDS.map((field) =>
+  field.key === "raAttribution"
+    ? { key: "dynamicRaName" as const, label: "Dynamic Research Analyst name", locked: true }
+    : field.key === "disclaimer"
+      ? { key: "brokerDisclaimer" as const, label: "Dynamic Broker Disclaimer", locked: true }
+      : field
+);
+
 export type CallTemplateFieldKey =
   | (typeof CALL_TEMPLATE_FIELDS)[number]["key"]
-  | (typeof ERRATA_TEMPLATE_FIELDS)[number]["key"];
+  | (typeof ERRATA_TEMPLATE_FIELDS)[number]["key"]
+  | "dynamicRaName"
+  | "brokerDisclaimer";
 
 export const getCallTemplateFields = (
-  messageType: ResearchCallMessageType
+  messageType: ResearchCallMessageType,
+  ownerType: CallTemplateOwnerType = "RA"
 ) =>
-  messageType === "ERRATA"
-    ? ERRATA_TEMPLATE_FIELDS
-    : CALL_TEMPLATE_FIELDS;
+  ownerType === "BROKER"
+    ? messageType === "ERRATA" ? BROKER_ERRATA_TEMPLATE_FIELDS : BROKER_CALL_TEMPLATE_FIELDS
+    : messageType === "ERRATA" ? ERRATA_TEMPLATE_FIELDS : CALL_TEMPLATE_FIELDS;
 
 export type CallTemplateBlock =
   | {
@@ -319,16 +343,23 @@ export interface ResearchAnalystTemplateData {
   disclaimerLink?: string;
 }
 
+export interface BrokerTemplateData {
+  companyName?: string;
+  sebiRegistrationNumber?: string;
+  disclaimer?: string;
+}
+
 const cloneTemplate = (
   template: CallTemplate
 ): CallTemplate =>
   JSON.parse(JSON.stringify(template)) as CallTemplate;
 
 export const createDefaultCallTemplate = (
-  messageType: ResearchCallMessageType = "NEW_CALL"
+  messageType: ResearchCallMessageType = "NEW_CALL",
+  ownerType: CallTemplateOwnerType = "RA"
 ): CallTemplate => ({
   version: CALL_TEMPLATE_VERSION,
-  blocks: getCallTemplateFields(messageType).map((field) => ({
+  blocks: getCallTemplateFields(messageType, ownerType).map((field) => ({
     id: `field:${field.key}`,
     type: "field" as const,
     fieldKey: field.key,
@@ -356,7 +387,8 @@ export const normalizeCustomBlockText = (
 
 const isValidFieldBlock = (
   block: Record<string, unknown>,
-  messageType: ResearchCallMessageType
+  messageType: ResearchCallMessageType,
+  ownerType: CallTemplateOwnerType = "RA"
 ): block is Extract<CallTemplateBlock, { type: "field" }> => {
   if (
     block.type !== "field" ||
@@ -368,7 +400,7 @@ const isValidFieldBlock = (
     return false;
   }
 
-  const definition = getCallTemplateFields(messageType).find(
+  const definition = getCallTemplateFields(messageType, ownerType).find(
     (field) => field.key === block.fieldKey
   );
 
@@ -412,9 +444,10 @@ const isValidCustomBlock = (
 
 export const isValidCallTemplate = (
   value: unknown,
-  messageType: ResearchCallMessageType = "NEW_CALL"
+  messageType: ResearchCallMessageType = "NEW_CALL",
+  ownerType: CallTemplateOwnerType = "RA"
 ): value is CallTemplate => {
-  const fields = getCallTemplateFields(messageType);
+  const fields = getCallTemplateFields(messageType, ownerType);
 
   if (
     !isRecord(value) ||
@@ -437,7 +470,7 @@ export const isValidCallTemplate = (
     let block: CallTemplateBlock;
 
     if (candidate.type === "field") {
-      if (!isValidFieldBlock(candidate, messageType)) {
+      if (!isValidFieldBlock(candidate, messageType, ownerType)) {
         return false;
       }
       block = candidate;
@@ -469,50 +502,54 @@ export const isValidCallTemplate = (
 
 export const parseStoredCallTemplate = (
   rawValue: string | null,
-  messageType: ResearchCallMessageType = "NEW_CALL"
+  messageType: ResearchCallMessageType = "NEW_CALL",
+  ownerType: CallTemplateOwnerType = "RA"
 ): CallTemplate => {
   if (!rawValue) {
-    return createDefaultCallTemplate(messageType);
+    return createDefaultCallTemplate(messageType, ownerType);
   }
 
   try {
     const parsed: unknown = JSON.parse(rawValue);
-    return isValidCallTemplate(parsed, messageType)
+    return isValidCallTemplate(parsed, messageType, ownerType)
       ? cloneTemplate(parsed)
-      : createDefaultCallTemplate(messageType);
+      : createDefaultCallTemplate(messageType, ownerType);
   } catch {
-    return createDefaultCallTemplate(messageType);
+    return createDefaultCallTemplate(messageType, ownerType);
   }
 };
 
 export const loadCallTemplate = (
   messageType: ResearchCallMessageType = "NEW_CALL",
-  storage: Pick<Storage, "getItem"> = window.localStorage
+  storage: Pick<Storage, "getItem"> = window.localStorage,
+  ownerType: CallTemplateOwnerType = "RA"
 ): CallTemplate =>
   parseStoredCallTemplate(
     storage.getItem(
-      messageType === "ERRATA"
-        ? ERRATA_TEMPLATE_STORAGE_KEY
-        : CALL_TEMPLATE_STORAGE_KEY
+      ownerType === "BROKER"
+        ? messageType === "ERRATA" ? BROKER_ERRATA_TEMPLATE_STORAGE_KEY : BROKER_CALL_TEMPLATE_STORAGE_KEY
+        : messageType === "ERRATA" ? ERRATA_TEMPLATE_STORAGE_KEY : CALL_TEMPLATE_STORAGE_KEY
     ),
-    messageType
+    messageType,
+    ownerType
   );
 
 export const saveCallTemplate = (
   template: CallTemplate,
   messageType: ResearchCallMessageType = "NEW_CALL",
-  storage: Pick<Storage, "setItem"> = window.localStorage
+  storage: Pick<Storage, "setItem"> = window.localStorage,
+  ownerType: CallTemplateOwnerType = "RA"
 ) => {
-  if (!isValidCallTemplate(template, messageType)) {
+  if (!isValidCallTemplate(template, messageType, ownerType)) {
     throw new Error(
       "The template is invalid or is missing mandatory blocks."
     );
   }
 
   storage.setItem(
-    messageType === "ERRATA"
-      ? ERRATA_TEMPLATE_STORAGE_KEY
-      : CALL_TEMPLATE_STORAGE_KEY,
+    ownerType === "BROKER"
+      ? messageType === "ERRATA" ? BROKER_ERRATA_TEMPLATE_STORAGE_KEY : BROKER_CALL_TEMPLATE_STORAGE_KEY
+      : messageType === "ERRATA" ? ERRATA_TEMPLATE_STORAGE_KEY : CALL_TEMPLATE_STORAGE_KEY,
     JSON.stringify(template)
   );
 };
@@ -578,7 +615,8 @@ const optionalValue = (
 const fieldValue = (
   fieldKey: CallTemplateFieldKey,
   call: ResearchCallTemplateData,
-  ra: ResearchAnalystTemplateData
+  ra: ResearchAnalystTemplateData,
+  broker?: BrokerTemplateData
 ): string => {
   const target = (index: number) =>
     valueOrFallback(call.targets?.[index]);
@@ -648,6 +686,8 @@ const fieldValue = (
       return `Research Analyst: ${valueOrFallback(
         ra.fullName
       )} (${valueOrFallback(ra.organizationName)})`;
+    case "dynamicRaName":
+      return `Research Analyst: ${valueOrFallback(ra.fullName)}`;
     case "sebiRegistration":
       return `SEBI Registration No: ${valueOrFallback(
         ra.sebiRegistrationNumber
@@ -668,6 +708,12 @@ const fieldValue = (
             "https://lotusfunds.com/disclaimer&disclosure"
         ),
       ].join("\n");
+    case "brokerDisclaimer":
+      return [
+        "BROKER DISCLAIMER:",
+        "",
+        valueOrFallback(broker?.disclaimer),
+      ].join("\n");
   }
 };
 
@@ -675,9 +721,11 @@ export const formatResearchCallMessage = (
   template: CallTemplate,
   call: ResearchCallTemplateData,
   ra: ResearchAnalystTemplateData,
-  messageType: ResearchCallMessageType = "NEW_CALL"
+  messageType: ResearchCallMessageType = "NEW_CALL",
+  ownerType: CallTemplateOwnerType = "RA",
+  broker?: BrokerTemplateData
 ): string => {
-  if (!isValidCallTemplate(template, messageType)) {
+  if (!isValidCallTemplate(template, messageType, ownerType)) {
     throw new Error(
       "The research-call template is invalid."
     );
@@ -687,7 +735,7 @@ export const formatResearchCallMessage = (
     .filter((block) => block.enabled)
     .map((block) => {
       if (block.type === "field") {
-        return fieldValue(block.fieldKey, call, ra);
+        return fieldValue(block.fieldKey, call, ra, broker);
       }
 
       if (block.type === "separator") {
@@ -706,7 +754,9 @@ export const formatSavedResearchCallMessage = (
   ra: ResearchAnalystTemplateData,
   fallback: () => string,
   storage: Pick<Storage, "getItem"> = window.localStorage,
-  messageType: ResearchCallMessageType = "NEW_CALL"
+  messageType: ResearchCallMessageType = "NEW_CALL",
+  ownerType: CallTemplateOwnerType = "RA",
+  broker?: BrokerTemplateData
 ): string => {
   try {
     const rawTemplate = storage.getItem(
@@ -720,7 +770,7 @@ export const formatSavedResearchCallMessage = (
     }
 
     const parsed: unknown = JSON.parse(rawTemplate);
-    if (!isValidCallTemplate(parsed, messageType)) {
+    if (!isValidCallTemplate(parsed, messageType, ownerType)) {
       return fallback();
     }
 
@@ -728,7 +778,9 @@ export const formatSavedResearchCallMessage = (
       parsed,
       call,
       ra,
-      messageType
+      messageType,
+      ownerType,
+      broker
     );
   } catch {
     return fallback();

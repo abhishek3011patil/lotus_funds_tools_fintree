@@ -80,6 +80,8 @@ type BrokerRow = {
   applicationStatus: string;
   subscriptionStatus: string;
   subscriptionPlanName: string;
+  subscriptionCancelledAt: string;
+  subscriptionCancellationReason: string;
   createdAt: string;
 };
 
@@ -273,6 +275,8 @@ const handleActivate = async (userId: string) => {
           applicationStatus: broker.application_status || "",
           subscriptionStatus: broker.subscription_status || "",
           subscriptionPlanName: broker.subscription_plan_name || "",
+          subscriptionCancelledAt: broker.subscription_cancelled_at || "",
+          subscriptionCancellationReason: broker.subscription_cancellation_reason || "",
           createdAt: broker.created_at || "",
         }))
       );
@@ -1139,6 +1143,16 @@ const handleSuspend = async (userId: string) => {
                       <Typography variant="caption" color="text.secondary">
                         {broker.subscriptionStatus || "Not created"}
                       </Typography>
+                      {broker.subscriptionStatus === "CANCELLED" && (
+                        <Typography variant="caption" color="error" display="block">
+                          {broker.subscriptionCancelledAt
+                            ? `Cancelled ${new Date(broker.subscriptionCancelledAt).toLocaleDateString("en-IN")}`
+                            : "Cancelled"}
+                          {broker.subscriptionCancellationReason
+                            ? ` — ${broker.subscriptionCancellationReason}`
+                            : ""}
+                        </Typography>
+                      )}
                     </TableCell>
                     <TableCell>
                       {broker.createdAt

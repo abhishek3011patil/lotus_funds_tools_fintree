@@ -42,6 +42,16 @@ export const listClientBrokers = async (req: AuthRequest, res: Response) => {
     );
     const filter = `u.role = 'BROKER' AND u.status = 'active' AND COALESCE(u.is_active, false) = true
       AND lower(COALESCE(b.status, '')) = 'approved'
+      AND EXISTS (
+        SELECT 1
+        FROM subscriptions platform_subscription
+        JOIN subscription_plans platform_plan ON platform_plan.id = platform_subscription.plan_id
+        WHERE platform_subscription.user_id = u.id
+          AND platform_subscription.status = 'ACTIVE'
+          AND platform_subscription.starts_at <= NOW()
+          AND platform_subscription.expires_at > NOW()
+          AND platform_plan.audience_type = 'BROKER'
+      )
       AND ($2 = '' OR COALESCE(b.legal_name, '') ILIKE $3 OR COALESCE(b.trade_name, '') ILIKE $3
         OR COALESCE(b.sebi_registration_no, '') ILIKE $3 OR COALESCE(b.registration_category, '') ILIKE $3)`;
     const [countResult, brokersResult] = await Promise.all([
@@ -139,7 +149,16 @@ export const createBrokerSubscriptionOrder = async (req: AuthRequest, res: Respo
       `SELECT b.id, COALESCE(NULLIF(b.trade_name, ''), b.legal_name) AS name
        FROM broker_details b JOIN users u ON u.id = b.user_id
        WHERE b.id = $1 AND u.role = 'BROKER' AND u.status = 'active' AND COALESCE(u.is_active, false) = true
-         AND lower(COALESCE(b.status, '')) = 'approved'`,
+         AND lower(COALESCE(b.status, '')) = 'approved'
+         AND EXISTS (
+           SELECT 1 FROM subscriptions platform_subscription
+           JOIN subscription_plans platform_plan ON platform_plan.id = platform_subscription.plan_id
+           WHERE platform_subscription.user_id = u.id
+             AND platform_subscription.status = 'ACTIVE'
+             AND platform_subscription.starts_at <= NOW()
+             AND platform_subscription.expires_at > NOW()
+             AND platform_plan.audience_type = 'BROKER'
+         )`,
       [brokerId]
     );
     if (!brokerResult.rowCount) return res.status(404).json({ message: "Broker not found." });

@@ -70,6 +70,14 @@ export interface HistoryRecord {
   broker_name?: string;
   broker_sebi_registration?: string | null;
   broker_published?: boolean;
+  target_price?: number | string | null; target_price_2?: number | string | null; target_price_3?: number | string | null;
+  stop_loss?: number | string | null; stop_loss_2?: number | string | null; stop_loss_3?: number | string | null;
+  holding_period?: string | null; rationale?: string | null; underlying_study?: string | null; research_remarks?: string | null; errata_reason?: string | null;
+  researcher_organization?: string | null; researcher_sebi_registration?: string | null; researcher_contact?: string | null; researcher_email?: string | null;
+  broker_disclaimer_template?: string | null; broker_legal_name?: string | null; broker_trade_name?: string | null;
+  broker_registration_category?: string | null; broker_membership_code?: string | null; broker_registered_address?: string | null;
+  broker_email?: string | null; broker_mobile?: string | null; broker_website?: string | null; broker_authorized_person_name?: string | null;
+  broker_authorized_person_designation?: string | null; broker_compliance_officer_name?: string | null; broker_exchanges?: string | null; broker_segments?: string | null;
 
 }
 
@@ -97,6 +105,14 @@ export interface ApiHistoryRecord {
   broker_name?: string;
   broker_sebi_registration?: string | null;
   broker_published?: boolean;
+  target_price?: number | string | null; target_price_2?: number | string | null; target_price_3?: number | string | null;
+  stop_loss?: number | string | null; stop_loss_2?: number | string | null; stop_loss_3?: number | string | null;
+  holding_period?: string | null; rationale?: string | null; underlying_study?: string | null; research_remarks?: string | null; errata_reason?: string | null;
+  researcher_organization?: string | null; researcher_sebi_registration?: string | null; researcher_contact?: string | null; researcher_email?: string | null;
+  broker_disclaimer_template?: string | null; broker_legal_name?: string | null; broker_trade_name?: string | null;
+  broker_registration_category?: string | null; broker_membership_code?: string | null; broker_registered_address?: string | null;
+  broker_email?: string | null; broker_mobile?: string | null; broker_website?: string | null; broker_authorized_person_name?: string | null;
+  broker_authorized_person_designation?: string | null; broker_compliance_officer_name?: string | null; broker_exchanges?: string | null; broker_segments?: string | null;
 }
 
 // Added Prop Interface
@@ -160,6 +176,20 @@ export default function RecommendationHistory({
     broker_name: row.broker_name,
     broker_sebi_registration: row.broker_sebi_registration,
     broker_published: row.broker_published,
+    target_price: row.target_price, target_price_2: row.target_price_2, target_price_3: row.target_price_3,
+    stop_loss: row.stop_loss, stop_loss_2: row.stop_loss_2, stop_loss_3: row.stop_loss_3,
+    holding_period: row.holding_period, rationale: row.rationale, underlying_study: row.underlying_study,
+    research_remarks: row.research_remarks, errata_reason: row.errata_reason,
+    researcher_organization: row.researcher_organization, researcher_sebi_registration: row.researcher_sebi_registration,
+    researcher_contact: row.researcher_contact, researcher_email: row.researcher_email,
+    broker_disclaimer_template: row.broker_disclaimer_template, broker_legal_name: row.broker_legal_name,
+    broker_trade_name: row.broker_trade_name, broker_registration_category: row.broker_registration_category,
+    broker_membership_code: row.broker_membership_code, broker_registered_address: row.broker_registered_address,
+    broker_email: row.broker_email, broker_mobile: row.broker_mobile, broker_website: row.broker_website,
+    broker_authorized_person_name: row.broker_authorized_person_name,
+    broker_authorized_person_designation: row.broker_authorized_person_designation,
+    broker_compliance_officer_name: row.broker_compliance_officer_name, broker_exchanges: row.broker_exchanges,
+    broker_segments: row.broker_segments,
   });
 
   // State

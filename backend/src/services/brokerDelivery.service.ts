@@ -167,7 +167,16 @@ export const distributeBrokerCallUpdate = async ({
      JOIN broker_details broker ON broker.id = publication.broker_id
      JOIN users account ON account.id = broker.user_id
      WHERE publication.root_call_id = $1 AND publication.status = 'ACTIVE'
-       AND account.status = 'active' AND COALESCE(account.is_active, FALSE) = TRUE`,
+       AND account.status = 'active' AND COALESCE(account.is_active, FALSE) = TRUE
+       AND EXISTS (
+         SELECT 1 FROM subscriptions platform_subscription
+         JOIN subscription_plans platform_plan ON platform_plan.id = platform_subscription.plan_id
+         WHERE platform_subscription.user_id = broker.user_id
+           AND platform_subscription.status = 'ACTIVE'
+           AND platform_subscription.starts_at <= NOW()
+           AND platform_subscription.expires_at > NOW()
+           AND platform_plan.audience_type = 'BROKER'
+       )`,
     [rootCallId],
   );
 

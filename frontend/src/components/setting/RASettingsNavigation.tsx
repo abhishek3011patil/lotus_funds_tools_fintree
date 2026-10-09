@@ -1,17 +1,11 @@
-import { Button, Paper, Stack } from "@mui/material";
-import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
-import WorkspacePremiumOutlinedIcon from "@mui/icons-material/WorkspacePremiumOutlined";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
-import WhatsAppIcon from "@mui/icons-material/WhatsApp";
-import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
-import TelegramIcon from "@mui/icons-material/Telegram";
+import { Tab, Tabs } from "@mui/material";
 
 export type RASettingsSection =
   | "account"
   | "subscription"
+  | "disclaimer"
+  | "message-template"
   | "security"
-  | "research"
   | "whatsapp"
   | "telegram-participants"
   | "telegram-connection";
@@ -19,8 +13,9 @@ export type RASettingsSection =
 export const isRASettingsSection = (value: string | undefined): value is RASettingsSection =>
   value === "account" ||
   value === "subscription" ||
+  value === "disclaimer" ||
+  value === "message-template" ||
   value === "security" ||
-  value === "research" ||
   value === "whatsapp" ||
   value === "telegram-participants" ||
   value === "telegram-connection";
@@ -31,58 +26,32 @@ type RASettingsNavigationProps = {
 };
 
 const navigationItems = [
-  { id: "account" as const, label: "Account", icon: PersonOutlineRoundedIcon },
-  { id: "subscription" as const, label: "Subscription", icon: WorkspacePremiumOutlinedIcon },
-  { id: "security" as const, label: "Security", icon: LockOutlinedIcon },
-  { id: "research" as const, label: "Research setup", icon: TuneRoundedIcon },
-  { id: "whatsapp" as const, label: "WhatsApp", icon: WhatsAppIcon },
-  { id: "telegram-participants" as const, label: "Telegram participants", icon: GroupsOutlinedIcon },
-  { id: "telegram-connection" as const, label: "Telegram connection", icon: TelegramIcon },
+  { id: "account" as const, label: "Account" },
+  { id: "subscription" as const, label: "Subscription" },
+  { id: "disclaimer" as const, label: "Disclaimer" },
+  { id: "message-template" as const, label: "Message Template" },
+  { id: "security" as const, label: "Security" },
+  { id: "whatsapp" as const, label: "WhatsApp" },
+  { id: "telegram-participants" as const, label: "Telegram Participants" },
+  { id: "telegram-connection" as const, label: "Telegram" },
 ];
 
 const RASettingsNavigation = ({ activeSection, onNavigate }: RASettingsNavigationProps) => (
-  <Paper
+  <Tabs
     component="nav"
     aria-label="RA settings sections"
-    variant="outlined"
+    value={activeSection}
+    onChange={(_, value: RASettingsSection) => onNavigate(value)}
+    variant="scrollable"
+    scrollButtons="auto"
     sx={{
-      borderRadius: 3,
-      borderColor: "#E5EAF2",
-      p: 1.2,
-      position: { md: "sticky" },
-      top: { md: 16 },
+      borderBottom: 1,
+      borderColor: "divider",
+      px: 2,
     }}
   >
-    <Stack direction={{ xs: "row", md: "column" }} spacing={0.5} sx={{ overflowX: "auto" }}>
-      {navigationItems.map((item) => {
-        const Icon = item.icon;
-        const active = activeSection === item.id;
-
-        return (
-          <Button
-            key={item.id}
-            startIcon={<Icon />}
-            onClick={() => onNavigate(item.id)}
-            aria-current={active ? "location" : undefined}
-            sx={{
-              justifyContent: "flex-start",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
-              textTransform: "none",
-              fontWeight: active ? 750 : 600,
-              color: active ? "#344FC7" : "#526078",
-              bgcolor: active ? "#EEF1FF" : "transparent",
-              px: 1.5,
-              py: 1.15,
-              "&:hover": { bgcolor: active ? "#E6EAFF" : "#F5F7FA" },
-            }}
-          >
-            {item.label}
-          </Button>
-        );
-      })}
-    </Stack>
-  </Paper>
+    {navigationItems.map((item) => <Tab key={item.id} value={item.id} label={item.label} />)}
+  </Tabs>
 );
 
 export default RASettingsNavigation;

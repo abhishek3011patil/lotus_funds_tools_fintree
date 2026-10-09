@@ -7,6 +7,7 @@ export const MAX_RESEARCH_CALL_CUSTOM_BLOCK_LENGTH = 500;
 export type ResearchCallMessageType =
   | "NEW_CALL"
   | "ERRATA";
+export type ResearchCallTemplateOwnerType = "RA" | "BROKER";
 
 interface TemplateFieldDefinition {
   key: string;
@@ -65,6 +66,18 @@ const ERRATA_FIELDS: TemplateFieldDefinition[] = [
   { key: "disclaimer", locked: true },
 ];
 
+const BROKER_NEW_CALL_FIELDS: TemplateFieldDefinition[] = NEW_CALL_FIELDS.map((field) =>
+  field.key === "raAttribution" ? { key: "dynamicRaName", locked: true }
+    : field.key === "disclaimer" ? { key: "brokerDisclaimer", locked: true }
+      : field
+);
+
+const BROKER_ERRATA_FIELDS: TemplateFieldDefinition[] = ERRATA_FIELDS.map((field) =>
+  field.key === "raAttribution" ? { key: "dynamicRaName", locked: true }
+    : field.key === "disclaimer" ? { key: "brokerDisclaimer", locked: true }
+      : field
+);
+
 const FIELDS_BY_MESSAGE_TYPE: Record<
   ResearchCallMessageType,
   TemplateFieldDefinition[]
@@ -72,6 +85,11 @@ const FIELDS_BY_MESSAGE_TYPE: Record<
   NEW_CALL: NEW_CALL_FIELDS,
   ERRATA: ERRATA_FIELDS,
 };
+
+const fieldsFor = (messageType: ResearchCallMessageType, ownerType: ResearchCallTemplateOwnerType) =>
+  ownerType === "BROKER"
+    ? messageType === "ERRATA" ? BROKER_ERRATA_FIELDS : BROKER_NEW_CALL_FIELDS
+    : FIELDS_BY_MESSAGE_TYPE[messageType];
 
 export interface ResearchCallTemplate {
   version: typeof RESEARCH_CALL_TEMPLATE_VERSION;
@@ -128,9 +146,10 @@ export const parseResearchCallTemplateSnapshot = (
 
 export const isValidResearchCallTemplate = (
   value: unknown,
-  messageType: ResearchCallMessageType
+  messageType: ResearchCallMessageType,
+  ownerType: ResearchCallTemplateOwnerType = "RA"
 ): value is ResearchCallTemplate => {
-  const definitions = FIELDS_BY_MESSAGE_TYPE[messageType];
+  const definitions = fieldsFor(messageType, ownerType);
 
   if (
     !isRecord(value) ||
@@ -261,4 +280,19 @@ export const getResearchCallTemplate = async (
     templateVersion: row.template_version,
     updatedAt: row.updated_at,
   };
+};
+
+export const getBrokerResearchCallTemplate = async (
+  queryable: Queryable,
+  brokerUserId: string,
+  messageType: ResearchCallMessageType
+): Promise<{ template: ResearchCallTemplate; templateVersion: number; updatedAt: Date | string } | null> => {
+  const result = await queryable.query<StoredTemplateRow>(
+    `SELECT message_type,template_version,template_data,updated_at
+     FROM broker_message_templates WHERE broker_user_id=$1 AND message_type=$2 LIMIT 1`,
+    [brokerUserId, messageType]
+  );
+  const row = result.rows[0];
+  if (!row || !isValidResearchCallTemplate(row.template_data, messageType, "BROKER")) return null;
+  return { template: row.template_data, templateVersion: row.template_version, updatedAt: row.updated_at };
 };

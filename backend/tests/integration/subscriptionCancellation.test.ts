@@ -76,6 +76,16 @@ const request = (body: Record<string, unknown> = {}) =>
     socket: {},
   }) as any;
 
+const brokerRequest = (body: Record<string, unknown> = {}) =>
+  ({
+    ...request(body),
+    user: {
+      id: "broker-user-1",
+      role: "BROKER",
+      name: "Test Broker",
+    },
+  }) as any;
+
 describe("subscription cancellation", () => {
   beforeEach(() => {
     connectMock.mockReset();
@@ -150,6 +160,46 @@ describe("subscription cancellation", () => {
     expect(updateQuery).toContain("status = 'CANCELLED'");
     expect(updateQuery).not.toContain("UPDATE users");
     expect(updateQuery).not.toContain("UPDATE ra_details");
+  });
+
+  it("cancels a broker subscription through the same audited lifecycle", async () => {
+    const cancelledAt = "2026-08-07T12:00:00.000Z";
+    const db = {
+      query: vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{
+          ...activeSubscription,
+          plan_name_snapshot: "Broker Premium",
+          name: "Test Broker",
+          email: "broker@example.test",
+          audience_type: "BROKER",
+        }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{
+          id: "subscription-1",
+          status: "CANCELLED",
+          cancelled_at: cancelledAt,
+          cancellation_reason: "Testing subscription cancellation",
+        }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] }),
+      release: vi.fn(),
+    };
+    connectMock.mockResolvedValue(db as any);
+    const response = createResponse();
+
+    await cancelMySubscription(brokerRequest(), response);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.subscription.status).toBe("CANCELLED");
+    expect(db.query.mock.calls[1][1]).toEqual(["broker-user-1", "BROKER"]);
+    expect(String(db.query.mock.calls[1][0])).toContain("plan.audience_type = $2");
+    expect(emailMock).toHaveBeenCalledWith(
+      "SUBSCRIPTION_CANCELLED",
+      "broker@example.test",
+      expect.objectContaining({ planName: "Broker Premium" })
+    );
   });
 
   it("blocks cancellation while a renewal payment is open", async () => {

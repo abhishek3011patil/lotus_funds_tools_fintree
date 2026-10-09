@@ -19,6 +19,12 @@ export const cancelMySubscription = async (
 ): Promise<void> => {
   const userId = req.user?.id;
   const role = String(req.user?.role || "").toUpperCase();
+  const audienceType = ["RA", "RESEARCH_ANALYST"].includes(role)
+    ? "RA"
+    : role === "BROKER"
+      ? "BROKER"
+      : null;
+  const accountLabel = audienceType === "BROKER" ? "Broker" : "Research Analyst";
   const confirmation =
     typeof req.body?.confirmation === "string"
       ? req.body.confirmation.trim()
@@ -36,11 +42,11 @@ export const cancelMySubscription = async (
     return;
   }
 
-  if (!["RA", "RESEARCH_ANALYST"].includes(role)) {
+  if (!audienceType) {
     res.status(403).json({
       success: false,
       message:
-        "Only a Research Analyst can use this cancellation endpoint.",
+        "Only a Research Analyst or Broker can use this cancellation endpoint.",
     });
     return;
   }
@@ -83,20 +89,21 @@ export const cancelMySubscription = async (
           user_account.name,
           user_account.email,
           user_account.status AS user_status,
-          ra.status AS ra_status
+          plan.audience_type
         FROM subscriptions subscription
         INNER JOIN users user_account
           ON user_account.id = subscription.user_id
-        INNER JOIN ra_details ra
-          ON ra.user_id = user_account.id
+        INNER JOIN subscription_plans plan
+          ON plan.id = subscription.plan_id
         WHERE subscription.user_id = $1
+          AND plan.audience_type = $2
         ORDER BY
           CASE WHEN subscription.status = 'ACTIVE' THEN 0 ELSE 1 END,
           subscription.created_at DESC
         LIMIT 1
         FOR UPDATE OF subscription
       `,
-      [userId]
+      [userId, audienceType]
     );
 
     if (result.rows.length === 0) {
@@ -226,7 +233,7 @@ export const cancelMySubscription = async (
         "SUBSCRIPTION_CANCELLED",
         subscription.email,
         {
-          name: subscription.name || "Research Analyst",
+          name: subscription.name || accountLabel,
           planName: subscription.plan_name_snapshot,
           cancelledAt: new Date(cancelledAt).toISOString(),
           reason,
@@ -244,14 +251,14 @@ export const cancelMySubscription = async (
       await createAuditLog({
         adminId: userId,
         adminName:
-          subscription.name || req.user?.name || "Research Analyst",
+          subscription.name || req.user?.name || accountLabel,
         adminRole: role,
         action: "SUBSCRIPTION_CANCELLED",
         module: "SUBSCRIPTION",
         targetEntity: subscription.id,
         targetType: "SUBSCRIPTION",
         description:
-          "Research Analyst cancelled their subscription",
+          `${accountLabel} cancelled their subscription`,
         status: "SUCCESS",
         reason,
         ipAddress: getClientIp(req),

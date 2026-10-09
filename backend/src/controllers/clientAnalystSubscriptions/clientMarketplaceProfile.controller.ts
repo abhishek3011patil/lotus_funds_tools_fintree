@@ -141,6 +141,15 @@ export const getClientBrokerProfile = async (req: AuthRequest, res: Response) =>
        LEFT JOIN users ra ON ra.id = rd.user_id AND ra.status = 'active' AND COALESCE(ra.is_active, false) = true
        WHERE b.id = $1 AND u.role = 'BROKER' AND u.status = 'active'
          AND COALESCE(u.is_active, false) = true AND lower(COALESCE(b.status, '')) = 'approved'
+         AND EXISTS (
+           SELECT 1 FROM subscriptions platform_subscription
+           JOIN subscription_plans platform_plan ON platform_plan.id = platform_subscription.plan_id
+           WHERE platform_subscription.user_id = u.id
+             AND platform_subscription.status = 'ACTIVE'
+             AND platform_subscription.starts_at <= NOW()
+             AND platform_subscription.expires_at > NOW()
+             AND platform_plan.audience_type = 'BROKER'
+         )
        GROUP BY b.id`,
       [brokerId]
     );

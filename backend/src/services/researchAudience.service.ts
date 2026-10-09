@@ -85,7 +85,16 @@ export const resolveResearchAudience = async ({
          JOIN broker_details broker ON broker.id = connection.broker_id
          JOIN users account ON account.id = broker.user_id
          WHERE analyst.user_id = $1 AND connection.status = 'ACTIVE'
-           AND account.status = 'active' AND COALESCE(account.is_active, FALSE) = TRUE`
+           AND account.status = 'active' AND COALESCE(account.is_active, FALSE) = TRUE
+           AND EXISTS (
+             SELECT 1 FROM subscriptions platform_subscription
+             JOIN subscription_plans platform_plan ON platform_plan.id = platform_subscription.plan_id
+             WHERE platform_subscription.user_id = account.id
+               AND platform_subscription.status = 'ACTIVE'
+               AND platform_subscription.starts_at <= NOW()
+               AND platform_subscription.expires_at > NOW()
+               AND platform_plan.audience_type = 'BROKER'
+           )`
       : `SELECT DISTINCT broker.id,
            COALESCE(NULLIF(TRIM(broker.trade_name), ''), broker.legal_name, 'Broker') AS name
          FROM ra_audience_group_members member
@@ -97,7 +106,16 @@ export const resolveResearchAudience = async ({
          JOIN users account ON account.id = broker.user_id
          WHERE audience_group.ra_user_id = $1 AND audience_group.id = ANY($2::uuid[])
            AND member.member_type = 'BROKER' AND connection.status = 'ACTIVE'
-           AND account.status = 'active' AND COALESCE(account.is_active, FALSE) = TRUE`,
+           AND account.status = 'active' AND COALESCE(account.is_active, FALSE) = TRUE
+           AND EXISTS (
+             SELECT 1 FROM subscriptions platform_subscription
+             JOIN subscription_plans platform_plan ON platform_plan.id = platform_subscription.plan_id
+             WHERE platform_subscription.user_id = account.id
+               AND platform_subscription.status = 'ACTIVE'
+               AND platform_subscription.starts_at <= NOW()
+               AND platform_subscription.expires_at > NOW()
+               AND platform_plan.audience_type = 'BROKER'
+           )`,
     mode === "ALL_CONNECTED" ? [raUserId] : [raUserId, groupIds],
   );
 

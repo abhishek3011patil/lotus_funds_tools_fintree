@@ -29,6 +29,7 @@ import PaletteIcon from '@mui/icons-material/Palette';
 import PeopleIcon from '@mui/icons-material/People';
 import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
+import AutoStoriesRoundedIcon from '@mui/icons-material/AutoStoriesRounded';
 import { getLoginRoute } from '../../utils/authRedirect';
 import api from '../../utils/axio';
 import AuthenticatedAvatar from '../../components/common/AuthenticatedAvatar';
@@ -43,6 +44,7 @@ const brokerSidebarItems = [
   { name: 'Research Analysts', path: '/broker/research-analysts', icon: PersonSearchIcon },
   { name: 'Clients', path: '/broker/clients', icon: PeopleIcon },
   { name: 'Performance', path: '/broker/performance', icon: ShowChartIcon },
+  { name: 'Content', path: '/broker/content', icon: AutoStoriesRoundedIcon },
   { name: 'Announcements', path: '/broker/announcements', icon: CampaignIcon },
   { name: 'Branding', path: '/broker/branding', icon: PaletteIcon },
   { name: 'Subscription', path: '/broker/subscription', icon: CreditCardIcon },

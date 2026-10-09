@@ -34,6 +34,7 @@ import clientAccountRoutes from "./routes/clientAccount/clientAccount.routes";
 import raDashboardRoutes from "./routes/raDashboard/raDashboard.routes";
 import clientRegistrationRoutes from "./routes/clientRegistration/clientRegistration.routes";
 import aadhaarKycRoutes from "./routes/aadhaarKyc.routes";
+import contentRoutes from "./routes/content.routes";
 
 
 
@@ -88,13 +89,15 @@ app.use(
           "'self'",
           "https://api.razorpay.com",
           "https://*.razorpay.com",
+          "https://www.youtube.com",
+          "https://www.youtube-nocookie.com",
         ],
         connectSrc: [
           "'self'",
           "https://api.razorpay.com",
           "https://*.razorpay.com",
         ],
-        imgSrc: ["'self'", "data:", "https://*.razorpay.com"],
+        imgSrc: ["'self'", "data:", "blob:", "https://i.ytimg.com", "https://*.razorpay.com"],
       },
     },
   })
@@ -157,6 +160,8 @@ app.get("/check", (_req, res) => {
 app.use("/api/whatsapp", whatsappRoutes);
 
 app.use("/api/aadhaar", aadhaarKycRoutes);
+
+app.use("/api/content", contentRoutes);
 
 app.use( "/api/client/recommendations", clientRecommendationRoutes);
 

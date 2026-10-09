@@ -74,6 +74,12 @@ import {
   fetchAudienceGroups,
   type AudienceGroup,
 } from "../services/audienceGroups.service";
+import {
+  clearRecommendationDraft,
+  getRecommendationDraftStorageKey,
+  loadRecommendationDraft,
+  saveRecommendationDraft,
+} from "../utils/recommendationDraft.utils";
 
 
 const BUY_COLOR = "#22c55e";
@@ -88,6 +94,33 @@ type PreparedResearchCallMessage = {
   message: string;
   templateVersion: number | null;
   templateSnapshot: unknown | null;
+};
+
+type RecommendationForm = {
+  exchangeType: "NSE" | "BSE";
+  action: "BUY" | "SELL";
+  exchange: "STOCK" | "INDEX";
+  callType: "Cash" | "Futures" | "Option Call" | "Option Put";
+  tradeType: "Intraday" | "BTST" | "STBT" | "Short Term" | "Long Term";
+  symbol: string;
+  display_name: string;
+  entry: string;
+  entryLow: string;
+  entryUpper: string;
+  target: string;
+  target2: string;
+  target3: string;
+  stopLoss: string;
+  stopLoss2: string;
+  stopLoss3: string;
+  expiry: string;
+  holdingPeriod: string;
+  rationale: string;
+  remark: string;
+  underlyingStudy: StudyOption[];
+  rangeEnabled: boolean;
+  secondaryTargetEnabled: boolean;
+  stopLoss2Enabled: boolean;
 };
 
 
@@ -109,6 +142,13 @@ const getActionStyles = (current: "BUY" | "SELL", button: "BUY" | "SELL") => {
 
 const NewRecommendation = () => {
     const [raDetails, setRaDetails] = useState<any>(null);
+    const draftStorageKey = useMemo(
+      () => getRecommendationDraftStorageKey(localStorage.getItem("username")),
+      []
+    );
+    const [restoredDraft] = useState(
+      () => loadRecommendationDraft<RecommendationForm>(localStorage, draftStorageKey)
+    );
 
 
 const fetchRAMessageProfile = async () => {
@@ -174,8 +214,8 @@ const fetchRAMessageProfile = async () => {
   //console.log("RENDER");
   const [underlyingStudyInput, setUnderlyingStudyInput] = useState("");
 
-  const [isErrataMode, setIsErrataMode] = useState(false);
-  const [errataSourceId, setErrataSourceId] = useState<string | null>(null);
+  const [isErrataMode, setIsErrataMode] = useState(restoredDraft?.isErrataMode ?? false);
+  const [errataSourceId, setErrataSourceId] = useState<string | null>(restoredDraft?.errataSourceId ?? null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 const [isSubmitting, setIsSubmitting] = useState(false);
 const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
@@ -184,8 +224,8 @@ const [preparedPreview, setPreparedPreview] =
   useState<PreparedResearchCallMessage | null>(null);
 const [pendingDraftPublish, setPendingDraftPublish] = useState<any | null>(null);
 const [audienceGroups, setAudienceGroups] = useState<AudienceGroup[]>([]);
-const [audienceMode, setAudienceMode] = useState<"ALL_CONNECTED" | "GROUPS">("ALL_CONNECTED");
-const [selectedAudienceGroupIds, setSelectedAudienceGroupIds] = useState<string[]>([]);
+const [audienceMode, setAudienceMode] = useState<"ALL_CONNECTED" | "GROUPS">(restoredDraft?.audienceMode ?? "ALL_CONNECTED");
+const [selectedAudienceGroupIds, setSelectedAudienceGroupIds] = useState<string[]>(restoredDraft?.selectedAudienceGroupIds ?? []);
 const [audienceLoading, setAudienceLoading] = useState(true);
 const [audienceError, setAudienceError] = useState("");
 const [allAudienceCounts, setAllAudienceCounts] = useState({ clients: 0, brokers: 0, telegram: 0, whatsapp: 0 });
@@ -210,33 +250,6 @@ const [
 ] = useState<StudyOption[]>([]);
 
 
-
-  type RecommendationForm = {
-    exchangeType: "NSE" | "BSE";
-    action: "BUY" | "SELL";
-    exchange: "STOCK" | "INDEX";
-    callType: "Cash" | "Futures" | "Option Call" | "Option Put";
-    tradeType: "Intraday" | "BTST" | "STBT" | "Short Term" | "Long Term";
-    symbol: string;
-    display_name: string;
-    entry: string;
-    entryLow: string;
-    entryUpper: string;
-    target: string;
-    target2: string;
-    target3: string;
-    stopLoss: string;
-    stopLoss2: string;
-    stopLoss3: string;
-    expiry: string;
-    holdingPeriod: string;
-    rationale: string;
-    remark: string;
-    underlyingStudy: StudyOption[];
-    rangeEnabled: boolean;
-    secondaryTargetEnabled: boolean;
-    stopLoss2Enabled: boolean;
-  };
 
   const initialForm: RecommendationForm = {
     exchangeType: "NSE",
@@ -318,7 +331,10 @@ function formReducer(
   }
 }
 
-  const [form, dispatch] = useReducer(formReducer, initialForm);
+  const [form, dispatch] = useReducer(
+    formReducer,
+    restoredDraft?.form ? { ...initialForm, ...restoredDraft.form } : initialForm
+  );
   const riskRewardRatio = calculateCallRiskReward({
     action: form.action,
     entry: form.entry,
@@ -354,6 +370,7 @@ function formReducer(
   
 
  const resetForm = () => {
+  clearRecommendationDraft(localStorage, draftStorageKey);
   previewRequestRef.current += 1;
   previewLoadingRef.current = false;
   dispatch({ type: "RESET" });
@@ -1038,6 +1055,31 @@ const finalDisplayName =
       }
       : autocomplete;
 
+  useEffect(() => {
+    if (!restoredDraft) return;
+
+    setDirectValue(restoredDraft.stockInput);
+  }, [restoredDraft, setDirectValue]);
+
+  useEffect(() => {
+    saveRecommendationDraft(localStorage, draftStorageKey, {
+      form,
+      stockInput: inputValue,
+      isErrataMode,
+      errataSourceId,
+      audienceMode,
+      selectedAudienceGroupIds,
+    });
+  }, [
+    audienceMode,
+    draftStorageKey,
+    errataSourceId,
+    form,
+    inputValue,
+    isErrataMode,
+    selectedAudienceGroupIds,
+  ]);
+
   // =============================
   // Underlying Study helpers
   // =============================
@@ -1184,12 +1226,17 @@ const handleUnderlyingStudyChange = (
       return;
     }
 
+    const currentExpiryIsAvailable = expiryDates.some(
+      (date) => date.toISOString() === form.expiry
+    );
+    if (currentExpiryIsAvailable) return;
+
     const first = expiryDates[0].toISOString();
 
     if (form.expiry !== first) {
       dispatch({ type: "SET_FIELD", field: "expiry", value: first });
     }
-  }, [expiryDates]);
+  }, [expiryDates, form.expiry]);
 
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

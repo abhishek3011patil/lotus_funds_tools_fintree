@@ -78,6 +78,44 @@ describe("research-call template utilities", () => {
     ).toBe(false);
   });
 
+  it("creates a broker layout with locked dynamic RA and disclaimer blocks", () => {
+    const template = createDefaultCallTemplate("NEW_CALL", "BROKER");
+
+    expect(isValidCallTemplate(template, "NEW_CALL", "BROKER")).toBe(true);
+    expect(template.blocks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fieldKey: "dynamicRaName", locked: true, enabled: true }),
+        expect.objectContaining({ fieldKey: "brokerDisclaimer", locked: true, enabled: true }),
+      ])
+    );
+    expect(isValidCallTemplate(template, "NEW_CALL", "RA")).toBe(false);
+  });
+
+  it("resolves the selected analyst and current broker disclaimer dynamically", () => {
+    const template = createDefaultCallTemplate("NEW_CALL", "BROKER");
+    const firstMessage = formatResearchCallMessage(
+      template,
+      callData,
+      { ...raData, fullName: "Anita Sharma" },
+      "NEW_CALL",
+      "BROKER",
+      { disclaimer: "Disclaimer for Alpha Securities." }
+    );
+    const secondMessage = formatResearchCallMessage(
+      template,
+      callData,
+      { ...raData, fullName: "Rohan Mehta" },
+      "NEW_CALL",
+      "BROKER",
+      { disclaimer: "Updated broker disclaimer." }
+    );
+
+    expect(firstMessage).toContain("Research Analyst: Anita Sharma");
+    expect(firstMessage).toContain("BROKER DISCLAIMER:\n\nDisclaimer for Alpha Securities.");
+    expect(secondMessage).toContain("Research Analyst: Rohan Mehta");
+    expect(secondMessage).toContain("BROKER DISCLAIMER:\n\nUpdated broker disclaimer.");
+  });
+
   it("formats Errata with its locked heading and reason", () => {
     const message = formatResearchCallMessage(
       createDefaultCallTemplate("ERRATA"),

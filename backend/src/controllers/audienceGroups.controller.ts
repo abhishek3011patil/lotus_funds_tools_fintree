@@ -90,6 +90,15 @@ export const listAudienceConnections = async (req: AuthRequest, res: Response) =
          JOIN users account ON account.id = broker.user_id
          WHERE analyst.user_id = $1 AND connection.status = 'ACTIVE'
            AND account.status = 'active' AND COALESCE(account.is_active, FALSE) = TRUE
+           AND EXISTS (
+             SELECT 1 FROM subscriptions platform_subscription
+             JOIN subscription_plans platform_plan ON platform_plan.id = platform_subscription.plan_id
+             WHERE platform_subscription.user_id = account.id
+               AND platform_subscription.status = 'ACTIVE'
+               AND platform_subscription.starts_at <= NOW()
+               AND platform_subscription.expires_at > NOW()
+               AND platform_plan.audience_type = 'BROKER'
+           )
          ORDER BY name`, [req.user!.id],
       ),
       pool.query(
@@ -137,8 +146,21 @@ const saveGroup = async (req: AuthRequest, res: Response, groupId?: string) => {
          AND account.status = 'active' AND COALESCE(account.is_active, FALSE) = TRUE
        UNION ALL
        SELECT 'BROKER' AS type, connection.broker_id AS id
-       FROM broker_research_analysts connection JOIN ra_details analyst ON analyst.id = connection.ra_id
+       FROM broker_research_analysts connection
+       JOIN ra_details analyst ON analyst.id = connection.ra_id
+       JOIN broker_details broker ON broker.id = connection.broker_id
+       JOIN users account ON account.id = broker.user_id
        WHERE analyst.user_id = $1 AND connection.broker_id = ANY($3::uuid[]) AND connection.status = 'ACTIVE'
+         AND account.status = 'active' AND COALESCE(account.is_active, FALSE) = TRUE
+         AND EXISTS (
+           SELECT 1 FROM subscriptions platform_subscription
+           JOIN subscription_plans platform_plan ON platform_plan.id = platform_subscription.plan_id
+           WHERE platform_subscription.user_id = account.id
+             AND platform_subscription.status = 'ACTIVE'
+             AND platform_subscription.starts_at <= NOW()
+             AND platform_subscription.expires_at > NOW()
+             AND platform_plan.audience_type = 'BROKER'
+         )
        UNION ALL
        SELECT 'TELEGRAM' AS type, participant.id
        FROM telegram_users participant

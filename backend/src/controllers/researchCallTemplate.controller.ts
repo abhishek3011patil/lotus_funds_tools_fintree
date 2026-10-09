@@ -4,6 +4,7 @@ import type { AuthRequest } from "../middlewares/auth.middleware";
 import {
   RESEARCH_CALL_TEMPLATE_VERSION,
   getResearchCallTemplate,
+  getBrokerResearchCallTemplate,
   isResearchCallMessageType,
   isValidResearchCallTemplate,
   type ResearchCallMessageType,
@@ -170,5 +171,43 @@ export const saveResearchCallTemplate = async (
       success: false,
       message: "Unable to save message template",
     });
+  }
+};
+
+const requireBroker = (req: AuthRequest, res: Response): string | null => {
+  if (!req.user?.id) { res.status(401).json({ success: false, message: "Unauthorized" }); return null; }
+  if (String(req.user.role || "").toUpperCase() !== "BROKER") { res.status(403).json({ success: false, message: "Only a Broker can manage broker message templates" }); return null; }
+  return req.user.id;
+};
+
+export const getBrokerCallTemplates = async (req: AuthRequest, res: Response) => {
+  const brokerUserId = requireBroker(req, res); if (!brokerUserId) return;
+  try {
+    const entries = await Promise.all((["NEW_CALL", "ERRATA"] as ResearchCallMessageType[]).map(async messageType => [messageType, await getBrokerResearchCallTemplate(pool, brokerUserId, messageType)]));
+    return res.status(200).json({ success: true, data: Object.fromEntries(entries) });
+  } catch (error) {
+    console.error("GET BROKER MESSAGE TEMPLATES ERROR:", error);
+    return res.status(500).json({ success: false, message: "Unable to load broker message templates" });
+  }
+};
+
+export const saveBrokerCallTemplate = async (req: AuthRequest, res: Response) => {
+  const brokerUserId = requireBroker(req, res); if (!brokerUserId) return;
+  const messageType = String(req.params.messageType || "").toUpperCase();
+  if (!isResearchCallMessageType(messageType)) return res.status(400).json({ success: false, message: "Message type must be NEW_CALL or ERRATA" });
+  const template = req.body?.template;
+  if (!isValidResearchCallTemplate(template, messageType, "BROKER")) return res.status(400).json({ success: false, message: "Template is invalid or is missing required broker fields" });
+  try {
+    const result = await pool.query(
+      `INSERT INTO broker_message_templates (broker_user_id,message_type,template_version,template_data,created_at,updated_at)
+       VALUES ($1,$2,$3,$4::jsonb,NOW(),NOW())
+       ON CONFLICT (broker_user_id,message_type) DO UPDATE SET template_version=EXCLUDED.template_version,template_data=EXCLUDED.template_data,updated_at=NOW()
+       RETURNING message_type,template_version,template_data,updated_at`,
+      [brokerUserId,messageType,RESEARCH_CALL_TEMPLATE_VERSION,JSON.stringify(template)]
+    );
+    return res.status(200).json({ success: true, message: "Broker message template saved", data: { messageType: result.rows[0].message_type, templateVersion: result.rows[0].template_version, template: result.rows[0].template_data, updatedAt: result.rows[0].updated_at } });
+  } catch (error) {
+    console.error("SAVE BROKER MESSAGE TEMPLATE ERROR:", error);
+    return res.status(500).json({ success: false, message: "Unable to save broker message template" });
   }
 };

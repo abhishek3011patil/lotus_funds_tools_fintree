@@ -36,9 +36,26 @@ interface AuditLog {
   reason?: string;
   ip_address: string;
   device?: string;
-  old_value?: any;
-  new_value?: any;
+  old_value?: unknown;
+  new_value?: unknown;
 }
+
+const auditModules = [
+  { value: 'AUDIT', label: 'Audit' },
+  { value: 'AUTH', label: 'Authentication' },
+  { value: 'BROKER', label: 'Broker' },
+  { value: 'CLIENT', label: 'Client' },
+  { value: 'PAYMENT', label: 'Payment' },
+  { value: 'RA', label: 'Research Analyst' },
+  { value: 'RA_PROFILE', label: 'RA Profile' },
+  { value: 'REGISTRATION', label: 'Registration' },
+  { value: 'RESEARCH_CALL', label: 'Research Call' },
+  { value: 'SUBSCRIPTION', label: 'Subscription' },
+  { value: 'TELEGRAM', label: 'Telegram' },
+  { value: 'TELEGRAM_CLIENT', label: 'Telegram Client' },
+  { value: 'USER_MANAGEMENT', label: 'User Management' },
+  { value: 'WHATSAPP', label: 'WhatsApp' },
+] as const;
 
 const AdminAuditLogs: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -95,10 +112,6 @@ useEffect(() => {
 
   fetchAuditLogs();
 }, [page, rowsPerPage, debouncedSearch, dateFilter, userFilter, moduleFilter, statusFilter]);
-
-useEffect(() => {
-  setPage(0);
-}, [dateFilter, userFilter, moduleFilter, statusFilter]);
 
 useEffect(() => {
   const timer = setTimeout(() => {
@@ -281,7 +294,10 @@ const handleResetFilters = () => {
         <InputLabel sx={{ fontSize: '0.9rem', mt: 0.1 }}>Date Range</InputLabel>
         <Select 
           value={dateFilter} 
-          onChange={(e) => setDateFilter(e.target.value)} 
+          onChange={(e) => {
+            setDateFilter(e.target.value);
+            setPage(0);
+          }}
           label="Date Range"
           sx={{ borderRadius: '10px', height: '42px', fontSize: '0.9rem' }}
         >
@@ -296,7 +312,10 @@ const handleResetFilters = () => {
         <InputLabel sx={{ fontSize: '0.9rem', mt: 0.1 }}>User Role</InputLabel>
         <Select 
           value={userFilter} 
-          onChange={(e) => setUserFilter(e.target.value)} 
+          onChange={(e) => {
+            setUserFilter(e.target.value);
+            setPage(0);
+          }}
           label="User Role"
           sx={{ borderRadius: '10px', height: '42px', fontSize: '0.9rem' }}
         >
@@ -310,16 +329,19 @@ const handleResetFilters = () => {
         <InputLabel sx={{ fontSize: '0.9rem', mt: 0.1 }}>Modules</InputLabel>
         <Select 
           value={moduleFilter} 
-          onChange={(e) => setModuleFilter(e.target.value)} 
+          onChange={(e) => {
+            setModuleFilter(e.target.value);
+            setPage(0);
+          }}
           label="Modules"
           sx={{ borderRadius: '10px', height: '42px', fontSize: '0.9rem' }}
         >
           <MenuItem value="" sx={{ fontSize: '0.9rem' }}>All Modules</MenuItem>
-          <MenuItem value="RA" sx={{ fontSize: '0.9rem' }}>RA</MenuItem>
-          <MenuItem value="Broker" sx={{ fontSize: '0.9rem' }}>Broker</MenuItem>
-          <MenuItem value="TELEGRAM_CLIENT" sx={{ fontSize: '0.9rem' }}>Telegram</MenuItem>
-          <MenuItem value="Billing" sx={{ fontSize: '0.9rem' }}>Billing</MenuItem>
-          <MenuItem value="Subscription" sx={{ fontSize: '0.9rem' }}>Subscription</MenuItem>
+          {auditModules.map((module) => (
+            <MenuItem key={module.value} value={module.value} sx={{ fontSize: '0.9rem' }}>
+              {module.label}
+            </MenuItem>
+          ))}
         </Select>
       </FormControl>
 
@@ -327,7 +349,10 @@ const handleResetFilters = () => {
         <InputLabel sx={{ fontSize: '0.9rem', mt: 0.1 }}>Status</InputLabel>
         <Select 
           value={statusFilter} 
-          onChange={(e) => setStatusFilter(e.target.value)} 
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setPage(0);
+          }}
           label="Status"
           sx={{ borderRadius: '10px', height: '42px', fontSize: '0.9rem' }}
         >

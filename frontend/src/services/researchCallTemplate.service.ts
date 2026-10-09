@@ -2,6 +2,7 @@ import axios from "axios";
 import {
   isValidCallTemplate,
   type CallTemplate,
+  type CallTemplateOwnerType,
   type ResearchCallMessageType,
 } from "../utils/researchCallTemplate.utils";
 
@@ -32,10 +33,11 @@ interface TemplateSaveResponse {
 const apiBaseUrl = import.meta.env.VITE_API_URL;
 
 export const fetchResearchCallTemplates = async (
-  token: string
+  token: string,
+  ownerType: CallTemplateOwnerType = "RA"
 ): Promise<ResearchCallTemplateMap> => {
   const response = await axios.get<TemplateListResponse>(
-    `${apiBaseUrl}/api/research/message-templates`,
+    `${apiBaseUrl}/api/${ownerType === "BROKER" ? "broker" : "research"}/message-templates`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -49,7 +51,7 @@ export const fetchResearchCallTemplates = async (
     const template =
       response.data.data?.[messageType]?.template;
 
-    return isValidCallTemplate(template, messageType)
+    return isValidCallTemplate(template, messageType, ownerType)
       ? template
       : null;
   };
@@ -63,16 +65,17 @@ export const fetchResearchCallTemplates = async (
 export const saveResearchCallTemplate = async (
   token: string,
   messageType: ResearchCallMessageType,
-  template: CallTemplate
+  template: CallTemplate,
+  ownerType: CallTemplateOwnerType = "RA"
 ): Promise<CallTemplate> => {
-  if (!isValidCallTemplate(template, messageType)) {
+  if (!isValidCallTemplate(template, messageType, ownerType)) {
     throw new Error(
       "The template is invalid or is missing required fields."
     );
   }
 
   const response = await axios.put<TemplateSaveResponse>(
-    `${apiBaseUrl}/api/research/message-templates/${messageType}`,
+    `${apiBaseUrl}/api/${ownerType === "BROKER" ? "broker" : "research"}/message-templates/${messageType}`,
     { template },
     {
       headers: {
@@ -82,7 +85,7 @@ export const saveResearchCallTemplate = async (
   );
 
   const savedTemplate = response.data.data?.template;
-  if (!isValidCallTemplate(savedTemplate, messageType)) {
+  if (!isValidCallTemplate(savedTemplate, messageType, ownerType)) {
     throw new Error(
       "The server returned an invalid template."
     );

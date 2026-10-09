@@ -8,6 +8,8 @@ import type { BrokerAccount } from "../types/brokerAccount";
 import { changeMyBrokerPassword, getMyBrokerAccount, getMyBrokerSubscription } from "../services/brokerAccount.service";
 import TelegramConnection from "../../pages/common/TelegramConnection";
 import AccountProfilePicture from "../../components/setting/AccountProfilePicture";
+import BrokerDisclaimerSettings from "../components/BrokerDisclaimerSettings";
+import ResearchCallTemplateBuilder from "../../components/setting/ResearchCallTemplateBuilder";
 
 const BrokerSettings = () => {
   const navigate = useNavigate();
@@ -56,10 +58,10 @@ const BrokerSettings = () => {
 
   return (
     <Stack spacing={3}>
-      <Box><Typography variant="h4" fontWeight={800}>Broker Settings</Typography><Typography color="text.secondary">Manage your account, subscription, and login security.</Typography></Box>
+      <Box><Typography variant="h4" fontWeight={800}>Broker Settings</Typography><Typography color="text.secondary">Manage your account, subscription, disclaimer, and login security.</Typography></Box>
       <Card variant="outlined" sx={{ borderRadius: 3 }}>
         <Tabs value={tab} onChange={(_, next) => setTab(next)} variant="scrollable" scrollButtons="auto" sx={{ borderBottom: 1, borderColor: "divider", px: 2 }}>
-          <Tab label="Account" /><Tab label="Subscription" /><Tab label="Security" /><Tab label="Telegram" />
+          <Tab label="Account" /><Tab label="Subscription" /><Tab label="Disclaimer" /><Tab label="Message Template" /><Tab label="Security" /><Tab label="Telegram" />
         </Tabs>
         <CardContent sx={{ p: { xs: 2, md: 3 } }}>
           {tab === 0 && <Stack spacing={2.5}>
@@ -78,7 +80,9 @@ const BrokerSettings = () => {
             <Box><Button variant="contained" onClick={() => navigate("/broker/profile")}>Open my broker profile</Button></Box>
           </Stack>}
           {tab === 1 && <SubscriptionStatusCard subscription={subscription} error={null} onRetry={() => void loadSettings()} title="Broker Subscription" />}
-          {tab === 2 && <Box component="form" onSubmit={changePassword} sx={{ maxWidth: 520 }}>
+          {tab === 2 && <BrokerDisclaimerSettings />}
+          {tab === 3 && <ResearchCallTemplateBuilder ownerType="BROKER" />}
+          {tab === 4 && <Box component="form" onSubmit={changePassword} sx={{ maxWidth: 520 }}>
             <Typography variant="h6" fontWeight={700}>Change password</Typography><Typography color="text.secondary" mb={2}>Your new password must contain at least 8 characters, one letter, and one number.</Typography>
             <Stack spacing={2}>
               {passwordError && <Alert severity="error">{passwordError}</Alert>}{passwordSuccess && <Alert severity="success">{passwordSuccess}</Alert>}
@@ -88,7 +92,7 @@ const BrokerSettings = () => {
               <Box><Button type="submit" variant="contained" disabled={saving}>{saving ? "Saving..." : "Change password"}</Button></Box>
             </Stack>
           </Box>}
-          {tab === 3 && <Box><Alert severity="info" sx={{ mb: 2 }}>Connect the broker's Telegram account before adding client phone numbers to Telegram delivery.</Alert><TelegramConnection storageScope="broker" /></Box>}
+          {tab === 5 && <Box><Alert severity="info" sx={{ mb: 2 }}>Connect the broker's Telegram account before adding client phone numbers to Telegram delivery.</Alert><TelegramConnection storageScope="broker" /></Box>}
         </CardContent>
       </Card>
     </Stack>
