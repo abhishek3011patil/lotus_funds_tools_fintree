@@ -56,6 +56,19 @@ type BrokerConnection = {
 
 const date = (value: string | null) => value ? new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
+const formatIndianPhone = (phone: string | null) => {
+  if (!phone) return "+91 ";
+
+  const digits = phone.replace(/\D/g, "");
+
+  const mobileNumber =
+    digits.startsWith("91") && digits.length === 12
+      ? digits.slice(2)
+      : digits.slice(-10);
+
+  return `+91 ${mobileNumber}`;
+};
+
 export default function RAClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState("");
@@ -93,16 +106,37 @@ const [whatsappDialogError, setWhatsappDialogError] = useState("");
 
 const handleAddTelegram = (clientId: string) => {
   const client = clients.find((client) => client.id === clientId);
+
   setSelectedClientId(clientId);
-  setTelegramPhone(client?.phoneNumber || "");
+  setTelegramPhone(formatIndianPhone(client?.phoneNumber || null));
   setTelegramDialogError("");
   setTelegramDialogOpen(true);
+};
+
+const handleIndianPhoneChange = (
+  value: string,
+  setPhone: (value: string) => void
+) => {
+  const digits = value.replace(/\D/g, "");
+
+  const mobileNumber = digits.startsWith("91")
+    ? digits.slice(2, 12)
+    : digits.slice(0, 10);
+
+  setPhone("+91 " + mobileNumber);
 };
 
 const handleConfirmAddTelegram = async () => {
   if (!selectedClientId) return;
 
- const phone = telegramPhone.trim();
+const phone = telegramPhone.replace(/\s/g, "");
+
+if (!/^\+91\d{10}$/.test(phone)) {
+  setTelegramDialogError(
+    "Please enter a valid 10-digit Indian mobile number."
+  );
+  return;
+}
 
 if (!phone) {
   setTelegramDialogError("Please enter the client's phone number.");
@@ -187,8 +221,9 @@ const handleConfirmRemoveTelegram = async () => {
 
 const handleAddWhatsApp = (clientId: string) => {
   const client = clients.find((client) => client.id === clientId);
+
   setWhatsappClientId(clientId);
-  setWhatsappPhone(client?.phoneNumber || "");
+  setWhatsappPhone(formatIndianPhone(client?.phoneNumber || null));
   setWhatsappDialogError("");
   setWhatsappDialogOpen(true);
 };
@@ -201,7 +236,7 @@ if (!phone) {
   return;
 }
 
-if (!phone.startsWith("+91")) {
+if (!phone.startsWith("+91 ")) {
   setWhatsappDialogError(
     "Please enter a valid Indian phone number starting with +91."
   );
@@ -720,17 +755,22 @@ const handleConfirmRemoveWhatsApp = async () => {
           Enter the client's Telegram Phone Number.
         </Typography>
 
-      <TextField
+
+<TextField
   fullWidth
   autoFocus
   label="Telegram Phone Number"
-  placeholder="+919876543210"
-  value={telegramPhone}
+  placeholder="9876543210"
+  value={telegramPhone || "+91"}
   onChange={(event) =>
-    setTelegramPhone(event.target.value)
+    handleIndianPhoneChange(
+      event.target.value,
+      setTelegramPhone
+    )
   }
   disabled={telegramSaving}
 />
+
 
 {telegramDialogError && (
   <Typography
@@ -830,17 +870,22 @@ const handleConfirmRemoveWhatsApp = async () => {
       Enter the client's WhatsApp phone number.
     </Typography>
 
-    <TextField
-      fullWidth
-      autoFocus
-      label="WhatsApp Phone Number"
-      placeholder="+919876543210"
-      value={whatsappPhone}
-      onChange={(event) =>
-        setWhatsappPhone(event.target.value)
-      }
-      disabled={whatsappSaving}
-    />
+
+<TextField
+  fullWidth
+  autoFocus
+  label="WhatsApp Phone Number"
+  placeholder="9876543210"
+  value={whatsappPhone || "+91"}
+  onChange={(event) =>
+    handleIndianPhoneChange(
+      event.target.value,
+      setWhatsappPhone
+    )
+  }
+  disabled={whatsappSaving}
+/>
+
 
     {whatsappDialogError && (
   <Typography

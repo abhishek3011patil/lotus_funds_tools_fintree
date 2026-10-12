@@ -31,6 +31,19 @@ export const TelegramSearch = ({ raId, onSaved }: TelegramSearchProps) => {
   console.log("raId prop =", raId);
 console.trace("TelegramSearch rendered from");
 
+
+const handlePhoneChange = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+
+  const mobileNumber = digits.startsWith("91")
+    ? digits.slice(2, 12)
+    : digits.slice(0, 10);
+
+  setPhoneNumber("+91 " + mobileNumber);
+  setPhoneError("");
+};
+
+
   const handleSave = async () => {
   // ✅ At least one field required
   if (!telegramId && !username && !phoneNumber) {
@@ -54,7 +67,9 @@ console.trace("TelegramSearch rendered from");
     const payload = {
       telegram_user_id: telegramId || null,
       telegram_client_name: cleanUsername || null,
-      phone_number: phoneNumber || null,
+      phone_number: phoneNumber
+  ? phoneNumber.replace(/\s/g, "")
+  : null,
     };
 
     // =========================
@@ -340,35 +355,27 @@ const downloadTemplate = () => {
           />
         )}
 
-        {/* Phone */}
-        {entityType === "USER" && (
-          <TextField
-            fullWidth
-            label="Phone Number"
-            placeholder="+919876543210"
-            value={phoneNumber}
-            error={!!phoneError}
-            helperText={phoneError}
-            onChange={(e) => {
-              const value = e.target.value;
-              setPhoneNumber(value);
+ 
+{/* Phone */}
+{entityType === "USER" && (
+  <TextField
+    fullWidth
+    label="Phone Number"
+    placeholder="+91 9876543210"
+    value={phoneNumber || "+91 "}
+    error={!!phoneError}
+    helperText={phoneError}
+    onChange={(e) => handlePhoneChange(e.target.value)}
+    sx={{
+      minWidth: 0,
+      "& .MuiInputBase-root": {
+        minWidth: 0,
+      },
+    }}
+  />
+)}
 
-              if (value && !value.startsWith("+91")) {
-                setPhoneError(
-                  "Phone number must start with +91"
-                );
-              } else {
-                setPhoneError("");
-              }
-            }}
-            sx={{
-              minWidth: 0,
-              "& .MuiInputBase-root": {
-                minWidth: 0,
-              },
-            }}
-          />
-        )}
+
 
         {/* Buttons */}
         <Box

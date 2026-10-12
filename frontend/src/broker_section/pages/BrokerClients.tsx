@@ -36,9 +36,26 @@ const BrokerClients = () => {
   }, [search]);
   useEffect(() => { const timer = window.setTimeout(() => void load(), 250); return () => window.clearTimeout(timer); }, [load]);
 
+const handleClientPhoneChange = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+
+  const mobileNumber = digits.startsWith("91")
+    ? digits.slice(2, 12)
+    : digits.slice(0, 10);
+
+  setForm((prev) => ({
+    ...prev,
+    phoneNumber: "+91 " + mobileNumber,
+  }));
+};
+
   const saveClient = async () => {
     setSaving(true); setError("");
-    try { await createBrokerClient(form); setAdding(false); setForm(emptyForm); setNotice("Client added to the broker directory."); await load(); }
+    try { await createBrokerClient({
+  ...form,
+  phoneNumber: form.phoneNumber.replace(/\s/g, ""),
+});
+setAdding(false); setForm(emptyForm); setNotice("Client added to the broker directory."); await load(); }
     catch (requestError) { setError(onboardingError(requestError)); }
     finally { setSaving(false); }
   };
@@ -89,7 +106,13 @@ const BrokerClients = () => {
         <Alert severity="info">For privacy, only masked Aadhaar/PAN values and secure hashes are retained.</Alert>
         <TextField autoFocus required label="Full name" value={form.name} onChange={e => setForm(value => ({ ...value, name: e.target.value }))} />
         <TextField label="Email" type="email" value={form.email} onChange={e => setForm(value => ({ ...value, email: e.target.value }))} />
-        <TextField required label="Phone with country code" placeholder="+919876543210" value={form.phoneNumber} onChange={e => setForm(value => ({ ...value, phoneNumber: e.target.value }))} />
+        <TextField
+  required
+  label="Phone with country code"
+  placeholder="+91 9876543210"
+  value={form.phoneNumber || "+91 "}
+  onChange={e => handleClientPhoneChange(e.target.value)}
+/>
         <TextField required label="Aadhaar number" inputProps={{ maxLength: 12 }} value={form.aadhaarNumber} onChange={e => setForm(value => ({ ...value, aadhaarNumber: e.target.value.replace(/\D/g, "") }))} />
         <TextField required label="PAN number" inputProps={{ maxLength: 10 }} value={form.panNumber} onChange={e => setForm(value => ({ ...value, panNumber: e.target.value.toUpperCase() }))} />
       </Stack></DialogContent><DialogActions><Button disabled={saving} onClick={() => setAdding(false)}>Cancel</Button><Button variant="contained" disabled={saving} onClick={() => void saveClient()}>{saving ? "Adding..." : "Add client"}</Button></DialogActions>

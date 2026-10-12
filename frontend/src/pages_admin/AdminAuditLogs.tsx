@@ -49,6 +49,7 @@ const AdminAuditLogs: React.FC = () => {
   const [userFilter, setUserFilter] = useState('');
   const [moduleFilter, setModuleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  
 
   // ── NEW: dialog state ──────────────────────────────────────────────
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
