@@ -3,6 +3,7 @@ import axios from "axios";
 import { Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Divider, Grid, Link, Stack, Typography } from "@mui/material";
 import type { BrokerAccount } from "../types/brokerAccount";
 import { getMyBrokerAccount } from "../services/brokerAccount.service";
+import AuthenticatedAvatar from "../../components/common/AuthenticatedAvatar";
 
 const value = (item: unknown) => item === null || item === undefined || item === "" ? "—" : String(item);
 const date = (item: string | null) => item ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(item)) : "—";
@@ -45,7 +46,12 @@ const BrokerProfile = () => {
 
   return <Stack spacing={3}>
     <Box sx={{ display: "flex", alignItems: { xs: "flex-start", sm: "center" }, justifyContent: "space-between", gap: 2, flexDirection: { xs: "column", sm: "row" } }}>
-      <Box><Typography variant="h4" fontWeight={800}>My Broker Profile</Typography><Typography color="text.secondary">Your approved registration and organization information.</Typography></Box>
+      <Stack direction="row" spacing={2} alignItems="center">
+        <AuthenticatedAvatar filename={broker.profileImage} alt={`${broker.organization.tradeName || broker.organization.legalName || broker.account.name} profile picture`} sx={{ width: 64, height: 64, bgcolor: "#5271FF", fontWeight: 800, fontSize: 24 }}>
+          {(broker.organization.tradeName || broker.organization.legalName || broker.account.name).slice(0, 1).toUpperCase()}
+        </AuthenticatedAvatar>
+        <Box><Typography variant="h4" fontWeight={800}>My Broker Profile</Typography><Typography color="text.secondary">Your approved registration and organization information.</Typography></Box>
+      </Stack>
       <Stack direction="row" spacing={1}><Chip label={normalizedStatus(broker.registration.status)} color={normalizedStatus(broker.registration.status) === "APPROVED" ? "success" : "warning"} /><Chip label={broker.account.isActive ? "ACCOUNT ACTIVE" : "ACCOUNT INACTIVE"} variant="outlined" /></Stack>
     </Box>
 

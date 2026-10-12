@@ -1,9 +1,11 @@
 import {
+  Alert,
   Autocomplete,
   Box,
   Button,
   FormControl,
   FormControlLabel,
+  InputLabel,
   MenuItem,
   Paper,
   Radio,
@@ -43,7 +45,6 @@ import {
   useCallback,
   useReducer,
   startTransition,
-  type ChangeEvent,
   type MouseEvent,
 } from "react";
 import { FormHelperText } from "@mui/material";
@@ -66,18 +67,60 @@ import axios from "axios";
 import RemarksField from "../components/page_Mainapp/RemarksField";
 import { formatResearchCallMessage } from "../utils/researchCallTemplate.utils";
 import { fetchResearchCallTemplates } from "../services/researchCallTemplate.service";
+import RiskRewardSummary from "../components/page_Mainapp/RiskRewardSummary";
+import { calculateCallRiskReward, formatRiskReward } from "../utils/riskReward.utils";
+import {
+  fetchAudienceConnections,
+  fetchAudienceGroups,
+  type AudienceGroup,
+} from "../services/audienceGroups.service";
+import {
+  clearRecommendationDraft,
+  getRecommendationDraftStorageKey,
+  loadRecommendationDraft,
+  saveRecommendationDraft,
+} from "../utils/recommendationDraft.utils";
 
 
 const BUY_COLOR = "#22c55e";
 const SELL_COLOR = "#ef4444";
-const PUBLISH_PREVIEW_SESSION_KEY = "researchCallShowPublishPreview";
 const MAX_UNDERLYING_STUDY_LENGTH = 255;
 const MAX_UNDERLYING_STUDIES = 20;
+
+const appendRiskReward = (message: string, ratio: number | null) =>
+  ratio === null ? message : `${message}\n\nRisk : Reward: ${formatRiskReward(ratio)}`;
 
 type PreparedResearchCallMessage = {
   message: string;
   templateVersion: number | null;
   templateSnapshot: unknown | null;
+};
+
+type RecommendationForm = {
+  exchangeType: "NSE" | "BSE";
+  action: "BUY" | "SELL";
+  exchange: "STOCK" | "INDEX";
+  callType: "Cash" | "Futures" | "Option Call" | "Option Put";
+  tradeType: "Intraday" | "BTST" | "STBT" | "Short Term" | "Long Term";
+  symbol: string;
+  display_name: string;
+  entry: string;
+  entryLow: string;
+  entryUpper: string;
+  target: string;
+  target2: string;
+  target3: string;
+  stopLoss: string;
+  stopLoss2: string;
+  stopLoss3: string;
+  expiry: string;
+  holdingPeriod: string;
+  rationale: string;
+  remark: string;
+  underlyingStudy: StudyOption[];
+  rangeEnabled: boolean;
+  secondaryTargetEnabled: boolean;
+  stopLoss2Enabled: boolean;
 };
 
 
@@ -99,6 +142,13 @@ const getActionStyles = (current: "BUY" | "SELL", button: "BUY" | "SELL") => {
 
 const NewRecommendation = () => {
     const [raDetails, setRaDetails] = useState<any>(null);
+    const draftStorageKey = useMemo(
+      () => getRecommendationDraftStorageKey(localStorage.getItem("username")),
+      []
+    );
+    const [restoredDraft] = useState(
+      () => loadRecommendationDraft<RecommendationForm>(localStorage, draftStorageKey)
+    );
 
 
 const fetchRAMessageProfile = async () => {
@@ -164,21 +214,21 @@ const fetchRAMessageProfile = async () => {
   //console.log("RENDER");
   const [underlyingStudyInput, setUnderlyingStudyInput] = useState("");
 
-  const [isErrataMode, setIsErrataMode] = useState(false);
-  const [errataSourceId, setErrataSourceId] = useState<string | null>(null);
+  const [isErrataMode, setIsErrataMode] = useState(restoredDraft?.isErrataMode ?? false);
+  const [errataSourceId, setErrataSourceId] = useState<string | null>(restoredDraft?.errataSourceId ?? null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 const [isSubmitting, setIsSubmitting] = useState(false);
 const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
 const [previewLoading, setPreviewLoading] = useState(false);
 const [preparedPreview, setPreparedPreview] =
   useState<PreparedResearchCallMessage | null>(null);
-const [showPublishPreview, setShowPublishPreview] = useState(() => {
-  try {
-    return sessionStorage.getItem(PUBLISH_PREVIEW_SESSION_KEY) !== "false";
-  } catch {
-    return true;
-  }
-});
+const [pendingDraftPublish, setPendingDraftPublish] = useState<any | null>(null);
+const [audienceGroups, setAudienceGroups] = useState<AudienceGroup[]>([]);
+const [audienceMode, setAudienceMode] = useState<"ALL_CONNECTED" | "GROUPS">(restoredDraft?.audienceMode ?? "ALL_CONNECTED");
+const [selectedAudienceGroupIds, setSelectedAudienceGroupIds] = useState<string[]>(restoredDraft?.selectedAudienceGroupIds ?? []);
+const [audienceLoading, setAudienceLoading] = useState(true);
+const [audienceError, setAudienceError] = useState("");
+const [allAudienceCounts, setAllAudienceCounts] = useState({ clients: 0, brokers: 0, telegram: 0, whatsapp: 0 });
 
 const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
 const [versionHistory, setVersionHistory] = useState<any[]>([]);
@@ -200,33 +250,6 @@ const [
 ] = useState<StudyOption[]>([]);
 
 
-
-  type RecommendationForm = {
-    exchangeType: "NSE" | "BSE";
-    action: "BUY" | "SELL";
-    exchange: "STOCK" | "INDEX";
-    callType: "Cash" | "Futures" | "Option Call" | "Option Put";
-    tradeType: "Intraday" | "BTST" | "STBT" | "Short Term" | "Long Term";
-    symbol: string;
-    display_name: string;
-    entry: string;
-    entryLow: string;
-    entryUpper: string;
-    target: string;
-    target2: string;
-    target3: string;
-    stopLoss: string;
-    stopLoss2: string;
-    stopLoss3: string;
-    expiry: string;
-    holdingPeriod: string;
-    rationale: string;
-    remark: string;
-    underlyingStudy: StudyOption[];
-    rangeEnabled: boolean;
-    secondaryTargetEnabled: boolean;
-    stopLoss2Enabled: boolean;
-  };
 
   const initialForm: RecommendationForm = {
     exchangeType: "NSE",
@@ -308,7 +331,26 @@ function formReducer(
   }
 }
 
-  const [form, dispatch] = useReducer(formReducer, initialForm);
+  const [form, dispatch] = useReducer(
+    formReducer,
+    restoredDraft?.form ? { ...initialForm, ...restoredDraft.form } : initialForm
+  );
+  const riskRewardRatio = calculateCallRiskReward({
+    action: form.action,
+    entry: form.entry,
+    entryLow: form.entryLow,
+    entryUpper: form.entryUpper,
+    target: form.target,
+    stopLoss: form.stopLoss,
+    rangeEnabled: form.rangeEnabled,
+  });
+  const riskRewardReady = Boolean(
+    form.target.trim() &&
+    form.stopLoss.trim() &&
+    (form.rangeEnabled
+      ? form.entryLow.trim() && form.entryUpper.trim()
+      : form.entry.trim())
+  );
   const underlyingStudyText = form.underlyingStudy
     .map((study) => study.label)
     .join(", ");
@@ -316,12 +358,19 @@ function formReducer(
     underlyingStudyText.length > MAX_UNDERLYING_STUDY_LENGTH;
   const tooManyUnderlyingStudies =
     form.underlyingStudy.length > MAX_UNDERLYING_STUDIES;
+  const selectedAudienceGroups = audienceGroups.filter(group => selectedAudienceGroupIds.includes(group.id));
+  const selectedAudienceMembers = new Map(selectedAudienceGroups.flatMap(group => group.members).map(member => [`${member.type}:${member.id}`, member]));
+  const selectedAudienceClientCount = [...selectedAudienceMembers.values()].filter(member => member.type === "CLIENT").length;
+  const selectedAudienceBrokerCount = [...selectedAudienceMembers.values()].filter(member => member.type === "BROKER").length;
+  const selectedAudienceTelegramCount = [...selectedAudienceMembers.values()].filter(member => member.type === "TELEGRAM").length;
+  const selectedAudienceWhatsAppCount = [...selectedAudienceMembers.values()].filter(member => member.type === "WHATSAPP").length;
 
   const panelBg = form.action === "BUY" ? "#eef9ee" : "#fee2e2";
   const panelBorder = form.action === "BUY" ? "#7ac77a" : SELL_COLOR;
   
 
  const resetForm = () => {
+  clearRecommendationDraft(localStorage, draftStorageKey);
   previewRequestRef.current += 1;
   previewLoadingRef.current = false;
   dispatch({ type: "RESET" });
@@ -335,6 +384,8 @@ function formReducer(
   setPreviewDialogOpen(false);
   setPreparedPreview(null);
   setPreviewLoading(false);
+  setAudienceMode("ALL_CONNECTED");
+  setSelectedAudienceGroupIds([]);
 
 };
 
@@ -474,7 +525,7 @@ https://lotusfunds.com/disclaimer&disclosure
     if (errataTemplate) {
       try {
         return {
-          message: formatResearchCallMessage(
+          message: appendRiskReward(formatResearchCallMessage(
             errataTemplate,
             {
               publishedAt,
@@ -503,7 +554,7 @@ https://lotusfunds.com/disclaimer&disclosure
             },
             raTemplateData,
             "ERRATA"
-          ),
+          ), riskRewardRatio),
           templateVersion: errataTemplate.version,
           templateSnapshot: errataTemplate,
         };
@@ -513,7 +564,7 @@ https://lotusfunds.com/disclaimer&disclosure
     }
 
     return {
-      message: defaultErrataMessage,
+      message: appendRiskReward(defaultErrataMessage, riskRewardRatio),
       templateVersion: null,
       templateSnapshot: null,
     };
@@ -580,7 +631,7 @@ https://lotusfunds.com/disclaimer&disclosure
   if (newCallTemplate) {
     try {
       return {
-        message: formatResearchCallMessage(
+        message: appendRiskReward(formatResearchCallMessage(
           newCallTemplate,
           {
             publishedAt,
@@ -613,7 +664,7 @@ https://lotusfunds.com/disclaimer&disclosure
           },
           raTemplateData,
           "NEW_CALL"
-        ),
+        ), riskRewardRatio),
         templateVersion: newCallTemplate.version,
         templateSnapshot: JSON.stringify(newCallTemplate),
       };
@@ -623,7 +674,7 @@ https://lotusfunds.com/disclaimer&disclosure
   }
 
   return {
-    message: defaultPublishMessage,
+    message: appendRiskReward(defaultPublishMessage, riskRewardRatio),
     templateVersion: null,
     templateSnapshot: null,
   };
@@ -742,6 +793,11 @@ const finalDisplayName =
       if (finalPreparedMessage.templateSnapshot !== null) {
         errataFormData.append("message_template_snapshot", JSON.stringify(finalPreparedMessage.templateSnapshot));
       }
+      errataFormData.append("audience_mode", audienceMode);
+      errataFormData.append(
+        "audience_group_ids",
+        JSON.stringify(audienceMode === "GROUPS" ? selectedAudienceGroupIds : [])
+      );
 
       const errataResponse = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/research/calls/errata`,
@@ -778,6 +834,7 @@ const finalDisplayName =
           `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
           {
             message: finalPreparedMessage.message,
+            researchCallId: errataResponse.data?.data?.id,
           },
           {
             headers: {
@@ -875,6 +932,8 @@ const finalDisplayName =
       is_algo: false,
       has_vested_interest: false,
       research_remarks: form.remark.trim() || null,
+      audience_mode: audienceMode,
+      audience_group_ids: JSON.stringify(audienceMode === "GROUPS" ? selectedAudienceGroupIds : []),
     };
 
     const formData = new FormData();
@@ -887,7 +946,7 @@ const finalDisplayName =
       }
     });
 
-    await axios.post(
+    const createResponse = await axios.post(
       `${import.meta.env.VITE_API_URL}/api/research/calls`,
       formData,
       {
@@ -920,6 +979,7 @@ const finalDisplayName =
         `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
         {
           message: finalPreparedMessage.message,
+          researchCallId: createResponse.data?.id,
         },
         {
           headers: {
@@ -994,6 +1054,31 @@ const finalDisplayName =
         isLoading: false,
       }
       : autocomplete;
+
+  useEffect(() => {
+    if (!restoredDraft) return;
+
+    setDirectValue(restoredDraft.stockInput);
+  }, [restoredDraft, setDirectValue]);
+
+  useEffect(() => {
+    saveRecommendationDraft(localStorage, draftStorageKey, {
+      form,
+      stockInput: inputValue,
+      isErrataMode,
+      errataSourceId,
+      audienceMode,
+      selectedAudienceGroupIds,
+    });
+  }, [
+    audienceMode,
+    draftStorageKey,
+    errataSourceId,
+    form,
+    inputValue,
+    isErrataMode,
+    selectedAudienceGroupIds,
+  ]);
 
   // =============================
   // Underlying Study helpers
@@ -1141,12 +1226,17 @@ const handleUnderlyingStudyChange = (
       return;
     }
 
+    const currentExpiryIsAvailable = expiryDates.some(
+      (date) => date.toISOString() === form.expiry
+    );
+    if (currentExpiryIsAvailable) return;
+
     const first = expiryDates[0].toISOString();
 
     if (form.expiry !== first) {
       dispatch({ type: "SET_FIELD", field: "expiry", value: first });
     }
-  }, [expiryDates]);
+  }, [expiryDates, form.expiry]);
 
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1193,6 +1283,27 @@ const handleUnderlyingStudyChange = (
     fetchRecommendations();
     fetchRAMessageProfile();
 
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    setAudienceLoading(true);
+    Promise.all([fetchAudienceGroups(), fetchAudienceConnections()])
+      .then(([groups, connections]) => {
+        if (!active) return;
+        setAudienceGroups(groups);
+        setAllAudienceCounts({
+          clients: connections.clients.length,
+          brokers: connections.brokers.length,
+          telegram: connections.telegram.length,
+          whatsapp: connections.whatsapp.length,
+        });
+      })
+      .catch(() => {
+        if (active) setAudienceError("Audience groups could not be loaded. You can still publish to all connected recipients.");
+      })
+      .finally(() => { if (active) setAudienceLoading(false); });
+    return () => { active = false; };
   }, []);
 
 
@@ -1330,7 +1441,7 @@ const handleExit = useCallback(
     "N/A";
 
   const organizationName =
-    raDetails.org_name || "Lotus Funds";
+    raDetails.org_name || "Tarkashh";
 
 
 
@@ -1436,6 +1547,7 @@ https://lotusfunds.com/disclaimer&disclosure
       `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
       {
         message: exitMessage,
+        researchCallId: item.id,
       },
       {
         headers: {
@@ -1563,6 +1675,13 @@ const handleViewHistory = useCallback(async (item: any) => {
       dispatch({ type: "SET_FORM", payload: formUpdate });
       setIsErrataMode(true);
       setErrataSourceId(item.id);
+      setAudienceMode(item.audience_mode === "GROUPS" ? "GROUPS" : "ALL_CONNECTED");
+      setSelectedAudienceGroupIds(
+        item.audience_mode === "GROUPS" && Array.isArray(item.audience_groups_snapshot)
+          ? item.audience_groups_snapshot.map((group: { id?: unknown }) => String(group.id || "")).filter(Boolean)
+          : []
+      );
+      setAudienceError("");
       setDirectValue(item.name || item.symbol || "");
     });
 
@@ -1668,13 +1787,7 @@ const validateAndPublish = async (
   event.preventDefault();
   if (isSubmitting || previewLoading || !validatePublishForm()) return;
 
-  if (showPublishPreview) {
-    await prepareAndOpenPreview();
-    return;
-  }
-
-  await handleSubmit();
-  setWasValidated(false);
+  await prepareAndOpenPreview();
 };
 
 const validateAndPreview = async (
@@ -1690,23 +1803,88 @@ const handleClosePreview = () => {
   if (isSubmitting) return;
   setPreviewDialogOpen(false);
   setPreparedPreview(null);
+  setPendingDraftPublish(null);
+};
+
+const publishTrackedDraft = async (
+  item: any,
+  preparedMessage: PreparedResearchCallMessage
+) => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    alert("Please login again");
+    return;
+  }
+
+  if (audienceMode === "GROUPS" && selectedAudienceGroupIds.length === 0) {
+    setAudienceError("Select at least one group before publishing.");
+    return;
+  }
+
+  setIsSubmitting(true);
+  try {
+    await axios.patch(
+      `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/publish`,
+      {
+        message_text: preparedMessage.message,
+        audience_mode: audienceMode,
+        audience_group_ids: audienceMode === "GROUPS" ? selectedAudienceGroupIds : [],
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    setRecommendations((previous) =>
+      previous.map((recommendation) =>
+        recommendation.id === item.id
+          ? { ...recommendation, status: "PUBLISHED" }
+          : recommendation
+      )
+    );
+
+    try {
+      const telegramStatus = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/telegram/status`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (telegramStatus.data?.connected) {
+        await axios.post(
+          `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
+          { message: preparedMessage.message, researchCallId: item.id },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        alert("Call published successfully ✅");
+      } else {
+        alert("Call published, but Telegram is not connected");
+      }
+    } catch (telegramError: any) {
+      console.error("DRAFT TELEGRAM ERROR:", telegramError?.response?.data || telegramError);
+      alert("Call published, but Telegram sending failed");
+    }
+
+    setPreviewDialogOpen(false);
+    setPreparedPreview(null);
+    setPendingDraftPublish(null);
+    await fetchRecommendations();
+  } catch (error: any) {
+    console.error("Draft publish failed:", error?.response?.data || error);
+    alert(error?.response?.data?.message || "Unable to publish the call");
+  } finally {
+    setIsSubmitting(false);
+  }
 };
 
 const handleConfirmPreview = async () => {
   if (!preparedPreview || isSubmitting) return;
-  await handleSubmit(preparedPreview);
-};
-
-const handleShowPublishPreviewChange = (
-  event: ChangeEvent<HTMLInputElement>
-) => {
-  const checked = event.target.checked;
-  setShowPublishPreview(checked);
-  try {
-    sessionStorage.setItem(PUBLISH_PREVIEW_SESSION_KEY, String(checked));
-  } catch {
-    // Keep the in-memory preference if session storage is unavailable.
+  if (audienceMode === "GROUPS" && selectedAudienceGroupIds.length === 0) {
+    setAudienceError("Select at least one group before publishing.");
+    return;
   }
+  if (pendingDraftPublish) {
+    await publishTrackedDraft(pendingDraftPublish, preparedPreview);
+    return;
+  }
+  await handleSubmit(preparedPreview);
 };
 
 
@@ -2106,20 +2284,6 @@ const handleInitiate = useCallback(
         return;
       }
 
-      const telegramStatus = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/telegram/status`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!telegramStatus.data.connected) {
-        alert("Please connect Telegram first");
-        return;
-      }
-
       const getEntry = () => {
         if (!item.entry) return "-";
 
@@ -2225,41 +2389,14 @@ Read Full Disclaimer / Disclosure at:
 https://lotusfunds.com/disclaimer&disclosure
 `.trim();
 
-      console.log("FINAL PUBLISH MESSAGE:", publishMessage);
-
-      await axios.patch(
-        `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/publish`,
-        {
-          message_text: publishMessage,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      setRecommendations((prev) =>
-        prev.map((rec) =>
-          rec.id === item.id
-            ? { ...rec, status: "PUBLISHED" }
-            : rec
-        )
-      );
-
-      await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/telegram/send-ra-message`,
-        {
-          message: publishMessage,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      alert("Call initiated successfully ✅");
+      setPendingDraftPublish(item);
+      setPreparedPreview({
+        message: publishMessage,
+        templateVersion: null,
+        templateSnapshot: null,
+      });
+      setAudienceError("");
+      setPreviewDialogOpen(true);
     } catch (err: any) {
       console.error(
         "Initiate failed:",
@@ -2647,14 +2784,12 @@ const getMainPriceError = useCallback(
   ]
 );
 
-const commitMainPrice = useCallback(
+const changeMainPrice = useCallback(
   (field: MainPriceField, value: string) => {
-    startTransition(() => {
-      dispatch({
-        type: "SET_FIELD",
-        field,
-        value,
-      });
+    dispatch({
+      type: "SET_FIELD",
+      field,
+      value,
     });
   },
   []
@@ -2670,17 +2805,15 @@ const commitRemark = useCallback((value: string) => {
   });
 }, []);
 
-const commitAdditionalPrice = useCallback(
+const changeAdditionalPrice = useCallback(
   (
     field: AdditionalPriceField,
     value: string
   ) => {
-    startTransition(() => {
-      dispatch({
-        type: "SET_FIELD",
-        field,
-        value,
-      });
+    dispatch({
+      type: "SET_FIELD",
+      field,
+      value,
     });
   },
   []
@@ -3357,7 +3490,7 @@ sx={{
 <PriceSection
   values={mainPriceValues}
   wasValidated={wasValidated}
-  onCommit={commitMainPrice}
+  onChange={changeMainPrice}
   getError={getMainPriceError}
 />
 
@@ -3367,7 +3500,7 @@ sx={{
   toggles={additionalPriceToggles}
   wasValidated={wasValidated}
   onToggle={toggleAdditionalSection}
-  onCommit={commitAdditionalPrice}
+  onChange={changeAdditionalPrice}
   getError={getAdditionalPriceError}
 />
 
@@ -3380,7 +3513,15 @@ sx={{
             mb: 1
           }}
         >
-          {/* TOP PART: Holding Period */}
+          {/* Holding Period and live Risk : Reward */}
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) minmax(300px, 0.72fr)" },
+              gap: 1.5,
+              alignItems: "stretch",
+            }}
+          >
           <Box sx={{ width: "100%",
     maxWidth: "100%",
     overflowX: { xs: "auto", md: "visible" },
@@ -3444,7 +3585,10 @@ sx={{
             </FormControl>
           </Box>
 
-          {/* BOTTOM PART: Rationale (Now appears under Holding Period) */}
+          <RiskRewardSummary ratio={riskRewardRatio} ready={riskRewardReady} />
+          </Box>
+
+          {/* Rationale */}
           <Box sx={{ width: "100%", display: "flex", flexDirection: "column", gap: 0.5 }}>
             <Typography sx={{ fontSize: '0.7rem', fontWeight: 700 }}>Rationale</Typography>
             <Box sx={{ width: "100%" }}>
@@ -3742,6 +3886,33 @@ sx={{
       : "Research Call Message Preview"}
   </DialogTitle>
   <DialogContent dividers>
+    <Paper variant="outlined" sx={{ p: 2, mb: 2, bgcolor: "#FBFCFF" }}>
+      <Typography fontWeight={800}>Select audience</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{isErrataMode ? "Confirm who should receive this correction. The original call’s audience is preselected." : "Choose who can see and receive this research call. The final recipient list is saved with the call."}</Typography>
+      {audienceError && <Alert severity="warning" onClose={() => setAudienceError("")} sx={{ mb: 1.5 }}>{audienceError}</Alert>}
+      <RadioGroup value={audienceMode} onChange={event => { setAudienceMode(event.target.value as "ALL_CONNECTED" | "GROUPS"); setAudienceError(""); }}>
+        <FormControlLabel value="ALL_CONNECTED" control={<Radio />} label={`All connected recipients (${allAudienceCounts.clients} clients, ${allAudienceCounts.brokers} brokers, ${allAudienceCounts.telegram} Telegram, ${allAudienceCounts.whatsapp} WhatsApp)`} />
+        <FormControlLabel value="GROUPS" control={<Radio />} label="Selected groups" />
+      </RadioGroup>
+      {audienceMode === "GROUPS" && <FormControl fullWidth size="small" sx={{ mt: 1 }} disabled={audienceLoading || audienceGroups.length === 0}>
+        <InputLabel id="audience-groups-label">Groups</InputLabel>
+        <Select
+          labelId="audience-groups-label"
+          multiple
+          label="Groups"
+          value={selectedAudienceGroupIds}
+          onChange={event => {
+            const value = event.target.value;
+            setSelectedAudienceGroupIds(typeof value === "string" ? value.split(",") : value);
+            setAudienceError("");
+          }}
+          renderValue={selected => audienceGroups.filter(group => selected.includes(group.id)).map(group => group.name).join(", ")}
+        >
+          {audienceGroups.map(group => <MenuItem key={group.id} value={group.id}><Checkbox checked={selectedAudienceGroupIds.includes(group.id)} />{group.name} ({group.members.length})</MenuItem>)}
+        </Select>
+        <FormHelperText>{audienceGroups.length === 0 ? "Create a group from Connections > Groups first." : `${selectedAudienceClientCount} clients, ${selectedAudienceBrokerCount} brokers, ${selectedAudienceTelegramCount} Telegram and ${selectedAudienceWhatsAppCount} WhatsApp selected`}</FormHelperText>
+      </FormControl>}
+    </Paper>
     <Paper
       component="pre"
       variant="outlined"
@@ -3761,16 +3932,6 @@ sx={{
     >
       {preparedPreview?.message || ""}
     </Paper>
-    <FormControlLabel
-      sx={{ mt: 1.5 }}
-      control={
-        <Checkbox
-          checked={showPublishPreview}
-          onChange={handleShowPublishPreviewChange}
-        />
-      }
-      label="Show preview before publishing"
-    />
   </DialogContent>
   <DialogActions>
     <Button onClick={handleClosePreview} disabled={isSubmitting}>
@@ -3779,7 +3940,7 @@ sx={{
     <Button
       variant="contained"
       onClick={handleConfirmPreview}
-      disabled={isSubmitting || !preparedPreview}
+      disabled={isSubmitting || !preparedPreview || (audienceMode === "GROUPS" && selectedAudienceGroupIds.length === 0)}
     >
       {isSubmitting
         ? isErrataMode

@@ -47,12 +47,12 @@ test("adds an existing RA and shows their calls in the performance table", async
   await dialog.getByLabel("Name or SEBI registration").fill("Ananya");
   await dialog.getByRole("button", { name: "Search", exact: true }).click();
   await dialog.getByRole("button", { name: "Add Ananya Research", exact: true }).click();
-  await expect(page.getByRole("table").getByText(ra.name)).toBeVisible();
+  await expect(page.getByText(ra.name).filter({ visible: true }).first()).toBeVisible();
   await page.goto("/broker/research-calls");
-  await expect(page.getByRole("cell", { name: "TESTCALL", exact: true })).toBeVisible();
-  await expect(page.getByRole("columnheader", { name: "Researcher Name" })).toBeVisible();
+  await expect(page.getByText("TESTCALL", { exact: true }).filter({ visible: true }).first()).toBeVisible();
+  await expect(page.getByText(ra.name).filter({ visible: true }).first()).toBeVisible();
   await page.getByLabel("Search calls, symbols or Research Analysts").fill("missing");
-  await expect(page.getByText("No records found", { exact: true })).toBeVisible();
+  await expect(page.getByText("No records found", { exact: true }).filter({ visible: true })).toBeVisible();
   expect(unscoped).toEqual([]);
 });
 
@@ -86,30 +86,30 @@ test("confirms removal, hides associated calls, and allows adding the RA again",
     await page.getByLabel("Name or SEBI registration").fill("Ananya");
     await page.getByRole("button", { name: "Search", exact: true }).click();
     await page.getByRole("button", { name: "Add Ananya Research", exact: true }).click();
-    await expect(page.getByRole("table").getByText(ra.name)).toBeVisible();
+    await expect(page.getByText(ra.name, { exact: true }).filter({ visible: true }).first()).toBeVisible();
   };
   await page.goto("/broker/research-analysts");
   await addExisting();
   await page.getByRole("button", { name: "Remove Ananya Research", exact: true }).click();
   const confirm = page.getByRole("dialog", { name: "Remove Research Analyst?" });
   await confirm.getByRole("button", { name: "Cancel", exact: true }).click();
-  await expect(page.getByRole("table").getByText(ra.name)).toBeVisible();
+  await expect(page.getByText(ra.name, { exact: true }).filter({ visible: true }).first()).toBeVisible();
   await page.getByRole("button", { name: "Remove Ananya Research", exact: true }).click();
   // A failed API request keeps the association visible and allows retrying.
   await page.route(`**/api/broker/research-analysts/${ra.id}`, route => route.fulfill({ status: 500, json: { message: "Removal unavailable" } }), { times: 1 });
   await confirm.getByRole("button", { name: "Remove RA", exact: true }).click();
   await expect(confirm.getByText("Removal unavailable", { exact: true })).toBeVisible();
-  await expect(page.getByRole("table", { includeHidden: true }).getByText(ra.name)).toBeVisible();
+  await expect(page.getByText(ra.name, { exact: true }).filter({ visible: true }).first()).toBeVisible();
   await confirm.getByRole("button", { name: "Remove RA", exact: true }).click();
   await expect(confirm).toHaveCount(0);
-  await expect(page.getByRole("table").getByText(ra.name)).toHaveCount(0);
+  await expect(page.getByText(ra.name, { exact: true }).filter({ visible: true })).toHaveCount(0);
   await page.goto("/broker/research-calls");
   await expect(page.getByText(/No published calls yet/)).toBeVisible();
-  await expect(page.getByRole("cell", { name: "TESTCALL", exact: true })).toHaveCount(0);
+  await expect(page.getByText("TESTCALL", { exact: true }).filter({ visible: true })).toHaveCount(0);
   await page.goto("/broker/research-analysts");
   await addExisting();
   await page.goto("/broker/research-calls");
-  await expect(page.getByRole("cell", { name: "TESTCALL", exact: true })).toBeVisible();
+  await expect(page.getByText("TESTCALL", { exact: true }).filter({ visible: true }).first()).toBeVisible();
 });
 
 test("opens the registration form with broker association", async ({ page }) => {

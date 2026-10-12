@@ -23,10 +23,11 @@ import {
 import { getParticipantsByRA } from "../controllers/telegram.controller";
 import { upload } from "../middlewares/upload";
 import { pool } from "../db";
+import { requireAdmin } from "../middlewares/admin.middleware";
 
 const router = express.Router();
 
-router.get('/participants', getAllUsers);
+router.get('/participants', authenticate, requireAdmin, getAllUsers);
 router.post("/save-user", authenticate, saveTelegramUser);
 router.put("/participant/:id", authenticate, updateParticipant);
 router.delete("/participant/:id", authenticate, deleteParticipant);
@@ -76,10 +77,6 @@ router.patch(
 router.get(
   "/download-template",
   authenticate,
-  (req, res, next) => {
-    console.log("DOWNLOAD TEMPLATE ROUTE HIT");
-    next();
-  },
   downloadTelegramTemplate
 );
 

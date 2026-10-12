@@ -241,12 +241,15 @@ export const requireActiveSubscription =
             latestSubscription?.status ===
             "EXPIRED"
               ? "Your subscription has expired."
+              : latestSubscription?.status === "CANCELLED"
+                ? "Your subscription has been cancelled. Renew it to restore access."
               : "An active subscription is required.",
           subscription:
             latestSubscription,
           nextStep:
-            latestSubscription?.status ===
-            "EXPIRED"
+            ["EXPIRED", "CANCELLED"].includes(
+              latestSubscription?.status
+            )
               ? "RENEW_SUBSCRIPTION"
               : "PURCHASE_SUBSCRIPTION",
         });

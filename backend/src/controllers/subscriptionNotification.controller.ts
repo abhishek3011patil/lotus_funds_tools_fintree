@@ -3,12 +3,24 @@ import type { PoolClient } from "pg";
 import { pool } from "../db";
 import type { AuthRequest } from "../middlewares/auth.middleware";
 import { emailService } from "../services/email";
+import { createAuditLog } from "../utils/auditLogger";
 
 type ReminderKind = "30_DAY" | "7_DAY" | "1_DAY";
 
 type NotificationPassResult = {
   remindersAttempted: number;
   expiryNotificationsAttempted: number;
+};
+
+const getClientIp = (req: AuthRequest): string => {
+  const forwardedFor = req.headers["x-forwarded-for"];
+  const forwardedIp = Array.isArray(forwardedFor)
+    ? forwardedFor[0]
+    : forwardedFor?.split(",")[0];
+
+  return String(
+    forwardedIp || req.socket.remoteAddress || req.ip || "Unknown"
+  ).replace(/^::ffff:/, "");
 };
 
 const formatDate = (value: Date | string): string =>
@@ -420,12 +432,29 @@ export const processDueSubscriptionNotifications = async ({
 };
 
 export const runSubscriptionNotificationPass = async (
-  _req: AuthRequest,
+  req: AuthRequest,
   res: Response
 ): Promise<void> => {
   try {
     const result =
       await processDueSubscriptionNotifications();
+
+    await createAuditLog({
+      adminId: req.user?.id,
+      adminName: req.user?.name || "ADMIN",
+      adminRole: req.user?.role || "ADMIN",
+      action: "SUBSCRIPTION_NOTIFICATION_PASS_RUN",
+      module: "SUBSCRIPTION",
+      targetEntity: "DUE_SUBSCRIPTIONS",
+      targetType: "SUBSCRIPTION_NOTIFICATION_BATCH",
+      description:
+        "Admin ran the subscription notification pass",
+      status: "SUCCESS",
+      ipAddress: getClientIp(req),
+      device: req.headers["user-agent"],
+      newValue: result,
+    });
+
     res.status(200).json({
       success: true,
       message:
@@ -437,6 +466,24 @@ export const runSubscriptionNotificationPass = async (
       "SUBSCRIPTION NOTIFICATION PASS ERROR:",
       error
     );
+
+    await createAuditLog({
+      adminId: req.user?.id,
+      adminName: req.user?.name || "ADMIN",
+      adminRole: req.user?.role || "ADMIN",
+      action: "SUBSCRIPTION_NOTIFICATION_PASS_RUN",
+      module: "SUBSCRIPTION",
+      targetEntity: "DUE_SUBSCRIPTIONS",
+      targetType: "SUBSCRIPTION_NOTIFICATION_BATCH",
+      description:
+        "Admin subscription notification pass failed",
+      status: "FAILED",
+      reason:
+        error instanceof Error ? error.message : "Unknown error",
+      ipAddress: getClientIp(req),
+      device: req.headers["user-agent"],
+    });
+
     res.status(500).json({
       success: false,
       message:

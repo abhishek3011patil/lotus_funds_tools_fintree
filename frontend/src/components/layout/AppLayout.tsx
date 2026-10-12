@@ -8,6 +8,7 @@ import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import FolderIcon from "@mui/icons-material/Folder";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
+import AutoStoriesRoundedIcon from "@mui/icons-material/AutoStoriesRounded";
 
 import Header from "./Header";
 import Sidebar from "../page_Mainapp/Sidebar";
@@ -92,6 +93,11 @@ const AppLayout = () => {
       label: "Performance",
       path: "/performance",
       icon: <FolderIcon sx={{ mr: 1.5 }} />,
+    },
+    {
+      label: "Content",
+      path: "/content",
+      icon: <AutoStoriesRoundedIcon sx={{ mr: 1.5 }} />,
     },
     {
       label: "Notifications",

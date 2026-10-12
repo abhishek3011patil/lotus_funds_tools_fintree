@@ -61,7 +61,7 @@ export const mountSwaggerDocs = (
     allowSwaggerAssets,
     swaggerUi.serve,
     swaggerUi.setup(document, {
-      customSiteTitle: "Lotus Funds API",
+      customSiteTitle: "Tarkashh API",
     })
   );
 

@@ -1,5 +1,6 @@
 import axios from "axios";
 import { pool } from "../db";
+import { sendWhatsAppCallMedia, WHATSAPP_MEDIA_DELIVERY_ENABLED } from "./whatsAppCallMedia.service";
 
 const WHATSAPP_ACCESS_TOKEN =
   process.env.WHATSAPP_ACCESS_TOKEN?.trim();
@@ -389,6 +390,36 @@ if (!message) {
       response.data.messages?.[0]?.id || null;
 
     await markJobSent(job.id, job.broker_delivery_id, providerMessageId);
+
+    // Text is already committed as sent before optional media delivery, so a
+    // media failure never retries and duplicates the call text.
+    if (WHATSAPP_MEDIA_DELIVERY_ENABLED) {
+      try {
+        const media = await sendWhatsAppCallMedia({
+          researchCallId: job.research_call_id,
+          destination,
+          accessToken: WHATSAPP_ACCESS_TOKEN,
+          phoneNumberId: WHATSAPP_PHONE_NUMBER_ID,
+          apiVersion: WHATSAPP_API_VERSION,
+        });
+        if (media.failures.length) {
+          const detail = `Text sent; media: ${media.failures.join("; ")}`;
+          await pool.query(
+            `UPDATE whatsapp_message_jobs SET error_message = $1, updated_at = NOW() WHERE id = $2`,
+            [detail, job.id],
+          );
+          if (job.broker_delivery_id) {
+            await pool.query(
+              `UPDATE broker_call_deliveries SET error_message = $1, updated_at = NOW() WHERE id = $2`,
+              [detail, job.broker_delivery_id],
+            );
+          }
+          console.error("WHATSAPP MEDIA DELIVERY PARTIAL", { jobId: job.id, media });
+        }
+      } catch (mediaError) {
+        console.error("WHATSAPP MEDIA DELIVERY ERROR", { jobId: job.id, mediaError });
+      }
+    }
 
     console.log("✅ WHATSAPP JOB SENT:", {
       jobId: job.id,

@@ -17,6 +17,7 @@ type SubscriptionCancellationDialogProps = {
   error?: string | null;
   onClose: () => void;
   onConfirm: (reason: string, confirmation: string) => void;
+  accountType?: "RA" | "BROKER";
 };
 
 const SubscriptionCancellationDialog = ({
@@ -25,6 +26,7 @@ const SubscriptionCancellationDialog = ({
   error = null,
   onClose,
   onConfirm,
+  accountType = "RA",
 }: SubscriptionCancellationDialogProps) => {
   const [reason, setReason] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -58,8 +60,11 @@ const SubscriptionCancellationDialog = ({
           </Alert>
 
           <Typography variant="body2" color="text.secondary">
-            Your RA account, Profile, Settings and previous research
-            history will remain available. You can renew again later.
+            Your {accountType === "BROKER" ? "broker" : "RA"} account,
+            profile, settings and previous history will remain available.
+            {accountType === "BROKER"
+              ? " Clients will immediately lose broker-based access, and you will not be able to publish calls or manage subscription-protected broker resources."
+              : " You can renew again later."}
           </Typography>
 
           {error && <Alert severity="error">{error}</Alert>}

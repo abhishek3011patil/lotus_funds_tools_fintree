@@ -48,6 +48,7 @@ describe("client broker marketplace", () => {
       recommendationCount: 8, liveCallCount: 3, isSubscribed: true,
     });
     expect(String(vi.mocked(pool.query).mock.calls[2][0])).toContain("broker_research_analysts");
+    expect(String(vi.mocked(pool.query).mock.calls[2][0])).toContain("platform_subscription.status = 'ACTIVE'");
   });
 
   it("cancels only the signed-in client's active broker subscription", async () => {
@@ -70,6 +71,8 @@ describe("client broker marketplace", () => {
     const entitlementSql = String(vi.mocked(pool.query).mock.calls[2][0]);
     expect(entitlementSql).toContain("client_broker_subscriptions");
     expect(entitlementSql).toContain("broker_research_analysts");
+    expect(entitlementSql).toContain("broker_platform_subscription.status = 'ACTIVE'");
+    expect(entitlementSql).toContain("broker_plan.audience_type = 'BROKER'");
   });
 
   it("returns an analyst's marketplace details with RA performance metrics", async () => {
@@ -107,6 +110,7 @@ describe("client broker marketplace", () => {
     expect(response.body.performance.active).toBe(2);
     expect(response.body.performancePeriod).toBe("yearly");
     expect(String(vi.mocked(pool.query).mock.calls[1][0])).toContain("ANY($1::uuid[])");
+    expect(String(vi.mocked(pool.query).mock.calls[0][0])).toContain("platform_subscription.status = 'ACTIVE'");
     expect((vi.mocked(pool.query).mock.calls[1][1] as any[])[1]).toBe(`${new Date().getUTCFullYear()}-01-01`);
   });
 });

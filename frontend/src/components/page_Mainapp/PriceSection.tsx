@@ -8,8 +8,6 @@ import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import {
   memo,
   useCallback,
-  useEffect,
-  useState,
   type ChangeEvent,
 } from "react";
 
@@ -23,7 +21,7 @@ type MainPriceValues = Record<MainPriceField, string>;
 type PriceSectionProps = {
   values: MainPriceValues;
   wasValidated: boolean;
-  onCommit: (
+  onChange: (
     field: MainPriceField,
     value: string
   ) => void;
@@ -46,20 +44,9 @@ const PriceSection = memo(
   ({
     values,
     wasValidated,
-    onCommit,
+    onChange,
     getError,
   }: PriceSectionProps) => {
-    const [localValues, setLocalValues] =
-      useState<MainPriceValues>(values);
-
-    useEffect(() => {
-      setLocalValues(values);
-    }, [
-      values.entry,
-      values.target,
-      values.stopLoss,
-    ]);
-
  const handleChange = useCallback(
   (
     field: MainPriceField,
@@ -69,12 +56,9 @@ const PriceSection = memo(
 
     if (value.includes("-")) return;
 
-    setLocalValues((previous) => ({
-      ...previous,
-      [field]: value,
-    }));
+    onChange(field, value);
   },
-  []
+  [onChange]
 );
 
     return (
@@ -93,7 +77,7 @@ const PriceSection = memo(
         {PRICE_FIELDS.map(({ field, label }) => {
           const errorMessage = getError(
             field,
-            localValues
+            values
           );
 
           return (
@@ -103,20 +87,10 @@ const PriceSection = memo(
               label={label}
               size="small"
               type="number"
-              value={localValues[field]}
+              value={values[field]}
               onChange={(event) =>
   handleChange(field, event)
 }
-              onBlur={() => {
-                const localValue =
-                  localValues[field];
-
-                if (localValue === values[field]) {
-                  return;
-                }
-
-                onCommit(field, localValue);
-              }}
               error={
                 wasValidated &&
                 Boolean(errorMessage)

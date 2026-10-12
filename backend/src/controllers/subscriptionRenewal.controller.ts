@@ -98,7 +98,7 @@ const sendOrder = (
     checkout: {
       keyId: process.env.RAZORPAY_KEY_ID,
       businessName:
-        process.env.RAZORPAY_CHECKOUT_NAME || "Lotus Funds",
+        process.env.RAZORPAY_CHECKOUT_NAME || "Tarkashh",
       description: `${planName} renewal`,
       prefill: {
         email: user.email || "",

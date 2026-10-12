@@ -1,5 +1,6 @@
 export type BrokerAccount = {
   id: string;
+  profileImage: string | null;
   account: {
     userId: string;
     name: string;

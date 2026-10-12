@@ -188,7 +188,7 @@ describe("email templates", () => {
       "Subscription expiry reminder"
     );
     expect(rendered.text).toContain("31 July 2026");
-    expect(rendered.html).toContain("Lotus Funds");
+    expect(rendered.html).toContain("Tarkashh");
   });
 
   it("renders a password setup resend without approval wording", () => {

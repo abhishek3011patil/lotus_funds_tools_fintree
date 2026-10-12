@@ -22,24 +22,27 @@ import {
   removeBrokerClientFromWhatsApp,
 } from "../controllers/brokerClients.controller";
 import { pool } from "../db";
+import { requireActiveSubscription } from "../middlewares/subscriptionAccess.middleware";
+import { getBrokerDisclaimer, updateBrokerDisclaimer } from "../controllers/brokerDisclaimer.controller";
+import { getBrokerCallTemplates, saveBrokerCallTemplate } from "../controllers/researchCallTemplate.controller";
 
 const router = express.Router();
 const invitationLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30 });
 router.get("/ra-invitations/:token", invitationLimiter, getBrokerInvitation);
 router.get("/research-analysts", authenticate, requireBroker, listBrokerAnalysts);
 router.get("/research-analysts/search", authenticate, requireBroker, searchExistingAnalysts);
-router.post("/research-analysts", authenticate, requireBroker, addExistingAnalyst);
-router.delete("/research-analysts/:raId", authenticate, requireBroker, removeBrokerAnalyst);
-router.post("/ra-invitations", authenticate, requireBroker, invitationLimiter, createBrokerInvitation);
+router.post("/research-analysts", authenticate, requireBroker, requireActiveSubscription, addExistingAnalyst);
+router.delete("/research-analysts/:raId", authenticate, requireBroker, requireActiveSubscription, removeBrokerAnalyst);
+router.post("/ra-invitations", authenticate, requireBroker, requireActiveSubscription, invitationLimiter, createBrokerInvitation);
 router.get("/research-calls", authenticate, requireBroker, listBrokerCalls);
-router.post("/research-calls/:callId/publish", authenticate, requireBroker, publishBrokerCall);
+router.post("/research-calls/:callId/publish", authenticate, requireBroker, requireActiveSubscription, publishBrokerCall);
 router.get("/clients", authenticate, requireBroker, listBrokerClients);
-router.post("/clients", authenticate, requireBroker, createBrokerClient);
+router.post("/clients", authenticate, requireBroker, requireActiveSubscription, createBrokerClient);
 router.get("/clients/:clientId/deliveries", authenticate, requireBroker, listBrokerClientDeliveries);
-router.post("/clients/:clientId/whatsapp", authenticate, requireBroker, addBrokerClientToWhatsApp);
-router.delete("/clients/:clientId/whatsapp", authenticate, requireBroker, removeBrokerClientFromWhatsApp);
-router.post("/clients/:clientId/telegram", authenticate, requireBroker, addBrokerClientToTelegram);
-router.delete("/clients/:clientId/telegram", authenticate, requireBroker, removeBrokerClientFromTelegram);
+router.post("/clients/:clientId/whatsapp", authenticate, requireBroker, requireActiveSubscription, addBrokerClientToWhatsApp);
+router.delete("/clients/:clientId/whatsapp", authenticate, requireBroker, requireActiveSubscription, removeBrokerClientFromWhatsApp);
+router.post("/clients/:clientId/telegram", authenticate, requireBroker, requireActiveSubscription, addBrokerClientToTelegram);
+router.delete("/clients/:clientId/telegram", authenticate, requireBroker, requireActiveSubscription, removeBrokerClientFromTelegram);
 
 router.post(
   "/register-broker",
@@ -62,6 +65,10 @@ router.get(
 );
 
 router.get("/me", authenticate, getMyBrokerProfile);
+router.get("/disclaimer", authenticate, getBrokerDisclaimer);
+router.put("/disclaimer", authenticate, updateBrokerDisclaimer);
+router.get("/message-templates", authenticate, getBrokerCallTemplates);
+router.put("/message-templates/:messageType", authenticate, saveBrokerCallTemplate);
 router.post(
   "/change-password",
   authenticate,

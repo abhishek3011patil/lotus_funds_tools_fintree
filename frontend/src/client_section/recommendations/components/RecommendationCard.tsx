@@ -9,6 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { ClientRecommendationCall } from "../types";
+import { formatIndiaDateTime, formatInr } from "../../../utils/formatters";
 
 interface RecommendationCardProps {
   call: ClientRecommendationCall;
@@ -16,14 +17,6 @@ interface RecommendationCardProps {
   onOpen?: (call: ClientRecommendationCall) => void;
   onSubscribe?: (call: ClientRecommendationCall) => void;
 }
-
-const formatDate = (value: string) =>
-  new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
 
 const PriceMetric = ({
   label,
@@ -48,7 +41,7 @@ const PriceMetric = ({
         userSelect: locked ? "none" : "auto",
       }}
     >
-      {locked ? "₹000.00" : value ? `₹${value}` : "—"}
+      {locked ? "₹000.00" : formatInr(value)}
     </Typography>
   </Box>
 );
@@ -127,6 +120,14 @@ const RecommendationCard = ({
         ))}
     </Stack>
 
+    {!call.locked && call.riskRewardRatio && (
+      <Chip
+        size="small"
+        label={`Risk : Reward  1 : ${Number(call.riskRewardRatio).toFixed(2)}`}
+        sx={{ mt: 1.25, alignSelf: "flex-start", bgcolor: "#EEF2FF", color: "#405EE6", fontWeight: 800 }}
+      />
+    )}
+
     <Box
       sx={{
         display: "grid",
@@ -168,7 +169,7 @@ const RecommendationCard = ({
       sx={{ mt: "auto", pt: 2 }}
     >
       <Typography sx={{ color: "#64748B", fontSize: 12 }}>
-        {formatDate(call.createdAt)}
+        {formatIndiaDateTime(call.createdAt)}
       </Typography>
       {call.locked ? (
         <Button

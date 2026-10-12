@@ -11,14 +11,17 @@ interface Props {
   onChange: (file?: File) => void;
   name: string;
   helperText: string;
+  description?: string;
   onSave?: (file: File) => Promise<void>;
 }
 
 const SIZE = 512;
-const MAX_PROFILE_IMAGE_BYTES = 15 * 1024 * 1024;
+const MAX_PROFILE_IMAGE_MB = 25;
+const MAX_PROFILE_IMAGE_BYTES = MAX_PROFILE_IMAGE_MB * 1024 * 1024;
+const MAX_PROFILE_IMAGE_PIXELS = 64_000_000;
 const clamp = (n: number) => Math.max(-1, Math.min(1, n));
 
-export default function ProfilePictureUpload({ currentFilename, value, onChange, name, helperText, onSave }: Props) {
+export default function ProfilePictureUpload({ currentFilename, value, onChange, name, helperText, description = "Choose a clear photo, then crop and resize it before saving.", onSave }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const currentBlob = useRef<Blob | undefined>(undefined);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -95,7 +98,7 @@ export default function ProfilePictureUpload({ currentFilename, value, onChange,
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setError("Choose a JPG, PNG, or WebP image."); return;
     }
-    if (file.size > MAX_PROFILE_IMAGE_BYTES) { setError("Choose an image smaller than 15 MB."); return; }
+    if (file.size > MAX_PROFILE_IMAGE_BYTES) { setError(`Choose an image smaller than ${MAX_PROFILE_IMAGE_MB} MB.`); return; }
     const version = ++loadVersion.current;
     setLoading(true);
     const url = URL.createObjectURL(file);
@@ -104,11 +107,11 @@ export default function ProfilePictureUpload({ currentFilename, value, onChange,
     try {
       await image.decode();
       if (version !== loadVersion.current) { URL.revokeObjectURL(url); return; }
-      if (image.naturalWidth * image.naturalHeight > 40_000_000) throw new Error("Image too large");
+      if (image.naturalWidth * image.naturalHeight > MAX_PROFILE_IMAGE_PIXELS) throw new Error("Image too large");
       reset(); setPreview(undefined); setSource({ image, url });
     } catch {
       URL.revokeObjectURL(url);
-      if (version === loadVersion.current) setError("This image could not be opened. Try another image under 40 megapixels.");
+      if (version === loadVersion.current) setError("This image could not be opened. Try another image under 64 megapixels.");
     } finally { if (version === loadVersion.current) setLoading(false); }
   };
 
@@ -131,13 +134,13 @@ export default function ProfilePictureUpload({ currentFilename, value, onChange,
       <Avatar src={selectedUrl || currentUrl} alt={`${name || "Research Analyst"} profile picture`} slotProps={{ img: { onError: () => setCurrentMissing(true) } }} sx={{ width: 104, height: 104, bgcolor: "#E0E7FF", color: "#4054B2", fontSize: 36, fontWeight: 700, border: "4px solid white", boxShadow: "0 4px 18px #18213A12" }}>{(name || "RA").slice(0, 1).toUpperCase()}</Avatar>
       <Box flex={1} minWidth={0}>
         <Stack direction="row" gap={1} alignItems="center" flexWrap="wrap"><Typography variant="h6" fontWeight={800}>Profile picture</Typography>{value && <Chip label="Ready to submit" size="small" color="primary" variant="outlined" />}</Stack>
-        <Typography variant="body2" color="text.secondary" mt={0.5}>Put a face to your research. Crop and resize your photo before saving.</Typography>
+        <Typography variant="body2" color="text.secondary" mt={0.5}>{description}</Typography>
         <Stack direction="row" spacing={1} mt={2} flexWrap="wrap" useFlexGap>
           <Button variant="contained" startIcon={<AddAPhotoOutlinedIcon />} disabled={loading} onClick={() => input.current?.click()} sx={{ textTransform: "none", boxShadow: "none" }}>{loading ? "Opening image..." : "Upload picture"}</Button>
           {(value || (currentUrl && !currentMissing)) && <Button disabled={loading} onClick={() => { const file = value || (currentBlob.current && new File([currentBlob.current], "profile-picture", { type: currentBlob.current.type })); void choose(file); }} sx={{ textTransform: "none" }}>Adjust picture</Button>}
           {value && <Button onClick={() => { onChange(undefined); setError(""); }} sx={{ textTransform: "none" }}>Undo change</Button>}
         </Stack>
-        <Typography variant="caption" color="text.secondary" display="block" mt={1}>JPG, PNG or WebP · Up to 15 MB · Saved as 512 × 512 px</Typography>
+        <Typography variant="caption" color="text.secondary" display="block" mt={1}>Any aspect ratio · JPG, PNG or WebP · Up to {MAX_PROFILE_IMAGE_MB} MB · Saved as 512 × 512 px</Typography>
         <Typography variant="body2" color="text.secondary" mt={1}>{helperText}</Typography>
       </Box>
     </Stack>
@@ -161,7 +164,7 @@ export default function ProfilePictureUpload({ currentFilename, value, onChange,
         </Box>
         <Box mt={3} px={1}>
           <Typography variant="body2" fontWeight={700}>Zoom · {zoom.toFixed(1)}×</Typography>
-          <Slider aria-label="Picture zoom" min={1} max={3} step={0.05} value={zoom} onChange={(_, v) => setZoom(v as number)} disabled={saving} />
+          <Slider aria-label="Picture zoom" min={1} max={5} step={0.05} value={zoom} onChange={(_, v) => setZoom(v as number)} disabled={saving} />
           <Stack direction="row" spacing={3}>
             <Box flex={1}><Typography variant="caption">Horizontal position</Typography><Slider aria-label="Horizontal position" min={-1} max={1} step={0.01} value={position.x} disabled={saving || overflowX < 1} onChange={(_, v) => setPosition(p => ({ ...p, x: v as number }))} /></Box>
             <Box flex={1}><Typography variant="caption">Vertical position</Typography><Slider aria-label="Vertical position" min={-1} max={1} step={0.01} value={position.y} disabled={saving || overflowY < 1} onChange={(_, v) => setPosition(p => ({ ...p, y: v as number }))} /></Box>

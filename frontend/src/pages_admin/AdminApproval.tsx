@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
+import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import Paper from "@mui/material/Paper";
@@ -52,6 +53,8 @@ type AdminRow = {
   applicationStatus?: string;
   subscriptionStatus?: string;
   subscriptionPlanName?: string;
+  subscriptionCancelledAt?: string;
+  subscriptionCancellationReason?: string;
   approvalReady?: boolean;
 
   created_at: string;
@@ -192,6 +195,8 @@ user_id: item.user_id ? String(item.user_id) : "",
   applicationStatus: item.application_status || "",
   subscriptionStatus: item.subscription_status || "",
   subscriptionPlanName: item.subscription_plan_name || "",
+  subscriptionCancelledAt: item.subscription_cancelled_at || "",
+  subscriptionCancellationReason: item.subscription_cancellation_reason || "",
   approvalReady: item.approval_ready === true,
 
   "age/time": "Just now",
@@ -872,6 +877,17 @@ const handleSuspend = async (
       <Typography color="text.secondary">
         Plan: {selectedBroker.subscriptionPlanName}
       </Typography>
+    )}
+    {selectedBroker.subscriptionStatus === "CANCELLED" && (
+      <Alert severity="warning" sx={{ mt: 1 }}>
+        Cancelled
+        {selectedBroker.subscriptionCancelledAt
+          ? ` on ${new Date(selectedBroker.subscriptionCancelledAt).toLocaleDateString("en-IN")}`
+          : ""}
+        {selectedBroker.subscriptionCancellationReason
+          ? `: ${selectedBroker.subscriptionCancellationReason}`
+          : ""}
+      </Alert>
     )}
 
     <Box sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 1 }}>

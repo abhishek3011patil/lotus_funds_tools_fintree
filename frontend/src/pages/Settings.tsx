@@ -1,4 +1,4 @@
-import { Alert, AlertTitle, Box, Button, IconButton, Paper, Stack, Typography } from "@mui/material";
+import { Alert, AlertTitle, Box, Button, Card, CardContent, IconButton, Stack, Typography } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
@@ -18,18 +18,12 @@ import RASettingsNavigation, {
 import { useTelegramNotification } from "../hooks/useTelegramNotification";
 import RAProfilePicture from "../components/setting/RAProfilePicture";
 
-const cardSx = {
-  bgcolor: "#fff",
-  borderColor: "#E5EAF2",
-  borderRadius: 3,
-  p: { xs: 2.25, sm: 3 },
-  scrollMarginTop: 16,
-};
-
 const Settings = () => {
   const navigate = useNavigate();
   const { section } = useParams<{ section?: string }>();
-  const activeSection: RASettingsSection = isRASettingsSection(section) ? section : "account";
+  const activeSection: RASettingsSection = section === "research"
+    ? "disclaimer"
+    : isRASettingsSection(section) ? section : "account";
   const { telegramDisconnected, hideNotification } = useTelegramNotification();
 
   const handleNavigate = (section: RASettingsSection) => {
@@ -55,34 +49,31 @@ const Settings = () => {
     switch (activeSection) {
       case "subscription":
         return (
-          <Paper variant="outlined" sx={cardSx}>
+          <Stack spacing={2.5}>
             <RASubscriptionStatus />
             <RASubscriptionHistory />
-          </Paper>
-        );
-      case "security":
-        return <Paper variant="outlined" sx={cardSx}><ChangePassword /></Paper>;
-      case "research":
-        return (
-          <Stack spacing={2.5}>
-            <Paper variant="outlined" sx={cardSx}><RASettingsDisclaimer /></Paper>
-            <Paper variant="outlined" sx={cardSx}><ResearchCallTemplateBuilder /></Paper>
           </Stack>
         );
+      case "security":
+        return <ChangePassword />;
+      case "disclaimer":
+        return <RASettingsDisclaimer />;
+      case "message-template":
+        return <ResearchCallTemplateBuilder />;
       case "whatsapp":
-        return <Paper variant="outlined" sx={cardSx}><WhatsAppParticipants /></Paper>;
+        return <WhatsAppParticipants />;
       case "telegram-participants":
         return (
           <Stack spacing={2.5}>
             {telegramAlert}
-            <Paper variant="outlined" sx={cardSx}><ManageParticipants /></Paper>
+            <ManageParticipants />
           </Stack>
         );
       case "telegram-connection":
         return (
           <Stack spacing={2.5}>
             {telegramAlert}
-            <Paper variant="outlined" sx={cardSx}><TelegramConnection /></Paper>
+            <TelegramConnection />
           </Stack>
         );
       case "account":
@@ -90,7 +81,7 @@ const Settings = () => {
         return (
           <Stack spacing={2.5}>
             <RAProfilePicture />
-            <Paper variant="outlined" sx={cardSx}>
+            <Box>
               <Typography variant="h6" fontWeight={800}>Profile and account</Typography>
               <Typography variant="body2" color="text.secondary" mt={0.5} mb={2.5}>
                 Review your approved profile or request changes to your public analyst details.
@@ -103,7 +94,7 @@ const Settings = () => {
                   Request profile edit
                 </Button>
               </Stack>
-            </Paper>
+            </Box>
           </Stack>
         );
     }
@@ -111,22 +102,23 @@ const Settings = () => {
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: "#F8FAFC", minHeight: "100vh" }}>
-      <Box sx={{ maxWidth: 1180, mx: "auto" }}>
-        <Box sx={{ mb: 2.5 }}>
+      <Stack spacing={3} sx={{ maxWidth: 1180, mx: "auto" }}>
+        <Box>
           <Typography variant="h4" fontWeight={800} color="#18213A" sx={{ fontSize: { xs: "1.65rem", sm: "2rem" } }}>
-            Settings
+            RA Settings
           </Typography>
           <Typography color="text.secondary" mt={0.5}>
             Manage your analyst account, research preferences, and delivery channels.
           </Typography>
         </Box>
 
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "230px minmax(0, 1fr)" }, gap: 2.5, alignItems: "start" }}>
+        <Card variant="outlined" sx={{ borderRadius: 3 }}>
           <RASettingsNavigation activeSection={activeSection} onNavigate={handleNavigate} />
-
-          <Box minWidth={0}>{renderActiveSection()}</Box>
-        </Box>
-      </Box>
+          <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+            <Box minWidth={0}>{renderActiveSection()}</Box>
+          </CardContent>
+        </Card>
+      </Stack>
     </Box>
   );
 };

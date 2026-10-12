@@ -21,10 +21,6 @@ router.post(
   runSubscriptionNotificationPass
 );
 
-router.get("/test", (req, res) => {
-  res.send("ADMIN ROUTE WORKING");
-});
-
 router.post(
   "/resend-password-link",
   

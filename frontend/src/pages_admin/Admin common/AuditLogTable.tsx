@@ -10,10 +10,7 @@ import {
   TableBody,
   Paper,
   Chip,
-  IconButton,
-  Tooltip,
 } from '@mui/material';
-import { Visibility, Info } from '@mui/icons-material';
 
 interface AuditLog {
   log_id: string;
@@ -38,9 +35,9 @@ interface AuditLog {
 
   device?: string;
 
-  old_value?: any;
+  old_value?: unknown;
 
-  new_value?: any;
+  new_value?: unknown;
 }
 
 interface AuditLogTableProps {
@@ -71,6 +68,13 @@ const AuditLogTable: React.FC<AuditLogTableProps> = ({ logs, totalEntries, showi
         return { backgroundColor: '#3B82F6', color: 'white' };
       case 'SUSPEND':
         return { backgroundColor: '#F59E0B', color: 'white' };
+      case 'ACTIVATE':
+      case 'PASSWORD_LINK_RESENT':
+      case 'SUBSCRIPTION_NOTIFICATION_PASS_RUN':
+        return { backgroundColor: '#2563EB', color: 'white' };
+      case 'EXPORT_AUDIT_LOGS':
+      case 'VIEW_DISCLAIMER_HISTORY':
+        return { backgroundColor: '#7C3AED', color: 'white' };
       default:
         return { backgroundColor: '#6B7280', color: 'white' };
     }
@@ -80,12 +84,21 @@ const AuditLogTable: React.FC<AuditLogTableProps> = ({ logs, totalEntries, showi
     switch (module) {
       case 'RA':
         return { backgroundColor: '#8B5CF6', color: 'white' };
-      case 'Broker':
+      case 'BROKER':
         return { backgroundColor: '#06B6D4', color: 'white' };
-      case 'Billing':
+      case 'PAYMENT':
         return { backgroundColor: '#F59E0B', color: 'white' };
-      case 'Subscription':
+      case 'SUBSCRIPTION':
         return { backgroundColor: '#10B981', color: 'white' };
+      case 'AUDIT':
+      case 'AUTH':
+      case 'USER_MANAGEMENT':
+        return { backgroundColor: '#475569', color: 'white' };
+      case 'TELEGRAM':
+      case 'TELEGRAM_CLIENT':
+        return { backgroundColor: '#0284C7', color: 'white' };
+      case 'WHATSAPP':
+        return { backgroundColor: '#16A34A', color: 'white' };
       default:
         return { backgroundColor: '#6B7280', color: 'white' };
     }

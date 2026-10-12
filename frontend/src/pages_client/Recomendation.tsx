@@ -9,6 +9,7 @@ import {
   Radio,
   RadioGroup,
   Select,
+  Stack,
   Switch,
   TextField,
   ToggleButton,
@@ -22,6 +23,7 @@ import {
   TableRow,
   CircularProgress,
 } from "@mui/material";
+import { errataBadgeSx, errataRowSx, isErrataVersion } from "../utils/errataPresentation";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import { useRef, useState, useEffect, useMemo } from "react";
 import { STOCK_DATA } from "../assets/stocks";
@@ -930,10 +932,11 @@ Rationale: ${rationale}
                   {recommendations.length > 0 ? (
                     recommendations.map((item) => {
                       const dateObj = new Date(item.created_at);
+                      const isErrata = isErrataVersion(item.version_type);
                       return (
                         <TableRow
                           key={item.id}
-                          sx={{ '&:last-child td, &:last-child th': { border: 0 }, '&:hover': { backgroundColor: '#fcfcfc' } }}
+                          sx={{ '&:last-child td, &:last-child th': { border: 0 }, '&:hover': { backgroundColor: '#fcfcfc' }, ...(isErrata ? errataRowSx : {}) }}
                         >
                           {/* Column 1: Date & Time */}
                           <TableCell sx={{ px: 1, py: 1.5 }}>
@@ -947,9 +950,12 @@ Rationale: ${rationale}
 
                           {/* Column 2: Recommendation Details */}
                           <TableCell sx={{ px: 1, py: 1.5 }}>
-                            <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: item.action === 'BUY' ? '#2e7d32' : '#d32f2f' }}>
-                              {item.action} {item.instrument} {item.call_type?.toUpperCase()}
-                            </Typography>
+                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                              <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: item.action === 'BUY' ? '#2e7d32' : '#d32f2f' }}>
+                                {item.action} {item.instrument} {item.call_type?.toUpperCase()}
+                              </Typography>
+                              {isErrata && <Box component="span" sx={errataBadgeSx}>ERRATA</Box>}
+                            </Stack>
                             <Typography sx={{ fontSize: '0.65rem', color: '#333', fontWeight: 600 }}>
                               {item.symbol} • {item.trade_type}
                             </Typography>

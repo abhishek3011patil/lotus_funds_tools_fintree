@@ -9,7 +9,6 @@ import {
   ListItemIcon,
   ListItemText,
   Typography,
-  Avatar,
   Button,
   AppBar,
   Toolbar,
@@ -28,6 +27,7 @@ import GroupsRoundedIcon from '@mui/icons-material/GroupsRounded';
 import { getLoginRoute } from '../../utils/authRedirect';
 import api from '../../utils/axio';
 import { ClientRouteSkeleton } from './ClientPageSkeletons';
+import AuthenticatedAvatar from '../../components/common/AuthenticatedAvatar';
 
 const drawerWidth = 240;
 
@@ -51,6 +51,20 @@ export const ClientLayout = () => {
 
   const username = localStorage.getItem('username') || 'Guest';
   const initial = username.charAt(0).toUpperCase();
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    api.get('/client/account/profile', { signal: controller.signal })
+      .then((response) => setProfileImage(response.data?.data?.profileImage || null))
+      .catch(() => {});
+    const updatePicture = (event: Event) => setProfileImage((event as CustomEvent<string>).detail || null);
+    window.addEventListener('profile-picture-updated', updatePicture);
+    return () => {
+      controller.abort();
+      window.removeEventListener('profile-picture-updated', updatePicture);
+    };
+  }, []);
 
   // Dynamic live time state for header top-right
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -168,7 +182,9 @@ export const ClientLayout = () => {
           gap: 1.5,
         }}
       >
-        <Avatar
+        <AuthenticatedAvatar
+          filename={profileImage}
+          alt={`${username} profile picture`}
           sx={{
             bgcolor: '#FFFFFF',
             color: '#5271FF',
@@ -179,7 +195,7 @@ export const ClientLayout = () => {
           }}
         >
           {initial}
-        </Avatar>
+        </AuthenticatedAvatar>
 
         <Box sx={{ overflow: 'hidden' }}>
           <Typography

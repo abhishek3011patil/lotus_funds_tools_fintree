@@ -22,6 +22,7 @@ DialogContent,
 DialogActions,
 TextField,
 } from "@mui/material";
+import { errataBadgeSx, errataRowSx, isErrataVersion } from "../../utils/errataPresentation";
 import LoadingPage from "../../common/LoadingPage";
 
 
@@ -69,6 +70,14 @@ export interface HistoryRecord {
   broker_name?: string;
   broker_sebi_registration?: string | null;
   broker_published?: boolean;
+  target_price?: number | string | null; target_price_2?: number | string | null; target_price_3?: number | string | null;
+  stop_loss?: number | string | null; stop_loss_2?: number | string | null; stop_loss_3?: number | string | null;
+  holding_period?: string | null; rationale?: string | null; underlying_study?: string | null; research_remarks?: string | null; errata_reason?: string | null;
+  researcher_organization?: string | null; researcher_sebi_registration?: string | null; researcher_contact?: string | null; researcher_email?: string | null;
+  broker_disclaimer_template?: string | null; broker_legal_name?: string | null; broker_trade_name?: string | null;
+  broker_registration_category?: string | null; broker_membership_code?: string | null; broker_registered_address?: string | null;
+  broker_email?: string | null; broker_mobile?: string | null; broker_website?: string | null; broker_authorized_person_name?: string | null;
+  broker_authorized_person_designation?: string | null; broker_compliance_officer_name?: string | null; broker_exchanges?: string | null; broker_segments?: string | null;
 
 }
 
@@ -96,6 +105,14 @@ export interface ApiHistoryRecord {
   broker_name?: string;
   broker_sebi_registration?: string | null;
   broker_published?: boolean;
+  target_price?: number | string | null; target_price_2?: number | string | null; target_price_3?: number | string | null;
+  stop_loss?: number | string | null; stop_loss_2?: number | string | null; stop_loss_3?: number | string | null;
+  holding_period?: string | null; rationale?: string | null; underlying_study?: string | null; research_remarks?: string | null; errata_reason?: string | null;
+  researcher_organization?: string | null; researcher_sebi_registration?: string | null; researcher_contact?: string | null; researcher_email?: string | null;
+  broker_disclaimer_template?: string | null; broker_legal_name?: string | null; broker_trade_name?: string | null;
+  broker_registration_category?: string | null; broker_membership_code?: string | null; broker_registered_address?: string | null;
+  broker_email?: string | null; broker_mobile?: string | null; broker_website?: string | null; broker_authorized_person_name?: string | null;
+  broker_authorized_person_designation?: string | null; broker_compliance_officer_name?: string | null; broker_exchanges?: string | null; broker_segments?: string | null;
 }
 
 // Added Prop Interface
@@ -159,6 +176,20 @@ export default function RecommendationHistory({
     broker_name: row.broker_name,
     broker_sebi_registration: row.broker_sebi_registration,
     broker_published: row.broker_published,
+    target_price: row.target_price, target_price_2: row.target_price_2, target_price_3: row.target_price_3,
+    stop_loss: row.stop_loss, stop_loss_2: row.stop_loss_2, stop_loss_3: row.stop_loss_3,
+    holding_period: row.holding_period, rationale: row.rationale, underlying_study: row.underlying_study,
+    research_remarks: row.research_remarks, errata_reason: row.errata_reason,
+    researcher_organization: row.researcher_organization, researcher_sebi_registration: row.researcher_sebi_registration,
+    researcher_contact: row.researcher_contact, researcher_email: row.researcher_email,
+    broker_disclaimer_template: row.broker_disclaimer_template, broker_legal_name: row.broker_legal_name,
+    broker_trade_name: row.broker_trade_name, broker_registration_category: row.broker_registration_category,
+    broker_membership_code: row.broker_membership_code, broker_registered_address: row.broker_registered_address,
+    broker_email: row.broker_email, broker_mobile: row.broker_mobile, broker_website: row.broker_website,
+    broker_authorized_person_name: row.broker_authorized_person_name,
+    broker_authorized_person_designation: row.broker_authorized_person_designation,
+    broker_compliance_officer_name: row.broker_compliance_officer_name, broker_exchanges: row.broker_exchanges,
+    broker_segments: row.broker_segments,
   });
 
   // State
@@ -1468,8 +1499,22 @@ const handleReset = () => {
 )}
         </Box>
 
-        {/* Table - Kept Exactly As You Had It */}
-        <TableContainer>
+        <Stack spacing={1.5} sx={{ display: { xs: "flex", md: "none" }, p: 1.5 }}>
+          {loading && <LoadingPage title="Loading" subtitle="Fetching recommendation history..." fullScreen={false} size={44} />}
+          {!loading && paginatedData.length === 0 && <Paper variant="outlined" sx={{ p: 3, textAlign: "center" }}><Typography color="text.secondary">No records found</Typography></Paper>}
+          {!loading && paginatedData.map((row, idx) => <Paper key={`${row.id || row.symbol}-${idx}`} variant="outlined" sx={{ p: 2 }}>
+            <Stack direction="row" justifyContent="space-between" gap={1} alignItems="flex-start">
+              <Box><Typography fontWeight={800}>{row.symbol}</Typography><Typography variant="caption" color="text.secondary">{row.instrument} · {row.exchange}</Typography></Box>
+              <Box sx={{ px: 1.25, py: .4, borderRadius: 1, fontSize: 12, fontWeight: 800, bgcolor: row.action.toUpperCase() === "BUY" ? "success.light" : row.action.toUpperCase() === "SELL" ? "error.light" : "grey.100", color: row.action.toUpperCase() === "BUY" ? "success.dark" : row.action.toUpperCase() === "SELL" ? "error.dark" : "text.primary" }}>{row.action}</Box>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between" sx={{ mt: 1.5 }}><Typography variant="body2">Entry: {row.entry}</Typography><Typography variant="body2">Exit: {row.exit_price}</Typography></Stack>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1 }}><Typography variant="caption" color="text.secondary">{formatDateTime(row.dateTime)}</Typography><Typography variant="caption" fontWeight={750}>{row.status}</Typography></Stack>
+            <Typography variant="caption" color="text.secondary" display="block">Researcher: {getResearcherName(row)}</Typography>
+            {(showMedia || renderRowActions) && <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1.5 }}>{showMedia && <RecommendationMediaButton filePath={row.file_url} attachments={row.attachments} symbol={row.symbol} />}{renderRowActions && renderRowActions(row)}</Stack>}
+          </Paper>)}
+        </Stack>
+
+        <TableContainer sx={{ display: { xs: "none", md: "block" } }}>
           <Table stickyHeader size="small">
             <TableHead>
               <TableRow>
@@ -1511,7 +1556,7 @@ const handleReset = () => {
                 </TableRow>
               ) : (
                 paginatedData.map((row, idx) => (
-                  <TableRow key={idx} sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
+                  <TableRow key={idx} sx={{ "&:last-child td, &:last-child th": { border: 0 }, ...(isErrataVersion(row.version_type) ? errataRowSx : {}) }}>
                     <TableCell sx={historyBodyStyle}>{formatDateTime(row.dateTime)}</TableCell>
                     <TableCell sx={historyBodyStyle}>
                       <Box
@@ -1594,18 +1639,9 @@ const handleReset = () => {
       {row.status}
     </Box>
 
- {row.version_type?.toUpperCase() === "ERRATA" && (
+ {isErrataVersion(row.version_type) && (
   <Box
-    sx={{
-      display: "inline-block",
-      px: 1,
-      py: 0.5,
-      borderRadius: "4px",
-      fontSize: "0.7rem",
-      fontWeight: 700,
-      backgroundColor: "#f4d9a3",
-      color: "#ea0909",
-    }}
+    sx={errataBadgeSx}
   >
     ERRATA
   </Box>

@@ -1,5 +1,18 @@
 import { Request, Response } from "express";
 import { pool } from "../db";
+import type { AuthRequest } from "../middlewares/auth.middleware";
+import { createAuditLog } from "../utils/auditLogger";
+
+const getClientIp = (req: Request): string => {
+  const forwardedFor = req.headers["x-forwarded-for"];
+  const forwardedIp = Array.isArray(forwardedFor)
+    ? forwardedFor[0]
+    : forwardedFor?.split(",")[0];
+
+  return String(
+    forwardedIp || req.socket.remoteAddress || req.ip || "Unknown"
+  ).replace(/^::ffff:/, "");
+};
 
 /* =========================================================
    GET AUDIT LOGS (GET /api/audit-logs/)
@@ -54,7 +67,7 @@ export const getAuditLogs = async (req: Request, res: Response) => {
     }
 
     if (user === "superadmin") {
-      where.push(`admin_role = 'SUPERADMIN'`);
+      where.push(`admin_role IN ('SUPERADMIN', 'SUPER_ADMIN')`);
     }
 
     if (date === "today") {
@@ -129,7 +142,7 @@ export const getAuditLogs = async (req: Request, res: Response) => {
 /* =========================================================
    EXPORT AUDIT LOGS (GET /api/audit-logs/export)
    ========================================================= */
-export const exportAuditLogs = async (req: Request, res: Response) => {
+export const exportAuditLogs = async (req: AuthRequest, res: Response) => {
   try {
     const search = String(req.query.search || "").trim().toLowerCase();
     const fromDate = String(req.query.fromDate || "");
@@ -171,7 +184,9 @@ export const exportAuditLogs = async (req: Request, res: Response) => {
     }
 
     if (user === "admin") where.push(`admin_role = 'ADMIN'`);
-    if (user === "superadmin") where.push(`admin_role = 'SUPER_ADMIN'`);
+    if (user === "superadmin") {
+      where.push(`admin_role IN ('SUPERADMIN', 'SUPER_ADMIN')`);
+    }
 
     if (fromDate) {
       values.push(fromDate);
@@ -211,6 +226,29 @@ export const exportAuditLogs = async (req: Request, res: Response) => {
       values
     );
 
+    await createAuditLog({
+      adminId: req.user?.id,
+      adminName: req.user?.name || "ADMIN",
+      adminRole: req.user?.role || "ADMIN",
+      action: "EXPORT_AUDIT_LOGS",
+      module: "AUDIT",
+      targetEntity: "AUDIT_LOGS",
+      targetType: "AUDIT_LOG_EXPORT",
+      description: "Admin exported audit logs",
+      status: "SUCCESS",
+      ipAddress: getClientIp(req),
+      device: req.headers["user-agent"],
+      newValue: {
+        fromDate: fromDate || null,
+        toDate: toDate || null,
+        user: user || null,
+        module: module || null,
+        status: status || null,
+        searchApplied: search.length >= 3,
+        exportedCount: result.rowCount || 0,
+      },
+    });
+
     return res.status(200).json({
       success: true,
       logs: result.rows,
@@ -218,6 +256,22 @@ export const exportAuditLogs = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("EXPORT AUDIT LOGS ERROR:", error);
+
+    await createAuditLog({
+      adminId: req.user?.id,
+      adminName: req.user?.name || "ADMIN",
+      adminRole: req.user?.role || "ADMIN",
+      action: "EXPORT_AUDIT_LOGS",
+      module: "AUDIT",
+      targetEntity: "AUDIT_LOGS",
+      targetType: "AUDIT_LOG_EXPORT",
+      description: "Admin audit log export failed",
+      status: "FAILED",
+      reason:
+        error instanceof Error ? error.message : "Unknown error",
+      ipAddress: getClientIp(req),
+      device: req.headers["user-agent"],
+    });
 
     return res.status(500).json({
       success: false,

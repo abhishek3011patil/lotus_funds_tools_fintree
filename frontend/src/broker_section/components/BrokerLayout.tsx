@@ -9,7 +9,6 @@ import {
   ListItemIcon,
   ListItemText,
   Typography,
-  Avatar,
   Button,
   AppBar,
   Toolbar,
@@ -30,8 +29,10 @@ import PaletteIcon from '@mui/icons-material/Palette';
 import PeopleIcon from '@mui/icons-material/People';
 import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
+import AutoStoriesRoundedIcon from '@mui/icons-material/AutoStoriesRounded';
 import { getLoginRoute } from '../../utils/authRedirect';
 import api from '../../utils/axio';
+import AuthenticatedAvatar from '../../components/common/AuthenticatedAvatar';
 
 const drawerWidth = 240;
 
@@ -43,6 +44,7 @@ const brokerSidebarItems = [
   { name: 'Research Analysts', path: '/broker/research-analysts', icon: PersonSearchIcon },
   { name: 'Clients', path: '/broker/clients', icon: PeopleIcon },
   { name: 'Performance', path: '/broker/performance', icon: ShowChartIcon },
+  { name: 'Content', path: '/broker/content', icon: AutoStoriesRoundedIcon },
   { name: 'Announcements', path: '/broker/announcements', icon: CampaignIcon },
   { name: 'Branding', path: '/broker/branding', icon: PaletteIcon },
   { name: 'Subscription', path: '/broker/subscription', icon: CreditCardIcon },
@@ -61,6 +63,20 @@ export const BrokerLayout = () => {
 
   const username = localStorage.getItem('username') || 'Broker';
   const initial = username.charAt(0).toUpperCase();
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    api.get('/broker/me', { signal: controller.signal })
+      .then((response) => setProfileImage(response.data?.broker?.profileImage || null))
+      .catch(() => {});
+    const updatePicture = (event: Event) => setProfileImage((event as CustomEvent<string>).detail || null);
+    window.addEventListener('profile-picture-updated', updatePicture);
+    return () => {
+      controller.abort();
+      window.removeEventListener('profile-picture-updated', updatePicture);
+    };
+  }, []);
 
   // Dynamic live time state for top-right header
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -180,7 +196,9 @@ const drawerContent = (
         gap: 1.5,
       }}
     >
-      <Avatar
+      <AuthenticatedAvatar
+        filename={profileImage}
+        alt={`${username} profile picture`}
         sx={{
           bgcolor: '#FFFFFF',
           color: '#5271FF',
@@ -191,7 +209,7 @@ const drawerContent = (
         }}
       >
         {initial}
-      </Avatar>
+      </AuthenticatedAvatar>
 
       <Box sx={{ overflow: 'hidden' }}>
         <Typography

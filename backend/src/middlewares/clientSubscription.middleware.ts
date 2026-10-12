@@ -43,6 +43,16 @@ export const checkClientSubscription = async (
                UNION
                SELECT ra.user_id AS ra_user_id
                FROM client_broker_subscriptions subscription
+               JOIN broker_details broker
+                 ON broker.id = subscription.broker_id
+               JOIN subscriptions broker_platform_subscription
+                 ON broker_platform_subscription.user_id = broker.user_id
+                AND broker_platform_subscription.status = 'ACTIVE'
+                AND broker_platform_subscription.starts_at <= NOW()
+                AND broker_platform_subscription.expires_at > NOW()
+               JOIN subscription_plans broker_plan
+                 ON broker_plan.id = broker_platform_subscription.plan_id
+                AND broker_plan.audience_type = 'BROKER'
                JOIN broker_research_analysts link
                  ON link.broker_id = subscription.broker_id AND link.status = 'ACTIVE'
                JOIN ra_details ra ON ra.id = link.ra_id

@@ -154,6 +154,7 @@ const BrokerAnnouncements = lazy(() => import("../broker_section/pages/BrokerAnn
 const BrokerBranding = lazy(() => import("../broker_section/pages/BrokerBranding"));
 const BrokerSubscription = lazy(() => import("../broker_section/pages/BrokerSubscription"));
 const BrokerNotifications = lazy(() => import("../broker_section/pages/BrokerNotifications"));
+const ContentManagement = lazy(() => import("../content/ContentManagementPage"));
 
 const SuperAdminDashboard = lazy(() => import("../pages_super_admin/SuperAdminDashboard"));
 const SuperAdminRAManagement = lazy(() => import("../pages_super_admin/SuperAdminRAManagement"));
@@ -254,6 +255,7 @@ const AppRoutes = () => {
         >
 <Route path="/dashboard" element={<Dashboard />} />
 <Route path="/performance" element={<Performance />} />
+<Route path="/content" element={<ProtectedRoute allowedRoles={["RESEARCH_ANALYST"]}><ContentManagement /></ProtectedRoute>} />
 <Route
   path="/ra/clients"
   element={
@@ -313,6 +315,7 @@ const AppRoutes = () => {
           <Route path="clients" element={<BrokerClients />} />
           <Route path="recommendations" element={<BrokerRecommendations />} />
           <Route path="performance" element={<BrokerPerformance />} />
+          <Route path="content" element={<ContentManagement />} />
           <Route path="announcements" element={<BrokerAnnouncements />} />
           <Route path="branding" element={<BrokerBranding />} />
           <Route path="subscription" element={<BrokerSubscription />} />

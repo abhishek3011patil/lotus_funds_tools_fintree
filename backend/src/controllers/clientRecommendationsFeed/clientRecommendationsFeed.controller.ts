@@ -32,13 +32,27 @@ const formatCall = (row: any, locked: boolean) => ({
   raOrganization: row.ra_organization,
   locked,
   entryPrice: locked ? null : row.entry_price,
+  entryPriceLow: locked ? null : row.entry_price_low,
   entryPriceUpper: locked ? null : row.entry_price_upper,
   targetPrice: locked ? null : row.target_price,
   targetPrice2: locked ? null : row.target_price_2,
   targetPrice3: locked ? null : row.target_price_3,
   stopLoss: locked ? null : row.stop_loss,
+  stopLoss2: locked ? null : row.stop_loss_2,
+  stopLoss3: locked ? null : row.stop_loss_3,
+  riskRewardRatio: locked ? null : row.risk_reward_ratio,
   summary: locked ? null : row.summary,
   analystNotes: locked ? null : row.analyst_notes,
+  underlyingStudy: locked ? null : row.underlying_study,
+  expiryDate: locked ? null : row.expiry_date,
+  exitPrice: locked ? null : row.exit_price,
+  closedAt: locked ? null : row.closed_at,
+  versionType: locked ? null : row.version_type,
+  versionNumber: locked ? null : row.version_number,
+  errataReason: locked ? null : row.errata_reason,
+  disclaimer: locked ? null : row.disclaimer_snapshot,
+  attachments: locked ? [] : (Array.isArray(row.attachments) ? row.attachments : []),
+  sebiRegistration: row.sebi_registration,
 });
 
 export const getClientRecommendationsFeed = async (
@@ -83,7 +97,13 @@ export const getClientRecommendationsFeed = async (
         )
         AND ($5 = 'ALL' OR research_call.ra_user_id::text = $5)
         AND ($6 = 'ALL' OR UPPER(COALESCE(research_call.action, '')) = $6)
-        AND ($7 = 'ALL' OR UPPER(COALESCE(research_call.exchange_type, '')) = $7)`;
+        AND ($7 = 'ALL' OR UPPER(COALESCE(research_call.exchange_type, '')) = $7)
+        AND (
+          COALESCE(research_call.audience_mode, 'ALL_CONNECTED') = 'ALL_CONNECTED'
+          OR research_call.audience_recipient_snapshot @> jsonb_build_array(
+            jsonb_build_object('type', 'CLIENT', 'id', $8::text)
+          )
+        )`;
 
     const callFields = `
       SELECT
@@ -99,16 +119,30 @@ export const getClientRecommendationsFeed = async (
         research_call.market_type,
         research_call.holding_period,
         research_call.entry_price,
+        research_call.entry_price_low,
         research_call.entry_price_upper,
         research_call.target_price,
         research_call.target_price_2,
         research_call.target_price_3,
         research_call.stop_loss,
+        research_call.stop_loss_2,
+        research_call.stop_loss_3,
+        research_call.risk_reward_ratio,
+        research_call.underlying_study,
+        research_call.expiry_date,
+        research_call.exit_price,
+        research_call.closed_at,
+        research_call.version_type,
+        research_call.version_number,
+        research_call.errata_reason,
+        research_call.disclaimer_snapshot,
+        research_call.attachments,
         research_call.rationale AS summary,
         research_call.research_remarks AS analyst_notes,
         analyst.id AS ra_id,
         analyst.name AS ra_name,
-        details.org_name AS ra_organization`;
+        details.org_name AS ra_organization,
+        details.sebi_reg_no AS sebi_registration`;
 
     const [
       subscribedCountResult,
@@ -120,29 +154,29 @@ export const getClientRecommendationsFeed = async (
         `SELECT COUNT(*)::int AS total
          ${baseFrom}
          AND research_call.ra_user_id = ANY($1::uuid[])`,
-        [allowedRAIds, status, search, searchPattern, raId, action, exchange]
+        [allowedRAIds, status, search, searchPattern, raId, action, exchange, req.user!.id]
       ),
       pool.query(
         `${callFields}
          ${baseFrom}
          AND research_call.ra_user_id = ANY($1::uuid[])
          ORDER BY research_call.created_at DESC
-         LIMIT $8 OFFSET $9`,
-        [allowedRAIds, status, search, searchPattern, raId, action, exchange, limit, subscribedOffset]
+         LIMIT $9 OFFSET $10`,
+        [allowedRAIds, status, search, searchPattern, raId, action, exchange, req.user!.id, limit, subscribedOffset]
       ),
       pool.query(
         `SELECT COUNT(*)::int AS total
          ${baseFrom}
          AND NOT (research_call.ra_user_id = ANY($1::uuid[]))`,
-        [allowedRAIds, status, search, searchPattern, raId, action, exchange]
+        [allowedRAIds, status, search, searchPattern, raId, action, exchange, req.user!.id]
       ),
       pool.query(
         `${callFields}
          ${baseFrom}
          AND NOT (research_call.ra_user_id = ANY($1::uuid[]))
          ORDER BY research_call.created_at DESC
-         LIMIT $8 OFFSET $9`,
-        [allowedRAIds, status, search, searchPattern, raId, action, exchange, limit, discoverOffset]
+         LIMIT $9 OFFSET $10`,
+        [allowedRAIds, status, search, searchPattern, raId, action, exchange, req.user!.id, limit, discoverOffset]
       ),
     ]);
 

@@ -41,8 +41,14 @@ jobs:
       - name: Build frontend
         run: npm run build --prefix frontend
 
-      - name: Test subscription access
+      - name: Validate API documentation
+        run: npm run docs:validate --prefix backend
+
+      - name: Test backend
         run: npm run test:backend
+
+      - name: Test frontend
+        run: npm run test --prefix frontend
 
       - name: Test UI contracts
         run: npm run test:e2e

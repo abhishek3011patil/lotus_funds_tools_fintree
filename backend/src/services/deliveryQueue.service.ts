@@ -16,6 +16,8 @@ type QueueWhatsAppResearchCallInput = {
     brokerId: string;
     rootCallId: string;
   };
+  clientUserIds?: string[];
+  participantIds?: string[];
 };
 
 export const queueWhatsAppResearchCall = async ({
@@ -26,8 +28,11 @@ export const queueWhatsAppResearchCall = async ({
   originalCallId = null,
   client,
   brokerDelivery,
+  clientUserIds,
+  participantIds,
 }: QueueWhatsAppResearchCallInput) => {
   const db = client ?? pool;
+  const audienceFiltered = clientUserIds !== undefined || participantIds !== undefined;
 
   const participantsResult = await db.query(
     `
@@ -39,8 +44,9 @@ export const queueWhatsAppResearchCall = async ({
       WHERE ra_user_id = $1
         AND consent_confirmed = TRUE
         AND is_active = TRUE
+        ${audienceFiltered ? "AND (client_user_id = ANY($2::uuid[]) OR id = ANY($3::uuid[]))" : ""}
     `,
-    [raUserId]
+    audienceFiltered ? [raUserId, clientUserIds ?? [], participantIds ?? []] : [raUserId]
   );
 
   if ((participantsResult.rowCount ?? 0) === 0) {

@@ -909,6 +909,24 @@ export const getDisclaimerHistoryByRA = async (
       [userId]
     );
 
+    await createAuditLog({
+      adminId: req.user?.id,
+      adminName: req.user?.name || "ADMIN",
+      adminRole: req.user?.role || "ADMIN",
+      action: "VIEW_DISCLAIMER_HISTORY",
+      module: "RA_PROFILE",
+      targetEntity: result.rows[0]?.email || userId,
+      targetType: "RESEARCH_ANALYST",
+      description: "Admin viewed RA disclaimer history",
+      status: "SUCCESS",
+      ipAddress: getClientIp(req),
+      device: req.headers["user-agent"],
+      newValue: {
+        raUserId: userId,
+        versionCount: result.rows.length,
+      },
+    });
+
     return res.json({
       success: true,
       ra: result.rows[0]

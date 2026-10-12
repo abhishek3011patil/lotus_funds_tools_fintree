@@ -81,7 +81,7 @@ export const upload = multer({
 // broader registration-proof limit unchanged while allowing larger images.
 export const profileImageUpload = multer({
   storage,
-  limits: { fileSize: 15 * 1024 * 1024, files: 1 },
+  limits: { fileSize: 25 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) => {
     const extension = path.extname(file.originalname).toLowerCase();
     const allowedImageMimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -89,6 +89,20 @@ export const profileImageUpload = multer({
 
     if (!allowedImageMimeTypes.includes(file.mimetype) || !allowedImageExtensions.includes(extension)) {
       return cb(new Error("Invalid profile picture. Use JPG, JPEG, PNG or WEBP."));
+    }
+    cb(null, true);
+  },
+});
+
+export const contentImageUpload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    const extension = path.extname(file.originalname).toLowerCase();
+    const mimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    const extensions = [".jpg", ".jpeg", ".png", ".webp"];
+    if (!mimeTypes.includes(file.mimetype) || !extensions.includes(extension)) {
+      return cb(new Error("Invalid content image. Use JPG, JPEG, PNG or WEBP."));
     }
     cb(null, true);
   },

@@ -237,12 +237,28 @@ export const listBrokerCalls = async (_req: AuthRequest, res: Response) => {
     `SELECT rc.id, rc.created_at AS date_time, rc.action, rc.exchange_type AS exchange,
        rc.call_type AS type, rc.trade_type AS category, rc.display_name AS instrument,
        rc.symbol, rc.expiry_date AS expiry, coalesce(rc.entry_price, rc.entry_price_low, rc.entry_price_upper) AS entry,
+       rc.target_price, rc.target_price_2, rc.target_price_3,
+       rc.stop_loss, rc.stop_loss_2, rc.stop_loss_3, rc.holding_period,
+       rc.rationale, rc.underlying_study, rc.research_remarks, rc.errata_reason,
        rc.exit_price, rc.status, rc.version_type, rc.attachments, rc.file_url,
        rc.published_message_text, COALESCE(rc.parent_call_id, rc.id) AS root_call_id,
        COALESCE(NULLIF(TRIM(b.trade_name), ''), b.legal_name) AS broker_name,
        b.sebi_registration_no AS broker_sebi_registration,
+       b.disclaimer_template AS broker_disclaimer_template,
+       b.legal_name AS broker_legal_name, b.trade_name AS broker_trade_name,
+       b.registration_category AS broker_registration_category, b.membership_code AS broker_membership_code,
+       b.registered_address AS broker_registered_address, b.email AS broker_email, b.mobile AS broker_mobile,
+       b.website AS broker_website, b.authorized_person_name AS broker_authorized_person_name,
+       b.authorized_person_designation AS broker_authorized_person_designation,
+       b.compliance_officer_name AS broker_compliance_officer_name,
+       CONCAT_WS(', ', CASE WHEN b.exchange_nse THEN 'NSE' END, CASE WHEN b.exchange_bse THEN 'BSE' END,
+         CASE WHEN b.exchange_smi THEN 'SMI' END, CASE WHEN b.exchange_ncdex THEN 'NCDEX' END) AS broker_exchanges,
+       CONCAT_WS(', ', CASE WHEN b.segment_cash THEN 'Cash' END, CASE WHEN b.segment_fo THEN 'F&O' END,
+         CASE WHEN b.segment_currency THEN 'Currency' END) AS broker_segments,
        (publication.id IS NOT NULL AND publication.status = 'ACTIVE') AS broker_published,
        concat_ws(' ', ra.first_name, ra.surname) AS researcher_name,
+       ra.org_name AS researcher_organization, ra.sebi_reg_no AS researcher_sebi_registration,
+       ra.mobile AS researcher_contact, ra.email AS researcher_email,
        CASE WHEN rc.exit_price IS NULL THEN 0
          WHEN upper(rc.action) = 'SELL' THEN coalesce(rc.entry_price, rc.entry_price_low, rc.entry_price_upper) - rc.exit_price
          ELSE rc.exit_price - coalesce(rc.entry_price, rc.entry_price_low, rc.entry_price_upper) END AS profit_loss
@@ -255,6 +271,12 @@ export const listBrokerCalls = async (_req: AuthRequest, res: Response) => {
       AND publication.root_call_id = COALESCE(rc.parent_call_id, rc.id)
      WHERE link.broker_id = $1 AND link.status = 'ACTIVE'
        AND rc.status IN ('PUBLISHED', 'CLOSED') AND rc.is_latest IS TRUE
+       AND (
+         COALESCE(rc.audience_mode, 'ALL_CONNECTED') = 'ALL_CONNECTED'
+         OR rc.audience_recipient_snapshot @> jsonb_build_array(
+           jsonb_build_object('type', 'BROKER', 'id', link.broker_id::text)
+         )
+       )
      ORDER BY rc.created_at DESC, rc.id`, [res.locals.broker.id]
   );
   res.json(result.rows);
@@ -276,6 +298,12 @@ export const publishBrokerCall = async (req: AuthRequest, res: Response) => {
        JOIN broker_research_analysts link ON link.ra_id = ra.id
        WHERE rc.id = $1 AND rc.is_latest = TRUE AND rc.status = 'PUBLISHED'
          AND link.broker_id = $2 AND link.status = 'ACTIVE'
+         AND (
+           COALESCE(rc.audience_mode, 'ALL_CONNECTED') = 'ALL_CONNECTED'
+           OR rc.audience_recipient_snapshot @> jsonb_build_array(
+             jsonb_build_object('type', 'BROKER', 'id', link.broker_id::text)
+           )
+         )
        FOR UPDATE OF rc`,
       [callId, res.locals.broker.id],
     );

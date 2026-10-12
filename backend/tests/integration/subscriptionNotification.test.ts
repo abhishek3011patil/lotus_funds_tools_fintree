@@ -16,19 +16,35 @@ vi.mock("../../src/services/email", () => ({
   },
 }));
 
+vi.mock("../../src/utils/auditLogger", () => ({
+  createAuditLog: vi.fn(),
+}));
+
 import { pool } from "../../src/db";
 import { emailService } from "../../src/services/email";
-import { processDueSubscriptionNotifications } from "../../src/controllers/subscriptionNotification.controller";
+import {
+  processDueSubscriptionNotifications,
+  runSubscriptionNotificationPass,
+} from "../../src/controllers/subscriptionNotification.controller";
+import { createAuditLog } from "../../src/utils/auditLogger";
 
 const queryMock = vi.mocked(pool.query);
 const connectMock = vi.mocked(pool.connect);
 const emailMock = vi.mocked(emailService.send);
+const auditMock = vi.mocked(createAuditLog);
+
+const response = () => {
+  const res = { status: vi.fn(), json: vi.fn() };
+  res.status.mockReturnValue(res);
+  return res as any;
+};
 
 describe("subscription expiry notifications", () => {
   beforeEach(() => {
     queryMock.mockReset();
     connectMock.mockReset();
     emailMock.mockClear();
+    auditMock.mockReset();
   });
 
   it("sends and records the nearest expiry reminder once", async () => {
@@ -83,5 +99,65 @@ describe("subscription expiry notifications", () => {
       )
     ).toBe(true);
     expect(db.release).toHaveBeenCalledOnce();
+  });
+
+  it("audits a manually triggered notification pass", async () => {
+    queryMock
+      .mockResolvedValueOnce({ rows: [] } as any)
+      .mockResolvedValueOnce({ rows: [] } as any);
+    const res = response();
+
+    await runSubscriptionNotificationPass(
+      {
+        user: {
+          id: "admin-1",
+          name: "Admin User",
+          role: "ADMIN",
+        },
+        headers: { "user-agent": "vitest" },
+        socket: { remoteAddress: "127.0.0.1" },
+      } as any,
+      res
+    );
+
+    expect(auditMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        adminId: "admin-1",
+        action: "SUBSCRIPTION_NOTIFICATION_PASS_RUN",
+        status: "SUCCESS",
+        newValue: {
+          remindersAttempted: 0,
+          expiryNotificationsAttempted: 0,
+        },
+      })
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it("audits a failed manually triggered notification pass", async () => {
+    queryMock.mockRejectedValueOnce(new Error("database unavailable"));
+    const res = response();
+
+    await runSubscriptionNotificationPass(
+      {
+        user: {
+          id: "admin-1",
+          name: "Admin User",
+          role: "ADMIN",
+        },
+        headers: {},
+        socket: { remoteAddress: "127.0.0.1" },
+      } as any,
+      res
+    );
+
+    expect(auditMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "SUBSCRIPTION_NOTIFICATION_PASS_RUN",
+        status: "FAILED",
+        reason: "database unavailable",
+      })
+    );
+    expect(res.status).toHaveBeenCalledWith(500);
   });
 });

@@ -3,6 +3,13 @@ import { Request, Response } from "express";
 import { pool } from "../db";
 import {AuthRequest} from "../middlewares/auth.middleware";
 import { createClient } from "../utils/telegramClientFactory";
+import { loadResearchCallMedia, sendTelegramMessageWithMedia } from "../services/researchCallMedia.service";
+import {
+  audienceClientIds,
+  audienceTelegramParticipantIds,
+  parseAudienceSelection,
+  resolveResearchAudience,
+} from "../services/researchAudience.service";
 import { otpStore } from "../utils/telegramStore";
 import { Api } from "telegram";
 import { createAuditLog } from "../utils/auditLogger";
@@ -77,6 +84,17 @@ interface ExcelParticipant {
   telegram_user_id?: string;
 }
 
+const isAdminRole = (role?: string): boolean =>
+  ["ADMIN", "SUPERADMIN", "SUPER_ADMIN"].includes(
+    String(role || "").trim().toUpperCase()
+  );
+
+const canAccessRA = (req: AuthRequest, raId: string): boolean => {
+  const role = String(req.user?.role || "").trim().toUpperCase();
+  return isAdminRole(role) ||
+    (role === "RESEARCH_ANALYST" && req.user?.id === raId);
+};
+
 /* =========================================================
    GET ALL TELEGRAM PARTICIPANTS (GET /api/telegram/participants)
    ========================================================= */
@@ -103,9 +121,6 @@ export const saveTelegramUser = async (
   req: AuthRequest,
   res: Response
 ) => {
-   console.log("=== SAVE USER ===");
-  console.log("req.user:", req.user);
-  console.log("req.body:", req.body);
   try {
     const {
       telegram_user_id,
@@ -114,18 +129,20 @@ export const saveTelegramUser = async (
       user_id,
     } = req.body;
 
-    // ✅ Validate RA ID
-    if (!user_id) {
-      return res.status(400).json({
+    const role = String(req.user?.role || "").trim().toUpperCase();
+    const raUserId = isAdminRole(role) ? String(user_id || "") : req.user?.id;
+
+    if (!raUserId || !canAccessRA(req, raUserId)) {
+      return res.status(403).json({
         success: false,
-        message: "RA ID (user_id) is required",
+        message: "You cannot manage Telegram participants for this analyst",
       });
     }
 
     // ✅ Ensure RA exists
     const userCheck = await pool.query(
       `SELECT id FROM users WHERE id = $1`,
-      [user_id]
+      [raUserId]
     );
 
     if (userCheck.rows.length === 0) {
@@ -156,7 +173,7 @@ export const saveTelegramUser = async (
       FROM users
       WHERE id = $1
       `,
-      [user_id]
+      [raUserId]
     );
 
     const sessionString = sessionResult.rows[0]?.telegram_session;
@@ -293,13 +310,13 @@ export const saveTelegramUser = async (
         resolvedTelegramId,
         resolvedUsername,
         phone_number || "",
-        user_id,
+        raUserId,
         entityType,
       ]
     );
 
     // ✅ AUDIT LOG (ADMIN ONLY)
-    if (req.user?.role === "ADMIN") {
+    if (isAdminRole(req.user?.role)) {
 
       await createAuditLog({
         adminId: req.user?.id,
@@ -322,7 +339,7 @@ export const saveTelegramUser = async (
         targetType: entityType,
 
         description:
-          `Admin added Telegram ${entityType} for RA ID ${user_id}`,
+          `Admin added Telegram ${entityType} for RA ID ${raUserId}`,
 
         status: "SUCCESS",
 
@@ -370,13 +387,17 @@ export const saveTelegramUser = async (
 export const updateParticipant = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
-    const role = req.user?.role; // ✅ IMPORTANT
+    const role = String(req.user?.role || "").trim().toUpperCase();
     const { id } = req.params;
 
     const { telegram_client_name, phone_number } = req.body;
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!isAdminRole(role) && role !== "RESEARCH_ANALYST") {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     if (!id) {
@@ -392,7 +413,7 @@ export const updateParticipant = async (req: AuthRequest, res: Response) => {
 );
 
     // ✅ ADMIN can update ANY participant
-    if (role === "ADMIN") {
+    if (isAdminRole(role)) {
       query = `
         UPDATE telegram_users
         SET 
@@ -423,7 +444,7 @@ export const updateParticipant = async (req: AuthRequest, res: Response) => {
     }
 
     // ✅ AUDIT LOG
-if (role === "ADMIN") {
+if (isAdminRole(role)) {
   await createAuditLog({
     adminId: req.user?.id,
 
@@ -476,7 +497,7 @@ export const updateParticipantStatus = async (
 ) => {
   try {
     const userId = req.user?.id;
-    const role = req.user?.role;
+    const role = String(req.user?.role || "").trim().toUpperCase();
     const { id } = req.params;
     const { is_active } = req.body;
 
@@ -484,6 +505,13 @@ export const updateParticipantStatus = async (
       return res.status(401).json({
         success: false,
         message: "Unauthorized",
+      });
+    }
+
+    if (!isAdminRole(role) && role !== "RESEARCH_ANALYST") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied",
       });
     }
 
@@ -505,7 +533,7 @@ export const updateParticipantStatus = async (
     let values: any[];
 
     // ADMIN can update any participant
-    if (role === "ADMIN") {
+    if (isAdminRole(role)) {
       query = `
         UPDATE telegram_users
         SET is_active = $1
@@ -566,11 +594,15 @@ export const updateParticipantStatus = async (
 export const deleteParticipant = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
-    const role = req.user?.role; // ✅ IMPORTANT
+    const role = String(req.user?.role || "").trim().toUpperCase();
     const { id } = req.params;
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!isAdminRole(role) && role !== "RESEARCH_ANALYST") {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     if (!id || id === "undefined") {
@@ -586,7 +618,7 @@ export const deleteParticipant = async (req: AuthRequest, res: Response) => {
 );
 
     // ✅ ADMIN can delete ANY participant
-    if (role === "ADMIN") {
+    if (isAdminRole(role)) {
       query = `
         DELETE FROM telegram_users
         WHERE id = $1
@@ -611,7 +643,7 @@ export const deleteParticipant = async (req: AuthRequest, res: Response) => {
     }
 
     // ✅ AUDIT LOG
-if (role === "ADMIN") {
+if (isAdminRole(role)) {
   await createAuditLog({
     adminId: req.user?.id,
 
@@ -656,12 +688,12 @@ if (role === "ADMIN") {
    GET TELEGRAM PARTICIPANTS BY RESEARCH ANALYST (GET /api/telegram/ra/:raId)
    ========================================================= */
 export const getParticipantsByRA = async (
-  req: Request,
+  req: AuthRequest,
   res: Response
 ) => {
   try {
 
-    const { raId } = req.params;
+    const raId = String(req.params.raId || "");
 
     if (
       !raId ||
@@ -671,6 +703,13 @@ export const getParticipantsByRA = async (
       return res.status(400).json({
         success: false,
         message: "Invalid RA ID",
+      });
+    }
+
+    if (!canAccessRA(req, raId)) {
+      return res.status(403).json({
+        success: false,
+        message: "You cannot view participants for this analyst",
       });
     }
 
@@ -726,9 +765,6 @@ export const sendMessageToRAClients = async (
   res: Response
 ) => {
   try {
-    console.log("SEND RA MESSAGE HIT");
-    console.log("BODY RECEIVED:", req.body);
-
     const raId = req.user?.id;
     const { message: frontendMessage } = req.body;
 
@@ -746,6 +782,46 @@ export const sendMessageToRAClients = async (
       });
     }
 
+    let selectedClientIds: string[] | undefined;
+    let selectedParticipantIds: string[] | undefined;
+    const researchCallId = String(req.body?.researchCallId || "");
+    let media = [] as Awaited<ReturnType<typeof loadResearchCallMedia>>;
+    if (/^[a-f0-9-]{36}$/i.test(researchCallId)) {
+      const callAudience = await pool.query(
+        `SELECT audience_mode, audience_recipient_snapshot FROM research_calls
+         WHERE id = $1 AND ra_user_id = $2`,
+        [researchCallId, raId],
+      );
+      const call = callAudience.rows[0];
+      if (!call) return res.status(404).json({ success: false, message: "Research call audience was not found." });
+      media = await loadResearchCallMedia(researchCallId);
+      if (call.audience_mode === "GROUPS") {
+        const recipients = Array.isArray(call.audience_recipient_snapshot) ? call.audience_recipient_snapshot : [];
+        selectedClientIds = audienceClientIds(recipients);
+        selectedParticipantIds = audienceTelegramParticipantIds(recipients);
+      }
+    } else {
+      const audienceSelection = parseAudienceSelection(req.body || {});
+      if (audienceSelection.mode === "GROUPS") {
+      try {
+        const audience = await resolveResearchAudience({
+          raUserId: raId,
+          mode: audienceSelection.mode,
+          groupIds: audienceSelection.groupIds,
+          db: pool,
+        });
+        selectedClientIds = audienceClientIds(audience.recipients);
+        selectedParticipantIds = audienceTelegramParticipantIds(audience.recipients);
+      } catch (audienceError) {
+        return res.status(400).json({
+          success: false,
+          message: audienceError instanceof Error ? audienceError.message : "Invalid research audience.",
+        });
+      }
+      }
+    }
+
+   const audienceFiltered = selectedClientIds !== undefined || selectedParticipantIds !== undefined;
    const [sessionResult, usersResult] = await Promise.all([
       pool.query(
         `
@@ -768,8 +844,9 @@ export const sendMessageToRAClients = async (
         FROM telegram_users
         WHERE user_id = $1
          AND is_active = TRUE
+         ${audienceFiltered ? "AND (client_user_id = ANY($2::uuid[]) OR id = ANY($3::uuid[]))" : ""}
         `,
-        [raId]
+        audienceFiltered ? [raId, selectedClientIds ?? [], selectedParticipantIds ?? []] : [raId]
       ),
     ]);
 
@@ -785,6 +862,14 @@ export const sendMessageToRAClients = async (
     }
 
    
+
+    if (users.length === 0 && audienceFiltered) {
+      return res.status(202).json({
+        success: true,
+        message: "No selected recipients have an active Telegram destination.",
+        stats: { total: 0 },
+      });
+    }
 
     if (users.length === 0) {
       return res.status(400).json({
@@ -822,27 +907,27 @@ export const sendMessageToRAClients = async (
               `📨 Sending to ${u.entity_type}:`,
               u.telegram_client_name || u.telegram_user_id
             );
-let entity: any;
-
-if (
-  u.entity_type === "GROUP" ||
-  u.entity_type === "CHANNEL"
-) {
-  entity = await client.getEntity(u.telegram_client_name);
-} else {
-  entity = await client.getEntity(u.telegram_user_id);
-}
-
-await client.sendMessage(entity, {
-  message: finalMessage,
-});
+            const target = u.entity_type === "GROUP" || u.entity_type === "CHANNEL"
+              ? u.telegram_client_name : u.telegram_user_id;
+            const entity = await client.getEntity(target);
+            const mediaFailures = await sendTelegramMessageWithMedia(client, entity, finalMessage, media);
 
             console.log(
               `✅ Sent to ${u.entity_type}:`,
               u.telegram_client_name
             );
 
-            successCount++;
+            if (mediaFailures.length) {
+              failCount++;
+              failedEntities.push({
+                entity: u.telegram_client_name || u.telegram_user_id,
+                type: u.entity_type,
+                reason: `Message sent, but ${mediaFailures.length} attachment(s) failed`,
+                attachments: mediaFailures,
+              });
+            } else {
+              successCount++;
+            }
 
             await sleep(2000);
           } catch (err: any) {
@@ -860,15 +945,23 @@ await client.sendMessage(entity, {
               await sleep(seconds * 1000);
 
               try {
-                const retryEntity = await client.getEntity(u.telegram_user_id);
-
-                await client.sendMessage(retryEntity, {
-                  message: finalMessage,
-                });
+                const target = u.entity_type === "GROUP" || u.entity_type === "CHANNEL"
+                  ? u.telegram_client_name : u.telegram_user_id;
+                const retryEntity = await client.getEntity(target);
+                const mediaFailures = await sendTelegramMessageWithMedia(client, retryEntity, finalMessage, media);
 
                 console.log("✅ Retry success:", u.telegram_client_name);
-
-                successCount++;
+                if (mediaFailures.length) {
+                  failCount++;
+                  failedEntities.push({
+                    entity: u.telegram_client_name || u.telegram_user_id,
+                    type: u.entity_type,
+                    reason: `Message sent, but ${mediaFailures.length} attachment(s) failed`,
+                    attachments: mediaFailures,
+                  });
+                } else {
+                  successCount++;
+                }
               } catch (retryErr: any) {
                 failCount++;
 

@@ -24,6 +24,14 @@ export const canAccessUploadedFile = async ({
          WHERE profile_image = $1
        )
        OR EXISTS (
+         SELECT 1 FROM client_profiles
+         WHERE profile_image = $1
+       )
+       OR EXISTS (
+         SELECT 1 FROM broker_details
+         WHERE profile_image = $1
+       )
+       OR EXISTS (
          SELECT 1 FROM ra_details
          WHERE user_id = $2
            AND $1 IN (
@@ -33,6 +41,49 @@ export const canAccessUploadedFile = async ({
              sebi_receipt,
              nism_certificate,
              cancelled_cheque
+           )
+       )
+       OR EXISTS (
+         SELECT 1
+         FROM insight_content_images image
+         WHERE image.filename = $1
+           AND (
+             image.owner_user_id = $2
+             OR (
+               $3 = 'CLIENT'
+               AND EXISTS (
+                 SELECT 1
+                 FROM insight_content content
+                 JOIN users publisher ON publisher.id = content.author_user_id
+                 WHERE content.author_user_id = image.owner_user_id
+                   AND content.status = 'PUBLISHED'
+                   AND content.article_body LIKE '%' || image.filename || '%'
+                   AND (
+                     content.visibility = 'PUBLIC'
+                     OR (
+                       publisher.role = 'RESEARCH_ANALYST'
+                       AND EXISTS (
+                         SELECT 1 FROM client_ra_subscriptions subscription
+                         WHERE subscription.client_user_id = $2
+                           AND subscription.ra_user_id = content.author_user_id
+                           AND subscription.status = 'ACTIVE'
+                           AND subscription.expires_at > NOW()
+                       )
+                     )
+                     OR (
+                       publisher.role = 'BROKER'
+                       AND EXISTS (
+                         SELECT 1 FROM client_broker_subscriptions subscription
+                         JOIN broker_details subscribed_broker ON subscribed_broker.id = subscription.broker_id
+                         WHERE subscription.client_user_id = $2
+                           AND subscribed_broker.user_id = content.author_user_id
+                           AND subscription.status = 'ACTIVE'
+                           AND subscription.expires_at > NOW()
+                       )
+                     )
+                   )
+               )
+             )
            )
        )
        OR EXISTS (

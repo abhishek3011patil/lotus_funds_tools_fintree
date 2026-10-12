@@ -15,17 +15,6 @@ import { authenticate } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-// WhatsApp test
-router.get(
-  "/participants",
-  (req, _res, next) => {
-    console.log("WHATSAPP PARTICIPANTS ROUTE HIT");
-    next();
-  },
-  authenticate,
-  getWhatsAppParticipants
-);
-
 // Participants
 router.get("/participants", authenticate, getWhatsAppParticipants);
 

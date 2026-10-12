@@ -1,4 +1,5 @@
-import { Alert, Stack, TextField } from "@mui/material";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import AdminPageShell from "../components/admin/AdminPageShell";
-const SuperAdminSettings = () => <AdminPageShell title="Platform Settings" subtitle="Platform configuration placeholder."><Stack spacing={2} maxWidth={600}><TextField label="Platform display name" defaultValue="Lotus Funds" /><TextField label="Support contact" defaultValue="support@example.test" /><Alert severity="warning">Saving platform configuration is intentionally disabled until authorized backend contracts exist.</Alert></Stack></AdminPageShell>;
+import ProductState from "../components/common/ProductState";
+const SuperAdminSettings = () => <AdminPageShell title="Platform Settings" subtitle="Tarkashh platform configuration."><ProductState kind="unavailable" icon={<SettingsOutlinedIcon fontSize="large" />} title="Platform settings are not connected" description="Settings will be editable after secure configuration storage, authorization, and audit logging are available. Sample values have been removed." /></AdminPageShell>;
 export default SuperAdminSettings;
