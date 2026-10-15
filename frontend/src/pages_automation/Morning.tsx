@@ -15,10 +15,10 @@ const morningTiles: TileItem[] = [
     path: "",
   },
   {
-    label: "FII/DLL",
+    label: "FII/DII maker",
     id: 2,
     image: "#",
-    path: "",
+    path: "/automation/Morning/fiidll",
   },
   {
     label: "One pager",

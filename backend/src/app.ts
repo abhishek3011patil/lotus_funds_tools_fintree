@@ -35,6 +35,7 @@ import raDashboardRoutes from "./routes/raDashboard/raDashboard.routes";
 import clientRegistrationRoutes from "./routes/clientRegistration/clientRegistration.routes";
 import aadhaarKycRoutes from "./routes/aadhaarKyc.routes";
 import contentRoutes from "./routes/content.routes";
+import employeeCompanyBrandsRoutes from "./routes/employeeCompanyBrands.routes";
 
 
 
@@ -118,7 +119,7 @@ app.use(
   razorpayWebhookRoutes
 );
 
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "2mb" }));
 
 mountSwaggerDocs(app);
 
@@ -162,6 +163,7 @@ app.use("/api/whatsapp", whatsappRoutes);
 app.use("/api/aadhaar", aadhaarKycRoutes);
 
 app.use("/api/content", contentRoutes);
+app.use("/api/employee/company-brands", employeeCompanyBrandsRoutes);
 
 app.use( "/api/client/recommendations", clientRecommendationRoutes);
 

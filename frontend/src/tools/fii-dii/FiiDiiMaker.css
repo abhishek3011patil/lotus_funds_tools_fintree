@@ -1,0 +1,52 @@
+.fii-maker { max-width: 1520px; margin: 0 auto; color: #172b3d; }
+.fii-maker * { box-sizing: border-box; }
+.fii-maker__intro { display: flex; justify-content: space-between; align-items: center; gap: 24px; margin-bottom: 24px; }
+.fii-maker__intro h1 { margin: 4px 0 6px; font-size: clamp(27px, 3vw, 38px); }
+.fii-maker__intro p { margin: 0; color: #607081; }
+.fii-maker__eyebrow { font-size: 12px; letter-spacing: 0.14em; font-weight: 800; color: #08799d !important; }
+.fii-maker button { cursor: pointer; }
+.fii-maker__primary { border: 0; border-radius: 10px; background: #0758b5; color: #fff; font-size: 14px; font-weight: 700; padding: 14px 20px; white-space: nowrap; }
+.fii-maker__primary:disabled { opacity: 0.55; cursor: wait; }
+.fii-maker__message { border: 1px solid #b9ddec; background: #eaf7fc; color: #173a55; border-radius: 9px; padding: 11px 14px; margin-bottom: 18px; }
+.fii-maker__layout { display: grid; grid-template-columns: minmax(460px, 1fr) minmax(390px, 0.86fr); gap: 22px; align-items: start; }
+.fii-maker__controls { display: grid; gap: 22px; }
+.fii-maker__panel { background: #fff; border: 1px solid #e4e9ef; box-shadow: 0 8px 28px #0a2d4b0b; border-radius: 14px; padding: 24px; }
+.fii-maker__panel-head { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 22px; }
+.fii-maker__panel-head h2 { margin: 0; font-size: 21px; }
+.fii-maker__panel-head p { margin: 5px 0 0; color: #697b89; font-size: 14px; }
+.fii-maker__step { display: grid; place-items: center; flex: 0 0 36px; height: 36px; border-radius: 9px; color: #0758b5; background: #e9f3ff; font-size: 13px; font-weight: 800; }
+.fii-maker__date, .fii-maker__fields label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 700; }
+.fii-maker input:not([type=checkbox]):not([type=color]), .fii-maker__preview select { width: 100%; height: 40px; border: 1px solid #cfd9e2; border-radius: 7px; padding: 8px 10px; color: #152d41; background: #fff; font: inherit; }
+.fii-maker input:focus-visible, .fii-maker button:focus-visible, .fii-maker select:focus-visible { outline: 2px solid #1585c1; outline-offset: 2px; }
+.fii-maker__date { max-width: 230px; margin-bottom: 22px; }
+.fii-maker__groups { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.fii-maker__group { border-top: 1px solid #e4ebf0; padding-top: 15px; margin-top: 6px; }
+.fii-maker__group h3 { font-size: 15px; margin: 0 0 12px; }
+.fii-maker__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
+.fii-maker__fields--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.fii-maker__upload { display: inline-block; border: 1px dashed #3478aa; background: #f1f8ff; color: #0758b5; border-radius: 8px; padding: 11px 15px; font-size: 14px; font-weight: 750; cursor: pointer; }
+.fii-maker__upload input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.fii-maker__hint { font-size: 13px; color: #64788a; margin: 12px 0 18px; }
+.fii-maker__selection { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; font-size: 13px; color: #687987; }
+.fii-maker__selection button { border: 0; background: none; color: #0758b5; padding: 0; font-weight: 700; }
+.fii-maker__selection span { margin-left: auto; }
+.fii-maker__company-list { display: grid; gap: 8px; }
+.fii-maker__company { display: grid; grid-template-columns: 20px 62px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 9px; border: 1px solid #e4e9ed; border-radius: 9px; }
+.fii-maker__company input[type=checkbox] { width: 17px; height: 17px; accent-color: #0758b5; }
+.fii-maker__logo { height: 50px; border: 1px solid #edf1f3; background: #fff; border-radius: 6px; padding: 4px; }
+.fii-maker__logo img { width: 100%; height: 100%; object-fit: contain; }
+.fii-maker__company-edit { min-width: 0; }
+.fii-maker__company-edit input:not([type=color]) { height: 30px !important; padding: 4px 6px !important; font-size: 13px !important; font-weight: 700 !important; }
+.fii-maker__company-edit div { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #687987; }
+.fii-maker__company-edit input[type=color] { width: 32px; height: 23px; padding: 0; border: none; background: none; cursor: pointer; }
+.fii-maker__small { color: #0758b5; background: #edf5ff; border: 0; border-radius: 6px; padding: 7px 9px; font-weight: 700; font-size: 12px; }
+.fii-maker__remove { color: #8f4751; border: 0; background: none; font-size: 23px; line-height: 1; }
+.fii-maker__empty { margin: 0; color: #73818b; font-size: 14px; }
+.fii-maker__preview { position: sticky; top: 86px; }
+.fii-maker__preview select { margin-bottom: 16px; }
+.fii-maker__sheet-wrap { padding: 12px; background: #e8edf1; border-radius: 8px; }
+.fii-maker__sheet-wrap img { display: block; width: 100%; height: auto; box-shadow: 0 4px 14px #17374c26; }
+.fii-maker__preview-empty { display: grid; place-items: center; min-height: 300px; background: #f3f7fa; color: #63798b; text-align: center; border-radius: 8px; padding: 24px; }
+.fii-maker__download { width: 100%; margin-top: 18px; }
+@media (max-width: 1100px) { .fii-maker__layout { grid-template-columns: 1fr; } .fii-maker__preview { position: static; } }
+@media (max-width: 650px) { .fii-maker__intro { align-items: stretch; flex-direction: column; } .fii-maker__groups { grid-template-columns: 1fr; } .fii-maker__fields--three { grid-template-columns: 1fr 1fr; } .fii-maker__panel { padding: 16px; } .fii-maker__company { grid-template-columns: 18px 48px minmax(0, 1fr) auto; } .fii-maker__company .fii-maker__small { grid-column: 3; } .fii-maker__remove { grid-column: 4; grid-row: 1; } }
