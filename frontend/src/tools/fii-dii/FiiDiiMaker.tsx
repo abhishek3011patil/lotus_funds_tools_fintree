@@ -1,10 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
-import {
-  CompanyBrand, createCompanyBrand, deleteCompanyBrand, listCompanyBrands, updateCompanyBrand,
-} from "../../services/companyBrands.service";
-import { dominantBrandColor, readLogo, trimLogo } from "./logoColor";
+import CompanyLibrary, { CompanyLibraryState } from "../../components/company-library/CompanyLibrary";
+import { sendCompanyReport } from "../../services/companyBrands.service";
 import { createFiiDiiSvg, DATA_FIELDS, DataKey, emptyFiiDiiData, FiiDiiData, svgToPng } from "./sheet";
 import "./FiiDiiMaker.css";
 
@@ -24,23 +22,19 @@ const messageFrom = (error: unknown) => {
 };
 
 const cleanFilename = (name: string) => name.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "") || "Company";
+const pngDataUrl = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result));
+  reader.onerror = () => reject(new Error("Could not prepare the report image"));
+  reader.readAsDataURL(blob);
+});
 
 export default function FiiDiiMaker() {
   const [data, setData] = useState<FiiDiiData>(emptyFiiDiiData);
-  const [companies, setCompanies] = useState<CompanyBrand[]>([]);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [previewId, setPreviewId] = useState<string>("");
+  const [library, setLibrary] = useState<CompanyLibraryState>({ companies: [], selectedIds: [], previewId: "" });
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const uploadRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    listCompanyBrands().then(items => {
-      setCompanies(items);
-      setPreviewId(items[0]?.id || "");
-    }).catch(error => setMessage(messageFrom(error)));
-  }, []);
-
+  const { companies, selectedIds, previewId } = library;
   const previewCompany = companies.find(company => company.id === previewId) || companies[0];
   const previewSvg = useMemo(() => previewCompany ? createFiiDiiSvg(data, previewCompany) : "", [data, previewCompany]);
 
@@ -48,68 +42,18 @@ export default function FiiDiiMaker() {
     ...current, values: { ...current.values, [key]: value },
   }));
 
-  const uploadCompanies = async (files: FileList | null) => {
-    if (!files?.length) return;
-    setBusy(true);
-    setMessage("");
-    const added: CompanyBrand[] = [];
-    const errors: string[] = [];
-    for (const file of Array.from(files)) {
-      try {
-        if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) throw new Error("Use a PNG, JPG, or WebP logo");
-        if (file.size > 1024 * 1024) throw new Error("Logo must be under 1 MB");
-        const logoDataUrl = await trimLogo(await readLogo(file));
-        if (logoDataUrl.length > 1.4 * 1024 * 1024) throw new Error("Prepared logo is over 1 MB; use a smaller image");
-        const color = await dominantBrandColor(logoDataUrl);
-        const name = file.name.replace(/\.[^.]+$/, "").trim();
-        added.push(await createCompanyBrand({ name, color, logoDataUrl }));
-      } catch (error) {
-        errors.push(`${file.name}: ${messageFrom(error)}`);
-      }
-    }
-    if (added.length) {
-      setCompanies(current => [...current, ...added].sort((a, b) => a.name.localeCompare(b.name)));
-      setSelectedIds(current => [...current, ...added.map(company => company.id)]);
-      setPreviewId(added[0].id);
-    }
-    setMessage(errors.length ? errors.join(" · ") : `${added.length} company${added.length === 1 ? "" : "ies"} saved to the company library.`);
-    if (uploadRef.current) uploadRef.current.value = "";
-    setBusy(false);
-  };
-
-  const updateCompanyLocal = (id: string, changes: Partial<CompanyBrand>) => setCompanies(current =>
-    current.map(company => company.id === id ? { ...company, ...changes } : company));
-
-  const saveCompany = async (company: CompanyBrand) => {
-    try {
-      const saved = await updateCompanyBrand(company.id, { name: company.name.trim(), color: company.color });
-      updateCompanyLocal(company.id, saved);
-      setMessage(`${saved.name} saved.`);
-    } catch (error) { setMessage(messageFrom(error)); }
-  };
-
-  const removeCompany = async (company: CompanyBrand) => {
-    if (!window.confirm(`Remove ${company.name} from the shared company library?`)) return;
-    try {
-      await deleteCompanyBrand(company.id);
-      const remaining = companies.filter(item => item.id !== company.id);
-      setCompanies(remaining);
-      setSelectedIds(current => current.filter(id => id !== company.id));
-      if (previewId === company.id) setPreviewId(remaining[0]?.id || "");
-      setMessage(`${company.name} removed.`);
-    } catch (error) { setMessage(messageFrom(error)); }
+  const reportIsIncomplete = () => {
+    const incomplete = DATA_FIELDS.some(field => {
+      const raw = data.values[field.key];
+      return raw === "" || !Number.isFinite(Number(raw)) || Math.abs(Number(raw) * 10 - Math.round(Number(raw) * 10)) > 0.00001;
+    });
+    return incomplete || !data.date || !data.giftTime.trim() || !data.giftLevel.trim() || !data.giftChange.trim();
   };
 
   const downloadBulk = async () => {
     const selected = companies.filter(company => selectedIds.includes(company.id));
     if (!selected.length) return setMessage("Select at least one company.");
-    const incomplete = DATA_FIELDS.some(field => {
-      const raw = data.values[field.key];
-      return raw === "" || !Number.isFinite(Number(raw)) || Math.abs(Number(raw) * 10 - Math.round(Number(raw) * 10)) > 0.00001;
-    });
-    if (incomplete || !data.date || !data.giftTime.trim() || !data.giftLevel.trim() || !data.giftChange.trim()) {
-      return setMessage("Enter every figure to one decimal place, plus the date and Gift Nifty details.");
-    }
+    if (reportIsIncomplete()) return setMessage("Enter every figure to one decimal place, plus the date and Gift Nifty details.");
     setBusy(true);
     setMessage("Creating report images…");
     try {
@@ -124,6 +68,29 @@ export default function FiiDiiMaker() {
     finally { setBusy(false); }
   };
 
+  const emailSelected = async () => {
+    const selected = companies.filter(company => selectedIds.includes(company.id));
+    if (!selected.length) return setMessage("Select at least one company to email.");
+    if (selected.length > 15) return setMessage("Send up to 15 company reports at a time.");
+    const missingEmail = selected.filter(company => !company.recipientEmail);
+    if (missingEmail.length) return setMessage(`Save a client email in settings for: ${missingEmail.map(company => company.name).join(", ")}.`);
+    if (reportIsIncomplete()) return setMessage("Enter every figure to one decimal place, plus the date and Gift Nifty details.");
+    if (!window.confirm(`Send ${selected.length} FII/DII report email${selected.length === 1 ? "" : "s"} from the configured Gmail account?\n\n${selected.map(company => `${company.name}: ${company.recipientEmail}`).join("\n")}`)) return;
+    setBusy(true);
+    const errors: string[] = [];
+    let accepted = 0;
+    for (const company of selected) {
+      setMessage(`Sending ${company.name} (${accepted + errors.length + 1}/${selected.length})…`);
+      try {
+        const image = await svgToPng(createFiiDiiSvg(data, company));
+        await sendCompanyReport(company.id, data.date, await pngDataUrl(image));
+        accepted++;
+      } catch (error) { errors.push(`${company.name}: ${messageFrom(error)}`); }
+    }
+    setMessage(`${accepted} report email${accepted === 1 ? "" : "s"} accepted by Gmail.${errors.length ? ` Failed: ${errors.join(" · ")}` : ""}`);
+    setBusy(false);
+  };
+
   return <div className="fii-maker">
     <div className="fii-maker__intro">
       <div>
@@ -131,7 +98,7 @@ export default function FiiDiiMaker() {
         <h1>FII/DII activity maker</h1>
         <p>Enter the figures once, select companies, and download branded reports together.</p>
       </div>
-      <button className="fii-maker__primary" onClick={downloadBulk} disabled={busy}>Download selected as ZIP</button>
+      <div className="fii-maker__actions"><button className="fii-maker__primary" onClick={downloadBulk} disabled={busy}>Download selected as ZIP</button><button className="fii-maker__primary" onClick={() => void emailSelected()} disabled={busy}>Email selected reports</button></div>
     </div>
 
     {message && <div className="fii-maker__message" role="status">{message}</div>}
@@ -161,29 +128,16 @@ export default function FiiDiiMaker() {
           </div>
         </section>
 
-        <section className="fii-maker__panel">
-          <div className="fii-maker__panel-head"><span className="fii-maker__step">02</span><div><h2>Company library</h2><p>Uploaded logos and brand colors are saved for other employee tools.</p></div></div>
-          <label className="fii-maker__upload">Add company logos<input ref={uploadRef} type="file" accept="image/png,image/jpeg,image/webp" multiple onChange={event => void uploadCompanies(event.target.files)} disabled={busy} /></label>
-          <p className="fii-maker__hint">Color is selected from the main nonblack logo color. Adjust it below if needed.</p>
-          {companies.length > 0 && <div className="fii-maker__selection"><button onClick={() => setSelectedIds(companies.map(company => company.id))}>Select all</button><button onClick={() => setSelectedIds([])}>Clear</button><span>{selectedIds.length} selected</span></div>}
-          <div className="fii-maker__company-list">
-            {companies.length === 0 ? <p className="fii-maker__empty">Add your first company logo to begin.</p> : companies.map(company => <div className="fii-maker__company" key={company.id}>
-              <input type="checkbox" aria-label={`Include ${company.name}`} checked={selectedIds.includes(company.id)} onChange={event => setSelectedIds(current => event.target.checked ? [...current, company.id] : current.filter(id => id !== company.id))} />
-              <button className="fii-maker__logo" title="Preview this company" onClick={() => setPreviewId(company.id)}><img src={company.logoDataUrl} alt="" /></button>
-              <div className="fii-maker__company-edit"><input aria-label="Company name" value={company.name} onChange={event => updateCompanyLocal(company.id, { name: event.target.value })} /><div><input type="color" aria-label={`${company.name} brand color`} value={company.color} onChange={event => updateCompanyLocal(company.id, { color: event.target.value })} /><span>{company.color.toUpperCase()}</span></div></div>
-              <button className="fii-maker__small" onClick={() => void saveCompany(company)}>Save</button>
-              <button className="fii-maker__remove" title={`Remove ${company.name}`} aria-label={`Remove ${company.name}`} onClick={() => void removeCompany(company)}>×</button>
-            </div>)}
-          </div>
-        </section>
+        <div className="fii-maker__panel"><CompanyLibrary onChange={setLibrary} onMessage={setMessage} disabled={busy} /></div>
       </div>
 
       <section className="fii-maker__panel fii-maker__preview">
         <div className="fii-maker__panel-head"><span className="fii-maker__step">03</span><div><h2>Live preview</h2><p>Each selected company receives the same figures with its own logo and color.</p></div></div>
-        {previewCompany ? <><select aria-label="Preview company" value={previewCompany.id} onChange={event => setPreviewId(event.target.value)}>{companies.map(company => <option key={company.id} value={company.id}>{company.name}</option>)}</select>
+        {previewCompany ? <><p className="fii-maker__preview-name">Preview: {previewCompany.name}. Click another logo to switch.</p>
           <div className="fii-maker__sheet-wrap"><img src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(previewSvg)}`} alt={`FII DII activity sheet preview for ${previewCompany.name}`} /></div></>
           : <div className="fii-maker__preview-empty">Your report preview appears here after adding a logo.</div>}
         <button className="fii-maker__primary fii-maker__download" onClick={downloadBulk} disabled={busy}>Download {selectedIds.length || "selected"} reports as ZIP</button>
+        <button className="fii-maker__primary fii-maker__download" onClick={() => void emailSelected()} disabled={busy}>Email {selectedIds.length || "selected"} reports</button>
       </section>
     </div>
   </div>;
