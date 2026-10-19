@@ -57,6 +57,27 @@ const auditModules = [
   { value: 'WHATSAPP', label: 'WhatsApp' },
 ] as const;
 
+const parseManualDate = (value: string): string | null => {
+  const match = value.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return null;
+
+  const [, dayText, monthText, yearText] = match;
+  const day = Number(dayText);
+  const month = Number(monthText);
+  const year = Number(yearText);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return `${yearText}-${monthText}-${dayText}`;
+};
+
 const AdminAuditLogs: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [page, setPage] = useState(0);
@@ -151,11 +172,19 @@ const handleResetFilters = () => {
   // ── NEW: actual download logic ────────────────────────────────────
  const handleConfirmExport = async () => {
   if (!exportFromDate || !exportToDate) {
-    setExportError("Please select both From and To dates.");
+    setExportError("Please enter both dates in DD/MM/YYYY format.");
     return;
   }
 
-  if (new Date(exportFromDate) > new Date(exportToDate)) {
+  const fromDate = parseManualDate(exportFromDate);
+  const toDate = parseManualDate(exportToDate);
+
+  if (!fromDate || !toDate) {
+    setExportError("Please enter valid dates in DD/MM/YYYY format.");
+    return;
+  }
+
+  if (fromDate > toDate) {
     setExportError('"From" date cannot be after "To" date.');
     return;
   }
@@ -169,8 +198,8 @@ const handleResetFilters = () => {
         Authorization: `Bearer ${token}`,
       },
       params: {
-        fromDate: exportFromDate,
-        toDate: exportToDate,
+        fromDate,
+        toDate,
         search: debouncedSearch.trim().length >= 3 ? debouncedSearch.trim() : "",
         user: userFilter,
         module: moduleFilter,
@@ -224,7 +253,7 @@ const handleResetFilters = () => {
 
     XLSX.writeFile(
       workbook,
-      `audit_logs_${exportFromDate}_to_${exportToDate}.xlsx`
+      `audit_logs_${fromDate}_to_${toDate}.xlsx`
     );
 
     setExportDialogOpen(false);
@@ -473,26 +502,30 @@ const handleResetFilters = () => {
               <TextField
                 fullWidth
                 label="From Date"
-                type="date"
+                type="text"
+                placeholder="DD/MM/YYYY"
                 value={exportFromDate}
+                inputProps={{ inputMode: "numeric", maxLength: 10 }}
                 onChange={(e) => {
                   setExportFromDate(e.target.value);
                   setExportError('');
                 }}
-                InputLabelProps={{ shrink: true }}
+                helperText="Enter as DD/MM/YYYY"
               />
             </Grid>
             <Grid item xs={12}>
               <TextField
                 fullWidth
                 label="To Date"
-                type="date"
+                type="text"
+                placeholder="DD/MM/YYYY"
                 value={exportToDate}
+                inputProps={{ inputMode: "numeric", maxLength: 10 }}
                 onChange={(e) => {
                   setExportToDate(e.target.value);
                   setExportError('');
                 }}
-                InputLabelProps={{ shrink: true }}
+                helperText="Enter as DD/MM/YYYY"
               />
             </Grid>
           </Grid>
