@@ -10,7 +10,8 @@ interface UploadAccessRequest {
  * Authorizes files without exposing the uploads directory as static content.
  * Profile pictures are visible to signed-in users. Registration documents
  * remain owner-only. Research-call media is visible to the author and to an
- * active broker associated with that RA when the latest call is publishable.
+ * active broker associated with that RA, or an entitled client in the call's
+ * selected audience, when the latest call is publishable.
  */
 export const canAccessUploadedFile = async ({
   filename,
@@ -119,6 +120,54 @@ export const canAccessUploadedFile = async ({
                  AND broker_user.is_active = true
              )
            )
+          OR (
+            $3 = 'CLIENT'
+            AND rc.status IN ('PUBLISHED', 'CLOSED')
+            AND COALESCE(rc.is_latest, true) = true
+            AND EXISTS (
+              SELECT 1 FROM users analyst
+              JOIN ra_details ra ON ra.user_id = analyst.id
+              WHERE analyst.id = rc.ra_user_id
+                AND analyst.role = 'RESEARCH_ANALYST'
+                AND analyst.status = 'active'
+                AND COALESCE(analyst.is_active, false) = true
+                AND ra.status = 'approved'
+            )
+            AND (
+              COALESCE(rc.audience_mode, 'ALL_CONNECTED') = 'ALL_CONNECTED'
+              OR rc.audience_recipient_snapshot @> jsonb_build_array(
+                jsonb_build_object('type', 'CLIENT', 'id', $2::text)
+              )
+            )
+            AND (
+              EXISTS (
+                SELECT 1 FROM client_ra_subscriptions subscription
+                WHERE subscription.client_user_id = $2
+                  AND subscription.ra_user_id = rc.ra_user_id
+                  AND subscription.status = 'ACTIVE'
+                  AND subscription.expires_at > NOW()
+              )
+              OR EXISTS (
+                SELECT 1 FROM client_broker_subscriptions subscription
+                JOIN broker_details broker ON broker.id = subscription.broker_id
+                JOIN subscriptions broker_platform_subscription
+                  ON broker_platform_subscription.user_id = broker.user_id
+                 AND broker_platform_subscription.status = 'ACTIVE'
+                 AND broker_platform_subscription.starts_at <= NOW()
+                 AND broker_platform_subscription.expires_at > NOW()
+                JOIN subscription_plans broker_plan
+                  ON broker_plan.id = broker_platform_subscription.plan_id
+                 AND broker_plan.audience_type = 'BROKER'
+                JOIN broker_research_analysts link
+                  ON link.broker_id = subscription.broker_id AND link.status = 'ACTIVE'
+                JOIN ra_details ra ON ra.id = link.ra_id
+                WHERE subscription.client_user_id = $2
+                  AND ra.user_id = rc.ra_user_id
+                  AND subscription.status = 'ACTIVE'
+                  AND subscription.expires_at > NOW()
+              )
+            )
+          )
          )
        )
      ) AS allowed`,

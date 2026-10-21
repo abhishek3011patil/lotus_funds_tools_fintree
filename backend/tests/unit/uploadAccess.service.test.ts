@@ -36,4 +36,26 @@ describe("upload access", () => {
       role: "BROKER",
     })).resolves.toBe(false);
   });
+
+  it("checks subscription, audience, and published call before allowing client media", async () => {
+    vi.mocked(pool.query).mockResolvedValue({ rows: [{ allowed: true }] } as never);
+
+    await expect(canAccessUploadedFile({
+      filename: "client-chart.png",
+      userId: "client-user",
+      role: "CLIENT",
+    })).resolves.toBe(true);
+
+    const [sql, values] = vi.mocked(pool.query).mock.calls[0] as [string, unknown[]];
+    expect(values).toEqual(["client-chart.png", "client-user", "CLIENT"]);
+    expect(sql).toContain("rc.status IN ('PUBLISHED', 'CLOSED')");
+    expect(sql).toContain("COALESCE(rc.is_latest, true) = true");
+    expect(sql).toContain("rc.audience_recipient_snapshot @> jsonb_build_array");
+    expect(sql).toContain("subscription.client_user_id = $2");
+    expect(sql).toContain("subscription.expires_at > NOW()");
+    expect(sql).toContain("subscription.ra_user_id = rc.ra_user_id");
+    expect(sql).toContain("ra.user_id = rc.ra_user_id");
+    expect(sql).toContain("broker_platform_subscription.status = 'ACTIVE'");
+    expect(sql).toContain("link.status = 'ACTIVE'");
+  });
 });

@@ -1,7 +1,8 @@
-import { useEffect, useId, useState } from "react";
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Typography } from "@mui/material";
+import { useId, useState } from "react";
+import { Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Typography } from "@mui/material";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import { openAuthenticatedUploads } from "../../utils/authenticatedUpload.utils";
 
 export interface RecommendationAttachment {
   url: string;
@@ -17,17 +18,13 @@ function AttachmentPreview({
   attachment: RecommendationAttachment;
   symbol: string;
 }) {
-  const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [fileUrl, setFileUrl] = useState<string | null>(null);
 
   // Older records contain absolute Windows/Linux paths; new ones use /uploads/.
   const filename =
     attachment.url.replace(/\\/g, "/").split("/").pop() || "";
 
   const apiBase = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
-
-  const mediaUrl = `${apiBase}/uploads/${encodeURIComponent(filename)}`;
 
   const isImage = /\.(jpe?g|png|webp|gif)$/i.test(filename);
 
@@ -41,41 +38,14 @@ function AttachmentPreview({
 
     try {
       setLoading(true);
-
-      const response = await fetch(mediaUrl, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("File access failed:", errorText);
-        alert("You are not authorized to view this file.");
-        return;
-      }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-
-      setFileUrl(url);
-
-      window.open(url, "_blank");
+      await openAuthenticatedUploads(attachment.url, { apiBaseUrl: apiBase, token });
     } catch (error) {
       console.error("Error opening file:", error);
-      alert("Unable to open file.");
+      alert(error instanceof Error ? error.message : "Unable to open file.");
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    return () => {
-      if (fileUrl) {
-        URL.revokeObjectURL(fileUrl);
-      }
-    };
-  }, [fileUrl]);
 
   return (
     <Paper variant="outlined" sx={{ p: 2, minWidth: 0 }}>
@@ -87,21 +57,14 @@ function AttachmentPreview({
       </Typography>
 
       {isImage ? (
-        failed ? (
-          <Alert severity="error">
-            This image could not be loaded. The uploaded file may no longer be
-            available.
-          </Alert>
-        ) : (
-          <Button
-            variant="outlined"
-            onClick={openFile}
-            disabled={loading}
-            fullWidth
-          >
-            {loading ? "Loading..." : "View Image"}
-          </Button>
-        )
+        <Button
+          variant="outlined"
+          onClick={openFile}
+          disabled={loading}
+          fullWidth
+        >
+          {loading ? "Loading..." : "View Image"}
+        </Button>
       ) : (
         <Typography variant="body2" color="text.secondary">
           Open this attachment in a new tab to view or download it.
