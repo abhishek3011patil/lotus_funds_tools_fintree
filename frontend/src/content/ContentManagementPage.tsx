@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
   DialogTitle, FormControl, FormControlLabel, Grid, IconButton, InputLabel, MenuItem,
@@ -11,6 +11,8 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import PublicRoundedIcon from "@mui/icons-material/PublicRounded";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import useMediaQuery from "@mui/material/useMediaQuery";
+import { useTheme } from "@mui/material/styles";
 import api from "../utils/axio";
 import RichTextEditor from "./RichTextEditor";
 
@@ -26,15 +28,19 @@ type ContentItem = {
 type FormState = { contentType: Kind; title: string; summary: string; category: string; articleBody: string; youtubeUrl: string; youtubeChannelUrl: string; visibility: Visibility; status: Status };
 
 const emptyForm = (kind: Kind): FormState => ({ contentType: kind, title: "", summary: "", category: "Market education", articleBody: "", youtubeUrl: "", youtubeChannelUrl: "", visibility: "SUBSCRIBERS", status: "DRAFT" });
+const formFromItem = (item: ContentItem): FormState => ({ contentType: item.content_type, title: item.title, summary: item.summary, category: item.category, articleBody: item.article_body || "", youtubeUrl: item.youtube_url || "", youtubeChannelUrl: item.youtube_channel_url || "", visibility: item.visibility, status: item.status });
 const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(value)) : "Not published";
 
 export default function ContentManagementPage() {
+  const mobile = useMediaQuery(useTheme().breakpoints.down("sm"));
   const [tab, setTab] = useState<Kind>("BLOG");
   const [items, setItems] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ContentItem | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm("BLOG"));
+  const formsByKind = useRef<Record<Kind, FormState>>({ BLOG: emptyForm("BLOG"), VIDEO: emptyForm("VIDEO") });
+  const editingByKind = useRef<Record<Kind, ContentItem | null>>({ BLOG: null, VIDEO: null });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -52,11 +58,24 @@ export default function ContentManagementPage() {
   useEffect(() => { void load(); }, []);
 
   const visibleItems = useMemo(() => items.filter(item => item.content_type === tab), [items, tab]);
-  const openCreate = () => { setEditing(null); setForm(emptyForm(tab)); setError(""); setDialogOpen(true); };
+  const openCreate = () => {
+    formsByKind.current = { BLOG: emptyForm("BLOG"), VIDEO: emptyForm("VIDEO") };
+    editingByKind.current = { BLOG: null, VIDEO: null };
+    setEditing(null); setForm(formsByKind.current[tab]); setError(""); setDialogOpen(true);
+  };
   const openEdit = (item: ContentItem) => {
+    formsByKind.current = { BLOG: emptyForm("BLOG"), VIDEO: emptyForm("VIDEO"), [item.content_type]: formFromItem(item) };
+    editingByKind.current = { BLOG: null, VIDEO: null, [item.content_type]: item };
     setEditing(item);
-    setForm({ contentType: item.content_type, title: item.title, summary: item.summary, category: item.category, articleBody: item.article_body || "", youtubeUrl: item.youtube_url || "", youtubeChannelUrl: item.youtube_channel_url || "", visibility: item.visibility, status: item.status });
+    setForm(formsByKind.current[item.content_type]);
     setError(""); setDialogOpen(true);
+  };
+  const switchFormKind = (kind: Kind) => {
+    if (kind === form.contentType) return;
+    formsByKind.current[form.contentType] = form;
+    setForm(formsByKind.current[kind]);
+    setEditing(editingByKind.current[kind]);
+    setError("");
   };
   const save = async (status: Status) => {
     setSaving(true); setError("");
@@ -97,22 +116,24 @@ export default function ContentManagementPage() {
         <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={openCreate}>Create {tab === "BLOG" ? "blog" : "video"}</Button>
       </Paper> :
       <Grid container spacing={2.5}>{visibleItems.map(item => <Grid key={item.id} size={{ xs: 12, md: 6, xl: 4 }}>
-        <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3, height: "100%", borderColor: "#E2E8F0" }}>
+        <Paper variant="outlined" sx={{ borderRadius: 3, height: "100%", borderColor: "#E2E8F0", overflow: "hidden" }}>
           <Stack spacing={1.5} height="100%">
-            {item.content_type === "VIDEO" && item.youtube_video_id && <Box component="img" src={`https://i.ytimg.com/vi/${item.youtube_video_id}/hqdefault.jpg`} alt="" sx={{ width: "100%", aspectRatio: "16/9", objectFit: "cover", borderRadius: 2 }} />}
+            {item.content_type === "VIDEO" && item.youtube_video_id ? <Box component="img" src={`https://i.ytimg.com/vi/${item.youtube_video_id}/hqdefault.jpg`} alt="" sx={{ width: "100%", aspectRatio: "16/9", objectFit: "cover", display: "block" }} /> : <Box sx={{ width: "100%", aspectRatio: "16/9", background: "linear-gradient(135deg,#3155D9,#6D83F2)", display: "grid", placeItems: "center", color: "white" }}><ArticleRoundedIcon sx={{ fontSize: 52 }} /></Box>}
+            <Stack spacing={1.5} sx={{ px: { xs: 2, sm: 2.5 }, pb: { xs: 2, sm: 2.5 }, flexGrow: 1, minWidth: 0 }}>
             <Stack direction="row" gap={1} flexWrap="wrap"><Chip size="small" label={item.status === "PUBLISHED" ? "Published" : "Draft"} color={item.status === "PUBLISHED" ? "success" : "default"} /><Chip size="small" variant="outlined" icon={item.visibility === "PUBLIC" ? <PublicRoundedIcon /> : <LockOutlinedIcon />} label={item.visibility === "PUBLIC" ? "Public demo" : "Subscribers only"} /><Chip size="small" variant="outlined" label={item.category} /></Stack>
-            <Typography variant="h6" fontWeight={800}>{item.title}</Typography><Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1 }}>{item.summary}</Typography>
+            <Typography variant="h6" fontWeight={800} sx={{ overflowWrap: "anywhere" }}>{item.title}</Typography><Typography variant="body2" color="text.secondary" sx={{ flexGrow: 1, overflowWrap: "anywhere" }}>{item.summary}</Typography>
             <Typography variant="caption" color="text.secondary">{item.status === "PUBLISHED" ? `Published ${formatDate(item.published_at)}` : `Updated ${formatDate(item.updated_at)}`}</Typography>
-            <Stack direction="row" justifyContent="flex-end"><IconButton aria-label="Edit" onClick={() => openEdit(item)}><EditOutlinedIcon /></IconButton><IconButton aria-label="Delete" color="error" onClick={() => void remove(item)}><DeleteOutlineRoundedIcon /></IconButton></Stack>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><Button size="small" startIcon={<EditOutlinedIcon />} onClick={() => openEdit(item)} sx={{ textTransform: "none" }}>{item.status === "DRAFT" ? "Continue draft" : "Edit"}</Button><IconButton aria-label={`Delete ${item.title}`} color="error" onClick={() => void remove(item)}><DeleteOutlineRoundedIcon /></IconButton></Stack>
+            </Stack>
           </Stack>
         </Paper>
       </Grid>)}</Grid>}
 
-    <Dialog open={dialogOpen} onClose={() => !saving && setDialogOpen(false)} fullWidth maxWidth="md">
-      <DialogTitle fontWeight={800}>{editing ? "Edit" : "Create"} {form.contentType === "BLOG" ? "blog" : "video"}</DialogTitle>
-      <DialogContent dividers><Stack spacing={2.2}>
+    <Dialog open={dialogOpen} onClose={() => !saving && setDialogOpen(false)} fullWidth fullScreen={mobile} maxWidth="md">
+      <DialogTitle fontWeight={800} sx={{ fontSize: { xs: "1.4rem", sm: "1.6rem" } }}>{editing ? "Edit" : "Create"} {form.contentType === "BLOG" ? "blog" : "video"}</DialogTitle>
+      <DialogContent dividers sx={{ px: { xs: 2, sm: 3 } }}><Stack spacing={2.2}>
         {error && <Alert severity="error">{error}</Alert>}
-        <Tabs value={form.contentType} onChange={(_, value) => setForm(emptyForm(value))} variant="fullWidth"><Tab value="BLOG" icon={<ArticleRoundedIcon />} iconPosition="start" label="Blog" /><Tab value="VIDEO" icon={<VideoLibraryRoundedIcon />} iconPosition="start" label="YouTube video" /></Tabs>
+        <Tabs value={form.contentType} onChange={(_, value: Kind) => switchFormKind(value)} variant="fullWidth"><Tab value="BLOG" icon={<ArticleRoundedIcon />} iconPosition="start" label="Blog" /><Tab value="VIDEO" icon={<VideoLibraryRoundedIcon />} iconPosition="start" label="YouTube video" /></Tabs>
         <TextField label="Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} inputProps={{ maxLength: 180 }} required />
         <TextField label="Short summary" value={form.summary} onChange={e => setForm({ ...form, summary: e.target.value })} multiline minRows={2} helperText={`${form.summary.length}/500 — shown on the Insights card`} inputProps={{ maxLength: 500 }} required />
         <TextField label="Category" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} inputProps={{ maxLength: 80 }} required />
