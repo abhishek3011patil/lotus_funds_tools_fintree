@@ -109,19 +109,37 @@ export const BrokerLayout = () => {
   // Reusable Sidebar Content
  // Reusable Sidebar Content
 const drawerContent = (
-  <Box
-    sx={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%', // Fills full sidebar height
-      p: 2,
-      backgroundColor: '#5271FF',
-      color: '#FFFFFF',
-      boxSizing: 'border-box',
-    }}
-  >
+ <Box
+  sx={{
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    minHeight: 0,
+    width: '100%',
+    p: 2,
+    backgroundColor: '#5271FF',
+    color: '#FFFFFF',
+    boxSizing: 'border-box',
+    overflow: 'hidden',
+  }}
+>
     {/* TOP SECTION: Logo + Nav Items */}
-    <Box sx={{ flexGrow: 1 }}> {/* <--- flexGrow: 1 pushes the profile box to the bottom */}
+    <Box
+  sx={{
+    flex: '1 1 auto',
+    minHeight: 0,
+    overflowY: 'auto',
+    overflowX: 'hidden',
+    scrollbarWidth: 'thin',
+    '&::-webkit-scrollbar': {
+      width: '4px',
+    },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: 'rgba(255,255,255,0.4)',
+      borderRadius: '4px',
+    },
+  }}
+> {/* <--- flexGrow: 1 pushes the profile box to the bottom */}
       {/* Brand Header */}
       <Typography
         variant="h6"
@@ -187,15 +205,18 @@ const drawerContent = (
     </Box>
 
     {/* BOTTOM SECTION: User Profile & Logout */}
-    <Box
-      sx={{
-        pt: 2,
-        borderTop: '1px solid rgba(255, 255, 255, 0.2)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1.5,
-      }}
-    >
+<Box
+  sx={{
+    pt: 2,
+    mt: 'auto',
+    flexShrink: 0,
+    borderTop: '1px solid rgba(255, 255, 255, 0.2)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1.5,
+    backgroundColor: '#5271FF',
+  }}
+>
       <AuthenticatedAvatar
         filename={profileImage}
         alt={`${username} profile picture`}
@@ -258,11 +279,15 @@ const drawerContent = (
           ModalProps={{ keepMounted: true }}
           sx={{
             display: { xs: 'block', md: 'none' },
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: drawerWidth,
-              borderRight: 'none',
-            },
+          '& .MuiDrawer-paper': {
+  boxSizing: 'border-box',
+  width: drawerWidth,
+  height: '100dvh',
+  borderRight: 'none',
+  overflow: 'hidden',
+  display: 'flex',
+  flexDirection: 'column',
+},
           }}
         >
           {drawerContent}
@@ -278,12 +303,15 @@ const drawerContent = (
       display: { xs: 'none', md: 'block' },
       width: drawerWidth,
       flexShrink: 0,
-      '& .MuiDrawer-paper': {
-        width: drawerWidth,
-        boxSizing: 'border-box',
-        borderRight: 'none',
-        height: '100vh', // <--- Ensures full viewport height
-      },
+'& .MuiDrawer-paper': {
+  width: drawerWidth,
+  boxSizing: 'border-box',
+  borderRight: 'none',
+  height: '100dvh',
+  overflow: 'hidden',
+  display: 'flex',
+  flexDirection: 'column',
+},
     }}
   >
     {drawerContent}

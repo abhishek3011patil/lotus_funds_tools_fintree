@@ -292,11 +292,11 @@ const handleActivate = async (userId: string) => {
     loadBrokers();
   }, []);
 
-  useEffect(() => {
-    setPage(1);
-    setClientPage(1);
-    setBrokerPage(1);
-  }, [searchQuery, filterTab, clientFilter, activeTab]);
+useEffect(() => {
+  setPage(1);
+  setClientPage(1);
+  setBrokerPage(1);
+}, [searchQuery, filterTab, clientFilter, brokerFilter, activeTab]);
 
 useEffect(() => {
   setSelectedRA(null);

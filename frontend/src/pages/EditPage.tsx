@@ -70,6 +70,29 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const isValidEmail = (value: unknown): boolean =>
   typeof value === "string" && EMAIL_PATTERN.test(value.trim());
 
+
+const isValidIndianMobile = (value: string): boolean =>
+  /^[6-9]\d{9}$/.test(value.replace(/\D/g, ""));
+
+const isValidTelephone = (value: string): boolean => {
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 8 && digits.length <= 15;
+};
+
+const isValidSebiNumber = (value: string, isRA: boolean): boolean => {
+  const pattern = isRA
+    ? /^INH\d{9}$/i
+    : /^[A-Z]{2,5}\d{6,12}$/i;
+
+  return pattern.test(value.trim());
+};
+
+const isValidNismNumber = (value: string): boolean =>
+  /^[A-Z0-9][A-Z0-9/-]{3,49}$/i.test(value.trim());
+
+const isValidDate = (value: string): boolean =>
+  !value || !Number.isNaN(new Date(value).getTime());
+
 // ─── Component ────────────────────────────────────────────────────────────────
 const EditPage = () => {
   const { id, type } = useParams();
@@ -166,27 +189,129 @@ const fetchData = async () => {
 
   // ── Save Handler ──────────────────────────────────────────────────────────
   const handleSave = async () => {
-    const emailErrors: Record<string, string> = {};
+const validationErrors: Record<string, string> = {};
 
-    if (!isValidEmail(fields.email)) {
-      emailErrors.email = "Enter a valid email address.";
-    }
+const addError = (field: string, message: string) => {
+  validationErrors[field] = message;
+};
 
-    if (
-      !isRA &&
-      fields.authorized_person_email &&
-      !isValidEmail(fields.authorized_person_email)
-    ) {
-      emailErrors.authorized_person_email =
-        "Enter a valid authorized person email address.";
-    }
+// Email validation
+if (!isValidEmail(fields.email)) {
+  addError("email", "Enter a valid email address.");
+}
 
-    if (Object.keys(emailErrors).length > 0) {
-      setServerErrors((prev) => ({ ...prev, ...emailErrors }));
-      setSuccessMsg("");
-      setErrorMsg("Please correct the invalid email address.");
-      return;
-    }
+if (
+  !isRA &&
+  fields.authorized_person_email &&
+  !isValidEmail(fields.authorized_person_email)
+) {
+  addError(
+    "authorized_person_email",
+    "Enter a valid authorized person email address."
+  );
+}
+
+// Mobile number validation
+const mobileFields = [
+  "mobile",
+  "compliance_mobile",
+  "authorized_person_mobile",
+];
+
+mobileFields.forEach((field) => {
+  const value = String(fields[field] || "").trim();
+
+  if (value && !isValidIndianMobile(value)) {
+    addError(field, "Enter a valid 10-digit Indian mobile number.");
+  }
+});
+
+// Telephone validation
+const telephone = String(fields.telephone || "").trim();
+
+if (telephone && !isValidTelephone(telephone)) {
+  addError("telephone", "Enter a valid telephone number.");
+}
+
+// SEBI registration number validation
+const sebiField = isRA ? "sebi_reg_no" : "sebi_registration_no";
+const sebiNumber = String(fields[sebiField] || "").trim();
+
+if (sebiNumber && !isValidSebiNumber(sebiNumber, isRA)) {
+  addError(
+    sebiField,
+    isRA
+      ? "Enter a valid SEBI RA registration number (e.g. INH000011431)."
+      : "Enter a valid SEBI registration number."
+  );
+}
+
+// NISM registration number validation (RA only)
+if (isRA) {
+  const nismNumber = String(fields.nism_reg_no || "").trim();
+
+  if (nismNumber && !isValidNismNumber(nismNumber)) {
+    addError(
+      "nism_reg_no",
+      "Enter a valid NISM registration/certificate number."
+    );
+  }
+}
+
+// Date validation
+const dateFields = isRA
+  ? ["sebi_start_date", "sebi_expiry_date", "nism_valid_till"]
+  : ["registration_date", "registration_validity"];
+
+dateFields.forEach((field) => {
+  const value = String(fields[field] || "").trim();
+
+  if (value && !isValidDate(value)) {
+    addError(field, "Enter a valid date.");
+  }
+});
+
+// Check date sequence
+const startDate = fields[isRA ? "sebi_start_date" : "registration_date"];
+const endDate = fields[isRA ? "sebi_expiry_date" : "registration_validity"];
+
+if (
+  startDate &&
+  endDate &&
+  isValidDate(String(startDate)) &&
+  isValidDate(String(endDate)) &&
+  new Date(startDate) > new Date(endDate)
+) {
+  addError(
+    isRA ? "sebi_expiry_date" : "registration_validity",
+    "Expiry/validity date cannot be earlier than the registration date."
+  );
+}
+
+console.log("VALIDATION DEBUG:", {
+  mobile: fields.mobile,
+  mobileValid: isValidIndianMobile(String(fields.mobile || "")),
+
+  telephone: fields.telephone,
+  telephoneValid: isValidTelephone(String(fields.telephone || "")),
+
+  sebiField,
+  sebiNumber,
+  sebiValid: isValidSebiNumber(sebiNumber, isRA),
+
+  nismNumber: fields.nism_reg_no,
+  nismValid: isValidNismNumber(String(fields.nism_reg_no || "")),
+
+  validationErrors,
+});
+
+setServerErrors(validationErrors);
+
+if (Object.keys(validationErrors).length > 0) {
+  setSuccessMsg("");
+  setErrorMsg("Please correct the highlighted fields before saving.");
+  return;
+}
 
     const formData = new FormData();
 

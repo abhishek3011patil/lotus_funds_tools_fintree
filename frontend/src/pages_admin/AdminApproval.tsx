@@ -550,16 +550,17 @@ const handleSuspend = async (
                     </TableCell>
 
                 <TableCell align="right">
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => {
-                      setSelectedRA(row);
-                      setSelectedBroker(null); // ✅ VERY IMPORTANT FIX
-                    }}
-                  >
-                    View Details
-                  </Button>
+                 <Button
+  size="small"
+  variant="outlined"
+  onClick={() => {
+    setRejectReason("");
+    setSelectedRA(row);
+    setSelectedBroker(null);
+  }}
+>
+  View Details
+</Button>
                 </TableCell>
 
               </TableRow>
@@ -899,17 +900,19 @@ const handleSuspend = async (
       </Button>
     </Box>
 
-    {String(selectedBroker.status).toLowerCase().includes("approved") ? null : (
-      <TextField
-        fullWidth
-        multiline
-        rows={2}
-        placeholder="Rejection Reason"
-        value={rejectReason}
-        onChange={(e) => setRejectReason(e.target.value)}
-        sx={{ mt: 2 }}
-      />
-    )}
+{!["approved", "rejected"].includes(
+  selectedBroker.status.toLowerCase().trim()
+) && (
+  <TextField
+    fullWidth
+    multiline
+    rows={2}
+    placeholder="Rejection Reason"
+    value={rejectReason}
+    onChange={(e) => setRejectReason(e.target.value)}
+    sx={{ mt: 2 }}
+  />
+)}
 
     <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
       
@@ -934,20 +937,22 @@ const handleSuspend = async (
             : "Awaiting Payment"}
       </Button>
       
-      {selectedBroker.status.toLowerCase() !== "approved" && (
-        <Button
-          variant="contained"
-          color="error"
-          fullWidth
-          onClick={() => {
-            setSelectedId(selectedBroker.id);
-            setConfirmType("reject");
-            setConfirmOpen(true);
-          }}
-        >
-          Reject
-        </Button>
-      )}
+{!["approved", "rejected"].includes(
+  selectedBroker.status.toLowerCase().trim()
+) && (
+  <Button
+    variant="contained"
+    color="error"
+    fullWidth
+    onClick={() => {
+      setSelectedId(selectedBroker.id);
+      setConfirmType("reject");
+      setConfirmOpen(true);
+    }}
+  >
+    Reject
+  </Button>
+)}
 
     </Box>
   </Paper>
