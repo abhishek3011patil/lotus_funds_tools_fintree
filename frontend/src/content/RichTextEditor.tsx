@@ -59,23 +59,80 @@ export default function RichTextEditor({ value, onChange }: Props) {
     } catch { setUploadError("Please enter a valid https:// link."); }
   };
 
-  const addImage = async (file?: File) => {
-    if (!file) return;
-    setUploading(true); setUploadError("");
-    try {
-      const data = new FormData(); data.append("image", file);
-      const response = await api.post<{ filename: string }>("/content/manage/images", data);
-      const filename = response.data.filename;
-      const imageResponse = await fetch(`${import.meta.env.VITE_API_URL || ""}/uploads/${encodeURIComponent(filename)}`, { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
-      if (!imageResponse.ok) throw new Error("Uploaded image could not be previewed.");
-      const preview = URL.createObjectURL(await imageResponse.blob());
-      editor.current?.focus();
-      document.execCommand("insertHTML", false, `<figure><img src="${preview}" data-content-image="${filename}" alt="" style="max-width:100%;height:auto;border-radius:12px"/><figcaption>Click here and type an image caption</figcaption></figure><p><br></p>`);
-      if (editor.current) onChange(serialize(editor.current));
-      window.setTimeout(() => URL.revokeObjectURL(preview), 60_000);
-    } catch (error: any) { setUploadError(error.response?.data?.message || error.message || "Unable to upload image."); }
-    finally { setUploading(false); if (fileInput.current) fileInput.current.value = ""; }
-  };
+
+const addImage = async (file?: File) => {
+  if (!file) return;
+
+  setUploading(true);
+  setUploadError("");
+
+  try {
+    const data = new FormData();
+    data.append("image", file);
+
+    const response = await api.post<{ filename: string }>(
+      "/content/manage/images",
+      data
+    );
+
+    const filename = response.data.filename;
+
+    const imageResponse = await fetch(
+      `${import.meta.env.VITE_API_URL || ""}/uploads/${encodeURIComponent(filename)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        }
+      }
+    );
+
+    if (!imageResponse.ok) {
+      throw new Error("Uploaded image could not be previewed.");
+    }
+
+    const preview = URL.createObjectURL(await imageResponse.blob());
+
+    editor.current?.focus();
+
+    document.execCommand(
+      "insertHTML",
+      false,
+      `<figure>
+        <img
+          src="${preview}"
+          data-content-image="${filename}"
+          alt=""
+          style="max-width:100%;height:auto;border-radius:12px"
+        />
+        <figcaption
+          contenteditable="true"
+          data-placeholder="Click here and type an image caption"
+        ></figcaption>
+      </figure>
+      <p><br></p>`
+    );
+
+    if (editor.current) {
+      onChange(serialize(editor.current));
+    }
+
+    window.setTimeout(() => URL.revokeObjectURL(preview), 60_000);
+
+  } catch (error: any) {
+    setUploadError(
+      error.response?.data?.message ||
+      error.message ||
+      "Unable to upload image."
+    );
+  } finally {
+    setUploading(false);
+
+    if (fileInput.current) {
+      fileInput.current.value = "";
+    }
+  }
+};
+
 
   const tools = [
     ["Bold", <FormatBoldRoundedIcon />, "bold"], ["Italic", <FormatItalicRoundedIcon />, "italic"], ["Underline", <FormatUnderlinedRoundedIcon />, "underline"],
@@ -93,7 +150,18 @@ export default function RichTextEditor({ value, onChange }: Props) {
         <Button size="small" startIcon={uploading ? <CircularProgress size={16} /> : <ImageRoundedIcon />} onClick={() => fileInput.current?.click()} disabled={uploading} sx={{ ml: .5 }}>Add image</Button>
         <input ref={fileInput} type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={e => void addImage(e.target.files?.[0])} />
       </Stack>
-      <Box ref={editor} contentEditable suppressContentEditableWarning onInput={() => editor.current && onChange(serialize(editor.current))} data-placeholder="Write your blog here…" sx={{ minHeight: 320, p: 2.5, outline: 0, lineHeight: 1.75, "&:empty:before": { content: "attr(data-placeholder)", color: "#94A3B8" }, "& h2": { fontSize: "1.6rem" }, "& h3": { fontSize: "1.25rem" }, "& blockquote": { borderLeft: "4px solid #5271FF", bgcolor: "#F1F5FF", m: "16px 0", p: "8px 16px" }, "& img": { maxWidth: "100%", height: "auto", borderRadius: 2 }, "& figcaption": { color: "text.secondary", textAlign: "center", fontSize: 13 } }} />
+      <Box ref={editor} contentEditable suppressContentEditableWarning onInput={() => editor.current && onChange(serialize(editor.current))} data-placeholder="Write your blog here…" sx={{ minHeight: 320, p: 2.5, outline: 0, lineHeight: 1.75, "&:empty:before": { content: "attr(data-placeholder)", color: "#94A3B8" }, "& h2": { fontSize: "1.6rem" }, "& h3": { fontSize: "1.25rem" }, "& blockquote": { borderLeft: "4px solid #5271FF", bgcolor: "#F1F5FF", m: "16px 0", p: "8px 16px" }, "& img": { maxWidth: "100%", height: "auto", borderRadius: 2 }, "& figcaption": {
+  color: "text.secondary",
+  textAlign: "center",
+  fontSize: 13,
+  outline: 0,
+  minHeight: 20
+},
+"& figcaption:empty::before": {
+  content: "attr(data-placeholder)",
+  color: "#64748B",
+  pointerEvents: "none"
+} }} />
     </Box>
     {uploadError && <Typography color="error" variant="caption">{uploadError}</Typography>}
     <Typography color="text.secondary" variant="caption">Format headings, lists, quotes and links, or add JPG, PNG and WebP images up to 5 MB.</Typography>

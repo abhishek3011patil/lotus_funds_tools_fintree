@@ -23,6 +23,7 @@ const normalizeRAUpdateData = (data: any) => {
   if (data.pan_number) data.pan_number = data.pan_number.trim().toUpperCase();
 };
 
+
 const checkRADuplicatesForUpdate = async (
   data: any,
   currentRAId: string

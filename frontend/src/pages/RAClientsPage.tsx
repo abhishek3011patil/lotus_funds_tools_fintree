@@ -411,27 +411,58 @@ const handleConfirmRemoveWhatsApp = async () => {
       <Box><Typography variant="h4" sx={{ fontWeight: 750, color: "#172554" }}>Connections</Typography><Typography color="text.secondary" sx={{ mt: .5 }}>Manage your clients and broker relationships.</Typography></Box>
       {connectionView === "clients" && <TextField size="small" placeholder="Search clients" value={search} onChange={(event) => setSearch(event.target.value)} sx={{ width: { xs: "100%", md: 300 } }} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }} />}
     </Stack>
-    <Paper variant="outlined" sx={{ borderRadius: 3, mb: 3 }}>
-      <Tabs value={connectionView} onChange={(_, value: "clients" | "brokers" | "groups") => changeConnectionView(value)} aria-label="Connection type">
-        <Tab value="clients" label="Clients" />
-        <Tab value="brokers" label={`Brokers${brokerRequests.length ? ` (${brokerRequests.length})` : ""}`} />
-        <Tab value="groups" label="Groups" />
-      </Tabs>
-    </Paper>
+<Paper variant="outlined" sx={{ borderRadius: 3, mb: 3, overflow: "hidden" }}>
+  <Tabs
+    value={connectionView}
+    onChange={(_, value: "clients" | "brokers" | "groups") => changeConnectionView(value)}
+    variant="scrollable"
+    scrollButtons="auto"
+    allowScrollButtonsMobile
+    aria-label="Connection type"
+    sx={{
+      "& .MuiTab-root": {
+        minWidth: { xs: 100, sm: 120 },
+        px: { xs: 1.5, sm: 2 },
+        fontSize: { xs: 12, sm: 14 },
+        whiteSpace: "nowrap",
+      },
+    }}
+  >
+    <Tab value="clients" label="Clients" />
+    <Tab value="brokers" label={`Brokers${brokerRequests.length ? ` (${brokerRequests.length})` : ""}`} />
+    <Tab value="groups" label="Groups" />
+  </Tabs>
+</Paper>
     {connectionView === "clients" ? <>
     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
     <Paper variant="outlined" sx={{ borderRadius: 3, overflow: "hidden" }}>
-      <Tabs value={status} onChange={(_, value) => setStatus(value)} sx={{ px: 2, borderBottom: "1px solid #e5e7eb" }}>
-        <Tab value="ACTIVE" label={`Active${activeCount ? ` (${activeCount})` : ""}`} />
-        <Tab value="EXPIRED" label="Expired" />
-        <Tab value="ALL" label="All clients" />
-      </Tabs>
+      <Tabs
+  value={status}
+  onChange={(_, value) => setStatus(value)}
+  variant="scrollable"
+  scrollButtons="auto"
+  allowScrollButtonsMobile
+  sx={{
+    px: { xs: 1, sm: 2 },
+    borderBottom: "1px solid #e5e7eb",
+    "& .MuiTab-root": {
+      minWidth: { xs: 100, sm: 120 },
+      px: { xs: 1.5, sm: 2 },
+      fontSize: { xs: 12, sm: 14 },
+      whiteSpace: "nowrap",
+    },
+  }}
+>
+  <Tab value="ACTIVE" label={`Active${activeCount ? ` (${activeCount})` : ""}`} />
+  <Tab value="EXPIRED" label="Expired" />
+  <Tab value="ALL" label="All clients" />
+</Tabs>
       <Box sx={{ overflowX: "auto" }}>
         <Box sx={{ minWidth: 1300 }}>
 <Box
   sx={{
     display: "grid",
-    gridTemplateColumns: "2fr 1.4fr 1.1fr 1.1fr 1.1fr 1fr 1.5fr 1.5fr",
+    gridTemplateColumns: "2fr 1.4fr 1.1fr 1.1fr 1.1fr 1.3fr 120px 120px",
     gap: 2,
     px: 3,
     py: 1.5,
@@ -474,7 +505,7 @@ const handleConfirmRemoveWhatsApp = async () => {
       sx={{
         display: "grid",
         gridTemplateColumns:
-          "2fr 1.4fr 1.1fr 1.1fr 1.1fr 1fr 1.5fr 1.5fr",
+  "2fr 1.4fr 1.1fr 1.1fr 1.1fr 1.3fr 120px 120px",
         gap: 2,
         px: 3,
         py: 2,
@@ -532,15 +563,20 @@ const handleConfirmRemoveWhatsApp = async () => {
       </Typography>
 
       {/* Status */}
-      <Chip
-        size="small"
-        label={client.status}
-        color={
-          client.status === "ACTIVE"
-            ? "success"
-            : "default"
-        }
-      />
+     <Chip
+  size="small"
+  label={client.status}
+  color={
+    client.status === "ACTIVE"
+      ? "success"
+      : "default"
+  }
+  sx={{
+    width: 100,
+    justifySelf: "start",
+    fontWeight: 700,
+  }}
+/>
 
 {/* Telegram */}
 <Stack

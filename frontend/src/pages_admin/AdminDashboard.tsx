@@ -17,7 +17,7 @@ import Pagination from "@mui/material/Pagination";
 import PaginationItem from "@mui/material/PaginationItem";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogActions from "@mui/material/DialogActions";
@@ -135,6 +135,7 @@ const AdminDashboard = () => {
   } | null>(null);
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   /* ================= LOAD DATA ================= */
   const loadRegistrations = async () => {
@@ -296,6 +297,12 @@ const handleActivate = async (userId: string) => {
     setClientPage(1);
     setBrokerPage(1);
   }, [searchQuery, filterTab, clientFilter, activeTab]);
+
+useEffect(() => {
+  setSelectedRA(null);
+  setPanelMode("ra");
+  setParticipant(null);
+}, [filterTab, activeTab, location.pathname]);
 
   /* ================= STATUS STYLING ================= */
   const statusColor = (status: string) => {
@@ -905,20 +912,36 @@ const handleSuspend = async (userId: string) => {
       {/* VIEW PANEL 1: RESEARCH ANALYSTS */}
       {activeTab === "ra" && (
         <Stack spacing={2}>
-          <Box sx={{ overflowX: "auto", maxWidth: "100%", pb: 0.5 }}>
-            <ToggleButtonGroup
-              value={filterTab}
-              exclusive
-              onChange={(_, newTab) => newTab && setFilterTab(newTab)}
-              size="small"
-              sx={{ alignSelf: "flex-start", flexWrap: { xs: "wrap", sm: "nowrap" } }}
-            >
-              <ToggleButton value="all" sx={{ px: 2.5, whiteSpace: "nowrap" }}>ALL</ToggleButton>
-              <ToggleButton value="approved" sx={{ px: 2.5, whiteSpace: "nowrap" }}>APPROVED</ToggleButton>
-              <ToggleButton value="requests" sx={{ px: 2.5, whiteSpace: "nowrap" }}>REQUESTS</ToggleButton>
-              <ToggleButton value="suspended" sx={{ px: 2.5, whiteSpace: "nowrap" }}>SUSPENDED USERS</ToggleButton>
-            </ToggleButtonGroup>
-          </Box>
+         <Box
+  sx={{
+    width: "100%",
+    maxWidth: "100%",
+    overflowX: "auto",
+    pb: 0.5,
+    WebkitOverflowScrolling: "touch",
+  }}
+>
+  <ToggleButtonGroup
+    value={filterTab}
+    exclusive
+    onChange={(_, newTab) => newTab && setFilterTab(newTab)}
+    size="small"
+    sx={{
+      flexWrap: "nowrap",
+      width: "max-content",
+      "& .MuiToggleButton-root": {
+        px: { xs: 1.5, sm: 2.5 },
+        whiteSpace: "nowrap",
+        flexShrink: 0,
+      },
+    }}
+  >
+    <ToggleButton value="all">ALL</ToggleButton>
+    <ToggleButton value="approved">APPROVED</ToggleButton>
+    <ToggleButton value="requests">REQUESTS</ToggleButton>
+    <ToggleButton value="suspended">SUSPENDED USERS</ToggleButton>
+  </ToggleButtonGroup>
+</Box>
 
           <TableContainer
             component={Paper}
@@ -1077,20 +1100,36 @@ const handleSuspend = async (userId: string) => {
       {activeTab === "broker" && (
         <Stack spacing={2}>
           {/* --- ADD TOGGLE BUTTON GROUP HERE --- */}
-          <Box sx={{ overflowX: "auto", maxWidth: "100%", pb: 0.5 }}>
-            <ToggleButtonGroup
-              value={brokerFilter}
-              exclusive
-              onChange={(_, val) => val && setBrokerFilter(val)}
-              size="small"
-              sx={{ alignSelf: "flex-start", flexWrap: { xs: "wrap", sm: "nowrap" } }}
-            >
-              <ToggleButton value="all" sx={{ px: 2.5, whiteSpace: "nowrap" }}>ALL</ToggleButton>
-              <ToggleButton value="approved" sx={{ px: 2.5, whiteSpace: "nowrap" }}>APPROVED</ToggleButton>
-              <ToggleButton value="pending" sx={{ px: 2.5, whiteSpace: "nowrap" }}>PENDING</ToggleButton>
-              <ToggleButton value="suspended" sx={{ px: 2.5, whiteSpace: "nowrap" }}>SUSPENDED</ToggleButton>
-            </ToggleButtonGroup>
-          </Box>
+       <Box
+  sx={{
+    width: "100%",
+    maxWidth: "100%",
+    overflowX: "auto",
+    pb: 0.5,
+    WebkitOverflowScrolling: "touch",
+  }}
+>
+  <ToggleButtonGroup
+    value={brokerFilter}
+    exclusive
+    onChange={(_, val) => val && setBrokerFilter(val)}
+    size="small"
+    sx={{
+      flexWrap: "nowrap",
+      width: "max-content",
+      "& .MuiToggleButton-root": {
+        px: { xs: 1.5, sm: 2.5 },
+        whiteSpace: "nowrap",
+        flexShrink: 0,
+      },
+    }}
+  >
+    <ToggleButton value="all">ALL</ToggleButton>
+    <ToggleButton value="approved">APPROVED</ToggleButton>
+    <ToggleButton value="pending">PENDING</ToggleButton>
+    <ToggleButton value="suspended">SUSPENDED</ToggleButton>
+  </ToggleButtonGroup>
+</Box>
 
           <TableContainer
             component={Paper}
@@ -1202,19 +1241,35 @@ const handleSuspend = async (userId: string) => {
       {/* VIEW PANEL 3: CLIENTS */}
       {activeTab === "client" && (
         <Stack spacing={2}>
-          <Box sx={{ overflowX: "auto", maxWidth: "100%", pb: 0.5 }}>
-            <ToggleButtonGroup
-              value={clientFilter}
-              exclusive
-              onChange={(_, value) => value && setClientFilter(value)}
-              size="small"
-              sx={{ alignSelf: "flex-start", flexWrap: { xs: "wrap", sm: "nowrap" } }}
-            >
-              <ToggleButton value="all" sx={{ px: 2.5, whiteSpace: "nowrap" }}>All Clients</ToggleButton>
-              <ToggleButton value="active" sx={{ px: 2.5, whiteSpace: "nowrap" }}>Active</ToggleButton>
-              <ToggleButton value="suspended" sx={{ px: 2.5, whiteSpace: "nowrap" }}>Suspended</ToggleButton>
-            </ToggleButtonGroup>
-          </Box>
+          <Box
+  sx={{
+    width: "100%",
+    maxWidth: "100%",
+    overflowX: "auto",
+    pb: 0.5,
+    WebkitOverflowScrolling: "touch",
+  }}
+>
+  <ToggleButtonGroup
+    value={clientFilter}
+    exclusive
+    onChange={(_, value) => value && setClientFilter(value)}
+    size="small"
+    sx={{
+      flexWrap: "nowrap",
+      width: "max-content",
+      "& .MuiToggleButton-root": {
+        px: { xs: 1.5, sm: 2.5 },
+        whiteSpace: "nowrap",
+        flexShrink: 0,
+      },
+    }}
+  >
+    <ToggleButton value="all">All Clients</ToggleButton>
+    <ToggleButton value="active">Active</ToggleButton>
+    <ToggleButton value="suspended">Suspended</ToggleButton>
+  </ToggleButtonGroup>
+</Box>
 
           <TableContainer
             component={Paper}

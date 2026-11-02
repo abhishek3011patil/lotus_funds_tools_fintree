@@ -12,6 +12,7 @@ import type { ClientProfile } from "../types";
 import { getLoginRoute } from "../../../utils/authRedirect";
 import { ClientProfileSkeleton } from "../../components/ClientPageSkeletons";
 import AccountProfilePicture from "../../../components/setting/AccountProfilePicture";
+import api from "../../../utils/axio";
 
 type Section = "profile" | "picture" | "password";
 
@@ -35,11 +36,20 @@ const ClientProfilePage = () => {
     return () => controller.abort();
   }, []);
 
-  const logout = () => {
-    const role = localStorage.getItem("role");
-    localStorage.clear();
-    navigate(getLoginRoute(role, ["CLIENT"]), { replace: true });
-  };
+const logout = async () => {
+  const role = localStorage.getItem("role");
+
+  try {
+    const response = await api.post("/auth/logout");
+
+    if (response.data?.success) {
+      localStorage.clear();
+      navigate(getLoginRoute(role, ["CLIENT"]), { replace: true });
+    }
+  } catch (error) {
+    console.error("Logout API failed:", error);
+  }
+};
 
   const navButtonSx = (active: boolean) => ({
     justifyContent: "flex-start",

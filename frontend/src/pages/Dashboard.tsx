@@ -545,7 +545,7 @@ const Dashboard = () => {
           loading={telegramLoading}
           error={telegramError}
           actionLabel="Manage Telegram"
-          onAction={() => navigate("/settings")}
+          onAction={() => navigate("/settings/telegram-participants")}
         >
           <Typography variant="body2" color="text.secondary">
             {telegramDestinationCount === null
@@ -561,7 +561,7 @@ const Dashboard = () => {
           icon={<WhatsAppIcon fontSize="small" />}
           status="Monitoring unavailable"
           actionLabel="Manage WhatsApp"
-          onAction={() => navigate("/settings")}
+          onAction={() => navigate("/settings/whatsapp")}
         >
           <Typography variant="body2" color="text.secondary">
             Configured through WhatsApp Settings. Live operational status is not available.
@@ -594,7 +594,7 @@ const Dashboard = () => {
           loading={subscriptionLoading}
           error={subscriptionError}
           actionLabel="Manage Subscription"
-          onAction={() => navigate("/settings")}
+          onAction={() => navigate("/settings/subscription")}
         >
           <Typography variant="body2" color="text.secondary">
             {subscription?.planName || "No plan available"}

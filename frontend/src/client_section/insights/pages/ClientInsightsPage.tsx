@@ -43,7 +43,43 @@ const ClientInsightsPage = () => {
   return <Stack spacing={3}>
     <Box sx={{ borderRadius: 3.5, p: { xs: 2.5, sm: 3.5 }, color: "#fff", background: "linear-gradient(115deg,#3155D9 0%,#5271FF 62%,#15803D 160%)" }}><Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems={{ sm: "center" }}><Box sx={{ bgcolor: "rgba(255,255,255,.16)", borderRadius: 2.5, p: 1.4, display: "flex", width: "fit-content" }}><AutoStoriesRoundedIcon sx={{ fontSize: 32 }} /></Box><Box><Typography variant="h4" fontWeight={800}>Insights</Typography><Typography sx={{ mt: .5, opacity: .9, maxWidth: 650 }}>Blogs and videos from your subscribed research analysts and brokers, plus selected public content.</Typography></Box></Stack></Box>
     {error && <Alert severity="error">{error}</Alert>}
-    <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 3, borderColor: "#E2E8F0" }}><Stack direction={{ xs: "column", md: "row" }} gap={2} alignItems={{ md: "center" }}><Tabs value={tab} onChange={(_, value) => setTab(value)} sx={{ flexGrow: 1 }} variant="scrollable"><Tab value="ALL" label="All" /><Tab value="BLOG" icon={<ArticleRoundedIcon />} iconPosition="start" label="Blogs" /><Tab value="VIDEO" icon={<VideoLibraryOutlinedIcon />} iconPosition="start" label="Videos" /></Tabs><TextField size="small" value={query} onChange={e => setQuery(e.target.value)} placeholder="Search insights" sx={{ minWidth: { md: 280 } }} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon /></InputAdornment> }} /></Stack></Paper>
+
+<Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 3, borderColor: "#E2E8F0" }}>
+  <Stack direction={{ xs: "column", md: "row" }} gap={2} alignItems={{ md: "center" }}>
+    <Tabs value={tab} onChange={(_, value) => setTab(value)} sx={{ flexGrow: 1 }} variant="scrollable">
+      <Tab value="ALL" label="All" />
+      <Tab value="BLOG" icon={<ArticleRoundedIcon />} iconPosition="start" label="Blogs" />
+      <Tab value="VIDEO" icon={<VideoLibraryOutlinedIcon />} iconPosition="start" label="Videos" />
+    </Tabs>
+    <TextField
+      size="small"
+      value={query}
+      onChange={e => setQuery(e.target.value)}
+      placeholder="Search insights"
+      sx={{ minWidth: { md: 280 } }}
+      InputProps={{
+        startAdornment: (
+          <InputAdornment position="start">
+            <SearchRoundedIcon />
+          </InputAdornment>
+        ),
+        endAdornment: query && (
+          <InputAdornment position="end">
+            <IconButton
+              size="small"
+              aria-label="Clear search"
+              onClick={() => setQuery("")}
+              edge="end"
+            >
+              <CloseRoundedIcon fontSize="small" />
+            </IconButton>
+          </InputAdornment>
+        )
+      }}
+    />
+  </Stack>
+</Paper>
+
     {loading ? <Box sx={{ py: 8, textAlign: "center" }}><CircularProgress /></Box> : visible.length ? <Grid container spacing={2.5}>{visible.map(item => <Grid key={item.id} size={{ xs: 12, sm: 6, xl: 4 }}><InsightCard insight={item} onOpen={() => setSelected(item)} /></Grid>)}</Grid> : <Paper variant="outlined" sx={{ p: 6, borderRadius: 3, textAlign: "center", borderStyle: "dashed" }}><AutoStoriesRoundedIcon color="disabled" sx={{ fontSize: 48 }} /><Typography variant="h6" fontWeight={800} mt={1}>{query ? "No matching insights" : "No insights available yet"}</Typography><Typography color="text.secondary">{query ? "Try a different search." : "Published content from your subscriptions will appear here."}</Typography></Paper>}
     <Dialog open={Boolean(selected)} onClose={() => setSelected(null)} fullWidth fullScreen={mobile} maxWidth="md"><DialogTitle sx={{ pr: 7, fontWeight: 800, fontSize: { xs: "1.4rem", sm: "1.6rem" }, lineHeight: 1.3, overflowWrap: "anywhere" }}>{selected?.title}<IconButton aria-label="Close" onClick={() => setSelected(null)} sx={{ position: "absolute", right: 12, top: 12 }}><CloseRoundedIcon /></IconButton></DialogTitle><DialogContent dividers sx={{ px: { xs: 2.5, sm: 3 }, py: { xs: 2.5, sm: 3 } }}>{selected?.type === "VIDEO" && selected.youtubeVideoId ? <Stack spacing={2}><Box component="iframe" src={`https://www.youtube-nocookie.com/embed/${selected.youtubeVideoId}`} title={selected.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen sx={{ width: "100%", aspectRatio: "16/9", border: 0, borderRadius: 2 }} /><Box><Typography variant="caption" color="text.secondary">Video by</Typography><Typography variant="subtitle1" fontWeight={800}>{selected.authorRole === "BROKER" ? selected.authorOrganization || selected.author : selected.author}</Typography></Box><Stack direction="row" gap={1} flexWrap="wrap"><Button component="a" href={selected.youtubeUrl || undefined} target="_blank" rel="noopener noreferrer" variant="contained">Open on YouTube</Button>{selected.youtubeChannelUrl && <Button component="a" href={selected.youtubeChannelUrl} target="_blank" rel="noopener noreferrer" variant="outlined">Visit channel</Button>}</Stack></Stack> : selected?.body ? <AuthenticatedRichText html={selected.body} /> : null}<Stack mt={2}><Typography variant="body2" fontWeight={800}>Published by {selected?.author}</Typography>{selected?.authorOrganization && <Typography variant="body2" color="text.secondary">{selected.authorOrganization}</Typography>}<Typography variant="caption" color="text.secondary">{selected?.publishedAt}</Typography></Stack></DialogContent></Dialog>
   </Stack>;

@@ -4,7 +4,26 @@ import DOMPurify from "dompurify";
 
 export default function AuthenticatedRichText({ html }: { html: string }) {
   const container = useRef<HTMLDivElement>(null);
-  const safeHtml = useMemo(() => DOMPurify.sanitize(html, { ADD_ATTR: ["data-content-image"] }), [html]);
+  const safeHtml = useMemo(() => {
+  const sanitized = DOMPurify.sanitize(html, {
+    ADD_ATTR: ["data-content-image"]
+  });
+
+  const doc = new DOMParser().parseFromString(sanitized, "text/html");
+
+  doc.querySelectorAll("figcaption").forEach(caption => {
+    const text = caption.textContent?.trim();
+
+    if (
+      !text ||
+      text === "Click here and type an image caption"
+    ) {
+      caption.remove();
+    }
+  });
+
+  return doc.body.innerHTML;
+}, [html]);
   useEffect(() => {
     const controller = new AbortController();
     const urls: string[] = [];
