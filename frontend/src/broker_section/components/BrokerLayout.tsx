@@ -20,7 +20,6 @@ import {
 import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import SettingsIcon from '@mui/icons-material/Settings';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import FolderIcon from '@mui/icons-material/Folder';
@@ -39,7 +38,6 @@ const drawerWidth = 240;
 // Sidebar navigation structure mapped to Broker files visible in image_c53918.png
 const brokerSidebarItems = [
   { name: 'Dashboard', path: '/broker/dashboard', icon: DashboardIcon },
-  { name: 'My Broker Profile', path: '/broker/profile', icon: AccountCircleIcon },
   { name: 'Research Calls', path: '/broker/research-calls', icon: FolderIcon },
   { name: 'Research Analysts', path: '/broker/research-analysts', icon: PersonSearchIcon },
   { name: 'Clients', path: '/broker/clients', icon: PeopleIcon },
