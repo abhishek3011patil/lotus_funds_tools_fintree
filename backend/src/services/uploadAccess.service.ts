@@ -29,9 +29,18 @@ export const canAccessUploadedFile = async ({
          WHERE profile_image = $1
        )
        OR EXISTS (
-         SELECT 1 FROM broker_details
-         WHERE profile_image = $1
-       )
+  SELECT 1
+  FROM broker_details
+  WHERE user_id = $2
+    AND (
+      sebi_certificate = $1
+      OR networth_certificate = $1
+      OR ca_certificate = $1
+      OR $1 = ANY(
+        COALESCE(exchange_certificates, ARRAY[]::text[])
+      )
+    )
+)
        OR EXISTS (
          SELECT 1 FROM ra_details
          WHERE user_id = $2

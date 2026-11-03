@@ -8,7 +8,6 @@ import AuthenticatedAvatar from "../../components/common/AuthenticatedAvatar";
 const value = (item: unknown) => item === null || item === undefined || item === "" ? "—" : String(item);
 const date = (item: string | null) => item ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium" }).format(new Date(item)) : "—";
 const mask = (item: string | null) => item ? `${"•".repeat(Math.max(0, item.length - 4))}${item.slice(-4)}` : "—";
-const documentUrl = (path: string) => `${import.meta.env.VITE_API_URL}${path}`;
 const normalizedStatus = (status: string | null) => status?.trim().toUpperCase() || "PENDING";
 
 const Detail = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -23,6 +22,7 @@ const BrokerProfile = () => {
   const [broker, setBroker] = useState<BrokerAccount | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+const [documentError, setDocumentError] = useState("");
 
   const loadProfile = useCallback(async () => {
     try { setBroker((await getMyBrokerAccount()).broker); }
@@ -35,6 +35,63 @@ const BrokerProfile = () => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Load authenticated broker data when the page opens.
     void loadProfile();
   }, [loadProfile]);
+
+  const openDocument = async (path: string) => {
+  const newTab = window.open("about:blank", "_blank");
+
+  if (!newTab) {
+    setDocumentError("Please allow pop-ups to view documents.");
+    return;
+  }
+
+  try {
+    setDocumentError("");
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      throw new Error("Authentication token not found. Please log in again.");
+    }
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL || ""}${path}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+  if (!response.ok) {
+  const errorText = await response.text();
+
+  console.error("Document API Error:", {
+    status: response.status,
+    statusText: response.statusText,
+    path,
+    response: errorText,
+  });
+
+  throw new Error(
+    `Document error: ${response.status} - ${response.statusText}`
+  );
+}
+
+    const blob = await response.blob();
+    const fileUrl = URL.createObjectURL(blob);
+
+    newTab.location.href = fileUrl;
+  } catch (requestError) {
+    newTab.close();
+
+    setDocumentError(
+      requestError instanceof Error
+        ? requestError.message
+        : "Unable to open document."
+    );
+  }
+};
+
   const retry = () => { setLoading(true); setError(null); void loadProfile(); };
   if (loading) return <Box sx={{ minHeight: 360, display: "grid", placeItems: "center" }}><CircularProgress /></Box>;
   if (error || !broker) return <Alert severity="error" action={<Button color="inherit" onClick={retry}>Retry</Button>}>{error || "Broker profile not found."}</Alert>;
@@ -61,7 +118,46 @@ const BrokerProfile = () => {
     <Section title="Exchange membership"><Grid size={{ xs: 12 }}><Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">{Object.entries(broker.exchanges).map(([name, active]) => <Chip key={name} label={name.toUpperCase()} color={active ? "primary" : "default"} variant={active ? "filled" : "outlined"} />)}</Stack></Grid><Grid size={{ xs: 12 }}><Typography variant="caption" color="text.secondary">Segments</Typography><Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" mt={0.5}>{Object.entries(broker.segments).map(([name, active]) => <Chip key={name} label={name === "futuresAndOptions" ? "F&O" : name.toUpperCase()} color={active ? "success" : "default"} variant={active ? "filled" : "outlined"} />)}</Stack></Grid></Section>
     <Section title="Compliance and financials"><Detail label="Compliance officer">{value(broker.compliance.officerName)}</Detail><Detail label="Designation">{value(broker.compliance.designation)}</Detail><Detail label="Compliance PAN">{mask(broker.compliance.pan)}</Detail><Detail label="Compliance mobile">{value(broker.compliance.mobile)}</Detail><Detail label="Net worth">{value(broker.financials.netWorth)}</Detail><Detail label="Auditor">{value(broker.financials.auditorName)}</Detail><Detail label="Auditor membership">{value(broker.financials.auditorMembership)}</Detail></Section>
     <Section title="Authorized person"><Detail label="Name">{value(broker.authorizedPerson.name)}</Detail><Detail label="Designation">{value(broker.authorizedPerson.designation)}</Detail><Detail label="Email">{value(broker.authorizedPerson.email)}</Detail><Detail label="Mobile">{value(broker.authorizedPerson.mobile)}</Detail><Detail label="PAN">{mask(broker.authorizedPerson.pan)}</Detail><Detail label="Aadhaar">{mask(broker.authorizedPerson.aadhaar)}</Detail></Section>
-    <Section title="Documents"><Grid size={{ xs: 12 }}><Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">{docs.filter(([, path]) => path).map(([label, path]) => <Button key={label} component="a" href={documentUrl(path!)} target="_blank" rel="noreferrer" variant="outlined">{label}</Button>)}{broker.documents.exchangeCertificates.map((path, index) => <Button key={path} component="a" href={documentUrl(path)} target="_blank" rel="noreferrer" variant="outlined">Exchange certificate {index + 1}</Button>)}{docs.every(([, path]) => !path) && broker.documents.exchangeCertificates.length === 0 && <Typography color="text.secondary">No documents uploaded.</Typography>}</Stack></Grid></Section>
+    <Section title="Documents">
+  <Grid size={{ xs: 12 }}>
+    {documentError && (
+      <Alert severity="error" sx={{ mb: 2 }}>
+        {documentError}
+      </Alert>
+    )}
+
+    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+      {docs
+        .filter(([, path]) => path)
+        .map(([label, path]) => (
+          <Button
+            key={label}
+            variant="outlined"
+            onClick={() => void openDocument(path!)}
+          >
+            {label}
+          </Button>
+        ))}
+
+      {broker.documents.exchangeCertificates.map((path, index) => (
+        <Button
+          key={path}
+          variant="outlined"
+          onClick={() => void openDocument(path)}
+        >
+          Exchange certificate {index + 1}
+        </Button>
+      ))}
+
+      {docs.every(([, path]) => !path) &&
+        broker.documents.exchangeCertificates.length === 0 && (
+          <Typography color="text.secondary">
+            No documents uploaded.
+          </Typography>
+        )}
+    </Stack>
+  </Grid>
+</Section>
   </Stack>;
 };
 
