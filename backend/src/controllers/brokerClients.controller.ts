@@ -88,6 +88,14 @@ export const createBrokerClient = async (req: AuthRequest, res: Response) => {
        RETURNING id`,
       [res.locals.broker.id, name, email, phone, aadhaar, kycHash(aadhaar), pan, kycHash(pan)],
     );
+    await pool.query(
+      `INSERT INTO subscription_notifications (user_id, notification_key, type, title, message)
+       SELECT broker.user_id, CONCAT('BROKER_CLIENT_ADDED:', $2::text), 'New Client', 'New client added',
+              CONCAT($3::text, ' was added to your client directory.')
+       FROM broker_details broker WHERE broker.id = $1
+       ON CONFLICT DO NOTHING`,
+      [res.locals.broker.id, result.rows[0].id, name],
+    );
     return res.status(201).json({ success: true, id: result.rows[0].id, message: "Client added." });
   } catch (error: any) {
     if (error?.code === "23505") return res.status(409).json({ message: "This client is already in your directory." });

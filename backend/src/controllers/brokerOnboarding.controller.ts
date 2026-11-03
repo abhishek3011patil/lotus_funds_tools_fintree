@@ -175,6 +175,16 @@ export const respondToRAConnectionRequest = async (req: AuthRequest, res: Respon
     [req.user!.id, brokerId, nextStatus]
   );
   if (!result.rows.length) return res.status(404).json({ message: "Pending broker request was not found." });
+  if (action === "ACCEPT") {
+    await pool.query(
+      `INSERT INTO subscription_notifications (user_id, notification_key, type, title, message)
+       SELECT broker.user_id, CONCAT('BROKER_RA_ACCEPTED:', $2::text), 'New Research Analyst',
+              'Research Analyst connected', CONCAT($3::text, ' accepted your brokerage connection request.')
+       FROM broker_details broker WHERE broker.id = $1
+       ON CONFLICT DO NOTHING`,
+      [result.rows[0].broker_id, brokerId, req.user!.name || "A Research Analyst"],
+    );
+  }
   return res.json({ message: action === "ACCEPT" ? "Broker request accepted." : "Broker request declined." });
 };
 

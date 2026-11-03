@@ -17,6 +17,7 @@ import {
   validateUnderlyingStudySubmission,
 } from "../services/underlyingStudyPreferences.service";
 import { calculateResearchCallRiskReward } from "../services/researchCallRiskReward.service";
+import { notifyAssociatedBrokersOfResearchCall } from "../services/brokerNotification.service";
 import {
   audienceClientIds,
   audienceWhatsAppParticipantIds,
@@ -316,6 +317,7 @@ export const createResearchCall = async (
 const { rows } = await pool.query(query, values);
 attachmentsSaved = true;
 const createdCall = rows[0];
+await notifyAssociatedBrokersOfResearchCall({ raUserId: req.user!.id, callId: createdCall.id, symbol: createdCall.symbol, action: createdCall.action });
 
 
 try {
@@ -1531,6 +1533,7 @@ export const publishDraftCall = async (
     }
 
     const publishedCall = result.rows[0];
+    await notifyAssociatedBrokersOfResearchCall({ raUserId, callId: publishedCall.id, symbol: publishedCall.symbol, action: publishedCall.action });
 
     try {
       await queueWhatsAppResearchCall({

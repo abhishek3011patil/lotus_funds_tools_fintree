@@ -268,6 +268,17 @@ export const verifyBrokerSubscriptionPayment = async (req: AuthRequest, res: Res
          RETURNING id, status, starts_at, expires_at`,
         [clientUserId, brokerId, order.id, order.amount_paise, order.currency, durationDays()]
       );
+      await db.query(
+        `INSERT INTO subscription_notifications (user_id, subscription_id, notification_key, type, title, message)
+         SELECT broker.user_id, subscription.id, CONCAT('BROKER_CLIENT_SUBSCRIPTION:', subscription.id::text),
+                'New Client Subscription', 'New client subscription',
+                CONCAT(COALESCE(NULLIF(client.name, ''), client.email, 'A client'), ' subscribed to your brokerage.')
+         FROM broker_details broker
+         JOIN users client ON client.id = $1
+         WHERE broker.id = $2
+         ON CONFLICT DO NOTHING`,
+        [clientUserId, brokerId],
+      );
       await db.query("COMMIT");
       return res.json({ success: true, message: "Broker subscription activated.", subscription: subscription.rows[0] });
     } catch (error) { await db.query("ROLLBACK"); throw error; }
