@@ -103,6 +103,7 @@ const Afternoon = lazy(() => import("../pages_automation/Afternoon"));
 const Evening = lazy(() => import("../pages_automation/Evening"));
 const Morning = lazy(() => import("../pages_automation/Morning"));
 const FiiDiiMaker = lazy(() => import("../tools/fii-dii/FiiDiiMaker"));
+const MarketDashboardMaker = lazy(() => import("../tools/market-dashboard/MarketDashboardMaker"));
 const Special = lazy(() => import("../pages_automation/Special"));
 const Weekly = lazy(() => import("../pages_automation/Weekly"));
 const ExceltoJSONTool = lazy(() => import("../tools/ExceltoJSONtool").then(m => ({ default: m.ExceltoJSONTool })));
@@ -372,6 +373,7 @@ const AppRoutes = () => {
           <Route path="Evening" element={<Evening />} />
           <Route path="Morning" element={<Morning />} />
           <Route path="Morning/fiidll" element={<FiiDiiMaker />} />
+          <Route path="Morning/market-dashboard" element={<MarketDashboardMaker />} />
           <Route path="Special" element={<Special />} />
           <Route path="Weekly" element={<Weekly />} />
           <Route path="ExcelTool" element={<ExceltoJSONTool />} />

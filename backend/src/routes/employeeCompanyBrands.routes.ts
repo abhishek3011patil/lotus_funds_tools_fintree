@@ -103,12 +103,13 @@ const sendLimiter = rateLimit({
 
 router.post("/:id/send-report", sendLimiter, async (req, res) => {
   const reportDate = String(req.body?.date || "");
+  const reportType = String(req.body?.reportType || "fii-dii");
   const match = pngPattern.exec(String(req.body?.pngDataUrl || ""));
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(reportDate) || !match) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(reportDate) || !match || !["fii-dii", "market-dashboard"].includes(reportType)) {
     return res.status(400).json({ message: "Provide a report date and PNG image" });
   }
   const png = Buffer.from(match[1], "base64");
-  if (!png.length || png.length > 1400000 || png.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") {
+  if (!png.length || png.length > 5 * 1024 * 1024 || png.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") {
     return res.status(400).json({ message: "Report PNG is invalid or too large" });
   }
   const config = getEmailConfig();
@@ -130,12 +131,15 @@ router.post("/:id/send-report", sendLimiter, async (req, res) => {
         ? { service: "gmail", auth: { user: config.user, pass: config.password } }
         : { host: config.host, port: config.port, secure: config.secure, auth: { user: config.user, pass: config.password } }
     );
+    const isMarketDashboard = reportType === "market-dashboard";
+    const title = isMarketDashboard ? "Daily market dashboard" : "FII/DII activity report";
+    const filename = isMarketDashboard ? `Market_Dashboard_${reportDate}.png` : `FII_DII_${reportDate}.png`;
     const info = await transport.sendMail({
       from: { name: config.fromName, address: config.fromAddress },
       to: company.recipient_email,
-      subject: `FII/DII activity report - ${reportDate}`,
-      text: `Please find attached the FII/DII activity report for ${reportDate}.`,
-      attachments: [{ filename: `FII_DII_${reportDate}.png`, content: png, contentType: "image/png" }],
+      subject: `${title} - ${reportDate}`,
+      text: `Please find attached the ${title.toLowerCase()} for ${reportDate}.`,
+      attachments: [{ filename, content: png, contentType: "image/png" }],
     });
     if (!info.accepted?.some(address =>
       (typeof address === "string" ? address : address.address).toLowerCase() === company.recipient_email
@@ -144,7 +148,7 @@ router.post("/:id/send-report", sendLimiter, async (req, res) => {
     }
     return res.json({ message: "Gmail accepted the report", recipientEmail: company.recipient_email });
   } catch (error) {
-    console.error("FII/DII email send failed", error);
+    console.error("Employee report email send failed", error);
     return res.status(502).json({ message: "Could not send the report through Gmail" });
   }
 });

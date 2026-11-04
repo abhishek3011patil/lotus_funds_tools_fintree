@@ -21,10 +21,10 @@ const morningTiles: TileItem[] = [
     path: "/automation/Morning/fiidll",
   },
   {
-    label: "One pager",
+    label: "Daily market dashboard",
     id: 3,
     image: "#",
-    path: "",
+    path: "/automation/Morning/market-dashboard",
   },
 
 ];

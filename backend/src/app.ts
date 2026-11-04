@@ -119,7 +119,8 @@ app.use(
   razorpayWebhookRoutes
 );
 
-app.use(express.json({ limit: "2mb" }));
+// Branded daily dashboards can include a full-resolution chart image.
+app.use(express.json({ limit: "8mb" }));
 
 mountSwaggerDocs(app);
 

@@ -22,6 +22,11 @@ export const deleteCompanyBrand = async (id: string): Promise<void> => {
   await api.delete(`/employee/company-brands/${encodeURIComponent(id)}`);
 };
 
-export const sendCompanyReport = async (id: string, date: string, pngDataUrl: string): Promise<void> => {
-  await api.post(`/employee/company-brands/${encodeURIComponent(id)}/send-report`, { date, pngDataUrl });
+export const sendCompanyReport = async (
+  id: string,
+  date: string,
+  pngDataUrl: string,
+  reportType: "fii-dii" | "market-dashboard" = "fii-dii",
+): Promise<void> => {
+  await api.post(`/employee/company-brands/${encodeURIComponent(id)}/send-report`, { date, pngDataUrl, reportType });
 };
