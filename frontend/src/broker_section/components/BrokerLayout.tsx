@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -15,6 +15,7 @@ import {
   IconButton,
   useTheme,
   useMediaQuery,
+   Badge,
 } from '@mui/material';
 
 import MenuIcon from '@mui/icons-material/Menu';
@@ -58,6 +59,50 @@ export const BrokerLayout = () => {
   // Detect desktop view vs mobile/tablet view
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+
+const fetchUnreadNotifications = useCallback(async () => {
+  try {
+    const response = await api.get('/subscription-notifications');
+
+    const notifications = response.data?.notifications || [];
+
+    setUnreadNotificationCount(
+      notifications.filter(
+        (notification: { is_read: boolean }) => !notification.is_read
+      ).length
+    );
+  } catch (error) {
+    console.error('Unable to fetch unread notifications:', error);
+  }
+}, []);
+
+useEffect(() => {
+  void fetchUnreadNotifications();
+
+  // Update when notifications are marked as read
+  const handleNotificationUpdate = () => {
+    void fetchUnreadNotifications();
+  };
+
+  window.addEventListener(
+    'subscription:notifications-updated',
+    handleNotificationUpdate
+  );
+
+  // Check for newly received notifications every 30 seconds
+  const interval = setInterval(() => {
+    void fetchUnreadNotifications();
+  }, 30000);
+
+  return () => {
+    window.removeEventListener(
+      'subscription:notifications-updated',
+      handleNotificationUpdate
+    );
+    clearInterval(interval);
+  };
+}, [fetchUnreadNotifications]);
 
   const username = localStorage.getItem('username') || 'Broker';
   const initial = username.charAt(0).toUpperCase();
@@ -180,14 +225,38 @@ const drawerContent = (
                   py: 1,
                 }}
               >
-                <ListItemIcon
-                  sx={{
-                    color: isActive ? '#1E1B4B' : '#FFFFFF',
-                    minWidth: 36,
-                  }}
-                >
-                  <Icon sx={{ fontSize: '1.2rem' }} />
-                </ListItemIcon>
+               <ListItemIcon
+  sx={{
+    color: isActive ? '#1E1B4B' : '#FFFFFF',
+    minWidth: 36,
+  }}
+>
+  {item.name === 'Notifications' ? (
+    <Badge
+      badgeContent={unreadNotificationCount}
+      color="error"
+      max={99}
+      overlap="circular"
+      invisible={unreadNotificationCount === 0}
+      sx={{
+        '& .MuiBadge-badge': {
+          fontSize: '10px',
+          fontWeight: 700,
+          minWidth: 19,
+          height: 19,
+          borderRadius: '50%',
+          top: 1,
+          right: -3,
+          border: '1px solid #5271FF',
+        },
+      }}
+    >
+      <Icon sx={{ fontSize: '1.2rem' }} />
+    </Badge>
+  ) : (
+    <Icon sx={{ fontSize: '1.2rem' }} />
+  )}
+</ListItemIcon>
                 <ListItemText
                   primary={item.name}
                   primaryTypographyProps={{

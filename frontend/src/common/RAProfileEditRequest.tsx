@@ -35,9 +35,115 @@ const RAProfileEditRequest = () => {
   const [files, setFiles] = useState<Record<string, File>>({});
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const normalizeBool = (val: any): boolean =>
     val === true || val === "true" || val === 1 || val === "1";
+
+  const validateProfile = () => {
+  const errors: Record<string, string> = {};
+
+  const isChanged = (field: string) => {
+    const oldValue = data?.[field];
+    const newValue = fields[field];
+
+    if (BOOLEAN_FIELDS.has(field)) {
+      return normalizeBool(oldValue) !== normalizeBool(newValue);
+    }
+
+    return String(oldValue ?? "").trim() !== String(newValue ?? "").trim();
+  };
+
+  const validate = (
+    field: string,
+    value: string,
+    pattern: RegExp,
+    message: string,
+    required = false
+  ) => {
+    if (!isChanged(field)) return;
+
+    if (required && !value.trim()) {
+      errors[field] = "This field is required";
+    } else if (value.trim() && !pattern.test(value.trim())) {
+      errors[field] = message;
+    }
+  };
+
+  validate(
+    "email",
+    fields.email ?? "",
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    "Enter a valid email address",
+    true
+  );
+
+  validate(
+    "mobile",
+    fields.mobile ?? "",
+    /^[6-9]\d{9}$/,
+    "Enter a valid 10-digit mobile number",
+    true
+  );
+
+  validate(
+    "telephone",
+    fields.telephone ?? "",
+    /^\+?[0-9\s-]{7,15}$/,
+    "Enter a valid telephone number"
+  );
+
+  validate(
+    "pincode",
+    fields.pincode ?? "",
+    /^\d{6}$/,
+    "Enter a valid 6-digit PIN code"
+  );
+
+  validate(
+    "pan_number",
+    fields.pan_number ?? "",
+    /^[A-Z]{5}[0-9]{4}[A-Z]$/i,
+    "Enter a valid PAN number"
+  );
+
+  validate(
+    "ifsc_code",
+    fields.ifsc_code ?? "",
+    /^[A-Z]{4}0[A-Z0-9]{6}$/i,
+    "Enter a valid IFSC code"
+  );
+
+  validate(
+    "account_number",
+    fields.account_number ?? "",
+    /^\d{9,18}$/,
+    "Enter a valid bank account number (9–18 digits)"
+  );
+
+  if (isChanged("sebi_start_date") || isChanged("sebi_expiry_date")) {
+    const startDate = fields.sebi_start_date;
+    const expiryDate = fields.sebi_expiry_date;
+
+    if (startDate && expiryDate) {
+      const start = new Date(startDate);
+      const expiry = new Date(expiryDate);
+
+      if (
+        isNaN(start.getTime()) ||
+        isNaN(expiry.getTime())
+      ) {
+        errors.sebi_expiry_date = "Enter valid SEBI dates";
+      } else if (expiry <= start) {
+        errors.sebi_expiry_date =
+          "SEBI expiry date must be after the start date";
+      }
+    }
+  }
+
+  setFieldErrors(errors);
+  return Object.keys(errors).length === 0;
+};
 
   const fetchData = async () => {
     try {
@@ -69,17 +175,22 @@ const RAProfileEditRequest = () => {
     fetchData();
   }, []);
 
-  const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const target = e.target as HTMLInputElement;
-    const { name, type, value, checked } = target;
+const handleChange = (
+  e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+) => {
+  const target = e.target as HTMLInputElement;
+  const { name, type, value, checked } = target;
 
-    setFields((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  };
+  setFields((prev) => ({
+    ...prev,
+    [name]: type === "checkbox" ? checked : value,
+  }));
+
+  setFieldErrors((prev) => ({
+    ...prev,
+    [name]: "",
+  }));
+};
 
   const handleCheckbox = (name: string, checked: boolean) => {
     setFields((prev) => ({ ...prev, [name]: checked }));
@@ -118,7 +229,15 @@ const openFile = async (file?: string) => {
   }
 };
 
-  const handleSave = async () => {
+const handleSave = async () => {
+    // Validate before submitting
+    const isValid = validateProfile();
+
+    if (!isValid) {
+      setErrorMsg("Please correct the invalid fields before submitting.");
+      return;
+    }
+
     const formData = new FormData();
 Object.keys(fields).forEach((key) => {
   const oldValue = data?.[key];
@@ -265,13 +384,15 @@ for (const pair of formData.entries()) {
   const renderFields = (fieldList: string[]) =>
     fieldList.map((field) => (
       <Grid item xs={12} sm={6} key={field}>
-        <TextField
-          fullWidth
-          label={field.replace(/_/g, " ").toUpperCase()}
-          name={field}
-          value={fields[field] ?? ""}
-          onChange={handleChange}
-        />
+       <TextField
+  fullWidth
+  label={field.replace(/_/g, " ").toUpperCase()}
+  name={field}
+  value={fields[field] ?? ""}
+  onChange={handleChange}
+  error={!!fieldErrors[field]}
+  helperText={fieldErrors[field] || " "}
+/>
       </Grid>
     ));
 

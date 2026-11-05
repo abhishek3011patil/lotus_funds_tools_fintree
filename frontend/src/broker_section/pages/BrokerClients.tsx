@@ -21,6 +21,7 @@ const BrokerClients = () => {
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [addClientError, setAddClientError] = useState("");
   const [channelTarget, setChannelTarget] = useState<{ client: BrokerClient; channel: "whatsapp" | "telegram" } | null>(null);
   const [removeTarget, setRemoveTarget] = useState<{ client: BrokerClient; channel: "whatsapp" | "telegram" } | null>(null);
   const [channelPhone, setChannelPhone] = useState("");
@@ -50,16 +51,27 @@ const handleClientPhoneChange = (value: string) => {
   }));
 };
 
-  const saveClient = async () => {
-    setSaving(true); setError("");
-    try { await createBrokerClient({
-  ...form,
-  phoneNumber: form.phoneNumber.replace(/\s/g, ""),
-});
-setAdding(false); setForm(emptyForm); setNotice("Client added to the broker directory."); await load(); }
-    catch (requestError) { setError(onboardingError(requestError)); }
-    finally { setSaving(false); }
-  };
+const saveClient = async () => {
+  setSaving(true);
+  setAddClientError("");
+
+  try {
+    await createBrokerClient({
+      ...form,
+      phoneNumber: form.phoneNumber.replace(/\s/g, ""),
+    });
+
+    setAdding(false);
+    setForm(emptyForm);
+    setAddClientError("");
+    setNotice("Client added to the broker directory.");
+    await load();
+  } catch (requestError) {
+    setAddClientError(onboardingError(requestError));
+  } finally {
+    setSaving(false);
+  }
+};
 
 const openChannel = (client: BrokerClient, channel: "whatsapp" | "telegram") => {
   if (channel === "whatsapp" ? client.whatsappAdded : client.telegramAdded) {
@@ -104,22 +116,119 @@ const openChannel = (client: BrokerClient, channel: "whatsapp" | "telegram") => 
       : clients.length ? <BrokerClientTable clients={clients} busyId={busyId} onChannel={openChannel} onHistory={showHistory} />
         : <BrokerEmptyState state="empty" emptyText="No clients found. Portal subscribers will appear automatically, or add a client manually." />}
 
-    <Dialog open={adding} onClose={() => !saving && setAdding(false)} fullWidth maxWidth="sm">
-      <DialogTitle>Add client</DialogTitle><DialogContent><Stack spacing={2} sx={{ mt: 1 }}>
-        <Alert severity="info">For privacy, only masked Aadhaar/PAN values and secure hashes are retained.</Alert>
-        <TextField autoFocus required label="Full name" value={form.name} onChange={e => setForm(value => ({ ...value, name: e.target.value }))} />
-        <TextField label="Email" type="email" value={form.email} onChange={e => setForm(value => ({ ...value, email: e.target.value }))} />
-        <TextField
-  required
-  label="Phone with country code"
-  placeholder="+91 9876543210"
-  value={form.phoneNumber || "+91 "}
-  onChange={e => handleClientPhoneChange(e.target.value)}
-/>
-        <TextField required label="Aadhaar number" inputProps={{ maxLength: 12 }} value={form.aadhaarNumber} onChange={e => setForm(value => ({ ...value, aadhaarNumber: e.target.value.replace(/\D/g, "") }))} />
-        <TextField required label="PAN number" inputProps={{ maxLength: 10 }} value={form.panNumber} onChange={e => setForm(value => ({ ...value, panNumber: e.target.value.toUpperCase() }))} />
-      </Stack></DialogContent><DialogActions><Button disabled={saving} onClick={() => setAdding(false)}>Cancel</Button><Button variant="contained" disabled={saving} onClick={() => void saveClient()}>{saving ? "Adding..." : "Add client"}</Button></DialogActions>
-    </Dialog>
+<Dialog
+  open={adding}
+  onClose={() => {
+    if (!saving) {
+      setAdding(false);
+      setAddClientError("");
+    }
+  }}
+  fullWidth
+  maxWidth="sm"
+>
+  <DialogTitle>Add client</DialogTitle>
+
+  <DialogContent>
+    <Stack spacing={2} sx={{ mt: 1 }}>
+
+      {addClientError && (
+        <Alert
+          severity="error"
+          onClose={() => setAddClientError("")}
+          sx={{ borderRadius: 2 }}
+        >
+          {addClientError}
+        </Alert>
+      )}
+
+      <Alert severity="info">
+        For privacy, only masked Aadhaar/PAN values and secure hashes are retained.
+      </Alert>
+
+      <TextField
+        autoFocus
+        required
+        label="Full name"
+        value={form.name}
+        onChange={e => {
+          setForm(value => ({ ...value, name: e.target.value }));
+          setAddClientError("");
+        }}
+      />
+
+      <TextField
+        label="Email"
+        type="email"
+        value={form.email}
+        onChange={e => {
+          setForm(value => ({ ...value, email: e.target.value }));
+          setAddClientError("");
+        }}
+      />
+
+      <TextField
+        required
+        label="Phone with country code"
+        placeholder="+91 9876543210"
+        value={form.phoneNumber || "+91 "}
+        onChange={e => {
+          handleClientPhoneChange(e.target.value);
+          setAddClientError("");
+        }}
+      />
+
+      <TextField
+        required
+        label="Aadhaar number"
+        inputProps={{ maxLength: 12 }}
+        value={form.aadhaarNumber}
+        onChange={e => {
+          setForm(value => ({
+            ...value,
+            aadhaarNumber: e.target.value.replace(/\D/g, "")
+          }));
+          setAddClientError("");
+        }}
+      />
+
+      <TextField
+        required
+        label="PAN number"
+        inputProps={{ maxLength: 10 }}
+        value={form.panNumber}
+        onChange={e => {
+          setForm(value => ({
+            ...value,
+            panNumber: e.target.value.toUpperCase()
+          }));
+          setAddClientError("");
+        }}
+      />
+
+    </Stack>
+  </DialogContent>
+
+  <DialogActions>
+    <Button
+      disabled={saving}
+      onClick={() => {
+        setAdding(false);
+        setAddClientError("");
+      }}
+    >
+      Cancel
+    </Button>
+
+    <Button
+      variant="contained"
+      disabled={saving}
+      onClick={() => void saveClient()}
+    >
+      {saving ? "Adding..." : "Add client"}
+    </Button>
+  </DialogActions>
+</Dialog>
 
     <Dialog open={Boolean(channelTarget)} onClose={() => !busyId && setChannelTarget(null)} fullWidth maxWidth="xs">
       <DialogTitle>Add to {channelTarget?.channel === "whatsapp" ? "WhatsApp" : "Telegram"}</DialogTitle><DialogContent>

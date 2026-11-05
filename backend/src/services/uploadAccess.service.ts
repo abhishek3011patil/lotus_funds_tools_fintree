@@ -41,18 +41,68 @@ export const canAccessUploadedFile = async ({
       )
     )
 )
-       OR EXISTS (
-         SELECT 1 FROM ra_details
-         WHERE user_id = $2
-           AND $1 IN (
-             pan_card,
-             address_proof_document,
-             sebi_certificate,
-             sebi_receipt,
-             nism_certificate,
-             cancelled_cheque
-           )
-       )
+      OR EXISTS (
+  SELECT 1
+  FROM ra_details
+  WHERE user_id = $2
+    AND $1 IN (
+      pan_card,
+      address_proof_document,
+      sebi_certificate,
+      sebi_receipt,
+      nism_certificate,
+      cancelled_cheque
+    )
+)
+
+OR EXISTS (
+  SELECT 1
+  FROM ra_profile_update_requests request
+  WHERE request.ra_user_id = $2
+    AND request.requested_changes->>'pan_card' = $1
+)
+
+OR EXISTS (
+  SELECT 1
+  FROM ra_profile_update_requests request
+  WHERE request.ra_user_id = $2
+    AND request.requested_changes->>'address_proof_document' = $1
+)
+
+OR EXISTS (
+  SELECT 1
+  FROM ra_profile_update_requests request
+  WHERE request.ra_user_id = $2
+    AND request.requested_changes->>'sebi_certificate' = $1
+)
+
+OR EXISTS (
+  SELECT 1
+  FROM ra_profile_update_requests request
+  WHERE request.ra_user_id = $2
+    AND request.requested_changes->>'sebi_receipt' = $1
+)
+
+OR EXISTS (
+  SELECT 1
+  FROM ra_profile_update_requests request
+  WHERE request.ra_user_id = $2
+    AND request.requested_changes->>'nism_certificate' = $1
+)
+
+OR EXISTS (
+  SELECT 1
+  FROM ra_profile_update_requests request
+  WHERE request.ra_user_id = $2
+    AND request.requested_changes->>'cancelled_cheque' = $1
+)
+
+OR EXISTS (
+  SELECT 1
+  FROM ra_profile_update_requests request
+  WHERE request.ra_user_id = $2
+    AND request.requested_changes->>'profile_image' = $1
+)
        OR EXISTS (
          SELECT 1
          FROM insight_content_images image

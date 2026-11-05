@@ -201,6 +201,7 @@ app.get("/uploads/:filename", authenticate, async (req: AuthRequest, res) => {
     }
 
     const filePath = path.join(process.cwd(), "uploads", filename);
+    
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({
