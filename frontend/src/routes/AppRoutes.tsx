@@ -99,6 +99,7 @@ const Logotheme = lazy(() => import("../tools/morning-report/Logotheme"));
 const Generator = lazy(() => import("../tools/morning-report/Generator"));
 
 // --- Lazy: Automation ---
+const EmployeeWorkspace = lazy(() => import("../components/layout_automation/WorkspacePage"));
 const Afternoon = lazy(() => import("../pages_automation/Afternoon"));
 const Evening = lazy(() => import("../pages_automation/Evening"));
 const Morning = lazy(() => import("../pages_automation/Morning"));
@@ -368,7 +369,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Navigate to="Afternoon" replace />} />
+          <Route index element={<EmployeeWorkspace />} />
           <Route path="Afternoon" element={<Afternoon />} />
           <Route path="Evening" element={<Evening />} />
           <Route path="Morning" element={<Morning />} />

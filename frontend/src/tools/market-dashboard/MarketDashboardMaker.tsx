@@ -35,16 +35,19 @@ export default function MarketDashboardMaker() {
   const { companies, selectedIds, previewId } = library;
   const previewCompany = useMemo(() => companies.find(company => company.id === previewId) || companies[0] || null, [companies, previewId]);
   const displayedCompany = renderCompany || previewCompany;
+  const hasPreview = Boolean(displayedCompany);
 
   useEffect(() => {
     const host = previewHostRef.current;
     if (!host) return;
-    const update = () => setScale(Math.min(1, host.clientWidth / 1152));
+    const update = () => {
+      if (host.clientWidth > 0) setScale(Math.min(1, host.clientWidth / 1152));
+    };
     update();
     const observer = new ResizeObserver(update);
     observer.observe(host);
     return () => observer.disconnect();
-  }, []);
+  }, [hasPreview]);
 
   const updateValue = (sectionId: string, rowIndex: number, valueIndex: number, value: string) => setData(current => ({
     ...current,
