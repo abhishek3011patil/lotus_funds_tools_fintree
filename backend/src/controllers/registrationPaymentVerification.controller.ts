@@ -548,6 +548,22 @@ export const verifyRegistrationPayment = async (
         return;
       }
 
+      // The order may have changed while Razorpay was being queried. Never
+      // apply a captured payment to a different local order or plan snapshot.
+      if (
+        locked.local_order_id !== initial.local_order_id ||
+        locked.plan_selection_id !== initial.plan_selection_id ||
+        locked.provider_order_id !== initial.provider_order_id ||
+        Number(locked.amount_paise) !== Number(initial.amount_paise) ||
+        String(locked.currency).toUpperCase() !== String(initial.currency).toUpperCase() ||
+        Number(locked.amount_paise) !== Number(locked.price_paise_snapshot)
+      ) {
+        await db.query("ROLLBACK");
+        transactionOpen = false;
+        res.status(409).json({ success: false, message: "Payment order changed during verification. Please contact support." });
+        return;
+      }
+
       /*
        * Idempotent retry: the same verified callback can safely
        * return success without creating duplicate transactions.

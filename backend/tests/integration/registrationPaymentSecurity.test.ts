@@ -1,0 +1,21 @@
+import crypto from "crypto";
+import express from "express";
+import request from "supertest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+const mocks = vi.hoisted(() => ({ fetch: vi.fn(), query: vi.fn(), connect: vi.fn(), txQuery: vi.fn(), release: vi.fn() }));
+vi.mock("razorpay", () => ({ default: class { payments = { fetch: mocks.fetch }; } }));
+vi.mock("../../src/db", () => ({ pool: { query: mocks.query, connect: mocks.connect } }));
+vi.mock("../../src/utils/auditLogger", () => ({ createAuditLog: vi.fn() }));
+import { verifyRegistrationPayment } from "../../src/controllers/registrationPaymentVerification.controller";
+const app=express(); app.use(express.json()); app.post("/verify", verifyRegistrationPayment);
+const token="synthetic-registration-token";
+const order={local_order_id:"local-1",provider_order_id:"order-1",plan_selection_id:"selection-1",amount_paise:10000,currency:"INR",price_paise_snapshot:10000,registration_token_hash:crypto.createHash("sha256").update(token).digest("hex"),registration_token_expires_at:new Date(Date.now()+3600000).toISOString(),application_status:"PAYMENT_PENDING",payment_order_status:"CREATED"};
+const signature=crypto.createHmac("sha256","test-secret").update("order-1|pay-1").digest("hex");
+const body={applicationId:"application-1",razorpayOrderId:"order-1",razorpayPaymentId:"pay-1",razorpaySignature:signature};
+describe("registration payment security",()=>{
+ beforeEach(()=>{vi.resetAllMocks();vi.stubEnv("RAZORPAY_KEY_ID","rzp_test_key");vi.stubEnv("RAZORPAY_KEY_SECRET","test-secret");mocks.query.mockResolvedValue({rows:[order]});mocks.fetch.mockResolvedValue({order_id:"order-1",amount:10000,currency:"INR",status:"captured"});mocks.connect.mockResolvedValue({query:mocks.txQuery,release:mocks.release});});
+ it("rejects another registration token before contacting Razorpay",async()=>{await request(app).post('/verify').set('x-registration-token','wrong-token').send(body).expect(401);expect(mocks.fetch).not.toHaveBeenCalled();});
+ it("rejects an invalid signature before contacting Razorpay",async()=>{await request(app).post('/verify').set('x-registration-token',token).send({...body,razorpaySignature:'00'}).expect(400);expect(mocks.fetch).not.toHaveBeenCalled();});
+ it.each([{order_id:'other'},{amount:1},{currency:'USD'},{status:'authorized'}])('rejects mismatched or uncaptured provider payment %#',async change=>{mocks.fetch.mockResolvedValue({order_id:'order-1',amount:10000,currency:'INR',status:'captured',...change});await request(app).post('/verify').set('x-registration-token',token).send(body).expect(409);expect(mocks.connect).not.toHaveBeenCalled();});
+ it('rolls back if the order changes before it is locked',async()=>{mocks.txQuery.mockResolvedValueOnce({}).mockResolvedValueOnce({rows:[{...order,amount_paise:20000}]}).mockResolvedValueOnce({});await request(app).post('/verify').set('x-registration-token',token).send(body).expect(409);expect(mocks.txQuery).toHaveBeenLastCalledWith('ROLLBACK');expect(mocks.release).toHaveBeenCalled();});
+});

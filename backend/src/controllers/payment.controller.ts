@@ -93,6 +93,11 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
+    if (session.payment_status === "completed") {
+      res.status(409).json({ message: "Payment has already been completed" });
+      return;
+    }
+
     const options = {
       amount: plan.amountPaise,
       currency: "INR",
@@ -112,8 +117,10 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
               payment_status = 'pending'
         WHERE id = $3
           AND reset_token = $4
-          AND token_expiry > NOW()`,
-      [order.id, plan.storedName, session.id, resetToken]
+          AND token_expiry > NOW()
+          AND role = $5
+          AND payment_status IS DISTINCT FROM 'completed'`,
+      [order.id, plan.storedName, session.id, resetToken, plan.role]
     );
 
     if (updateResult.rowCount !== 1) {
@@ -242,10 +249,13 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
       WHERE reset_token = $2
         AND token_expiry > NOW()
         AND razorpay_order_id = $3
+        AND id = $4
+        AND plan_selected = $5
+        AND role = $6
         AND payment_status IS DISTINCT FROM 'completed'
       RETURNING id, reset_token
       `,
-      [plan.amountPaise / 100, resetToken, razorpay_order_id]
+      [plan.amountPaise / 100, resetToken, razorpay_order_id, session.id, plan.storedName, plan.role]
     );
 
     if (result.rowCount === 0) {
@@ -309,9 +319,11 @@ export const activateFreePlan = async (req: Request, res: Response) => {
        amount_paid = 0
    WHERE reset_token = $2
      AND token_expiry > NOW()
+     AND id = $3
+     AND role = 'CLIENT'
      AND payment_status IS DISTINCT FROM 'completed'
    RETURNING id`,
-  ["Client Basic", resetToken]
+  ["Client Basic", resetToken, session.id]
 );
 
     if (result.rowCount === 0) {

@@ -1,5 +1,8 @@
 # Testing and change-safety workflow
 
+For payment security and the registration-to-cancellation journey, use the
+[intern payment and journey checklist](docs/intern-payment-journey-checklist.md).
+
 Run these checks before accepting code copied from an AI tool or submitted
 by an intern.
 
