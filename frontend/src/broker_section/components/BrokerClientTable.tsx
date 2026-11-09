@@ -6,11 +6,31 @@ import type { ReactNode } from "react";
 import type { BrokerClient } from "../types/broker.types";
 import { formatIndiaDateTime } from "../../utils/formatters";
 
-const ChannelButton = ({ added, label, icon, onClick }: { added: boolean; label: string; icon: ReactNode; onClick: () => void }) => (
-  <Button size="small" variant={added ? "outlined" : "contained"} color={added ? "success" : "primary"} startIcon={icon} onClick={onClick}>
-    {added ? `${label} added` : `Add ${label}`}
-  </Button>
-);
+const ChannelButton = ({ added, label, icon, onClick }: { added: boolean; label: string; icon: ReactNode; onClick: () => void }) => {
+  const isWhatsApp = label === "WhatsApp";
+
+  const brandColor = isWhatsApp ? "#25D366" : "#229ED9";
+
+  return (
+    <Button
+      size="small"
+      variant={added ? "outlined" : "contained"}
+      startIcon={icon}
+      onClick={onClick}
+      sx={{
+        color: added ? brandColor : "#FFFFFF",
+        backgroundColor: added ? "transparent" : brandColor,
+        borderColor: brandColor,
+        "&:hover": {
+          backgroundColor: added ? `${brandColor}15` : isWhatsApp ? "#1DA851" : "#168AC5",
+          borderColor: brandColor,
+        },
+      }}
+    >
+      {added ? `${label} added` : `Add ${label}`}
+    </Button>
+  );
+};
 
 const BrokerClientTable = ({ clients, busyId, onChannel, onHistory }: {
   clients: BrokerClient[];

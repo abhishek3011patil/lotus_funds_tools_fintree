@@ -1,4 +1,4 @@
-.market-maker { max-width: 1580px; margin: 0 auto; color: #172b3d; }
+.market-maker { container-type: inline-size; width: 100%; min-width: 0; max-width: 1580px; margin: 0 auto; color: #172b3d; }
 .market-maker * { box-sizing: border-box; }
 .market-maker__intro { display:flex; justify-content:space-between; align-items:center; gap:24px; margin-bottom:24px; }
 .market-maker__intro h1 { margin:4px 0 6px; font-size:clamp(27px,3vw,38px); }
@@ -46,3 +46,17 @@
 .md-sheet__chart-caption { height:50px; background:var(--brand); color:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; text-align:center; }
 .md-sheet__disclaimer { margin:23px 39px 0; text-align:center; font-size:12px; line-height:1.55; display:grid; gap:9px; }.md-sheet__bottom-band { position:absolute; bottom:0; left:0; right:0; height:42px; background:var(--brand); }
 @media(max-width:1150px){.market-maker__layout{grid-template-columns:1fr}.market-maker__preview{position:static}}@media(max-width:650px){.market-maker__intro{align-items:stretch;flex-direction:column}.market-maker__form-grid{grid-template-columns:1fr}.market-maker__data-row{grid-template-columns:1fr 1fr}.market-maker__panel{padding:16px}}
+
+/* Use the space remaining beside the workspace navigation, rather than viewport width. */
+.market-maker__layout > *, .market-maker__controls > * { min-width: 0; }
+.market-maker__preview-name { overflow-wrap: anywhere; }
+.market-maker__table-editor { overflow-x: auto; }
+@container (max-width: 1000px) {
+  .market-maker__layout { grid-template-columns: minmax(0, 1fr); }
+  .market-maker__preview { position: static; }
+}
+@container (max-width: 600px) {
+  .market-maker__intro { align-items: stretch; flex-direction: column; }
+  .market-maker__form-grid { grid-template-columns: minmax(0, 1fr); }
+  .market-maker__panel { padding: 16px; }
+}

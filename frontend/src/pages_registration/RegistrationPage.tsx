@@ -1140,35 +1140,34 @@ const cities = selectedState
 
           </Grid>
 
-          <Grid size={{ xs: 12, md: 4 }}>
-            <TextField
+<Grid size={{ xs: 12, md: 4 }}>
+  <TextField
     required
     fullWidth
     name="telephone"
     label="Telephone"
+    sx={styles.input}
     value={formData.telephone}
     onChange={(e) => {
-        const value = e.target.value.replace(/\D/g, "");
+      const value = e.target.value.replace(/\D/g, "");
 
-        if (value.length <= 11) {
-            setFormData({
-                ...formData,
-                telephone: value,
-            });
-        }
+      if (value.length <= 11) {
+        setFormData({
+          ...formData,
+          telephone: value,
+        });
+      }
     }}
     inputProps={{
-        inputMode: "numeric",
-        maxLength: 11,
+      inputMode: "numeric",
+      maxLength: 11,
     }}
-    error={errors.telephone}
+    error={!!errors.telephone}
     helperText={
-        errors.telephone
-            ? "Telephone is required"
-            : ""
+      errors.telephone ? "Telephone is required" : ""
     }
-/>
-          </Grid>
+  />
+</Grid>
         </Grid>
 
         <Typography sx={[styles.subTitle, { mt: 5 }]}>Address</Typography>

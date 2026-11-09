@@ -1156,7 +1156,16 @@ if (Object.keys(validationErrors).length > 0) {
                           </Button>
                           <Button
                             variant="outlined"
-                            onClick={() => openFile(data[file.key])}
+                            onClick={() => {
+  const selectedFile = files[file.key];
+
+  if (selectedFile) {
+    window.open(URL.createObjectURL(selectedFile), "_blank");
+    return;
+  }
+
+  openFile(data[file.key]);
+}}
                             sx={{ textTransform: "none", borderRadius: "8px" }}
                           >
                             View

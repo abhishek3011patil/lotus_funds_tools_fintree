@@ -3,7 +3,7 @@ import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import NotificationsRoundedIcon from "@mui/icons-material/NotificationsRounded";
 import OnlinePredictionRoundedIcon from "@mui/icons-material/OnlinePredictionRounded";
 import TodayRoundedIcon from "@mui/icons-material/TodayRounded";
-import { Alert, Box, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Stack, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { fetchClientDashboard } from "../api";
 import type { ClientDashboardResponse } from "../types";
@@ -16,26 +16,142 @@ import { ClientDashboardSkeleton } from "../../components/ClientPageSkeletons";
 
 const ClientDashboardPage = () => {
   const navigate = useNavigate();
+
   const [dashboard, setDashboard] = useState<ClientDashboardResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadDashboard = async (signal?: AbortSignal) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const data = await fetchClientDashboard(signal);
+      setDashboard(data);
+    } catch (requestError: any) {
+      if (
+        requestError.code !== "ERR_CANCELED" &&
+        !signal?.aborted
+      ) {
+        setError(
+          requestError.response?.data?.message ||
+          "Unable to load your dashboard."
+        );
+      }
+    } finally {
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
+    }
+  };
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchClientDashboard(controller.signal)
-      .then(setDashboard)
-      .catch((requestError) => {
-        if ((requestError as { code?: string }).code !== "ERR_CANCELED") {
-          setError(requestError.response?.data?.message || "Unable to load your dashboard.");
-        }
-      });
+
+    loadDashboard(controller.signal);
+
     return () => controller.abort();
   }, []);
 
-  if (!dashboard && !error) {
+  if (loading && !dashboard) {
     return <ClientDashboardSkeleton />;
   }
 
-  if (!dashboard) return <Alert severity="error">{error}</Alert>;
+ if (!dashboard) {
+  return (
+    <Box
+      sx={{
+        minHeight: "65vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        px: 2,
+      }}
+    >
+      <Box
+        sx={{
+          width: "100%",
+          maxWidth: 440,
+          bgcolor: "#FFFFFF",
+          border: "1px solid #E8ECF3",
+          borderRadius: "18px",
+          p: { xs: 3, sm: 4 },
+          textAlign: "center",
+          boxShadow: "0 8px 30px rgba(15, 23, 42, 0.05)",
+        }}
+      >
+        <Box
+          sx={{
+            width: 64,
+            height: 64,
+            borderRadius: "50%",
+            bgcolor: "#FEF2F2",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            mx: "auto",
+            mb: 2.5,
+          }}
+        >
+          <NotificationsRoundedIcon
+            sx={{ fontSize: 30, color: "#DC2626" }}
+          />
+        </Box>
+
+        <Typography
+          sx={{
+            fontSize: 20,
+            fontWeight: 800,
+            color: "#172033",
+            mb: 1,
+          }}
+        >
+          Unable to load dashboard
+        </Typography>
+
+        <Typography
+          sx={{
+            fontSize: 14,
+            color: "#64748B",
+            lineHeight: 1.7,
+            mb: 3,
+          }}
+        >{error && error !== "Unable to load your dashboard."
+  ? error
+  : "We couldn't fetch your dashboard data. Please check your connection and try again."}
+          
+        </Typography>
+
+        <Button
+          variant="contained"
+          onClick={() => loadDashboard()}
+          disabled={loading}
+          sx={{
+            bgcolor: "#405EE6",
+            color: "#FFFFFF",
+            textTransform: "none",
+            fontWeight: 700,
+            fontSize: 14,
+            px: 3.5,
+            py: 1.2,
+            borderRadius: "10px",
+            boxShadow: "none",
+            "&:hover": {
+              bgcolor: "#304BC7",
+              boxShadow: "0 4px 12px rgba(64, 94, 230, 0.2)",
+            },
+            "&:disabled": {
+              bgcolor: "#A5B4FC",
+              color: "#FFFFFF",
+            },
+          }}
+        >
+          {loading ? "Retrying..." : "Try Again"}
+        </Button>
+      </Box>
+    </Box>
+  );
+}
 
   const firstName = (localStorage.getItem("username") || "Client").split(/[._\s-]/)[0];
   const stats = [

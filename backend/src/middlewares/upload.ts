@@ -5,6 +5,8 @@ import { Request } from "express";
 import { randomUUID } from "crypto";
 
 const uploadDir = path.join(__dirname, "../../uploads");
+//const uploadDir = path.join(process.cwd(), "uploads");
+
 
 // ✅ ensure folder exists
 if (!fs.existsSync(uploadDir)) {
