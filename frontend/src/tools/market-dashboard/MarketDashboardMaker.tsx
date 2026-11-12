@@ -1,3 +1,4 @@
+import PasteableFileInput from "../../components/common/PasteableFileInput";
 import { useEffect, useMemo, useRef, useState } from "react";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
@@ -161,7 +162,7 @@ export default function MarketDashboardMaker() {
         </section>
         <section className="market-maker__panel">
           <div className="market-maker__panel-head"><span>03</span><div><h2>Chart of the day</h2><p>Upload the new graph each morning; it fills the chart area in the template.</p></div></div>
-          <label className="market-maker__upload">Upload daily graph<input type="file" accept="image/*" onChange={event => uploadChart(event.target.files?.[0])} /></label>
+          <label className="market-maker__upload">Upload daily graph<PasteableFileInput type="file" accept="image/*" onChange={event => uploadChart(event.target.files?.[0])} /></label>
           <label className="market-maker__wide-field">Chart caption<input value={data.chartCaption} onChange={event => setData(current => ({ ...current, chartCaption: event.target.value }))} /></label>
         </section>
         <section className="market-maker__panel">

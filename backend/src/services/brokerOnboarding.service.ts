@@ -29,8 +29,20 @@ export const registerRAWithBrokerInvitation = async (
     const result = await client.query(sql, values);
     const raId = result.rows[0].ra_id;
     await client.query(
-      `INSERT INTO broker_research_analysts (broker_id, ra_id, onboarding_method)
-       VALUES ($1, $2, $3)`, [invite.broker_id, raId, invite.onboarding_method]
+      `INSERT INTO broker_research_analysts (broker_id, ra_id, onboarding_method, status)
+       VALUES ($1, $2, $3, 'PENDING')`, [invite.broker_id, raId, invite.onboarding_method]
+    );
+    await client.query(
+      `INSERT INTO subscription_notifications (user_id, notification_key, type, title, message)
+       SELECT broker.user_id, CONCAT('BROKER_RA_REGISTRATION:', $2::text),
+         'New Research Analyst', 'Research Analyst registration received',
+         CONCAT(COALESCE(NULLIF(CONCAT_WS(' ', ra.first_name, ra.surname), ''), 'A Research Analyst'),
+           ' completed registration through your invitation and is pending onboarding.')
+       FROM broker_details broker
+       JOIN ra_details ra ON ra.id = $2
+       WHERE broker.id = $1
+       ON CONFLICT DO NOTHING`,
+      [invite.broker_id, raId]
     );
     await client.query(
       "UPDATE broker_ra_invitations SET used_at = now(), ra_id = $2 WHERE id = $1",

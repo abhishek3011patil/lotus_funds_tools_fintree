@@ -1,3 +1,4 @@
+import PasteableFileInput from "../../components/common/PasteableFileInput";
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
@@ -252,7 +253,7 @@ const generateZip = async () => {
         <div style={rowStyle}>
           <div style={cardStyle}>
             <h3>1) Upload Logos</h3>
-            <input type="file" multiple accept="image/*" onChange={handleLogoInput} />
+            <PasteableFileInput type="file" multiple accept="image/*" onChange={handleLogoInput} />
             <div style={thumbsGridStyle}>
               {logoStates.map((logo, idx) => (
                 <div key={idx} onClick={() => setSelectedLogoIdx(idx)} 

@@ -1,3 +1,4 @@
+import PasteableFileInput from "../../components/common/PasteableFileInput";
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -145,7 +146,7 @@ const Generator: React.FC = () => {
         <p style={{ fontSize: '13px', color: '#666' }}>All changes reflect in real-time in the preview below.</p>
 
         <label style={labelStyle}>Upload Logos</label>
-        <input type="file" multiple accept="image/*" onChange={handleLogoUpload} style={inputStyle} />
+        <PasteableFileInput type="file" multiple accept="image/*" onChange={handleLogoUpload} style={inputStyle} />
 
         <label style={labelStyle}>Morning Action Header</label>
         <input style={inputStyle} value={morningHeader} onChange={(e) => setMorningHeader(e.target.value)} />

@@ -1,3 +1,4 @@
+import PasteableFileInput from "../common/PasteableFileInput";
 import { useEffect, useRef, useState } from "react";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import {
@@ -118,7 +119,7 @@ export default function CompanyLibrary({ onChange, onMessage, disabled = false }
 
   return <section className="company-library">
     <div className="company-library__heading"><h2>Company library</h2><p>Client logos, colors, and email addresses are saved for employee tools.</p></div>
-    <label className="company-library__upload">Add company logos<input ref={uploadRef} type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={disabled || working} onChange={event => void uploadCompanies(event.target.files)} /></label>
+    <label className="company-library__upload">Add company logos<PasteableFileInput ref={uploadRef} type="file" accept="image/png,image/jpeg,image/webp" multiple disabled={disabled || working} onChange={event => void uploadCompanies(event.target.files)} /></label>
     <p className="company-library__hint">A logo’s main color is selected automatically. Use the settings button beside it to save its client email.</p>
     {companies.length > 0 && <div className="company-library__selection">
       <button type="button" onClick={() => setSelectedIds(companies.map(company => company.id))} disabled={disabled || working}>Select all</button>

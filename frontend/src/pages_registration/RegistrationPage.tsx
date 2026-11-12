@@ -1,3 +1,4 @@
+import PasteableFileInput from "../components/common/PasteableFileInput";
 import React, { useState, useEffect } from "react";
 import {
   Box,
@@ -1315,7 +1316,7 @@ const cities = selectedState
             }}
           >
             Choose File
-            <input
+            <PasteableFileInput
               type="file"
               hidden
               accept="image/*"
@@ -1410,7 +1411,7 @@ helperText={
       >
         {fileLabels.sebiCert !== "No file chosen" ? "Uploaded" : "Upload Media"}
 
-        <input
+        <PasteableFileInput
           type="file"
           hidden
           onChange={(e) => handleDocUpload(e, "sebiCert")}
@@ -1451,7 +1452,7 @@ helperText={
       >
         {fileLabels.sebiReceipt !== "No file chosen" ? "Uploaded" : "Upload Media"}
 
-        <input
+        <PasteableFileInput
           type="file"
           hidden
           onChange={(e) => handleDocUpload(e, "sebiReceipt")}
@@ -1533,7 +1534,7 @@ helperText={
       >
         {fileLabels.nismCert !== "No file chosen" ? "Uploaded" : "Upload Media"}
 
-        <input
+        <PasteableFileInput
           type="file"
           hidden
           onChange={(e) => handleDocUpload(e, "nismCert")}
@@ -1750,7 +1751,7 @@ helperText={
               ? "Uploaded"
               : "Upload Media"}
 
-            <input
+            <PasteableFileInput
               type="file"
               hidden
               onChange={(e) => handleDocUpload(e, "cancelledCheque")}
@@ -1825,7 +1826,7 @@ helperText={
               ? "Uploaded"
               : "Upload Media"}
 
-            <input
+            <PasteableFileInput
               type="file"
               hidden
               onChange={(e) => handleDocUpload(e, "panCard")}
@@ -1899,7 +1900,7 @@ helperText={
               ? "Uploaded"
               : "Upload Media"}
 
-            <input
+            <PasteableFileInput
               type="file"
               hidden
               onChange={(e) => handleDocUpload(e, "addressProofDoc")}

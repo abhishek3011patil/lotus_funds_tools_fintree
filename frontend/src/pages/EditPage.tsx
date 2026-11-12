@@ -1,3 +1,4 @@
+import PasteableFileInput from "../components/common/PasteableFileInput";
 import { useEffect, useState, ChangeEvent } from "react";
 import { useParams } from "react-router-dom";
 import ProfilePictureUpload from "../components/setting/ProfilePictureUpload";
@@ -1147,7 +1148,7 @@ if (Object.keys(validationErrors).length > 0) {
                             sx={{ textTransform: "none", borderRadius: "8px" }}
                           >
                             Upload {file.label}
-                            <input
+                            <PasteableFileInput
                               type="file"
                               hidden
                               name={file.key}

@@ -105,3 +105,19 @@ test("RA can update the picture directly at the top of Settings", async ({ page 
   await expect(dialog).not.toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("settings-profile-picture.png"), animations: "disabled" });
 });
+
+test("pasting a screenshot opens the profile picture editor", async ({ page }) => {
+  await setup(page, "RESEARCH_ANALYST");
+  await page.goto("/settings");
+  const region = page.getByRole("region", { name: "Profile picture" });
+  await region.getByRole("button", { name: "Upload picture" }).click();
+  const uploadDialog = page.getByRole("dialog", { name: "Upload or paste a file" });
+  await expect(uploadDialog).toBeVisible();
+  await uploadDialog.evaluate(async button => {
+    const canvas = document.createElement("canvas"); canvas.width = 32; canvas.height = 32;
+    const blob = await new Promise<Blob>(resolve => canvas.toBlob(value => resolve(value!), "image/png"));
+    const transfer = new DataTransfer(); transfer.items.add(new File([blob], "screenshot.png", { type: "image/png" }));
+    button.dispatchEvent(new ClipboardEvent("paste", { clipboardData: transfer, bubbles: true, cancelable: true }));
+  });
+  await expect(page.getByRole("dialog", { name: "Adjust profile picture" })).toBeVisible();
+});

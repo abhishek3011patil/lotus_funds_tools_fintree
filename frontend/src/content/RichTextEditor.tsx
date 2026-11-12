@@ -1,3 +1,4 @@
+import PasteableFileInput from "../components/common/PasteableFileInput";
 import { useEffect, useRef, useState } from "react";
 import { Box, Button, CircularProgress, Divider, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import FormatBoldRoundedIcon from "@mui/icons-material/FormatBoldRounded";
@@ -148,9 +149,9 @@ const addImage = async (file?: File) => {
         {tools.map(([label, icon, name, argument]) => <Tooltip title={label} key={label}><IconButton size="small" aria-label={label} onMouseDown={event => { event.preventDefault(); command(name, argument); }}>{icon}</IconButton></Tooltip>)}
         <Tooltip title="Add link"><IconButton size="small" onClick={addLink}><LinkRoundedIcon /></IconButton></Tooltip>
         <Button size="small" startIcon={uploading ? <CircularProgress size={16} /> : <ImageRoundedIcon />} onClick={() => fileInput.current?.click()} disabled={uploading} sx={{ ml: .5 }}>Add image</Button>
-        <input ref={fileInput} type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={e => void addImage(e.target.files?.[0])} />
+        <PasteableFileInput ref={fileInput} type="file" hidden disabled={uploading} accept="image/jpeg,image/png,image/webp" onChange={e => void addImage(e.target.files?.[0])} />
       </Stack>
-      <Box ref={editor} contentEditable suppressContentEditableWarning onInput={() => editor.current && onChange(serialize(editor.current))} data-placeholder="Write your blog here…" sx={{ minHeight: 320, p: 2.5, outline: 0, lineHeight: 1.75, "&:empty:before": { content: "attr(data-placeholder)", color: "#94A3B8" }, "& h2": { fontSize: "1.6rem" }, "& h3": { fontSize: "1.25rem" }, "& blockquote": { borderLeft: "4px solid #5271FF", bgcolor: "#F1F5FF", m: "16px 0", p: "8px 16px" }, "& img": { maxWidth: "100%", height: "auto", borderRadius: 2 }, "& figcaption": {
+      <Box ref={editor} contentEditable suppressContentEditableWarning onPaste={event => { const image = Array.from(event.clipboardData.files).find(file => file.type.startsWith("image/")); if (image) { event.preventDefault(); if (!uploading) void addImage(image); } }} onInput={() => editor.current && onChange(serialize(editor.current))} data-placeholder="Write your blog here…" sx={{ minHeight: 320, p: 2.5, outline: 0, lineHeight: 1.75, "&:empty:before": { content: "attr(data-placeholder)", color: "#94A3B8" }, "& h2": { fontSize: "1.6rem" }, "& h3": { fontSize: "1.25rem" }, "& blockquote": { borderLeft: "4px solid #5271FF", bgcolor: "#F1F5FF", m: "16px 0", p: "8px 16px" }, "& img": { maxWidth: "100%", height: "auto", borderRadius: 2 }, "& figcaption": {
   color: "text.secondary",
   textAlign: "center",
   fontSize: 13,

@@ -1,3 +1,4 @@
+import PasteableFileInput from "../components/common/PasteableFileInput";
 import {
   Autocomplete,
   Box,
@@ -828,13 +829,13 @@ Rationale: ${rationale}
         <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 1.5, mb: 2 }}>
           <TextField required multiline rows={2} placeholder="Research Analyst's Remarks" sx={{ flexGrow: 1 }} />
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1, minWidth: { xs: "100%", sm: 160 } }}>
-            <input
+            <PasteableFileInput
               required
               type="file"
               ref={fileInputRef}
               onChange={handleFileChange}
               style={{ display: 'none' }}
-              accept="image/*,video/*,pdf/*"
+              accept="image/*,video/*,application/pdf"
             />
 
             {/* Your Button */}

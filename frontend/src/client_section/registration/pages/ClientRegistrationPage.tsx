@@ -1,3 +1,4 @@
+import PasteableFileInput from "../../../components/common/PasteableFileInput";
 import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import {
@@ -324,7 +325,7 @@ setSubmitting(true);
               <Box>
                 <Button component="label" variant="outlined" startIcon={<AddAPhotoOutlinedIcon />} sx={{ textTransform: "none", fontWeight: 700 }}>
                   Add profile picture
-                  <input hidden type="file" accept="image/*" onChange={handlePicture} />
+                  <PasteableFileInput hidden type="file" accept="image/*" onChange={handlePicture} />
                 </Button>
                 <Typography variant="caption" color="text.secondary" display="block" mt={0.8}>
                   JPG, PNG or WEBP, up to 15 MB.

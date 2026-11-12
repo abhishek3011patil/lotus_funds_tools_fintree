@@ -1,3 +1,4 @@
+import PasteableFileInput from "../common/PasteableFileInput";
 import { useEffect, useRef, useState } from "react";
 import { Alert, Avatar, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Paper, Slider, Stack, Typography } from "@mui/material";
 import AddAPhotoOutlinedIcon from "@mui/icons-material/AddAPhotoOutlined";
@@ -144,7 +145,7 @@ export default function ProfilePictureUpload({ currentFilename, value, onChange,
         <Typography variant="body2" color="text.secondary" mt={1}>{helperText}</Typography>
       </Box>
     </Stack>
-    <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" aria-label="Choose profile picture" hidden onChange={e => { void choose(e.target.files?.[0]); e.target.value = ""; }} />
+    <PasteableFileInput ref={input} type="file" disabled={loading || saving} accept="image/jpeg,image/png,image/webp" aria-label="Choose profile picture" hidden onChange={e => { void choose(e.target.files?.[0]); e.target.value = ""; }} />
     {currentMissing && !value && <Alert severity="info" sx={{ mt: 2 }}>The current picture is unavailable. Upload a new picture to replace it.</Alert>}
     {error && !source && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
     <Dialog keepMounted open={Boolean(source)} onClose={() => { if (!saving) setSource(undefined); }} fullWidth maxWidth="sm" aria-labelledby="picture-editor-title">

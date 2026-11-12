@@ -185,6 +185,8 @@ describe("atomic invited registration", () => {
     const { query, release } = setup({ id: "invite", broker_id: "broker-two", email: "ra@example.test", onboarding_method: "LINK" });
     await registerRAWithBrokerInvitation("INSERT RA", [], token, "ra@example.test");
     expect(query).toHaveBeenCalledWith(expect.stringContaining("broker_research_analysts"), ["broker-two", "new-ra", "LINK"]);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("'PENDING'"), ["broker-two", "new-ra", "LINK"]);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("INSERT INTO subscription_notifications"), ["broker-two", "new-ra"]);
     expect(query).toHaveBeenCalledWith(expect.stringContaining("SET used_at"), ["invite", "new-ra"]);
     expect(query).toHaveBeenLastCalledWith("COMMIT");
     expect(release).toHaveBeenCalledOnce();

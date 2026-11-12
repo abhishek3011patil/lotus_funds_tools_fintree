@@ -1,3 +1,4 @@
+import PasteableFileInput from "../components/common/PasteableFileInput";
 import { useEffect, useState, ChangeEvent } from "react";
 import {
   Box,
@@ -520,7 +521,7 @@ for (const pair of formData.entries()) {
                 <Grid item xs={12} sm={6} key={file.key}>
                   <Button variant="outlined" component="label">
                     Upload {file.label}
-                    <input
+                    <PasteableFileInput
                       type="file"
                       hidden
                       name={file.key}

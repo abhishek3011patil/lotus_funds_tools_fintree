@@ -270,14 +270,14 @@ export const verifyBrokerSubscriptionPayment = async (req: AuthRequest, res: Res
       );
       await db.query(
         `INSERT INTO subscription_notifications (user_id, subscription_id, notification_key, type, title, message)
-         SELECT broker.user_id, subscription.id, CONCAT('BROKER_CLIENT_SUBSCRIPTION:', subscription.id::text),
+         SELECT broker.user_id, $3, CONCAT('BROKER_CLIENT_SUBSCRIPTION:', $3::text),
                 'New Client Subscription', 'New client subscription',
                 CONCAT(COALESCE(NULLIF(client.name, ''), client.email, 'A client'), ' subscribed to your brokerage.')
          FROM broker_details broker
          JOIN users client ON client.id = $1
          WHERE broker.id = $2
          ON CONFLICT DO NOTHING`,
-        [clientUserId, brokerId],
+        [clientUserId, brokerId, subscription.rows[0].id],
       );
       await db.query("COMMIT");
       return res.json({ success: true, message: "Broker subscription activated.", subscription: subscription.rows[0] });

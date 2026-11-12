@@ -1,3 +1,4 @@
+import PasteableFileInput from "./PasteableFileInput";
 import { useRef, useState } from "react";
 import { Alert, Box, Button, IconButton, Typography } from "@mui/material";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
@@ -22,7 +23,7 @@ export default function RecommendationMediaUpload({
 
   return (
     <Box sx={{ minWidth: 0 }}>
-      <input
+      <PasteableFileInput
         ref={input}
         type="file"
         multiple

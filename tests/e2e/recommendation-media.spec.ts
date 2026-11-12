@@ -81,3 +81,38 @@ test("performance viewer shows all attachments and keeps legacy media available"
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
 });
+
+test("pastes images and PDFs through the existing attachment picker", async ({ page }) => {
+  await page.goto("/recommendations");
+  await page.getByRole("button", { name: "Upload Media", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Upload or paste a file" });
+  await expect(dialog).toBeVisible();
+  await dialog.evaluate(button => {
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(["image-data"], "pasted-chart.png", { type: "image/png" }));
+    transfer.items.add(new File(["pdf-data"], "pasted-report.pdf", { type: "application/pdf" }));
+    button.dispatchEvent(new ClipboardEvent("paste", { clipboardData: transfer, bubbles: true, cancelable: true }));
+  });
+  await expect(page.getByRole("button", { name: "Upload Media (2/10)", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remove pasted-chart.png" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remove pasted-report.pdf" })).toBeVisible();
+});
+
+test("upload dialog supports browsing and dropping files", async ({ page }) => {
+  await page.goto("/recommendations");
+  await page.getByRole("button", { name: "Upload Media", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Upload or paste a file" });
+  const chooserPromise = page.waitForEvent("filechooser");
+  await dialog.getByRole("button", { name: "Browse files" }).click();
+  const chooser = await chooserPromise;
+  await chooser.setFiles({ name: "browse.pdf", mimeType: "application/pdf", buffer: Buffer.from("pdf") });
+  await expect(dialog).not.toBeVisible();
+  await expect(page.getByRole("button", { name: "Remove browse.pdf" })).toBeVisible();
+  await page.getByRole("button", { name: "Upload Media (1/10)", exact: true }).click();
+  await dialog.getByRole("region", { name: "Drop or paste files here" }).evaluate(target => {
+    const transfer = new DataTransfer();
+    transfer.items.add(new File(["png"], "dropped.png", { type: "image/png" }));
+    target.dispatchEvent(new DragEvent("drop", { dataTransfer: transfer, bubbles: true, cancelable: true }));
+  });
+  await expect(page.getByRole("button", { name: "Remove dropped.png" })).toBeVisible();
+});

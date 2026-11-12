@@ -1,3 +1,4 @@
+import PasteableFileInput from "../components/common/PasteableFileInput";
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
@@ -201,7 +202,7 @@ const FileUploadBox = ({
           "&:hover": { borderColor: "#2563EB", bgcolor: "#F0F6FF" },
         }}
       >
-        <input 
+        <PasteableFileInput
           type="file" 
           hidden 
           ref={ref} 
