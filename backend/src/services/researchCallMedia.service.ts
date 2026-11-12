@@ -12,6 +12,11 @@ export type ResearchCallMedia = {
   size: number;
 };
 
+export type TelegramMessageSendResult = {
+  messageIds: number[];
+  failedAttachments: Array<{ fileName: string; reason: string }>;
+};
+
 const uploadDir = path.resolve(__dirname, "../../uploads");
 
 const safeFileName = (value: unknown, fallback: string): string => {
@@ -77,22 +82,24 @@ export const sendTelegramMessageWithMedia = async (
   entity: any,
   message: string,
   media: ResearchCallMedia[],
-): Promise<Array<{ fileName: string; reason: string }>> => {
+): Promise<TelegramMessageSendResult> => {
   const sentMessage = await client.sendMessage(entity, { message });
-  const failures: Array<{ fileName: string; reason: string }> = [];
+  const messageIds = [Number(sentMessage.id)];
+  const failedAttachments: Array<{ fileName: string; reason: string }> = [];
   for (const attachment of media) {
     try {
-      await client.sendFile(entity, {
+      const sentAttachment = await client.sendFile(entity, {
         file: new CustomFile(attachment.fileName, attachment.size, attachment.filePath),
         replyTo: sentMessage.id,
         forceDocument: !attachment.mimeType.startsWith("image/"),
       });
+      if (sentAttachment?.id) messageIds.push(Number(sentAttachment.id));
     } catch (error) {
-      failures.push({
+      failedAttachments.push({
         fileName: attachment.fileName,
         reason: error instanceof Error ? error.message : "Telegram attachment failed",
       });
     }
   }
-  return failures;
+  return { messageIds: messageIds.filter(Number.isSafeInteger), failedAttachments };
 };

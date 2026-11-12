@@ -102,17 +102,47 @@ function AttachmentPreview({
   );
 }
 
+export const resolveRecommendationMedia = (filePath?: string | null, attachments?: RecommendationAttachment[] | null) => {
+  const media = Array.isArray(attachments) ? attachments.filter(file => file?.url) : [];
+  if (!media.length && filePath?.trim()) {
+    media.push({ url: filePath, name: filePath.replace(/\\/g, "/").split("/").pop() || "Attachment" });
+  }
+  return media;
+};
+
+export function RecommendationMediaDialog({ filePath, attachments, symbol, open, onClose }: {
+  filePath?: string | null;
+  attachments?: RecommendationAttachment[] | null;
+  symbol: string;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const titleId = useId();
+  const media = resolveRecommendationMedia(filePath, attachments);
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md" aria-labelledby={titleId}>
+      <DialogTitle id={titleId}>Media — {symbol} ({media.length})</DialogTitle>
+      <DialogContent dividers>
+        {!media.length ? <Typography color="text.secondary">No media attached to this call.</Typography> : (
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: media.length > 1 ? "repeat(2, minmax(0, 1fr))" : "1fr" }, gap: 2 }}>
+            {media.map((attachment, index) => (
+              <AttachmentPreview key={`${attachment.url}-${index}`} attachment={attachment} symbol={symbol} />
+            ))}
+          </Box>
+        )}
+      </DialogContent>
+      <DialogActions><Button onClick={onClose}>Close</Button></DialogActions>
+    </Dialog>
+  );
+}
+
 export default function RecommendationMediaButton({ filePath, attachments, symbol }: {
   filePath?: string | null;
   attachments?: RecommendationAttachment[] | null;
   symbol: string;
 }) {
   const [open, setOpen] = useState(false);
-  const titleId = useId();
-  const media = Array.isArray(attachments) ? attachments.filter(file => file?.url) : [];
-  if (!media.length && filePath?.trim()) {
-    media.push({ url: filePath, name: filePath.replace(/\\/g, "/").split("/").pop() || "Attachment" });
-  }
+  const media = resolveRecommendationMedia(filePath, attachments);
   if (!media.length) {
     return <Typography variant="body2" color="text.secondary">No media</Typography>;
   }
@@ -128,17 +158,13 @@ export default function RecommendationMediaButton({ filePath, attachments, symbo
       >
         View media ({media.length})
       </Button>
-      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="md" aria-labelledby={titleId}>
-        <DialogTitle id={titleId}>Media — {symbol} ({media.length})</DialogTitle>
-        <DialogContent dividers>
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: media.length > 1 ? "repeat(2, minmax(0, 1fr))" : "1fr" }, gap: 2 }}>
-            {media.map((attachment, index) => (
-              <AttachmentPreview key={`${attachment.url}-${index}`} attachment={attachment} symbol={symbol} />
-            ))}
-          </Box>
-        </DialogContent>
-        <DialogActions><Button onClick={() => setOpen(false)}>Close</Button></DialogActions>
-      </Dialog>
+      <RecommendationMediaDialog
+        filePath={filePath}
+        attachments={attachments}
+        symbol={symbol}
+        open={open}
+        onClose={() => setOpen(false)}
+      />
     </>
   );
 }

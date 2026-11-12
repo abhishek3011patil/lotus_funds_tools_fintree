@@ -17,6 +17,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import RecommendationHistory from "./common/RecommendationHistory";
+import PerformanceCallOptions from "../components/common/PerformanceCallOptions";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import PieChartIcon from "@mui/icons-material/PieChart";
 import TrackChangesIcon from "@mui/icons-material/TrackChanges";
@@ -672,11 +673,18 @@ return (
 {/* Recommendation History Table Component */}
 <Box sx={{ mt: 1 }}>
 <RecommendationHistory
-  showMedia
   enableExport
   showAllRAs={true}
   exportFileBaseName="ra-performance"
   searchQuery={search}
+  renderRowActions={(row) => (
+    <PerformanceCallOptions
+      callId={row.id}
+      filePath={row.file_url}
+      attachments={row.attachments}
+      symbol={row.symbol}
+    />
+  )}
 />
 </Box>
     </Box>

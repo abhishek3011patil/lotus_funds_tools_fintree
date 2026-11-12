@@ -67,7 +67,7 @@ export const sendTelegramToOwnerParticipants = async (
             ? participant.telegram_client_name
             : participant.telegram_user_id;
           const entity = await telegram.getEntity(target);
-          const mediaFailures = await sendTelegramMessageWithMedia(telegram, entity, message, media);
+          const { failedAttachments: mediaFailures } = await sendTelegramMessageWithMedia(telegram, entity, message, media);
           if (participant.deliveryId) {
             await pool.query(
               `UPDATE broker_call_deliveries SET status = $1, sent_at = NOW(),

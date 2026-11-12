@@ -24,6 +24,10 @@ import { getParticipantsByRA } from "../controllers/telegram.controller";
 import { upload } from "../middlewares/upload";
 import { pool } from "../db";
 import { requireAdmin } from "../middlewares/admin.middleware";
+import {
+  deleteResearchCallTelegramMessages,
+  getResearchCallTelegramMessageStatus,
+} from "../controllers/telegramMessageHistory.controller";
 
 const router = express.Router();
 
@@ -32,6 +36,8 @@ router.post("/save-user", authenticate, saveTelegramUser);
 router.put("/participant/:id", authenticate, updateParticipant);
 router.delete("/participant/:id", authenticate, deleteParticipant);
 router.post("/send-ra-message", authenticate, sendMessageToRAClients);
+router.get("/research-call/:researchCallId/messages", authenticate, getResearchCallTelegramMessageStatus);
+router.delete("/research-call/:researchCallId/messages", authenticate, deleteResearchCallTelegramMessages);
 router.post("/send-otp", authenticate, sendOtp);
 router.post("/verify-otp", authenticate, verifyOtp);
 router.get("/ra/:raId", authenticate, getParticipantsByRA);

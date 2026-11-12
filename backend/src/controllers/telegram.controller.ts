@@ -837,6 +837,7 @@ export const sendMessageToRAClients = async (
       pool.query(
         `
         SELECT
+          id,
           telegram_user_id,
           telegram_client_name,
           entity_type,
@@ -879,6 +880,27 @@ export const sendMessageToRAClients = async (
     }
 
    const finalMessage = String(frontendMessage).trim();
+    const broadcastResult = await pool.query(
+      `INSERT INTO telegram_message_broadcasts
+         (sender_user_id, research_call_id, message_text, recipient_count, status)
+       VALUES ($1, $2, $3, $4, 'SENDING') RETURNING id`,
+      [raId, /^[a-f0-9-]{36}$/i.test(researchCallId) ? researchCallId : null, finalMessage, users.length],
+    );
+    const broadcastId = String(broadcastResult.rows[0].id);
+    const recordDelivery = async (
+      participant: any,
+      target: string,
+      messageIds: number[],
+      status: "SENT" | "PARTIAL" | "FAILED",
+      errorMessage: string | null = null,
+    ) => pool.query(
+      `INSERT INTO telegram_message_deliveries
+         (broadcast_id, participant_id, telegram_peer, recipient_name, entity_type, message_ids, status, error_message)
+       VALUES ($1, $2, $3, $4, $5, $6::bigint[], $7, $8)`,
+      [broadcastId, participant.id, target,
+        String(participant.telegram_client_name || participant.telegram_user_id || target),
+        participant.entity_type, messageIds, status, errorMessage?.slice(0, 1000) || null],
+    );
 
 // Read Full Disclaimer / Disclosure at : https://lotusfunds.com/disclaimer&disclosure
 
@@ -887,6 +909,7 @@ export const sendMessageToRAClients = async (
     res.status(202).json({
       success: true,
       message: "Telegram sending started",
+      broadcastId,
       stats: {
         total: users.length,
       },
@@ -896,21 +919,27 @@ export const sendMessageToRAClients = async (
     setImmediate(async () => {
       let successCount = 0;
       let failCount = 0;
+      let sentToAnyCount = 0;
       const failedEntities: any[] = [];
 
       try {
         const client = await createClient(sessionString);
 
         for (const u of users) {
+          const target = u.entity_type === "GROUP" || u.entity_type === "CHANNEL"
+            ? u.telegram_client_name : u.telegram_user_id;
           try {
             console.log(
               `📨 Sending to ${u.entity_type}:`,
               u.telegram_client_name || u.telegram_user_id
             );
-            const target = u.entity_type === "GROUP" || u.entity_type === "CHANNEL"
-              ? u.telegram_client_name : u.telegram_user_id;
             const entity = await client.getEntity(target);
-            const mediaFailures = await sendTelegramMessageWithMedia(client, entity, finalMessage, media);
+            const sendResult = await sendTelegramMessageWithMedia(client, entity, finalMessage, media);
+            const mediaFailures = sendResult.failedAttachments;
+            sentToAnyCount++;
+            await recordDelivery(u, String(target), sendResult.messageIds,
+              mediaFailures.length ? "PARTIAL" : "SENT",
+              mediaFailures.length ? `Text sent; ${mediaFailures.length} attachment(s) failed` : null);
 
             console.log(
               `✅ Sent to ${u.entity_type}:`,
@@ -945,10 +974,13 @@ export const sendMessageToRAClients = async (
               await sleep(seconds * 1000);
 
               try {
-                const target = u.entity_type === "GROUP" || u.entity_type === "CHANNEL"
-                  ? u.telegram_client_name : u.telegram_user_id;
                 const retryEntity = await client.getEntity(target);
-                const mediaFailures = await sendTelegramMessageWithMedia(client, retryEntity, finalMessage, media);
+                const sendResult = await sendTelegramMessageWithMedia(client, retryEntity, finalMessage, media);
+                const mediaFailures = sendResult.failedAttachments;
+                sentToAnyCount++;
+                await recordDelivery(u, String(target), sendResult.messageIds,
+                  mediaFailures.length ? "PARTIAL" : "SENT",
+                  mediaFailures.length ? `Text sent; ${mediaFailures.length} attachment(s) failed` : null);
 
                 console.log("✅ Retry success:", u.telegram_client_name);
                 if (mediaFailures.length) {
@@ -964,6 +996,7 @@ export const sendMessageToRAClients = async (
                 }
               } catch (retryErr: any) {
                 failCount++;
+                await recordDelivery(u, String(target), [], "FAILED", retryErr.message);
 
                 failedEntities.push({
                   entity: u.telegram_client_name || u.telegram_user_id,
@@ -973,6 +1006,8 @@ export const sendMessageToRAClients = async (
               }
             } else {
               failCount++;
+              await recordDelivery(u, String(u.entity_type === "GROUP" || u.entity_type === "CHANNEL"
+                ? u.telegram_client_name : u.telegram_user_id), [], "FAILED", err.message);
 
               failedEntities.push({
                 entity: u.telegram_client_name || u.telegram_user_id,
@@ -989,6 +1024,11 @@ export const sendMessageToRAClients = async (
           failed: failCount,
           failedEntities,
         });
+        await pool.query(
+          `UPDATE telegram_message_broadcasts SET status = $1, completed_at = NOW(), updated_at = NOW()
+           WHERE id = $2`,
+          [sentToAnyCount === 0 ? "FAILED" : failCount > 0 ? "PARTIAL" : "SENT", broadcastId],
+        );
         await createAuditLog({
   adminId: req.user?.id,
  adminName: req.user?.name || "RA",
@@ -1012,6 +1052,10 @@ export const sendMessageToRAClients = async (
 });
       } catch (err: any) {
         console.error("❌ BACKGROUND TELEGRAM ERROR:", err.message);
+        await pool.query(
+          `UPDATE telegram_message_broadcasts SET status = 'FAILED', completed_at = NOW(), updated_at = NOW()
+           WHERE id = $1`, [broadcastId],
+        ).catch(() => undefined);
       }
     });
 
