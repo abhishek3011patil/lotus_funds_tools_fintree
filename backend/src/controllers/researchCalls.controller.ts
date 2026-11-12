@@ -87,6 +87,7 @@ export const createResearchCall = async (
       call_type,
       trade_type,
       expiry_date,
+      lot_size: submittedLotSize,
       entry_price,
       entry_price_low,
       entry_price_upper,
@@ -103,6 +104,17 @@ export const createResearchCall = async (
       has_vested_interest,
       research_remarks,
     } = req.body;
+
+    const lotSize = submittedLotSize === undefined || submittedLotSize === null || submittedLotSize === ""
+      ? null
+      : Number(submittedLotSize);
+    if (lotSize !== null && (!Number.isSafeInteger(lotSize) || lotSize < 1)) {
+      return res.status(400).json({
+        success: false,
+        code: "INVALID_LOT_SIZE",
+        message: "Lot Size must be a positive whole number.",
+      });
+    }
 
     const normalizedStatus =
       String(status).trim().toUpperCase();
@@ -259,13 +271,14 @@ export const createResearchCall = async (
         risk_reward_ratio,
         audience_mode,
         audience_groups_snapshot,
-        audience_recipient_snapshot
+        audience_recipient_snapshot,
+        lot_size
       )
       VALUES (
         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
         $11,$12,$13,$14,$15,$16,$17,$18,$19,
         $20,$21,$22,$23,$24,$25,$26,$27,$28,
-        $29,$30,$31,$32,$33,$34,$35,$36
+        $29,$30,$31,$32,$33,$34,$35,$36,$37
       )
       RETURNING *;
     `;
@@ -312,6 +325,7 @@ export const createResearchCall = async (
       resolvedAudience.mode,
       JSON.stringify(resolvedAudience.selectedGroups),
       JSON.stringify(resolvedAudience.recipients),
+      lotSize,
     ];
 
 const { rows } = await pool.query(query, values);
@@ -614,6 +628,7 @@ export const getResearchCalls = async (req: AuthRequest, res: Response) => {
 
     symbol: row.symbol,
     name: row.display_name,
+    lotSize: row.lot_size,
     
     action: row.action,
     call_type: row.call_type,
@@ -884,6 +899,15 @@ const callResult = await client.query(
 }
 
     const existingCall = callResult.rows[0];
+const nextLotSize = updates.lot_size === undefined
+  ? existingCall.lot_size ?? null
+  : updates.lot_size === null || updates.lot_size === ""
+    ? null
+    : Number(updates.lot_size);
+if (nextLotSize !== null && (!Number.isSafeInteger(nextLotSize) || nextLotSize < 1)) {
+  await client.query("ROLLBACK");
+  return res.status(400).json({ message: "Lot Size must be a positive whole number." });
+}
     const existingAttachments = Array.isArray(existingCall.attachments)
       ? existingCall.attachments
       : [];
@@ -1084,7 +1108,8 @@ const insertResult = await client.query(
     risk_reward_ratio,
     audience_mode,
     audience_groups_snapshot,
-    audience_recipient_snapshot
+    audience_recipient_snapshot,
+    lot_size
   )
   VALUES (
     $1,
@@ -1141,7 +1166,8 @@ const insertResult = await client.query(
     $38,
     $39,
     $40,
-    $41
+    $41,
+    $42
   )
   RETURNING *
   `,
@@ -1207,6 +1233,7 @@ const insertResult = await client.query(
     errataAudience.mode,
     JSON.stringify(errataAudience.selectedGroups),
     JSON.stringify(errataAudience.recipients),
+    nextLotSize,
   ]
 );
 

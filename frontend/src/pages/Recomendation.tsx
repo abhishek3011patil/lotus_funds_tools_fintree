@@ -104,6 +104,7 @@ type RecommendationForm = {
   tradeType: "Intraday" | "BTST" | "STBT" | "Short Term" | "Long Term";
   symbol: string;
   display_name: string;
+  lotSize: string;
   entry: string;
   entryLow: string;
   entryUpper: string;
@@ -259,6 +260,7 @@ const [
     tradeType: "Intraday",
     symbol: "SYM",
     display_name: "",
+    lotSize: "",
     entry: "",
     entryLow: "",
     entryUpper: "",
@@ -710,6 +712,12 @@ const finalDisplayName =
       return;
     }
 
+    const lotSizeValue = form.lotSize.trim() ? Number(form.lotSize) : null;
+    if (lotSizeValue !== null && (!Number.isSafeInteger(lotSizeValue) || lotSizeValue < 1)) {
+      alert("Lot Size must be a positive whole number");
+      return;
+    }
+
     const finalSymbol =
       form.symbol && form.symbol !== "SYM"
         ? form.symbol.trim()
@@ -736,6 +744,7 @@ const finalDisplayName =
       }
 
       const updates = {
+        lot_size: lotSizeValue ?? undefined,
         entry_price: form.entry || undefined,
 
         entry_price_low: form.rangeEnabled
@@ -883,6 +892,7 @@ const finalDisplayName =
       call_type: form.callType,
       trade_type: form.tradeType,
       expiry_date: form.expiry || null,
+      lot_size: lotSizeValue,
 
       entry_price: form.entry || null,
 
@@ -1654,6 +1664,7 @@ const handleViewHistory = useCallback(async (item: any) => {
         tradeType: item.trade_type,
         symbol: item.symbol || "SYM",
         display_name: item.name || item.display_name || "",
+        lotSize: item.lotSize?.toString() || "",
         expiry: item.expiry_date || "",
         entry: item.entry?.ideal?.toString() || "",
         target: item.targets?.[0]?.toString() || "",
@@ -3250,10 +3261,17 @@ sx={{
               exclusive
               value={form.tradeType}
               onChange={(_, value) => {
-  if (value) {
-    updateField("tradeType", value);
-  }
-}}
+                if (!value) return;
+                if (value === "STBT") {
+                  dispatch({ type: "SET_FORM", payload: { tradeType: value, action: "SELL" } });
+                  return;
+                }
+                if (value === "BTST") {
+                  dispatch({ type: "SET_FORM", payload: { tradeType: value, action: "BUY" } });
+                  return;
+                }
+                updateField("tradeType", value);
+              }}
               sx={{
   backgroundColor: "#eef2f7",
 
@@ -3306,19 +3324,8 @@ sx={{
 }}
             >
               <ToggleButton value="Intraday">Intraday</ToggleButton>
-             <ToggleButton
-  value="BTST"
-  disabled={form.action === "SELL"}
->
-  BTST
-</ToggleButton>
-
-<ToggleButton
-  value="STBT"
-  disabled={form.action === "BUY"}
->
-  STBT
-</ToggleButton>
+              <ToggleButton value="BTST">BTST</ToggleButton>
+              <ToggleButton value="STBT">STBT</ToggleButton>
               <ToggleButton value="Short Term">Short Term</ToggleButton>
               <ToggleButton
                 value="Long Term"
@@ -3484,6 +3491,19 @@ sx={{
             </Select>
           </Box>
 
+        </Box>
+
+        <Box sx={{ width: { xs: "100%", sm: 220 }, mb: 1 }}>
+          <TextField
+            fullWidth
+            size="small"
+            type="number"
+            label="Lot Size"
+            value={form.lotSize}
+            onChange={(event) => updateField("lotSize", event.target.value)}
+            inputProps={{ min: 1, step: 1 }}
+            helperText="Optional; enter a positive whole number"
+          />
         </Box>
 
         {/* Prices Row */}
