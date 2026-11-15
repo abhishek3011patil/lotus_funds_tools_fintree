@@ -11,6 +11,8 @@ export type ResearchCallTemplateMap = Record<
   CallTemplate | null
 >;
 
+export type NamedResearchCallTemplate = { id: string; name: string; messageType: ResearchCallMessageType; template: CallTemplate; groupIds: string[]; createdAt: string; updatedAt: string };
+
 interface StoredTemplateResponse {
   template?: unknown;
 }
@@ -32,6 +34,27 @@ interface TemplateSaveResponse {
 
 const apiBaseUrl = import.meta.env.VITE_API_URL;
 
+export const fetchNamedResearchCallTemplates = async (token: string): Promise<NamedResearchCallTemplate[]> => {
+  const response = await axios.get<{ data?: NamedResearchCallTemplate[] }>(`${apiBaseUrl}/api/research/named-message-templates`, { headers: { Authorization: `Bearer ${token}` } });
+  return response.data.data ?? [];
+};
+
+export const saveNamedResearchCallTemplate = async (token: string, input: { templateId?: string; messageType: ResearchCallMessageType; name: string; template: CallTemplate; groupIds: string[] }) => {
+  try {
+    const response = await axios.post<{ data: NamedResearchCallTemplate }>(`${apiBaseUrl}/api/research/named-message-templates`, input, { headers: { Authorization: `Bearer ${token}` } });
+    return response.data.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const serverMessage = (error.response?.data as { message?: string } | undefined)?.message;
+      throw new Error(serverMessage || error.message);
+    }
+    throw error;
+  }
+};
+
+export const deleteNamedResearchCallTemplate = async (token: string, templateId: string) =>
+  axios.delete(`${apiBaseUrl}/api/research/named-message-templates/${encodeURIComponent(templateId)}`, { headers: { Authorization: `Bearer ${token}` } });
+
 export const fetchResearchCallTemplates = async (
   token: string,
   ownerType: CallTemplateOwnerType = "RA"
@@ -51,9 +74,12 @@ export const fetchResearchCallTemplates = async (
     const template =
       response.data.data?.[messageType]?.template;
 
-    return isValidCallTemplate(template, messageType, ownerType)
-      ? template
-      : null;
+    if (!isValidCallTemplate(template, messageType, ownerType)) return null;
+    const normalized = JSON.parse(JSON.stringify(template)) as CallTemplate;
+    normalized.blocks.forEach(block => {
+      if (block.type === "field" && (block.fieldKey === "disclaimer" || block.fieldKey === "brokerDisclaimer")) block.locked = false;
+    });
+    return normalized;
   };
 
   return {

@@ -6,6 +6,7 @@ export type AudienceGroup = {
   id: string;
   name: string;
   description: string | null;
+  customDisclaimer: string | null;
   members: AudienceMember[];
   createdAt: string;
   updatedAt: string;
@@ -37,10 +38,10 @@ export const fetchAudienceConnections = async () => {
   };
 };
 
-export const createAudienceGroup = async (input: { name: string; description: string; members: Array<{ type: AudienceMemberType; id: string }> }) =>
+export const createAudienceGroup = async (input: { name: string; description: string; customDisclaimer: string; members: Array<{ type: AudienceMemberType; id: string }> }) =>
   (await api.post("/ra/dashboard/audience-groups", input)).data;
 
-export const updateAudienceGroup = async (groupId: string, input: { name: string; description: string; members: Array<{ type: AudienceMemberType; id: string }> }) =>
+export const updateAudienceGroup = async (groupId: string, input: { name: string; description: string; customDisclaimer: string; members: Array<{ type: AudienceMemberType; id: string }> }) =>
   (await api.put(`/ra/dashboard/audience-groups/${encodeURIComponent(groupId)}`, input)).data;
 
 export const deleteAudienceGroup = async (groupId: string) =>

@@ -11,6 +11,9 @@ import { exitResearchCall } from "../controllers/exitResearchCall";
 import {
   getResearchCallTemplates,
   saveResearchCallTemplate,
+  getNamedResearchCallTemplates,
+  saveNamedResearchCallTemplate,
+  deleteNamedResearchCallTemplate,
 } from "../controllers/researchCallTemplate.controller";
 import { recommendationUpload } from "../middlewares/upload";
 import { requireActiveSubscription, requireSubscriptionFeature, reserveSubscriptionEventLimit } from "../middlewares/subscriptionAccess.middleware";
@@ -32,6 +35,9 @@ router.put(
   authenticate,
   saveResearchCallTemplate
 );
+router.get("/research/named-message-templates", authenticate, getNamedResearchCallTemplates);
+router.post("/research/named-message-templates", authenticate, saveNamedResearchCallTemplate);
+router.delete("/research/named-message-templates/:templateId", authenticate, deleteNamedResearchCallTemplate);
 
 router.post(
   "/research/calls",

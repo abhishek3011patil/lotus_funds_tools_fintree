@@ -102,16 +102,16 @@ const finalizeReservation = async ({
       `
         UPDATE subscription_usage_events
         SET
-          status = $1,
+          status = $1::varchar,
           consumed_at =
             CASE
-              WHEN $1 = 'CONSUMED'
+              WHEN $1::varchar = 'CONSUMED'
               THEN NOW()
               ELSE consumed_at
             END,
           released_at =
             CASE
-              WHEN $1 = 'RELEASED'
+              WHEN $1::varchar = 'RELEASED'
               THEN NOW()
               ELSE released_at
             END,

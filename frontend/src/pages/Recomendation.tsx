@@ -65,8 +65,8 @@ import PriceSection, {
 } from "../components/page_Mainapp/PriceSection";
 import axios from "axios";
 import RemarksField from "../components/page_Mainapp/RemarksField";
-import { formatResearchCallMessage } from "../utils/researchCallTemplate.utils";
-import { fetchResearchCallTemplates } from "../services/researchCallTemplate.service";
+import { formatResearchCallMessage, type CallTemplate } from "../utils/researchCallTemplate.utils";
+import { fetchResearchCallTemplates, fetchNamedResearchCallTemplates, type NamedResearchCallTemplate } from "../services/researchCallTemplate.service";
 import RiskRewardSummary from "../components/page_Mainapp/RiskRewardSummary";
 import { calculateCallRiskReward, formatRiskReward } from "../utils/riskReward.utils";
 import {
@@ -86,6 +86,29 @@ const BUY_COLOR = "#22c55e";
 const SELL_COLOR = "#ef4444";
 const MAX_UNDERLYING_STUDY_LENGTH = 255;
 const MAX_UNDERLYING_STUDIES = 20;
+
+const replaceCallDisclaimer = (message: string, disclaimer: string) => {
+  const lines = message.split("\n");
+  const disclaimerHeadingIndex = lines.findIndex(
+    line => line.trim().toUpperCase() === "DISCLAIMER CUM DISCLOSURE:"
+  );
+  if (disclaimerHeadingIndex < 0) {
+    return `${message.trim()}\n\nDISCLAIMER CUM DISCLOSURE:\n\n${disclaimer.trim()}`;
+  }
+
+  const sectionEndIndex = lines.findIndex((line, index) =>
+    index > disclaimerHeadingIndex &&
+    /^(Research Analyst:|SEBI Registration No:|Contact No:|Email ID:|Read Full Disclaimer \/ Disclosure at:)/i.test(line.trim())
+  );
+  const endIndex = sectionEndIndex < 0 ? lines.length : sectionEndIndex;
+  return [
+    ...lines.slice(0, disclaimerHeadingIndex + 1),
+    "",
+    disclaimer.trim(),
+    "",
+    ...lines.slice(endIndex),
+  ].join("\n").trim();
+};
 
 const appendRiskReward = (message: string, ratio: number | null) =>
   ratio === null ? message : `${message}\n\nRisk : Reward: ${formatRiskReward(ratio)}`;
@@ -220,6 +243,7 @@ const fetchRAMessageProfile = async () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 const [isSubmitting, setIsSubmitting] = useState(false);
 const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+const [groupMessageTemplates, setGroupMessageTemplates] = useState<NamedResearchCallTemplate[]>([]);
 const [previewLoading, setPreviewLoading] = useState(false);
 const [preparedPreview, setPreparedPreview] =
   useState<PreparedResearchCallMessage | null>(null);
@@ -361,6 +385,29 @@ function formReducer(
   const tooManyUnderlyingStudies =
     form.underlyingStudy.length > MAX_UNDERLYING_STUDIES;
   const selectedAudienceGroups = audienceGroups.filter(group => selectedAudienceGroupIds.includes(group.id));
+  const resolveNamedTemplateForGroups = (groupIds: string[]) => {
+    if (!groupIds.length) return { template: undefined as NamedResearchCallTemplate | undefined, conflict: false };
+    const messageType = isErrataMode ? "ERRATA" : "NEW_CALL";
+    const matches = groupIds.map(groupId => groupMessageTemplates.find(item => item.messageType === messageType && item.groupIds.includes(groupId)));
+    const assigned = matches.filter((item): item is NamedResearchCallTemplate => Boolean(item));
+    const uniqueTemplateIds = new Set(assigned.map(item => item.id));
+    const conflict = assigned.length > 0 && (assigned.length !== groupIds.length || uniqueTemplateIds.size > 1);
+    return { template: !conflict ? assigned[0] : undefined, conflict };
+  };
+  const resolvedAudienceTemplate = resolveNamedTemplateForGroups(selectedAudienceGroupIds);
+  const hasGroupTemplateConflict = audienceMode === "GROUPS" && resolvedAudienceTemplate.conflict;
+  const selectedCustomDisclaimerText = [...new Set(selectedAudienceGroups
+    .map(group => group.customDisclaimer?.trim())
+    .filter((disclaimer): disclaimer is string => Boolean(disclaimer)))].join("\n\n");
+  const audiencePreparedPreview = useMemo(() => {
+    if (!preparedPreview || audienceMode !== "GROUPS" || !selectedCustomDisclaimerText) {
+      return preparedPreview;
+    }
+    return {
+      ...preparedPreview,
+      message: replaceCallDisclaimer(preparedPreview.message, selectedCustomDisclaimerText),
+    };
+  }, [preparedPreview, audienceMode, selectedCustomDisclaimerText]);
   const selectedAudienceMembers = new Map(selectedAudienceGroups.flatMap(group => group.members).map(member => [`${member.type}:${member.id}`, member]));
   const selectedAudienceClientCount = [...selectedAudienceMembers.values()].filter(member => member.type === "CLIENT").length;
   const selectedAudienceBrokerCount = [...selectedAudienceMembers.values()].filter(member => member.type === "BROKER").length;
@@ -392,7 +439,8 @@ function formReducer(
 };
 
 const prepareResearchCallMessage = async (
-  token: string
+  token: string,
+  selectedNamedTemplate?: NamedResearchCallTemplate
 ): Promise<PreparedResearchCallMessage> => {
   if (!raDetails) {
     throw new Error("RA profile details are still loading. Please try again.");
@@ -444,17 +492,14 @@ const prepareResearchCallMessage = async (
   ]
     .filter(Boolean)
     .join(" ");
-  const disclaimer =
-    raDetails?.additional_comments ||
-    "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
   const raTemplateData = {
     fullName: raFullName || "N/A",
     organizationName: raDetails?.org_name || "N/A",
     sebiRegistrationNumber: raDetails?.sebi_reg_no || "N/A",
     contactNumber: raDetails?.mobile || "N/A",
     email: raDetails?.email || "N/A",
-    disclaimer,
-    disclaimerLink: "https://lotusfunds.com/disclaimer&disclosure",
+    disclaimer: "",
+    disclaimerLink: "",
   };
   let savedMessageTemplates = {
     NEW_CALL: null,
@@ -510,19 +555,14 @@ SL 3: ${form.stopLoss3}`
 Reason:
 ${trimmedRemark}
 
-DISCLAIMER CUM DISCLOSURE:
-
-${disclaimer}
-
 Research Analyst: ${raFullName || "N/A"} (${raDetails?.org_name || "N/A"})
 SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
 Contact No: ${raDetails?.mobile || "N/A"}
 Email ID: ${raDetails?.email || "N/A"}
-
-Read Full Disclaimer / Disclosure at:
-https://lotusfunds.com/disclaimer&disclosure
 `.trim();
-    const errataTemplate = savedMessageTemplates.ERRATA;
+    const errataTemplate = selectedNamedTemplate?.messageType === "ERRATA"
+      ? selectedNamedTemplate.template
+      : savedMessageTemplates.ERRATA;
 
     if (errataTemplate) {
       try {
@@ -558,7 +598,7 @@ https://lotusfunds.com/disclaimer&disclosure
             "ERRATA"
           ), riskRewardRatio),
           templateVersion: errataTemplate.version,
-          templateSnapshot: errataTemplate,
+          templateSnapshot: selectedNamedTemplate?.messageType === "ERRATA" ? JSON.stringify({ ...errataTemplate, namedTemplateId: selectedNamedTemplate.id, name: selectedNamedTemplate.name }) : errataTemplate,
         };
       } catch {
         // Preserve the existing fallback when a saved template cannot be formatted.
@@ -616,19 +656,14 @@ Underlying Study: ${
 
 Remarks: ${form.remark || "N/A"}
 
-DISCLAIMER CUM DISCLOSURE:
-
-${disclaimer}
-
 Research Analyst: ${raFullName || "N/A"} (${raDetails?.org_name || "N/A"})
 SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
 Contact No: ${raDetails?.mobile || "N/A"}
 Email ID: ${raDetails?.email || "N/A"}
-
-Read Full Disclaimer / Disclosure at:
-https://lotusfunds.com/disclaimer&disclosure
 `.trim();
-  const newCallTemplate = savedMessageTemplates.NEW_CALL;
+  const newCallTemplate = selectedNamedTemplate?.messageType === "NEW_CALL"
+    ? selectedNamedTemplate.template
+    : savedMessageTemplates.NEW_CALL;
 
   if (newCallTemplate) {
     try {
@@ -668,7 +703,7 @@ https://lotusfunds.com/disclaimer&disclosure
           "NEW_CALL"
         ), riskRewardRatio),
         templateVersion: newCallTemplate.version,
-        templateSnapshot: JSON.stringify(newCallTemplate),
+        templateSnapshot: JSON.stringify(selectedNamedTemplate?.messageType === "NEW_CALL" ? { ...newCallTemplate, namedTemplateId: selectedNamedTemplate.id, name: selectedNamedTemplate.name } : newCallTemplate),
       };
     } catch {
       // Preserve the existing fallback when a saved template cannot be formatted.
@@ -1292,6 +1327,8 @@ const handleUnderlyingStudyChange = (
   useEffect(() => {
     fetchRecommendations();
     fetchRAMessageProfile();
+    const token = localStorage.getItem("token");
+    if (token) fetchNamedResearchCallTemplates(token).then(setGroupMessageTemplates).catch(() => setGroupMessageTemplates([]));
 
   }, []);
 
@@ -1771,7 +1808,10 @@ const prepareAndOpenPreview = async () => {
   setPreparedPreview(null);
 
   try {
-    const preparedMessage = await prepareResearchCallMessage(token);
+    const selectedTemplate = audienceMode === "GROUPS"
+      ? resolveNamedTemplateForGroups(selectedAudienceGroupIds).template
+      : undefined;
+    const preparedMessage = await prepareResearchCallMessage(token, selectedTemplate);
     if (previewRequestRef.current !== requestId) return;
 
     setPreparedPreview(preparedMessage);
@@ -1790,6 +1830,23 @@ const prepareAndOpenPreview = async () => {
       setPreviewLoading(false);
     }
   }
+};
+
+const refreshPreviewForAudience = async (mode: "ALL_CONNECTED" | "GROUPS", groupIds: string[]) => {
+  setAudienceMode(mode);
+  setSelectedAudienceGroupIds(groupIds);
+  setAudienceError("");
+  if (!previewDialogOpen) return;
+  const token = localStorage.getItem("token");
+  if (!token) return;
+  setPreviewLoading(true);
+  try {
+    const selectedTemplate = mode === "GROUPS" ? resolveNamedTemplateForGroups(groupIds).template : undefined;
+    const nextPreview = await prepareResearchCallMessage(token, selectedTemplate);
+    setPreparedPreview(nextPreview);
+  } catch (error) {
+    setAudienceError(error instanceof Error ? error.message : "Unable to prepare this audience preview.");
+  } finally { setPreviewLoading(false); }
 };
 
 const validateAndPublish = async (
@@ -1891,11 +1948,12 @@ const handleConfirmPreview = async () => {
     setAudienceError("Select at least one group before publishing.");
     return;
   }
+  const messageToPublish = audiencePreparedPreview ?? preparedPreview;
   if (pendingDraftPublish) {
-    await publishTrackedDraft(pendingDraftPublish, preparedPreview);
+    await publishTrackedDraft(pendingDraftPublish, messageToPublish);
     return;
   }
-  await handleSubmit(preparedPreview);
+  await handleSubmit(messageToPublish);
 };
 
 
@@ -2807,12 +2865,10 @@ const changeMainPrice = useCallback(
 );
 
 const commitRemark = useCallback((value: string) => {
-  startTransition(() => {
-    dispatch({
-      type: "SET_FIELD",
-      field: "remark",
-      value,
-    });
+  dispatch({
+    type: "SET_FIELD",
+    field: "remark",
+    value,
   });
 }, []);
 
@@ -3910,7 +3966,7 @@ sx={{
       <Typography fontWeight={800}>Select audience</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{isErrataMode ? "Confirm who should receive this correction. The original call’s audience is preselected." : "Choose who can see and receive this research call. The final recipient list is saved with the call."}</Typography>
       {audienceError && <Alert severity="warning" onClose={() => setAudienceError("")} sx={{ mb: 1.5 }}>{audienceError}</Alert>}
-      <RadioGroup value={audienceMode} onChange={event => { setAudienceMode(event.target.value as "ALL_CONNECTED" | "GROUPS"); setAudienceError(""); }}>
+      <RadioGroup value={audienceMode} onChange={event => void refreshPreviewForAudience(event.target.value as "ALL_CONNECTED" | "GROUPS", selectedAudienceGroupIds)}>
         <FormControlLabel value="ALL_CONNECTED" control={<Radio />} label={`All connected recipients (${allAudienceCounts.clients} clients, ${allAudienceCounts.brokers} brokers, ${allAudienceCounts.telegram} Telegram, ${allAudienceCounts.whatsapp} WhatsApp)`} />
         <FormControlLabel value="GROUPS" control={<Radio />} label="Selected groups" />
       </RadioGroup>
@@ -3923,15 +3979,20 @@ sx={{
           value={selectedAudienceGroupIds}
           onChange={event => {
             const value = event.target.value;
-            setSelectedAudienceGroupIds(typeof value === "string" ? value.split(",") : value);
-            setAudienceError("");
+            const nextGroupIds = typeof value === "string" ? value.split(",") : value;
+            void refreshPreviewForAudience(audienceMode, nextGroupIds);
           }}
           renderValue={selected => audienceGroups.filter(group => selected.includes(group.id)).map(group => group.name).join(", ")}
         >
           {audienceGroups.map(group => <MenuItem key={group.id} value={group.id}><Checkbox checked={selectedAudienceGroupIds.includes(group.id)} />{group.name} ({group.members.length})</MenuItem>)}
         </Select>
-        <FormHelperText>{audienceGroups.length === 0 ? "Create a group from Connections > Groups first." : `${selectedAudienceClientCount} clients, ${selectedAudienceBrokerCount} brokers, ${selectedAudienceTelegramCount} Telegram and ${selectedAudienceWhatsAppCount} WhatsApp selected`}</FormHelperText>
+        <FormHelperText>
+          {audienceGroups.length === 0 ? "Create a group from Connections > Groups first." : `${selectedAudienceClientCount} clients, ${selectedAudienceBrokerCount} brokers, ${selectedAudienceTelegramCount} Telegram and ${selectedAudienceWhatsAppCount} WhatsApp selected`}
+          {selectedCustomDisclaimerText ? " Selected group disclaimer(s) will replace the RA disclaimer in this call." : ""}
+        </FormHelperText>
       </FormControl>}
+      {audienceMode === "GROUPS" && resolvedAudienceTemplate.template && !hasGroupTemplateConflict && <Alert severity="info" sx={{ mt: 1.5 }}>Using “{resolvedAudienceTemplate.template.name}” for the selected group{selectedAudienceGroupIds.length === 1 ? "" : "s"}.</Alert>}
+      {hasGroupTemplateConflict && <Alert severity="warning" sx={{ mt: 1.5 }}>The selected groups use different templates, or only some have an assigned template. Select one group per call to use its matching template.</Alert>}
     </Paper>
     <Paper
       component="pre"
@@ -3950,7 +4011,7 @@ sx={{
         borderColor: "#C7D2FE",
       }}
     >
-      {preparedPreview?.message || ""}
+      {audiencePreparedPreview?.message || ""}
     </Paper>
   </DialogContent>
   <DialogActions>
@@ -3960,7 +4021,7 @@ sx={{
     <Button
       variant="contained"
       onClick={handleConfirmPreview}
-      disabled={isSubmitting || !preparedPreview || (audienceMode === "GROUPS" && selectedAudienceGroupIds.length === 0)}
+      disabled={isSubmitting || previewLoading || hasGroupTemplateConflict || !preparedPreview || (audienceMode === "GROUPS" && selectedAudienceGroupIds.length === 0)}
     >
       {isSubmitting
         ? isErrataMode

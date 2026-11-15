@@ -22,6 +22,7 @@ import {
   audienceClientIds,
   audienceWhatsAppParticipantIds,
   parseAudienceSelection,
+  resolveAudienceDisclaimer,
   resolveResearchAudience,
 } from "../services/researchAudience.service";
 
@@ -225,6 +226,13 @@ export const createResearchCall = async (
         });
       }
     }
+    const effectiveDisclaimerSnapshot = resolveAudienceDisclaimer(
+      disclaimerSnapshot,
+      resolvedAudience.selectedGroups,
+    );
+    const effectiveDisclaimerSnapshotAt = resolvedAudience.selectedGroups.some(
+      group => Boolean(group.customDisclaimer?.trim()),
+    ) ? new Date() : disclaimerSnapshotAt;
 
       console.log("DISPLAY NAME DEBUG:", {
   value: display_name,
@@ -311,8 +319,8 @@ export const createResearchCall = async (
         has_vested_interest === "true",
       research_remarks || null,
       filePath,
-      disclaimerSnapshot,
-      disclaimerSnapshotAt,
+      effectiveDisclaimerSnapshot,
+      effectiveDisclaimerSnapshotAt,
       publishedMessageText,
       messageTemplateSnapshot?.version ??
         storedMessageTemplate?.templateVersion ??
@@ -938,7 +946,7 @@ if (existingCall.status !== "PUBLISHED") {
   });
 }
 
-let errataAudience = {
+let errataAudience: Awaited<ReturnType<typeof resolveResearchAudience>> = {
   mode: existingCall.audience_mode === "GROUPS" ? "GROUPS" as const : "ALL_CONNECTED" as const,
   selectedGroups: Array.isArray(existingCall.audience_groups_snapshot)
     ? existingCall.audience_groups_snapshot
@@ -966,6 +974,13 @@ if (req.body?.audience_mode !== undefined) {
     });
   }
 }
+const errataDisclaimerSnapshot = resolveAudienceDisclaimer(
+  existingCall.disclaimer_snapshot,
+  errataAudience.selectedGroups,
+);
+const errataDisclaimerSnapshotAt = errataAudience.selectedGroups.some(
+  group => Boolean(group.customDisclaimer?.trim()),
+) ? new Date() : existingCall.disclaimer_snapshot_at;
 
     // =========================================================
     // 3️⃣ DETERMINE ROOT CALL
@@ -1215,8 +1230,8 @@ const insertResult = await client.query(
     errata_reason.trim(),
 
     existingCall.file_url ?? files[0]?.path ?? null,
-    existingCall.disclaimer_snapshot,
-    existingCall.disclaimer_snapshot_at,
+    errataDisclaimerSnapshot,
+    errataDisclaimerSnapshotAt,
 
     publishedErrataMessage,
     errataTemplateSnapshot?.version ??
@@ -1540,7 +1555,9 @@ export const publishDraftCall = async (
         message_template_snapshot = NULL,
         audience_mode = $4,
         audience_groups_snapshot = $5::jsonb,
-        audience_recipient_snapshot = $6::jsonb
+        audience_recipient_snapshot = $6::jsonb,
+        disclaimer_snapshot = COALESCE($7, disclaimer_snapshot),
+        disclaimer_snapshot_at = CASE WHEN $7 IS NOT NULL THEN NOW() ELSE disclaimer_snapshot_at END
       WHERE id = $1
         AND status = 'DRAFT'
         AND ra_user_id = $2
@@ -1549,7 +1566,8 @@ export const publishDraftCall = async (
       RETURNING *
       `,
       [id, raUserId, messageText, resolvedAudience.mode,
-        JSON.stringify(resolvedAudience.selectedGroups), JSON.stringify(resolvedAudience.recipients)]
+        JSON.stringify(resolvedAudience.selectedGroups), JSON.stringify(resolvedAudience.recipients),
+        resolveAudienceDisclaimer(null, resolvedAudience.selectedGroups)]
     );
 
     if ((result.rowCount ?? 0) === 0) {

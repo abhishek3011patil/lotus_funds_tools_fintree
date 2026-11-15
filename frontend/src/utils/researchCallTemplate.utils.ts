@@ -132,8 +132,8 @@ export const CALL_TEMPLATE_FIELDS = [
   },
   {
     key: "disclaimer",
-    label: "Mandatory disclaimer and link",
-    locked: true,
+    label: "Disclaimer and link (optional)",
+    locked: false,
   },
 ] as const;
 
@@ -245,8 +245,8 @@ export const ERRATA_TEMPLATE_FIELDS = [
   },
   {
     key: "disclaimer",
-    label: "Mandatory disclaimer and link",
-    locked: true,
+    label: "Disclaimer and link (optional)",
+    locked: false,
   },
 ] as const;
 
@@ -254,7 +254,7 @@ export const BROKER_CALL_TEMPLATE_FIELDS = CALL_TEMPLATE_FIELDS.map((field) =>
   field.key === "raAttribution"
     ? { key: "dynamicRaName" as const, label: "Dynamic Research Analyst name", locked: true }
     : field.key === "disclaimer"
-      ? { key: "brokerDisclaimer" as const, label: "Dynamic Broker Disclaimer", locked: true }
+      ? { key: "brokerDisclaimer" as const, label: "Dynamic Broker Disclaimer (optional)", locked: false }
       : field
 );
 
@@ -262,7 +262,7 @@ export const BROKER_ERRATA_TEMPLATE_FIELDS = ERRATA_TEMPLATE_FIELDS.map((field) 
   field.key === "raAttribution"
     ? { key: "dynamicRaName" as const, label: "Dynamic Research Analyst name", locked: true }
     : field.key === "disclaimer"
-      ? { key: "brokerDisclaimer" as const, label: "Dynamic Broker Disclaimer", locked: true }
+      ? { key: "brokerDisclaimer" as const, label: "Dynamic Broker Disclaimer (optional)", locked: false }
       : field
 );
 
@@ -407,7 +407,8 @@ const isValidFieldBlock = (
   return Boolean(
     definition &&
       block.id === `field:${definition.key}` &&
-      block.locked === definition.locked &&
+      (block.locked === definition.locked ||
+        ((definition.key === "disclaimer" || definition.key === "brokerDisclaimer") && block.locked === true)) &&
       (!definition.locked || block.enabled)
   );
 };
@@ -511,9 +512,12 @@ export const parseStoredCallTemplate = (
 
   try {
     const parsed: unknown = JSON.parse(rawValue);
-    return isValidCallTemplate(parsed, messageType, ownerType)
-      ? cloneTemplate(parsed)
-      : createDefaultCallTemplate(messageType, ownerType);
+    if (!isValidCallTemplate(parsed, messageType, ownerType)) return createDefaultCallTemplate(messageType, ownerType);
+    const normalized = cloneTemplate(parsed);
+    normalized.blocks.forEach(block => {
+      if (block.type === "field" && (block.fieldKey === "disclaimer" || block.fieldKey === "brokerDisclaimer")) block.locked = false;
+    });
+    return normalized
   } catch {
     return createDefaultCallTemplate(messageType, ownerType);
   }
@@ -697,17 +701,12 @@ const fieldValue = (
     case "email":
       return `Email ID: ${valueOrFallback(ra.email)}`;
     case "disclaimer":
+      if (!ra.disclaimer?.trim() && !ra.disclaimerLink?.trim()) return "";
       return [
         "DISCLAIMER CUM DISCLOSURE:",
-        "",
-        valueOrFallback(ra.disclaimer),
-        "",
-        "Read Full Disclaimer / Disclosure at:",
-        valueOrFallback(
-          ra.disclaimerLink ||
-            "https://lotusfunds.com/disclaimer&disclosure"
-        ),
-      ].join("\n");
+        ra.disclaimer?.trim() || "",
+        ra.disclaimerLink?.trim() ? `Read Full Disclaimer / Disclosure at:\n${ra.disclaimerLink.trim()}` : "",
+      ].filter(Boolean).join("\n\n");
     case "brokerDisclaimer":
       return [
         "BROKER DISCLAIMER:",

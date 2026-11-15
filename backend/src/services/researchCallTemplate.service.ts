@@ -38,7 +38,7 @@ const NEW_CALL_FIELDS: TemplateFieldDefinition[] = [
   { key: "sebiRegistration", locked: true },
   { key: "contact", locked: false },
   { key: "email", locked: false },
-  { key: "disclaimer", locked: true },
+  { key: "disclaimer", locked: false },
 ];
 
 const ERRATA_FIELDS: TemplateFieldDefinition[] = [
@@ -63,18 +63,18 @@ const ERRATA_FIELDS: TemplateFieldDefinition[] = [
   { key: "sebiRegistration", locked: true },
   { key: "contact", locked: false },
   { key: "email", locked: false },
-  { key: "disclaimer", locked: true },
+  { key: "disclaimer", locked: false },
 ];
 
 const BROKER_NEW_CALL_FIELDS: TemplateFieldDefinition[] = NEW_CALL_FIELDS.map((field) =>
   field.key === "raAttribution" ? { key: "dynamicRaName", locked: true }
-    : field.key === "disclaimer" ? { key: "brokerDisclaimer", locked: true }
+    : field.key === "disclaimer" ? { key: "brokerDisclaimer", locked: false }
       : field
 );
 
 const BROKER_ERRATA_FIELDS: TemplateFieldDefinition[] = ERRATA_FIELDS.map((field) =>
   field.key === "raAttribution" ? { key: "dynamicRaName", locked: true }
-    : field.key === "disclaimer" ? { key: "brokerDisclaimer", locked: true }
+    : field.key === "disclaimer" ? { key: "brokerDisclaimer", locked: false }
       : field
 );
 
@@ -199,7 +199,8 @@ export const isValidResearchCallTemplate = (
       if (
         !definition ||
         candidate.id !== `field:${definition.key}` ||
-        candidate.locked !== definition.locked ||
+        (candidate.locked !== definition.locked &&
+          !((definition.key === "disclaimer" || definition.key === "brokerDisclaimer") && candidate.locked === true)) ||
         (definition.locked && !candidate.enabled)
       ) {
         return false;

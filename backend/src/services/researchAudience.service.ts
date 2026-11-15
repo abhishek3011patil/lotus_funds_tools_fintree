@@ -7,7 +7,17 @@ export type AudienceRecipient = {
   id: string;
   name: string;
 };
-export type AudienceGroupSnapshot = { id: string; name: string };
+export type AudienceGroupSnapshot = { id: string; name: string; customDisclaimer?: string | null };
+
+export const resolveAudienceDisclaimer = (
+  defaultDisclaimer: string | null | undefined,
+  selectedGroups: AudienceGroupSnapshot[],
+) => {
+  const customDisclaimers = [...new Set(selectedGroups
+    .map(group => group.customDisclaimer?.trim())
+    .filter((disclaimer): disclaimer is string => Boolean(disclaimer)))];
+  return customDisclaimers.length ? customDisclaimers.join("\n\n") : defaultDisclaimer?.trim() || null;
+};
 
 const uuidPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 
@@ -43,7 +53,7 @@ export const resolveResearchAudience = async ({
   let selectedGroups: AudienceGroupSnapshot[] = [];
   if (mode === "GROUPS") {
     const groups = await db.query(
-      `SELECT id, name FROM ra_audience_groups
+      `SELECT id, name, custom_disclaimer AS "customDisclaimer" FROM ra_audience_groups
        WHERE ra_user_id = $1 AND id = ANY($2::uuid[])
        ORDER BY name`,
       [raUserId, groupIds],
@@ -51,7 +61,7 @@ export const resolveResearchAudience = async ({
     if (groups.rows.length !== groupIds.length) {
       throw new Error("One or more selected audience groups are no longer available.");
     }
-    selectedGroups = groups.rows.map(row => ({ id: row.id, name: row.name }));
+    selectedGroups = groups.rows.map(row => ({ id: row.id, name: row.name, customDisclaimer: row.customDisclaimer || null }));
   }
 
   const clientResult = await db.query(

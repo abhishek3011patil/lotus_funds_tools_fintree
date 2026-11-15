@@ -8,6 +8,7 @@ const uuidPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}
 const parseGroup = (body: Record<string, unknown>) => {
   const name = String(body.name || "").trim().replace(/\s+/g, " ");
   const description = String(body.description || "").trim();
+  const customDisclaimer = String(body.customDisclaimer || "").trim();
   const rawMembers = Array.isArray(body.members) ? body.members : [];
   const members: MemberInput[] = [];
   const seen = new Set<string>();
@@ -23,13 +24,15 @@ const parseGroup = (body: Record<string, unknown>) => {
   }
   if (name.length < 2 || name.length > 80) throw new Error("Group name must be between 2 and 80 characters.");
   if (description.length > 240) throw new Error("Group description must not exceed 240 characters.");
+  if (customDisclaimer.length > 2000) throw new Error("Custom disclaimer must not exceed 2,000 characters.");
   if (members.length > 500) throw new Error("A group can contain up to 500 connections.");
-  return { name, description: description || null, members };
+  return { name, description: description || null, customDisclaimer: customDisclaimer || null, members };
 };
 
 const loadGroups = async (raUserId: string) => {
   const result = await pool.query(
     `SELECT audience_group.id, audience_group.name, audience_group.description,
+       audience_group.custom_disclaimer AS "customDisclaimer",
        audience_group.created_at AS "createdAt", audience_group.updated_at AS "updatedAt",
        COALESCE(jsonb_agg(jsonb_build_object(
          'type', member.member_type,
@@ -180,13 +183,13 @@ const saveGroup = async (req: AuthRequest, res: Response, groupId?: string) => {
 
     const result = groupId
       ? await db.query(
-          `UPDATE ra_audience_groups SET name = $3, description = $4, updated_at = NOW()
+          `UPDATE ra_audience_groups SET name = $3, description = $4, custom_disclaimer = $5, updated_at = NOW()
            WHERE id = $2 AND ra_user_id = $1 RETURNING id`,
-          [req.user!.id, groupId, input.name, input.description],
+          [req.user!.id, groupId, input.name, input.description, input.customDisclaimer],
         )
       : await db.query(
-          `INSERT INTO ra_audience_groups (ra_user_id, name, description) VALUES ($1, $2, $3) RETURNING id`,
-          [req.user!.id, input.name, input.description],
+          `INSERT INTO ra_audience_groups (ra_user_id, name, description, custom_disclaimer) VALUES ($1, $2, $3, $4) RETURNING id`,
+          [req.user!.id, input.name, input.description, input.customDisclaimer],
         );
     if (!result.rows[0]) {
       await db.query("ROLLBACK");

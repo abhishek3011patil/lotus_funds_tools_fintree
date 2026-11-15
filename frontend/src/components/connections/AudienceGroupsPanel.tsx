@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -104,6 +105,7 @@ const RecipientPicker = ({ type, title, items, selected, onToggle, emptyMessage,
 };
 
 const AudienceGroupsPanel = () => {
+  const navigate = useNavigate();
   const [groups, setGroups] = useState<AudienceGroup[]>([]);
   const [clients, setClients] = useState<AudienceConnection[]>([]);
   const [brokers, setBrokers] = useState<AudienceConnection[]>([]);
@@ -116,6 +118,7 @@ const AudienceGroupsPanel = () => {
   const [editing, setEditing] = useState<AudienceGroup | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [customDisclaimer, setCustomDisclaimer] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [dialogError, setDialogError] = useState("");
@@ -139,7 +142,7 @@ const AudienceGroupsPanel = () => {
   }, [load]);
 
   const openEditor = (group?: AudienceGroup) => {
-    setEditing(group || null); setName(group?.name || ""); setDescription(group?.description || "");
+    setEditing(group || null); setName(group?.name || ""); setDescription(group?.description || ""); setCustomDisclaimer(group?.customDisclaimer || "");
     setSelected(new Set((group?.members || []).map(member => memberKey(member.type, member.id))));
     setDialogError(""); setRecipientTab("CLIENT"); setEditorSession(current => current + 1); setDialogOpen(true);
   };
@@ -158,10 +161,18 @@ const AudienceGroupsPanel = () => {
     if (name.trim().length < 2) { setDialogError("Enter a group name with at least 2 characters."); return; }
     if (selectedMembers.length === 0) { setDialogError("Select at least one recipient."); return; }
     setSaving(true); setDialogError("");
-    const input = { name: name.trim(), description: description.trim(), members: selectedMembers };
+    if (customDisclaimer.trim().length > 2000) { setDialogError("Custom disclaimer must not exceed 2,000 characters."); return; }
+    const input = { name: name.trim(), description: description.trim(), customDisclaimer: customDisclaimer.trim(), members: selectedMembers };
     try {
-      if (editing) await updateAudienceGroup(editing.id, input); else await createAudienceGroup(input);
-      setDialogOpen(false); setNotice(editing ? "Audience group updated." : "Audience group created."); await load();
+      if (editing) {
+        await updateAudienceGroup(editing.id, input);
+        setDialogOpen(false); setNotice("Audience group updated."); await load();
+      } else {
+        const created = await createAudienceGroup(input);
+        setDialogOpen(false);
+        await load();
+        navigate("/settings/message-template", { state: { focusGroupId: created.groupId } });
+      }
     } catch (requestError) { setDialogError(apiMessage(requestError, "Unable to save audience group.")); }
     finally { setSaving(false); }
   };
@@ -191,7 +202,7 @@ const AudienceGroupsPanel = () => {
           const telegramCount = group.members.filter(member => member.type === "TELEGRAM").length;
           const whatsAppCount = group.members.filter(member => member.type === "WHATSAPP").length;
           return <Paper key={group.id} variant="outlined" sx={{ p: 2.5 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={2}><Box><Typography variant="h6">{group.name}</Typography><Typography variant="body2" color="text.secondary">{group.description || "No description"}</Typography></Box><Stack direction="row" spacing={.5} useFlexGap flexWrap="wrap" justifyContent="flex-end"><Chip size="small" label={`${clientCount} clients`} /><Chip size="small" label={`${brokerCount} brokers`} /><Chip size="small" label={`${telegramCount} Telegram`} /><Chip size="small" label={`${whatsAppCount} WhatsApp`} /></Stack></Stack>
+            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={2}><Box><Typography variant="h6">{group.name}</Typography><Typography variant="body2" color="text.secondary">{group.description || "No description"}</Typography>{group.customDisclaimer && <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: .75 }}>Custom call disclaimer added</Typography>}</Box><Stack direction="row" spacing={.5} useFlexGap flexWrap="wrap" justifyContent="flex-end"><Chip size="small" label={`${clientCount} clients`} /><Chip size="small" label={`${brokerCount} brokers`} /><Chip size="small" label={`${telegramCount} Telegram`} /><Chip size="small" label={`${whatsAppCount} WhatsApp`} /></Stack></Stack>
             <Stack direction="row" spacing={.75} useFlexGap flexWrap="wrap" sx={{ mt: 2 }}>{group.members.slice(0, 6).map(member => <Chip key={memberKey(member.type, member.id)} size="small" variant="outlined" label={member.name} />)}{group.members.length > 6 && <Chip size="small" label={`+${group.members.length - 6} more`} />}</Stack>
             <Stack direction="row" spacing={1} sx={{ mt: 2.5 }}><Button size="small" variant="outlined" onClick={() => openEditor(group)}>Edit</Button><Button size="small" color="error" onClick={() => setDeleteTarget(group)}>Delete</Button></Stack>
           </Paper>;
@@ -206,6 +217,17 @@ const AudienceGroupsPanel = () => {
           <TextField autoFocus label="Group name" value={name} onChange={event => setName(event.target.value)} inputProps={{ maxLength: 80 }} required />
           <TextField label="Description" value={description} onChange={event => setDescription(event.target.value)} inputProps={{ maxLength: 240 }} />
         </Box>
+        <TextField
+          label="Custom disclaimer for calls"
+          value={customDisclaimer}
+          onChange={event => setCustomDisclaimer(event.target.value)}
+          inputProps={{ maxLength: 2000 }}
+          multiline
+          minRows={3}
+          maxRows={6}
+          helperText={`${customDisclaimer.length}/2000 characters. Optional; included in calls sent to this group.`}
+          fullWidth
+        />
         <Paper variant="outlined" sx={{ px: 1.5, py: 1.25, bgcolor: "background.default" }}>
           <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ sm: "center" }} justifyContent="space-between" gap={1}>
             <Box><Typography fontWeight={800}>Choose recipients</Typography><Typography variant="body2" color="text.secondary">Search and select recipients from each channel.</Typography></Box>

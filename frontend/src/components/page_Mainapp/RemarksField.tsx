@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from "react";
+import { memo } from "react";
 import { TextField } from "@mui/material";
 
 type RemarksFieldProps = {
@@ -8,30 +8,14 @@ type RemarksFieldProps = {
 
 const RemarksField = memo(
   ({ value, onCommit }: RemarksFieldProps) => {
-    const [localValue, setLocalValue] =
-      useState(value);
-
-    useEffect(() => {
-      setLocalValue(value);
-    }, [value]);
-
     return (
       <TextField
         required
         multiline
         rows={2}
         placeholder="Research Analyst's Remarks"
-        value={localValue}
-        onChange={(event) =>
-          setLocalValue(event.target.value)
-        }
-        onBlur={() => {
-  if (localValue === value) {
-    return;
-  }
-
-  onCommit(localValue);
-}}
+        value={value}
+        onChange={(event) => onCommit(event.target.value)}
         sx={{ flexGrow: 1 }}
       />
     );
