@@ -65,7 +65,7 @@ import PriceSection, {
 } from "../components/page_Mainapp/PriceSection";
 import axios from "axios";
 import RemarksField from "../components/page_Mainapp/RemarksField";
-import { formatResearchCallMessage, type CallTemplate } from "../utils/researchCallTemplate.utils";
+import { formatDefaultRaRecommendation, formatResearchCallMessage, type CallTemplate } from "../utils/researchCallTemplate.utils";
 import { fetchResearchCallTemplates, fetchNamedResearchCallTemplates, type NamedResearchCallTemplate } from "../services/researchCallTemplate.service";
 import RiskRewardSummary from "../components/page_Mainapp/RiskRewardSummary";
 import { calculateCallRiskReward, calculatePerLotRiskReward, formatRiskReward } from "../utils/riskReward.utils";
@@ -89,6 +89,14 @@ const MAX_UNDERLYING_STUDIES = 20;
 
 const replaceCallDisclaimer = (message: string, disclaimer: string) => {
   const lines = message.split("\n");
+  const simpleDisclaimerIndex = lines.findIndex(line => /^Disclaimer:/i.test(line.trim()));
+  if (simpleDisclaimerIndex >= 0) {
+    return [
+      ...lines.slice(0, simpleDisclaimerIndex),
+      `Disclaimer: ${disclaimer.trim()}`,
+      ...lines.slice(simpleDisclaimerIndex + 1),
+    ].join("\n").trim();
+  }
   const disclaimerHeadingIndex = lines.findIndex(
     line => line.trim().toUpperCase() === "DISCLAIMER CUM DISCLOSURE:"
   );
@@ -623,58 +631,45 @@ Email ID: ${raDetails?.email || "N/A"}
     };
   }
 
-  const defaultPublishMessage = `
-Published On: ${publishedAt}
-
-${form.action} ${form.exchange} ${form.callType} Expiry: ${
-    form.expiry ? formatExpiry(form.expiry) : "N/A"
-  }
-
-Stock Name: ${finalDisplayName}
-Symbol: ${finalSymbol}
-
-Call Type: ${form.tradeType}
-
-Entry: ${
-    form.rangeEnabled
-      ? `${form.entryLow} - ${form.entryUpper}`
-      : form.entry
-  }
-
-Target: ${form.target}${
-    form.secondaryTargetEnabled
-      ? `
-T2: ${form.target2}
-T3: ${form.target3}`
-      : ""
-  }
-
-SL: ${form.stopLoss}${
-    form.stopLoss2Enabled
-      ? `
-SL 2: ${form.stopLoss2}
-SL 3: ${form.stopLoss3}`
-      : ""
-  }
-
-Holding Period: ${form.holdingPeriod || "N/A"}
-
-Rationale: ${form.rationale}
-
-Underlying Study: ${
-    form.underlyingStudy.map((study) => study.label).join(", ") || "N/A"
-  }
-
-Remarks: ${form.remark || "N/A"}
-
-Research Analyst: ${raFullName || "N/A"} (${raDetails?.org_name || "N/A"})
-SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
-Contact No: ${raDetails?.mobile || "N/A"}
-Email ID: ${raDetails?.email || "N/A"}
-`.trim();
+  const now = new Date();
+  const standardPublishedAt = `${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).format(now)}, ${new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }).format(now)}`;
+  const conservativeEntry = Number(form.rangeEnabled
+    ? form.action === "BUY" ? form.entryUpper : form.entryLow
+    : form.entry);
+  const lotSize = Number(form.lotSize);
+  const standardCallData = {
+    publishedAt: standardPublishedAt,
+    instrument: finalDisplayName,
+    symbol: finalSymbol,
+    action: form.action,
+    callType: form.callType,
+    expiry: form.expiry,
+    entry: form.rangeEnabled ? `${form.entryLow} - ${form.entryUpper}` : form.entry,
+    targets: [form.target],
+    stopLosses: [form.stopLoss],
+    holdingPeriod: form.holdingPeriod,
+    rationale: form.rationale,
+    lotSize: form.lotSize,
+    riskPerLot: perLotRiskReward?.risk,
+    rewardPerLot: perLotRiskReward?.reward,
+    riskPercent: perLotRiskReward && conservativeEntry > 0 && lotSize > 0
+      ? perLotRiskReward.risk / (conservativeEntry * lotSize) * 100 : undefined,
+    rewardPercent: perLotRiskReward && conservativeEntry > 0 && lotSize > 0
+      ? perLotRiskReward.reward / (conservativeEntry * lotSize) * 100 : undefined,
+    status: "Open",
+  };
+  const defaultPublishMessage = formatDefaultRaRecommendation(standardCallData, raTemplateData);
   const newCallTemplate = selectedNamedTemplate?.messageType === "NEW_CALL"
     ? selectedNamedTemplate.template
     : savedMessageTemplates.NEW_CALL;
+
+  if (newCallTemplate?.standardLayout) {
+    return {
+      message: formatDefaultRaRecommendation(standardCallData, raTemplateData),
+      templateVersion: newCallTemplate.version,
+      templateSnapshot: JSON.stringify(newCallTemplate),
+    };
+  }
 
   if (newCallTemplate) {
     try {
@@ -722,7 +717,7 @@ Email ID: ${raDetails?.email || "N/A"}
   }
 
   return {
-    message: appendRiskReward(defaultPublishMessage, riskRewardRatio),
+    message: defaultPublishMessage,
     templateVersion: null,
     templateSnapshot: null,
   };

@@ -312,6 +312,7 @@ export type CallTemplateBlock =
 export interface CallTemplate {
   version: typeof CALL_TEMPLATE_VERSION;
   blocks: CallTemplateBlock[];
+  standardLayout?: boolean;
 }
 
 export interface ResearchCallTemplateData {
@@ -331,6 +332,12 @@ export interface ResearchCallTemplateData {
   underlyingStudy?: string;
   remarks?: string;
   errataReason?: string;
+  lotSize?: number | string;
+  riskPerLot?: number;
+  rewardPerLot?: number;
+  riskPercent?: number;
+  rewardPercent?: number;
+  status?: string;
 }
 
 export interface ResearchAnalystTemplateData {
@@ -359,6 +366,7 @@ export const createDefaultCallTemplate = (
   ownerType: CallTemplateOwnerType = "RA"
 ): CallTemplate => ({
   version: CALL_TEMPLATE_VERSION,
+  ...(ownerType === "RA" && messageType === "NEW_CALL" ? { standardLayout: true } : {}),
   blocks: getCallTemplateFields(messageType, ownerType).map((field) => ({
     id: `field:${field.key}`,
     type: "field" as const,
@@ -369,6 +377,28 @@ export const createDefaultCallTemplate = (
     locked: field.locked,
   })),
 });
+
+export const formatDefaultRaRecommendation = (
+  call: ResearchCallTemplateData,
+  ra: ResearchAnalystTemplateData
+): string => {
+  const expiryDate = call.expiry ? new Date(call.expiry) : null;
+  const expiryMonth = expiryDate && !Number.isNaN(expiryDate.getTime())
+    ? expiryDate.toLocaleString("en-IN", { month: "long" }).toUpperCase() : "";
+  const action = String(call.action || "Buy").toLowerCase() === "sell" ? "Sell" : "Buy";
+  const instrumentLine = [action, call.symbol || call.instrument || "N/A", expiryMonth, String(call.callType || "").toUpperCase()].filter(Boolean).join(" ");
+  const wholeRupees = (value?: number) => value === undefined || !Number.isFinite(value) ? "N/A" : String(Math.round(value));
+  const percentages = call.riskPercent !== undefined && call.rewardPercent !== undefined
+    ? ` ; (${call.riskPercent.toFixed(2)}/${call.rewardPercent.toFixed(2)})` : "";
+  return [
+    call.publishedAt || "N/A",
+    "RESEARCH RECOMMENDATION:",
+    `${instrumentLine}\nEntry Price: ${call.entry || "N/A"}\nTarget: ${call.targets?.[0] ?? "N/A"}\nStop Loss: ${call.stopLosses?.[0] ?? "N/A"}\nHolding Period: ${call.holdingPeriod || "N/A"}`,
+    `Rationale: ${call.rationale || "N/A"}\nLot Size: ${call.lotSize || "N/A"}\nRisk /Reward on 1 Lot: Rs. ${wholeRupees(call.riskPerLot)}/Rs. ${wholeRupees(call.rewardPerLot)}${percentages}\nStatus: ${call.status || "Open"}`,
+    `Research Analyst: ${ra.fullName || "N/A"} (${ra.organizationName || "N/A"})\nSEBI Registration No: ${ra.sebiRegistrationNumber || "N/A"}\nContact No: ${ra.contactNumber || "N/A"}\nEmail ID: ${ra.email || "N/A"}`,
+    "Disclaimer: Investment/Trading in equities is subject to market risks.",
+  ].join("\n\n");
+};
 
 const isRecord = (
   value: unknown
@@ -728,6 +758,10 @@ export const formatResearchCallMessage = (
     throw new Error(
       "The research-call template is invalid."
     );
+  }
+
+  if (ownerType === "RA" && messageType === "NEW_CALL" && template.standardLayout) {
+    return formatDefaultRaRecommendation(call, ra);
   }
 
   return template.blocks
