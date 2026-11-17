@@ -4,9 +4,13 @@ import { formatRiskReward } from "../../utils/riskReward.utils";
 type RiskRewardSummaryProps = {
   ratio: number | null;
   ready: boolean;
+  perLot: { risk: number; reward: number } | null;
 };
 
-const RiskRewardSummary = ({ ratio, ready }: RiskRewardSummaryProps) => {
+const formatRupees = (value: number) =>
+  new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
+
+const RiskRewardSummary = ({ ratio, ready, perLot }: RiskRewardSummaryProps) => {
   const healthy = ratio !== null && ratio >= 1.5;
   const invalid = ready && ratio === null;
   const value = !ready
@@ -38,11 +42,11 @@ const RiskRewardSummary = ({ ratio, ready }: RiskRewardSummaryProps) => {
         <Typography sx={{ fontWeight: 800, fontSize: "0.78rem", color: "#172033" }}>
           Live Risk : Reward
         </Typography>
-        <Typography sx={{ fontSize: "0.68rem", color: "#64748B" }}>
-          {invalid
-            ? "Target and stop loss must be on the correct side of entry."
-            : "Updates instantly from Entry, Target 1 and primary Stop Loss. Ranges use the conservative edge."}
-        </Typography>
+        {perLot && (
+          <Typography variant="caption" sx={{ color: "#475569", display: "block", mt: 0.4 }}>
+            1 lot: Risk {formatRupees(perLot.risk)} · Reward {formatRupees(perLot.reward)}
+          </Typography>
+        )}
       </Box>
       <Typography
         sx={{

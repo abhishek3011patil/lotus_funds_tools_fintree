@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { unlink } from "fs/promises";
-import { searchInstruments } from "../services/instrumentSearch.service";
+import { findContractExpiries, findContractLotSize, searchInstruments } from "../services/instrumentSearch.service";
 import { pool } from "../db";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { Router } from "express";
@@ -2052,6 +2052,56 @@ export const getInstruments = async (req: AuthRequest, res: Response) => {
       success: false,
       message: "Instrument provider is temporarily unavailable",
     });
+  }
+};
+
+export const getContractLotSize = async (req: AuthRequest, res: Response) => {
+  const exchange = String(req.query.exchange || "").toUpperCase();
+  const symbol = String(req.query.symbol || "").trim();
+  const name = String(req.query.name || "").trim();
+  const expiry = String(req.query.expiry || "").slice(0, 10);
+  const callType = String(req.query.callType || "").toUpperCase();
+  const contractType = callType === "CASH" ? "CASH" : callType === "FUTURES" ? "FUTURES"
+    : callType === "OPTION CALL" ? "CE" : callType === "OPTION PUT" ? "PE" : null;
+  if ((exchange !== "NSE" && exchange !== "BSE") || !contractType ||
+      (!/^[A-Za-z0-9&._-]{1,50}$/.test(symbol) && (name.length < 2 || name.length > 100)) ||
+      (contractType !== "CASH" && !/^\d{4}-\d{2}-\d{2}$/.test(expiry))) {
+    return res.status(400).json({ success: false, message: "Select an exchange, listed symbol, contract type and expiry." });
+  }
+  try {
+    let resolvedSymbol = symbol;
+    if (!resolvedSymbol) {
+      const normalizeName = (value: string) => value.trim().toUpperCase().replace(/\s+(LIMITED|LTD\.?)$/, "");
+      const matches = (await searchInstruments(exchange, name))
+        .filter(instrument => normalizeName(instrument.name) === normalizeName(name));
+      if (matches.length === 1) resolvedSymbol = matches[0].symbol;
+    }
+    const lotSize = resolvedSymbol
+      ? await findContractLotSize(exchange, resolvedSymbol, expiry, contractType)
+      : null;
+    return res.json({ success: true, lotSize });
+  } catch (error) {
+    console.error("Contract lot size lookup failed:", error);
+    return res.status(502).json({ success: false, message: "Contract lot size is temporarily unavailable." });
+  }
+};
+
+export const getContractExpiries = async (req: AuthRequest, res: Response) => {
+  const exchange = String(req.query.exchange || "").toUpperCase();
+  const symbol = String(req.query.symbol || "").trim();
+  const callType = String(req.query.callType || "").toUpperCase();
+  const contractType = callType === "FUTURES" ? "FUTURES"
+    : callType === "OPTION CALL" ? "CE" : callType === "OPTION PUT" ? "PE" : null;
+  if ((exchange !== "NSE" && exchange !== "BSE") || !contractType ||
+      !/^[A-Za-z0-9&._-]{1,50}$/.test(symbol)) {
+    return res.status(400).json({ success: false, message: "Select a listed symbol and contract type." });
+  }
+  try {
+    const expiries = await findContractExpiries(exchange, symbol, contractType);
+    return res.json({ success: true, expiries });
+  } catch (error) {
+    console.error("Contract expiry lookup failed:", error);
+    return res.status(502).json({ success: false, message: "Contract expiries are temporarily unavailable." });
   }
 };
 

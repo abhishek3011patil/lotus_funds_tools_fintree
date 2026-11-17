@@ -14,7 +14,7 @@ const positiveNumber = (value: string): number | null => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
-export const calculateCallRiskReward = (input: RiskRewardInput): number | null => {
+const calculatePriceRiskReward = (input: RiskRewardInput) => {
   const target = positiveNumber(input.target);
   const stopLoss = positiveNumber(input.stopLoss);
   const exactEntry = positiveNumber(input.entry);
@@ -28,7 +28,19 @@ export const calculateCallRiskReward = (input: RiskRewardInput): number | null =
   const risk = input.action === "BUY" ? entry - stopLoss : stopLoss - entry;
   const reward = input.action === "BUY" ? target - entry : entry - target;
   if (risk <= 0 || reward <= 0) return null;
-  return Number((reward / risk).toFixed(4));
+  return { risk, reward };
+};
+
+export const calculateCallRiskReward = (input: RiskRewardInput): number | null => {
+  const values = calculatePriceRiskReward(input);
+  return values ? Number((values.reward / values.risk).toFixed(4)) : null;
+};
+
+export const calculatePerLotRiskReward = (input: RiskRewardInput, lotSize: string) => {
+  const values = calculatePriceRiskReward(input);
+  const lots = Number(lotSize);
+  if (!values || !lotSize.trim() || !Number.isSafeInteger(lots) || lots < 1) return null;
+  return { risk: values.risk * lots, reward: values.reward * lots };
 };
 
 export const formatRiskReward = (ratio: number | null): string =>

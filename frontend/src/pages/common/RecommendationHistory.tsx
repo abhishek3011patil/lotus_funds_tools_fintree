@@ -129,6 +129,7 @@ interface RecommendationHistoryProps {
 fromDate?: string;
 toDate?: string;
 sortBy?: string;
+pageSize?: number;
 renderRowActions?: (record: HistoryRecord) => ReactNode;
 }
 
@@ -150,6 +151,7 @@ export default function RecommendationHistory({
   fromDate = "",
   toDate = "",
   sortBy = "latest",
+  pageSize = 10,
   renderRowActions,
 }: RecommendationHistoryProps) {
   const mapApiRowToHistory = (row: ApiHistoryRecord): HistoryRecord => ({
@@ -347,7 +349,7 @@ const versionTypeOptions = useMemo(
 
   // Pagination
 const [page, setPage] = useState(1);
-const rowsPerPage = 10;
+const rowsPerPage = pageSize;
   
 
 

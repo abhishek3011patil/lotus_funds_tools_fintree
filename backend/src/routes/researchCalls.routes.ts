@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createErrata, createResearchCall, getCallVersionHistory, getInstruments, getMyRecommendationHistory, getRAMessageProfile, getRecommendationHistory } from "../controllers/researchCalls.controller";
+import { createErrata, createResearchCall, getCallVersionHistory, getContractExpiries, getContractLotSize, getInstruments, getMyRecommendationHistory, getRAMessageProfile, getRecommendationHistory } from "../controllers/researchCalls.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 import {
     getResearchCalls,
@@ -24,6 +24,8 @@ import { getMyUnderlyingStudyPreferences } from "../controllers/underlyingStudyP
 const router = Router();
 
 router.get("/research/instruments", authenticate, getInstruments);
+router.get("/research/instruments/lot-size", authenticate, getContractLotSize);
+router.get("/research/instruments/expiries", authenticate, getContractExpiries);
 
 router.get(
   "/research/message-templates",

@@ -51,6 +51,9 @@ type ResearchCall = {
   symbol?: string;
   name?: string;
   action?: string;
+  instrument?: string;
+  call_type?: string;
+  trade_type?: string;
   entry?: {
     low?: number | string | null;
     ideal?: number | string | null;
@@ -422,7 +425,10 @@ const Dashboard = () => {
     };
   }, []);
 
-  const recentCalls = useMemo(() => calls.slice(0, 5), [calls]);
+  const watchlistCalls = useMemo(
+    () => calls.filter((call) => String(call.status || "").toUpperCase() === "DRAFT"),
+    [calls]
+  );
   const activeCalls = useMemo(
     () =>
       calls
@@ -677,6 +683,7 @@ const Dashboard = () => {
         </Stack>
         <RecommendationHistory
           searchQuery={searchQuery}
+          pageSize={5}
           showAllRAs
           enableExport
           exportFileBaseName="ra-dashboard"
@@ -744,23 +751,41 @@ const Dashboard = () => {
                 <TrendingUpRoundedIcon fontSize="small" />
               </Box>
               <Box>
-                <Typography fontWeight={750} color="#172033">Recent Calls</Typography>
-                <Typography variant="caption" color="text.secondary">Latest recommendations</Typography>
+                <Typography fontWeight={750} color="#172033">Watchlist</Typography>
+                <Typography variant="caption" color="text.secondary">Draft recommendations</Typography>
               </Box>
             </Stack>
-            <Chip size="small" label="Latest 5" variant="outlined" sx={{ fontWeight: 650, borderColor: "#D9E1EC" }} />
+            <Chip size="small" label={watchlistCalls.length} variant="outlined" sx={{ fontWeight: 650, borderColor: "#D9E1EC" }} />
           </Stack>
           {callsLoading ? (
             <Stack alignItems="center" py={4}><CircularProgress size={24} /></Stack>
           ) : callsError ? (
             <Typography variant="body2" color="error.main" py={2}>{callsError}</Typography>
-          ) : recentCalls.length === 0 ? (
+          ) : watchlistCalls.length === 0 ? (
             <Typography variant="body2" color="text.secondary" py={2}>
-              No research calls found.
+              No watchlist items.
             </Typography>
           ) : (
-            <Stack divider={<Divider flexItem />}>
-              {recentCalls.map((call) => <CallSummaryRow key={call.id} call={call} />)}
+            <Stack divider={<Divider flexItem />} sx={{ maxHeight: 400, overflowY: "auto" }}>
+              {watchlistCalls.map((call) => (
+                <Stack key={call.id} direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1} px={0.5} py={1.25}>
+                  <Box minWidth={0}>
+                    <Typography fontWeight={700} fontSize="0.82rem" color={String(call.action).toUpperCase() === "BUY" ? "success.main" : "error.main"}>
+                      {call.action || "—"} {call.instrument || ""} {call.call_type || ""}
+                    </Typography>
+                    <Typography fontWeight={650} fontSize="0.78rem" color="#172033">
+                      {call.name || call.symbol || "Unknown instrument"}{call.trade_type ? ` · ${call.trade_type}` : ""}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      Entry {formatEntry(call)} · TP {call.targets?.join(", ") || "—"} · SL {call.stop_losses?.[0] ?? "—"}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">{formatDateTime(call.created_at)}</Typography>
+                  </Box>
+                  <Button size="small" onClick={() => navigate("/recommendations")} sx={{ flexShrink: 0, fontWeight: 700 }}>
+                    Open
+                  </Button>
+                </Stack>
+              ))}
             </Stack>
           )}
         </Paper>

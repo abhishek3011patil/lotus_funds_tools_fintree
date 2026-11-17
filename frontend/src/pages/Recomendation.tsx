@@ -68,7 +68,7 @@ import RemarksField from "../components/page_Mainapp/RemarksField";
 import { formatResearchCallMessage, type CallTemplate } from "../utils/researchCallTemplate.utils";
 import { fetchResearchCallTemplates, fetchNamedResearchCallTemplates, type NamedResearchCallTemplate } from "../services/researchCallTemplate.service";
 import RiskRewardSummary from "../components/page_Mainapp/RiskRewardSummary";
-import { calculateCallRiskReward, formatRiskReward } from "../utils/riskReward.utils";
+import { calculateCallRiskReward, calculatePerLotRiskReward, formatRiskReward } from "../utils/riskReward.utils";
 import {
   fetchAudienceConnections,
   fetchAudienceGroups,
@@ -370,6 +370,15 @@ function formReducer(
     stopLoss: form.stopLoss,
     rangeEnabled: form.rangeEnabled,
   });
+  const perLotRiskReward = calculatePerLotRiskReward({
+    action: form.action,
+    entry: form.entry,
+    entryLow: form.entryLow,
+    entryUpper: form.entryUpper,
+    target: form.target,
+    stopLoss: form.stopLoss,
+    rangeEnabled: form.rangeEnabled,
+  }, form.lotSize);
   const riskRewardReady = Boolean(
     form.target.trim() &&
     form.stopLoss.trim() &&
@@ -427,11 +436,13 @@ function formReducer(
   setIsErrataMode(false);
   setErrataSourceId(null);
   setDirectValue("");
+  setSelectedLocalStockName("");
 
   // Reset uploaded media
   setSelectedFiles([]);
   setPreviewDialogOpen(false);
   setPreparedPreview(null);
+  setPendingDraftPublish(null);
   setPreviewLoading(false);
   setAudienceMode("ALL_CONNECTED");
   setSelectedAudienceGroupIds([]);
@@ -1073,12 +1084,13 @@ const finalDisplayName =
 
 
   // hooks 
-  const expiryDates = useExpiryDates(
+  const generatedExpiryDates = useExpiryDates(
     form.callType as any,
     form.exchangeType as any
   );
 
   const autocomplete = useStockAutocomplete(form.exchangeType as "NSE" | "BSE");
+  const [selectedLocalStockName, setSelectedLocalStockName] = useState("");
 
   const {
     inputValue,
@@ -1099,6 +1111,76 @@ const finalDisplayName =
         isLoading: false,
       }
       : autocomplete;
+
+  const contractSymbol = form.symbol && form.symbol !== "SYM"
+    ? form.symbol.trim()
+    : /^[A-Za-z0-9&._-]{1,50}$/.test(inputValue.trim()) ? inputValue.trim() : "";
+  const contractIdentifier = contractSymbol || selectedLocalStockName;
+  const expiryLookupKey = !isErrataMode && form.callType !== "Cash" && contractSymbol
+    ? `${form.exchangeType}|${contractSymbol}|${form.callType}` : "";
+  const [listedExpiryDates, setListedExpiryDates] = useState<{ key: string; dates: string[] }>({ key: "", dates: [] });
+  useEffect(() => {
+    if (!expiryLookupKey) return;
+    const controller = new AbortController();
+    const token = localStorage.getItem("token");
+    void axios.get(`${import.meta.env.VITE_API_URL}/api/research/instruments/expiries`, {
+      params: { exchange: form.exchangeType, symbol: contractSymbol, callType: form.callType },
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      signal: controller.signal,
+    }).then(response => {
+      if (!controller.signal.aborted) {
+        setListedExpiryDates({ key: expiryLookupKey, dates: Array.isArray(response.data?.expiries) ? response.data.expiries : [] });
+      }
+    }).catch(() => undefined);
+    return () => controller.abort();
+  }, [expiryLookupKey, form.exchangeType, form.callType, contractSymbol]);
+  const expiryDates = useMemo(() =>
+    listedExpiryDates.key === expiryLookupKey && listedExpiryDates.dates.length > 0
+      ? listedExpiryDates.dates.map(date => new Date(`${date}T12:00:00`))
+      : generatedExpiryDates,
+    [listedExpiryDates, expiryLookupKey, generatedExpiryDates]
+  );
+  const selectedExpiry = form.expiry ? new Date(form.expiry) : null;
+  const contractExpiry = selectedExpiry && !Number.isNaN(selectedExpiry.getTime())
+    ? `${selectedExpiry.getFullYear()}-${String(selectedExpiry.getMonth() + 1).padStart(2, "0")}-${String(selectedExpiry.getDate()).padStart(2, "0")}`
+    : "";
+  const lotLookupKey = !isErrataMode && contractIdentifier && (form.callType === "Cash" || contractExpiry)
+    ? `${form.exchangeType}|${contractIdentifier}|${form.callType}|${contractExpiry}`
+    : null;
+  const lastLotLookupKey = useRef<string | null | undefined>(undefined);
+  const manualLotSizeKey = useRef<string | null>(null);
+  const [lotSizeHint, setLotSizeHint] = useState("");
+
+  useEffect(() => {
+    if (lastLotLookupKey.current !== undefined && lastLotLookupKey.current !== lotLookupKey) {
+      dispatch({ type: "SET_FIELD", field: "lotSize", value: "" });
+      setLotSizeHint("");
+    }
+    lastLotLookupKey.current = lotLookupKey;
+    if (!lotLookupKey) return;
+
+    const controller = new AbortController();
+    const token = localStorage.getItem("token");
+    void axios.get(`${import.meta.env.VITE_API_URL}/api/research/instruments/lot-size`, {
+      params: { exchange: form.exchangeType, symbol: contractSymbol, name: selectedLocalStockName, callType: form.callType, expiry: contractExpiry },
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      signal: controller.signal,
+    }).then(response => {
+      if (controller.signal.aborted || manualLotSizeKey.current === lotLookupKey) return;
+      const lotSize = response.data?.lotSize;
+      if (Number.isSafeInteger(lotSize) && lotSize > 0) {
+        dispatch({ type: "SET_FIELD", field: "lotSize", value: String(lotSize) });
+        setLotSizeHint("Filled from Dhan instrument data; you can edit it.");
+      } else {
+        setLotSizeHint(form.callType === "Cash"
+          ? "No equity lot size found; enter it manually."
+          : "No matching futures or options contract for this symbol and expiry; enter lot size manually if applicable.");
+      }
+    }).catch(() => {
+      if (!controller.signal.aborted) setLotSizeHint("Lot size unavailable; enter it manually.");
+    });
+    return () => controller.abort();
+  }, [lotLookupKey, form.exchangeType, form.callType, contractExpiry, contractSymbol, selectedLocalStockName]);
 
   useEffect(() => {
     if (!restoredDraft) return;
@@ -1731,6 +1813,7 @@ const handleViewHistory = useCallback(async (item: any) => {
       );
       setAudienceError("");
       setDirectValue(item.name || item.symbol || "");
+      setSelectedLocalStockName("");
     });
 
     window.scrollTo({ top: 0 });
@@ -1932,8 +2015,8 @@ const publishTrackedDraft = async (
 
     setPreviewDialogOpen(false);
     setPreparedPreview(null);
-    setPendingDraftPublish(null);
     await fetchRecommendations();
+    resetForm();
   } catch (error: any) {
     console.error("Draft publish failed:", error?.response?.data || error);
     alert(error?.response?.data?.message || "Unable to publish the call");
@@ -2338,149 +2421,56 @@ const handleConfirmPreview = async () => {
   
 // };
 
-const handleInitiate = useCallback(
-  async (item: any) => {
-    try {
-      const token = localStorage.getItem("token");
+const handleInitiate = useCallback(async (item: any) => {
+  const formUpdate: Partial<RecommendationForm> = {
+    exchangeType: item.exchange || "NSE",
+    exchange: item.instrument || "STOCK",
+    action: item.action || "BUY",
+    callType: item.call_type || "Cash",
+    tradeType: item.trade_type || "Short Term",
+    symbol: item.symbol || "SYM",
+    display_name: item.name || item.symbol || "",
+    lotSize: item.lotSize?.toString() || "",
+    expiry: item.expiry_date?.slice(0, 10) || "",
+    entry: item.entry?.ideal?.toString() || "",
+    entryLow: item.entry?.low?.toString() || "",
+    entryUpper: item.entry?.high?.toString() || "",
+    target: item.targets?.[0]?.toString() || "",
+    target2: item.targets?.[1]?.toString() || "",
+    target3: item.targets?.[2]?.toString() || "",
+    stopLoss: item.stop_losses?.[0]?.toString() || "",
+    stopLoss2: item.stop_losses?.[1]?.toString() || "",
+    stopLoss3: item.stop_losses?.[2]?.toString() || "",
+    holdingPeriod: item.holding_period?.toString() || "",
+    rationale: item.rationale || "",
+    remark: item.remarks || "",
+    underlyingStudy: item.underlying_study
+      ? getStudiesByLabels(item.underlying_study.split(","))
+      : [],
+    rangeEnabled: Boolean(item.entry?.low || item.entry?.high),
+    secondaryTargetEnabled: Boolean(item.targets?.[1] || item.targets?.[2]),
+    stopLoss2Enabled: Boolean(item.stop_losses?.[1] || item.stop_losses?.[2]),
+  };
 
-      if (!token) {
-        alert("Please login again");
-        return;
-      }
-
-      if (!raDetails) {
-        alert("RA message profile is not loaded");
-        return;
-      }
-
-      const getEntry = () => {
-        if (!item.entry) return "-";
-
-        if (item.entry.low && item.entry.high) {
-          return `${item.entry.low} - ${item.entry.high}`;
-        }
-
-        return item.entry.ideal || "-";
-      };
-
-      const formatExpiry = (date: string) => {
-        const d = new Date(date);
-        const day = d.getDate();
-
-        const suffix =
-          day % 10 === 1 && day !== 11
-            ? "st"
-            : day % 10 === 2 && day !== 12
-            ? "nd"
-            : day % 10 === 3 && day !== 13
-            ? "rd"
-            : "th";
-
-        return `${day}${suffix} ${d.toLocaleString("en-IN", {
-          month: "long",
-          year: "numeric",
-        })}`;
-      };
-
-      const raFullName = [
-        raDetails.salutation,
-        raDetails.first_name,
-        raDetails.middle_name,
-        raDetails.surname,
-      ]
-        .filter(Boolean)
-        .join(" ");
-
-      const disclaimer =
-        raDetails.additional_comments ||
-        "Investment in securities market are subject to market risks. Read all related documents carefully before investing.";
-
-      const publishMessage = `
-Published On : ${new Date().toLocaleString("en-IN", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      })}
-
-${item.action || "N/A"} ${item.exchange || "N/A"} ${
-        item.call_type || "N/A"
-      } Expiry: ${
-        item.expiry_date
-          ? formatExpiry(item.expiry_date)
-          : "N/A"
-      }
-
-Stock Name: ${item.name || item.symbol || "N/A"}
-Symbol: ${item.symbol || "N/A"}
-
-Call Type: ${item.trade_type || "N/A"}
-
-Entry: ${getEntry()}
-
-Target: ${item.targets?.[0] || "-"}${
-        item.targets?.[1] || item.targets?.[2]
-          ? `
-T2: ${item.targets?.[1] || "-"}
-T3: ${item.targets?.[2] || "-"}`
-          : ""
-      }
-
-SL: ${item.stop_losses?.[0] || "-"}${
-        item.stop_losses?.[1] || item.stop_losses?.[2]
-          ? `
-SL 2: ${item.stop_losses?.[1] || "-"}
-SL 3: ${item.stop_losses?.[2] || "-"}`
-          : ""
-      }
-
-Holding Period: ${item.holding_period || "N/A"}
-
-Rationale: ${item.rationale || "N/A"}
-Underlying Study: ${item.underlying_study || "N/A"}
-Remarks: ${item.remarks || "N/A"}
-
-DISCLAIMER CUM DISCLOSURE:
-
-${disclaimer}
-
-Research Analyst: ${raFullName || "N/A"} (${
-        raDetails.org_name || "N/A"
-      })
-SEBI Registration No: ${raDetails.sebi_reg_no || "N/A"}
-Contact No: ${raDetails.mobile || "N/A"}
-Email ID: ${raDetails.email || "N/A"}
-
-Read Full Disclaimer / Disclosure at:
-https://lotusfunds.com/disclaimer&disclosure
-`.trim();
-
-      setPendingDraftPublish(item);
-      setPreparedPreview({
-        message: publishMessage,
-        templateVersion: null,
-        templateSnapshot: null,
-      });
-      setAudienceError("");
-      setPreviewDialogOpen(true);
-    } catch (err: any) {
-      console.error(
-        "Initiate failed:",
-        err?.response?.data || err
-      );
-
-      alert(
-        err?.response?.data?.message ||
-          "Something went wrong"
-      );
-    }
-  },
-  [raDetails]
-);
-
+  dispatch({ type: "SET_FORM", payload: formUpdate });
+  setDirectValue(item.name || item.symbol || "");
+  setSelectedLocalStockName("");
+  setIsErrataMode(false);
+  setErrataSourceId(null);
+  setPendingDraftPublish(item);
+  setAudienceMode(item.audience_mode === "GROUPS" ? "GROUPS" : "ALL_CONNECTED");
+  setSelectedAudienceGroupIds(
+    item.audience_mode === "GROUPS" && Array.isArray(item.audience_groups_snapshot)
+      ? item.audience_groups_snapshot.map((group: { id?: unknown }) => String(group.id || "")).filter(Boolean)
+      : []
+  );
+  setSelectedFiles([]);
+  setPreparedPreview(null);
+  setPreviewDialogOpen(false);
+  setAudienceError("");
+  setWasValidated(false);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}, [setDirectValue]);
 
 const handleTrack = async () => {
   if (submittingRef.current) return;
@@ -3046,6 +3036,11 @@ maxWidth: "100%",
           }
         }}
       >
+        {pendingDraftPublish && (
+          <Alert severity="info">
+            Draft loaded: {pendingDraftPublish.name || pendingDraftPublish.symbol}. Review the details below, then select Publish Call.
+          </Alert>
+        )}
         {isErrataMode && (
           <Box
             sx={{
@@ -3447,6 +3442,7 @@ sx={{
               inputValue={inputValue}
             onInputChange={(event, value, reason) => {
   if (reason === "input" || reason === "clear") {
+    setSelectedLocalStockName("");
     handleInputChange(event, value);
 
     dispatch({
@@ -3464,6 +3460,7 @@ sx={{
     const value = newValue.trim();
 
     setDirectValue(value);
+    setSelectedLocalStockName("");
 
     dispatch({
       type: "SET_FORM",
@@ -3481,6 +3478,7 @@ sx={{
     const selectedSymbol = newValue.symbol.trim();
 
     setDirectValue(selectedName);
+    setSelectedLocalStockName(selectedSymbol ? "" : selectedName);
 
     dispatch({
       type: "SET_FORM",
@@ -3556,9 +3554,12 @@ sx={{
             type="number"
             label="Lot Size"
             value={form.lotSize}
-            onChange={(event) => updateField("lotSize", event.target.value)}
+            onChange={(event) => {
+              manualLotSizeKey.current = lotLookupKey;
+              updateField("lotSize", event.target.value);
+            }}
             inputProps={{ min: 1, step: 1 }}
-            helperText="Optional; enter a positive whole number"
+            helperText={lotSizeHint || "Optional; enter a positive whole number"}
           />
         </Box>
 
@@ -3661,7 +3662,7 @@ sx={{
             </FormControl>
           </Box>
 
-          <RiskRewardSummary ratio={riskRewardRatio} ready={riskRewardReady} />
+          <RiskRewardSummary ratio={riskRewardRatio} ready={riskRewardReady} perLot={riskRewardReady ? perLotRiskReward : null} />
           </Box>
 
           {/* Rationale */}
