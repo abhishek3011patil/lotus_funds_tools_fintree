@@ -84,9 +84,9 @@ const saveTemplateHistory = async (
     `INSERT INTO ra_message_template_history
       (ra_user_id, message_type, version_number, destination, source_template_id,
        template_name, group_id, group_name, participants_snapshot, template_data)
-     VALUES ($1, $2,
+     VALUES ($1, $2::varchar(16),
        (SELECT COALESCE(MAX(version_number), 0) + 1 FROM ra_message_template_history
-        WHERE ra_user_id = $1 AND message_type = $2),
+        WHERE ra_user_id = $1 AND message_type = $2::varchar(16)),
        $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb)`,
     [input.raUserId, input.messageType, input.destination, input.sourceTemplateId || null,
       input.templateName || null, input.groupId || null, groupName,
