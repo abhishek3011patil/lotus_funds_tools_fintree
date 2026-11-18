@@ -452,6 +452,8 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
       ? ""
       : "Please sign in again to load your saved templates."
   );
+  const [loadError, setLoadError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [successMessage, setSuccessMessage] =
     useState("");
   const [namedTemplates, setNamedTemplates] = useState<NamedResearchCallTemplate[]>([]);
@@ -584,21 +586,36 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
 
   useEffect(() => {
     if (!initialAuthToken || ownerType !== "RA") return;
-    Promise.all([fetchNamedResearchCallTemplates(initialAuthToken), fetchAudienceGroups()])
-      .then(([saved, groups]) => {
-        setNamedTemplates(saved); setAudienceGroups(groups);
-        if (focusGroupId) {
-          const group = groups.find(item => item.id === focusGroupId) ?? null;
-          if (group) {
-            setSaveDestination("GROUP");
-            setNamedTemplateGroupId(group.id);
-            setNamedTemplateName(group.name + " template");
+    let active = true;
+    const failure = (label: string, reason: unknown) => {
+      const error = reason as { response?: { status?: number; data?: { message?: string } }; message?: string };
+      const status = error.response?.status;
+      const detail = error.response?.data?.message || (status ? `HTTP ${status}` : error.message || "Network error");
+      return `${label}: ${detail}`;
+    };
+    Promise.allSettled([fetchNamedResearchCallTemplates(initialAuthToken), fetchAudienceGroups()])
+      .then(([savedResult, groupsResult]) => {
+        if (!active) return;
+        const failures: string[] = [];
+        if (savedResult.status === "fulfilled") setNamedTemplates(savedResult.value);
+        else failures.push(failure("Named templates", savedResult.reason));
+        if (groupsResult.status === "fulfilled") {
+          const groups = groupsResult.value;
+          setAudienceGroups(groups);
+          if (focusGroupId) {
+            const group = groups.find(item => item.id === focusGroupId);
+            if (group) {
+              setSaveDestination("GROUP");
+              setNamedTemplateGroupId(group.id);
+              setNamedTemplateName(group.name + " template");
+            }
+            navigate(location.pathname, { replace: true, state: null });
           }
-          navigate(location.pathname, { replace: true, state: null });
-        }
-      })
-      .catch(() => setValidationError("Could not load named templates or audience groups."));
-  }, [initialAuthToken, ownerType, focusGroupId, navigate, location.pathname]);
+        } else failures.push(failure("Audience groups", groupsResult.reason));
+        setLoadError(failures.join(" · "));
+      });
+    return () => { active = false; };
+  }, [initialAuthToken, ownerType, focusGroupId, navigate, location.pathname, loadAttempt]);
 
   const saveNamedTemplate = async () => {
     const token = localStorage.getItem("token");
@@ -1073,6 +1090,11 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
       {validationError && (
         <Alert severity="error" sx={{ my: 2 }}>
           {validationError}
+        </Alert>
+      )}
+      {loadError && (
+        <Alert severity="error" sx={{ my: 2 }} action={<Button color="inherit" size="small" onClick={() => setLoadAttempt(attempt => attempt + 1)}>Retry</Button>}>
+          {loadError}
         </Alert>
       )}
 

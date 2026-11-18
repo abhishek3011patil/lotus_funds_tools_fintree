@@ -5,6 +5,7 @@ import {
   type CallTemplateOwnerType,
   type ResearchCallMessageType,
 } from "../utils/researchCallTemplate.utils";
+import api from "../utils/axio";
 
 export type ResearchCallTemplateMap = Record<
   ResearchCallMessageType,
@@ -35,7 +36,7 @@ interface TemplateSaveResponse {
 const apiBaseUrl = import.meta.env.VITE_API_URL;
 
 export const fetchNamedResearchCallTemplates = async (token: string): Promise<NamedResearchCallTemplate[]> => {
-  const response = await axios.get<{ data?: NamedResearchCallTemplate[] }>(`${apiBaseUrl}/api/research/named-message-templates`, { headers: { Authorization: `Bearer ${token}` } });
+  const response = await api.get<{ data?: NamedResearchCallTemplate[] }>("/research/named-message-templates", { headers: { Authorization: `Bearer ${token}` } });
   return response.data.data ?? [];
 };
 
