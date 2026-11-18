@@ -3953,7 +3953,7 @@ sx={{
     },
   }}
 >
-  {isSubmitting ? "Saving Draft..." : "Track"}
+  {isSubmitting ? "Adding to Watchlist..." : "Watchlist"}
 </Button>
 
 
