@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { pool } from "../db";
 import {AuthRequest} from "../middlewares/auth.middleware";
 import { createClient } from "../utils/telegramClientFactory";
+import { telegramDeliveryError } from "../utils/telegramDeliveryError";
 import { loadResearchCallMedia, sendTelegramMessageWithMedia } from "../services/researchCallMedia.service";
 import {
   audienceClientIds,
@@ -1001,7 +1002,7 @@ export const sendMessageToRAClients = async (
                 failedEntities.push({
                   entity: u.telegram_client_name || u.telegram_user_id,
                   type: u.entity_type,
-                  reason: retryErr.message,
+                  reason: telegramDeliveryError(retryErr),
                 });
               }
             } else {
@@ -1012,7 +1013,7 @@ export const sendMessageToRAClients = async (
               failedEntities.push({
                 entity: u.telegram_client_name || u.telegram_user_id,
                 type: u.entity_type,
-                reason: err.message,
+                reason: telegramDeliveryError(err),
               });
             }
           }

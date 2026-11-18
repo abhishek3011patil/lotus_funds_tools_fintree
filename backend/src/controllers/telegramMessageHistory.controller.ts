@@ -2,6 +2,7 @@ import type { Response } from "express";
 import { pool } from "../db";
 import type { AuthRequest } from "../middlewares/auth.middleware";
 import { createClient } from "../utils/telegramClientFactory";
+import { telegramDeliveryError } from "../utils/telegramDeliveryError";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -31,7 +32,10 @@ export const getResearchCallTelegramMessageStatus = async (req: AuthRequest, res
     );
     return res.json({
       recipientCount: Number(result.rows[0]?.recipient_count || 0),
-      deliveries: deliveries.rows,
+      deliveries: deliveries.rows.map((delivery) => ({
+        ...delivery,
+        errorMessage: delivery.errorMessage ? telegramDeliveryError(delivery.errorMessage) : null,
+      })),
     });
   } catch (error) {
     console.error("GET TELEGRAM MESSAGE STATUS ERROR:", error);
@@ -92,6 +96,7 @@ export const deleteResearchCallTelegramMessages = async (req: AuthRequest, res: 
         );
         deletedCount++;
       } catch (error) {
+        console.error("TELEGRAM MESSAGE DELETE ERROR:", error);
         const message = error instanceof Error ? error.message : "Telegram could not delete this delivery.";
         await pool.query(
           `UPDATE telegram_message_deliveries SET status = 'DELETE_FAILED', error_message = $1, updated_at = NOW()

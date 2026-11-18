@@ -135,7 +135,14 @@ export default function PerformanceCallOptions({ callId, filePath, attachments, 
               {telegramDeliveries.map(delivery => <Box key={delivery.id} sx={{ p: 1.5, border: "1px solid #E2E8F0", borderRadius: 1.5 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}>
                   <Typography fontWeight={700}>{delivery.recipientName}</Typography>
-                  <Chip size="small" label={delivery.status === "SENT" ? "Sent to Telegram" : delivery.status.replaceAll("_", " ").toLowerCase()}
+                  <Chip size="small" label={({
+                    SENT: "Sent to Telegram",
+                    PARTIAL: "Message sent, attachment issue",
+                    FAILED: "Not sent",
+                    DELETING: "Removing…",
+                    DELETED: "Removed",
+                    DELETE_FAILED: "Could not remove",
+                  } as Record<string, string>)[delivery.status] || delivery.status.replaceAll("_", " ").toLowerCase()}
                     color={delivery.status === "SENT" ? "success" : delivery.status === "FAILED" || delivery.status === "DELETE_FAILED" ? "error" : "default"} />
                 </Stack>
                 <Typography variant="caption" color="text.secondary">
