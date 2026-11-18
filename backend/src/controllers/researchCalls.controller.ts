@@ -492,6 +492,7 @@ export const getRecommendationHistory = async (
 
     const query = `
       SELECT
+        rc.id,
         rc.created_at AS date_time,
         rc.file_url,
         rc.attachments,
