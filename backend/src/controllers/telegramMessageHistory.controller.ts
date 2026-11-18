@@ -18,8 +18,20 @@ export const getResearchCallTelegramMessageStatus = async (req: AuthRequest, res
          AND delivery.status IN ('SENT', 'PARTIAL', 'DELETING', 'DELETE_FAILED')`,
       [req.user!.id, researchCallId],
     );
+    const deliveries = await pool.query(
+      `SELECT delivery.id, delivery.recipient_name AS "recipientName",
+              delivery.entity_type AS "entityType", delivery.status,
+              delivery.error_message AS "errorMessage", delivery.sent_at AS "sentAt",
+              cardinality(delivery.message_ids) AS "messageCount"
+       FROM telegram_message_broadcasts broadcast
+       JOIN telegram_message_deliveries delivery ON delivery.broadcast_id = broadcast.id
+       WHERE broadcast.sender_user_id = $1 AND broadcast.research_call_id = $2
+       ORDER BY delivery.sent_at DESC, delivery.id DESC`,
+      [req.user!.id, researchCallId],
+    );
     return res.json({
       recipientCount: Number(result.rows[0]?.recipient_count || 0),
+      deliveries: deliveries.rows,
     });
   } catch (error) {
     console.error("GET TELEGRAM MESSAGE STATUS ERROR:", error);

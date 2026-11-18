@@ -21,11 +21,9 @@ import {
 import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import SettingsIcon from '@mui/icons-material/Settings';
-import CampaignIcon from '@mui/icons-material/Campaign';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import FolderIcon from '@mui/icons-material/Folder';
 import NotificationsIcon from '@mui/icons-material/Notifications';
-import PaletteIcon from '@mui/icons-material/Palette';
 import PeopleIcon from '@mui/icons-material/People';
 import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
@@ -44,8 +42,6 @@ const brokerSidebarItems = [
   { name: 'Clients', path: '/broker/clients', icon: PeopleIcon },
   { name: 'Performance', path: '/broker/performance', icon: ShowChartIcon },
   { name: 'Content', path: '/broker/content', icon: AutoStoriesRoundedIcon },
-  { name: 'Announcements', path: '/broker/announcements', icon: CampaignIcon },
-  { name: 'Branding', path: '/broker/branding', icon: PaletteIcon },
   { name: 'Subscription', path: '/broker/subscription', icon: CreditCardIcon },
   { name: 'Notifications', path: '/broker/notifications', icon: NotificationsIcon },
   { name: 'Settings', path: '/broker/settings', icon: SettingsIcon },

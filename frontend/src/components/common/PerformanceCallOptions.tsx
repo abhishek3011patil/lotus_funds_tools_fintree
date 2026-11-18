@@ -1,9 +1,10 @@
 import { useState, type MouseEvent } from "react";
 import axios from "axios";
-import { Alert, Button, Menu, MenuItem, Snackbar } from "@mui/material";
+import { Alert, Box, Button, Chip, Dialog, DialogContent, DialogTitle, Menu, MenuItem, Snackbar, Stack, Typography } from "@mui/material";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import {
   RecommendationMediaDialog,
   resolveRecommendationMedia,
@@ -17,9 +18,22 @@ type PerformanceCallOptionsProps = {
   symbol: string;
 };
 
+type TelegramDelivery = {
+  id: string;
+  recipientName: string;
+  entityType: "USER" | "GROUP" | "CHANNEL";
+  status: "SENT" | "PARTIAL" | "FAILED" | "DELETING" | "DELETED" | "DELETE_FAILED";
+  errorMessage: string | null;
+  sentAt: string;
+  messageCount: number;
+};
+
 export default function PerformanceCallOptions({ callId, filePath, attachments, symbol }: PerformanceCallOptionsProps) {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [telegramRecipientCount, setTelegramRecipientCount] = useState(0);
+  const [telegramDeliveries, setTelegramDeliveries] = useState<TelegramDelivery[]>([]);
+  const [deliveryStatusOpen, setDeliveryStatusOpen] = useState(false);
+  const [deliveryStatusError, setDeliveryStatusError] = useState("");
   const [checkingTelegram, setCheckingTelegram] = useState(false);
   const [deletingTelegram, setDeletingTelegram] = useState(false);
   const [mediaOpen, setMediaOpen] = useState(false);
@@ -36,8 +50,12 @@ export default function PerformanceCallOptions({ callId, filePath, attachments, 
         { headers: { Authorization: `Bearer ${token}` } },
       );
       setTelegramRecipientCount(Number(response.data.recipientCount || 0));
+      setTelegramDeliveries(Array.isArray(response.data.deliveries) ? response.data.deliveries : []);
+      setDeliveryStatusError("");
     } catch {
       setTelegramRecipientCount(0);
+      setTelegramDeliveries([]);
+      setDeliveryStatusError("Unable to load Telegram delivery records.");
     } finally {
       setCheckingTelegram(false);
     }
@@ -86,6 +104,10 @@ export default function PerformanceCallOptions({ callId, filePath, attachments, 
           <AttachFileIcon fontSize="small" sx={{ mr: 1 }} />
           {media.length ? `Media (${media.length})` : "Media (none attached)"}
         </MenuItem>
+        <MenuItem disabled={!callId} onClick={() => { setAnchorEl(null); setDeliveryStatusOpen(true); void loadTelegramStatus(); }}>
+          <CheckCircleOutlineIcon fontSize="small" sx={{ mr: 1 }} />
+          Telegram delivery status
+        </MenuItem>
         <MenuItem
           disabled={!callId || checkingTelegram || deletingTelegram || telegramRecipientCount === 0}
           onClick={() => void deleteTelegramMessages()}
@@ -100,6 +122,30 @@ export default function PerformanceCallOptions({ callId, filePath, attachments, 
                 : "No tracked Telegram messages"}
         </MenuItem>
       </Menu>
+      <Dialog open={deliveryStatusOpen} onClose={() => setDeliveryStatusOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Telegram delivery status</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Sent means Telegram accepted the message. It does not confirm delivery to a device or that the recipient read it.
+          </Typography>
+          {checkingTelegram ? <Typography>Loading delivery records…</Typography>
+            : deliveryStatusError ? <Alert severity="warning">{deliveryStatusError}</Alert>
+            : telegramDeliveries.length === 0 ? <Typography color="text.secondary">No tracked Telegram messages for this call.</Typography>
+            : <Stack spacing={1}>
+              {telegramDeliveries.map(delivery => <Box key={delivery.id} sx={{ p: 1.5, border: "1px solid #E2E8F0", borderRadius: 1.5 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}>
+                  <Typography fontWeight={700}>{delivery.recipientName}</Typography>
+                  <Chip size="small" label={delivery.status === "SENT" ? "Sent to Telegram" : delivery.status.replaceAll("_", " ").toLowerCase()}
+                    color={delivery.status === "SENT" ? "success" : delivery.status === "FAILED" || delivery.status === "DELETE_FAILED" ? "error" : "default"} />
+                </Stack>
+                <Typography variant="caption" color="text.secondary">
+                  {delivery.entityType.toLowerCase()} · {new Date(delivery.sentAt).toLocaleString()} · {delivery.messageCount} message{delivery.messageCount === 1 ? "" : "s"}
+                </Typography>
+                {delivery.errorMessage && <Typography variant="body2" color="error.main">{delivery.errorMessage}</Typography>}
+              </Box>)}
+            </Stack>}
+        </DialogContent>
+      </Dialog>
       <RecommendationMediaDialog
         filePath={filePath}
         attachments={attachments}

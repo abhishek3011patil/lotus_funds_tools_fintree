@@ -5,7 +5,7 @@ describe("Broker navigation", () => {
   it("contains only the permitted Broker sections", () => {
     expect(brokerSidebarItems.map((item) => item.label)).toEqual([
       "Dashboard", "Research Calls", "Research Analysts", "Clients", "Performance",
-      "Announcements", "Branding", "Subscription", "Notifications", "Settings",
+      "Subscription", "Notifications", "Settings",
     ]);
   });
 
