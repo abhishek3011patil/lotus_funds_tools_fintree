@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type SetStateAction,
 } from "react";
@@ -12,6 +13,10 @@ import {
   Chip,
   CircularProgress,
   Divider,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   IconButton,
   InputLabel,
@@ -37,6 +42,7 @@ import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import TextFieldsOutlinedIcon from "@mui/icons-material/TextFieldsOutlined";
 import TouchAppOutlinedIcon from "@mui/icons-material/TouchAppOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import RASettingsDisclaimer from "../../common/RASettingsDisclaimer";
 import {
   DndContext,
   KeyboardSensor,
@@ -56,7 +62,9 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   CALL_TEMPLATE_VERSION,
+  DEFAULT_RA_CANVAS,
   DEFAULT_RA_DISCLAIMER,
+  RA_CANVAS_VALUES,
   MAX_CUSTOM_BLOCK_LENGTH,
   createDefaultCallTemplate,
   formatResearchCallMessage,
@@ -78,10 +86,9 @@ import {
   type ResearchCallTemplateMap,
   fetchNamedResearchCallTemplates,
   saveNamedResearchCallTemplate,
-  deleteNamedResearchCallTemplate,
   type NamedResearchCallTemplate,
 } from "../../services/researchCallTemplate.service";
-import { fetchAudienceGroups, updateAudienceGroup, type AudienceGroup } from "../../services/audienceGroups.service";
+import { fetchAudienceGroups, type AudienceGroup } from "../../services/audienceGroups.service";
 import api from "../../utils/axio";
 import PreviewChannelStatus from "../common/PreviewChannelStatus";
 
@@ -333,9 +340,13 @@ const PREVIEW_CALL = {
   instrument: "Dixon Technologies",
   symbol: "DIXON",
   exchange: "NSE / STOCK",
+  exchangeType: "NSE",
+  marketType: "STOCK",
   action: "BUY",
   callType: "Futures",
   entry: "13200",
+  entryLow: "",
+  entryUpper: "",
   targets: ["14100"],
   stopLosses: ["12871"],
   expiry: "2026-12-29",
@@ -347,6 +358,7 @@ const PREVIEW_CALL = {
   rewardPerLot: 157500,
   riskPercent: 2.49,
   rewardPercent: 6.82,
+  riskRewardRatio: 2.74,
   status: "Open",
   underlyingStudy: "Price action and volume",
   remarks: "Preview values only",
@@ -356,12 +368,17 @@ const PREVIEW_CALL = {
 
 const PREVIEW_RA = {
   fullName: "Aarav Sharma",
+  salutation: "Mr",
+  firstName: "Aarav",
+  middleName: "",
+  surname: "Sharma",
   organizationName: "Tarkashh",
   sebiRegistrationNumber: "INH000000000",
   contactNumber: "+91 90000 00000",
   email: "analyst@example.com",
   disclaimer: DEFAULT_RA_DISCLAIMER,
   disclaimerLink: "",
+  additionalComments: "",
 };
 
 const PREVIEW_BROKER = {
@@ -397,12 +414,16 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
   const [initialAuthToken] = useState(() =>
     localStorage.getItem("token")
   );
-  const [raPhoneNumber, setRaPhoneNumber] = useState<string | null>(null);
+  const [raProfile, setRaProfile] = useState<{
+    salutation?: string; first_name?: string; middle_name?: string; surname?: string;
+    org_name?: string; sebi_reg_no?: string; mobile?: string; email?: string;
+    additional_comments?: string;
+  } | null>(null);
   useEffect(() => {
     if (ownerType !== "RA" || !initialAuthToken) return;
     let active = true;
-    api.get<{ data: { mobile?: string | null } }>("/research/ra/message-profile").then(response => {
-      if (active) setRaPhoneNumber(response.data.data.mobile || null);
+    api.get<{ data: NonNullable<typeof raProfile> }>("/research/ra/message-profile").then(response => {
+      if (active) setRaProfile(response.data.data);
     }).catch(() => undefined);
     return () => { active = false; };
   }, [ownerType, initialAuthToken]);
@@ -435,15 +456,39 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
     useState("");
   const [namedTemplates, setNamedTemplates] = useState<NamedResearchCallTemplate[]>([]);
   const [audienceGroups, setAudienceGroups] = useState<AudienceGroup[]>([]);
-  const [disclaimerGroup, setDisclaimerGroup] = useState<AudienceGroup | null>(null);
-  const [groupDisclaimerText, setGroupDisclaimerText] = useState("");
-  const [isSavingGroupDisclaimer, setIsSavingGroupDisclaimer] = useState(false);
-  const [namedTemplateId, setNamedTemplateId] = useState("");
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [saveDestination, setSaveDestination] = useState<"DEFAULT" | "GROUP">("DEFAULT");
   const [namedTemplateName, setNamedTemplateName] = useState("");
   const [namedTemplateGroupId, setNamedTemplateGroupId] = useState("");
 
   const template = templates[messageType];
+  const previewRa = raProfile ? {
+    ...PREVIEW_RA,
+    fullName: [raProfile.salutation, raProfile.first_name, raProfile.middle_name, raProfile.surname].filter(Boolean).join(" ") || PREVIEW_RA.fullName,
+    salutation: raProfile.salutation || "",
+    firstName: raProfile.first_name || "",
+    middleName: raProfile.middle_name || "",
+    surname: raProfile.surname || "",
+    organizationName: raProfile.org_name || PREVIEW_RA.organizationName,
+    sebiRegistrationNumber: raProfile.sebi_reg_no || PREVIEW_RA.sebiRegistrationNumber,
+    contactNumber: raProfile.mobile || PREVIEW_RA.contactNumber,
+    email: raProfile.email || PREVIEW_RA.email,
+    disclaimer: raProfile.additional_comments || DEFAULT_RA_DISCLAIMER,
+    additionalComments: raProfile.additional_comments || "",
+  } : PREVIEW_RA;
+  const canvasText = template.canvasText ?? DEFAULT_RA_CANVAS[messageType];
+  const editableTemplate = ownerType === "RA" ? { ...template, standardLayout: false, canvasText } : template;
+  const canvasRef = useRef<HTMLTextAreaElement | null>(null);
+  const previewRef = useRef<HTMLDivElement | null>(null);
   const savedSnapshot = savedSnapshots[messageType];
+
+  const insertCanvasText = (value: string) => {
+    const input = canvasRef.current;
+    const start = input?.selectionStart ?? canvasText.length;
+    const end = input?.selectionEnd ?? start;
+    setTemplate(current => ({ ...current, standardLayout: false, canvasText: canvasText.slice(0, start) + value + canvasText.slice(end) }));
+    requestAnimationFrame(() => { input?.focus(); input?.setSelectionRange(start + value.length, start + value.length); });
+  };
 
   const setTemplate = (
     update: SetStateAction<CallTemplate>
@@ -545,9 +590,9 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
         if (focusGroupId) {
           const group = groups.find(item => item.id === focusGroupId) ?? null;
           if (group) {
-            setDisclaimerGroup(group);
-            setGroupDisclaimerText(group.customDisclaimer || "");
+            setSaveDestination("GROUP");
             setNamedTemplateGroupId(group.id);
+            setNamedTemplateName(group.name + " template");
           }
           navigate(location.pathname, { replace: true, state: null });
         }
@@ -555,69 +600,23 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
       .catch(() => setValidationError("Could not load named templates or audience groups."));
   }, [initialAuthToken, ownerType, focusGroupId, navigate, location.pathname]);
 
-  const saveGroupDisclaimer = async () => {
-    if (!disclaimerGroup) return;
-    setIsSavingGroupDisclaimer(true);
-    try {
-      const input = {
-        name: disclaimerGroup.name,
-        description: disclaimerGroup.description || "",
-        customDisclaimer: groupDisclaimerText.trim(),
-        members: disclaimerGroup.members.map(member => ({ type: member.type, id: member.id })),
-      };
-      await updateAudienceGroup(disclaimerGroup.id, input);
-      const updated = { ...disclaimerGroup, customDisclaimer: groupDisclaimerText.trim() || null };
-      setDisclaimerGroup(updated);
-      setAudienceGroups(current => current.map(group => group.id === updated.id ? updated : group));
-      setSuccessMessage(`Disclaimer saved for “${updated.name}”.`);
-      setValidationError("");
-    } catch (error) {
-      setValidationError(error instanceof Error ? error.message : "Unable to save the group disclaimer.");
-    } finally { setIsSavingGroupDisclaimer(false); }
-  };
-
-  const startNewNamedTemplate = () => {
-    setNamedTemplateId("");
-    setNamedTemplateName("");
-    setNamedTemplateGroupId("");
-    setValidationError("");
-  };
-
-  const loadNamedTemplate = (saved: NamedResearchCallTemplate) => {
-    setNamedTemplateId(saved.id);
-    setNamedTemplateName(saved.name);
-    setNamedTemplateGroupId(saved.groupIds[0] ?? "");
-    setTemplate(saved.template);
-    setSavedSnapshots(current => ({ ...current, [messageType]: JSON.stringify(saved.template) }));
-    setValidationError("");
-  };
-
   const saveNamedTemplate = async () => {
     const token = localStorage.getItem("token");
     if (!token) return setValidationError("Please sign in again before saving a template.");
+    if (!namedTemplateGroupId || !audienceGroups.some(group => group.id === namedTemplateGroupId)) return setValidationError("Choose an audience group.");
     if (namedTemplateName.trim().length < 2 || namedTemplateName.trim().length > 100) return setValidationError("Enter a template name between 2 and 100 characters.");
-    if (!isValidCallTemplate(template, messageType, ownerType)) return setValidationError("The template layout is invalid.");
+    if (!isValidCallTemplate(editableTemplate, messageType, ownerType)) return setValidationError("The template layout is invalid.");
     setIsSavingTemplate(true);
     try {
-      const saved = await saveNamedResearchCallTemplate(token, { templateId: namedTemplateId || undefined, messageType, name: namedTemplateName.trim(), template, groupIds: namedTemplateGroupId ? [namedTemplateGroupId] : [] });
-      setNamedTemplateId(saved.id);
+      const existing = namedTemplates.find(item => item.messageType === messageType && item.groupIds.includes(namedTemplateGroupId));
+      const saved = await saveNamedResearchCallTemplate(token, { templateId: existing?.id, messageType, name: namedTemplateName.trim(), template: editableTemplate, groupIds: [namedTemplateGroupId] });
       setNamedTemplates(current => [saved, ...current.filter(item => item.id !== saved.id)]);
       setValidationError("");
-      setSuccessMessage(`“${saved.name}” saved and assigned to ${saved.groupIds.length} group${saved.groupIds.length === 1 ? "" : "s"}.`);
+      setSaveDialogOpen(false);
+      setSuccessMessage(`“${saved.name}” saved for ${audienceGroups.find(group => group.id === namedTemplateGroupId)?.name}.`);
     } catch (error) {
       setValidationError(error instanceof Error ? error.message : "Unable to save this named template.");
     } finally { setIsSavingTemplate(false); }
-  };
-
-  const removeNamedTemplate = async (templateId: string) => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-    try {
-      await deleteNamedResearchCallTemplate(token, templateId);
-      setNamedTemplates(current => current.filter(item => item.id !== templateId));
-      if (namedTemplateId === templateId) startNewNamedTemplate();
-      setSuccessMessage("Named template deleted.");
-    } catch (error) { setValidationError(error instanceof Error ? error.message : "Unable to delete this template."); }
   };
 
   const sensors = useSensors(
@@ -653,23 +652,25 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
     [template]
   );
 
-  const hasUnsavedChanges =
-    JSON.stringify(template) !== savedSnapshot;
+  const groupTemplate = namedTemplates.find(item => item.messageType === messageType && item.groupIds.includes(namedTemplateGroupId));
+  const hasUnsavedChanges = saveDestination === "GROUP" && namedTemplateGroupId
+    ? JSON.stringify(editableTemplate) !== JSON.stringify(groupTemplate?.template)
+    : JSON.stringify(editableTemplate) !== savedSnapshot;
 
   const preview = useMemo(() => {
     try {
       return formatResearchCallMessage(
-        template,
+        editableTemplate,
         PREVIEW_CALL,
-        PREVIEW_RA,
+        previewRa,
         messageType,
         ownerType,
         ownerType === "BROKER" ? PREVIEW_BROKER : undefined
       );
     } catch {
-      return "The current layout cannot be previewed. Restore the default template.";
+      return "The current layout cannot be previewed. Check the message text and inserted values.";
     }
-  }, [messageType, template]);
+  }, [messageType, editableTemplate, ownerType, raProfile]);
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) {
@@ -765,7 +766,7 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
   };
 
   const saveTemplate = async () => {
-    if (!isValidCallTemplate(template, messageType, ownerType)) {
+    if (!isValidCallTemplate(editableTemplate, messageType, ownerType)) {
       setValidationError(
         "The template is invalid or is missing a mandatory block."
       );
@@ -786,7 +787,7 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
         await saveResearchCallTemplateToApi(
           token,
           messageType,
-          template,
+          editableTemplate,
           ownerType
         );
       try {
@@ -802,6 +803,7 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
         [messageType]: JSON.stringify(savedTemplate),
       }));
       setValidationError("");
+      setSaveDialogOpen(false);
       setSuccessMessage(
         messageType === "ERRATA"
           ? `Errata template saved for your ${ownerType === "BROKER" ? "broker" : "RA"} account.`
@@ -812,54 +814,6 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
         error instanceof Error
           ? error.message
           : "Unable to save the template."
-      );
-    } finally {
-      setIsSavingTemplate(false);
-    }
-  };
-
-  const resetTemplate = async () => {
-    const defaultTemplate =
-      createDefaultCallTemplate(messageType, ownerType);
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      setValidationError(
-        "Please sign in again before resetting."
-      );
-      return;
-    }
-
-    setIsSavingTemplate(true);
-    try {
-      const savedTemplate =
-        await saveResearchCallTemplateToApi(
-          token,
-          messageType,
-          defaultTemplate,
-          ownerType
-        );
-      try {
-        saveCallTemplate(savedTemplate, messageType, window.localStorage, ownerType);
-      } catch {
-        console.warn(
-          "The server template was reset but could not be cached in this browser."
-        );
-      }
-      setTemplate(savedTemplate);
-      setSavedSnapshots((current) => ({
-        ...current,
-        [messageType]: JSON.stringify(savedTemplate),
-      }));
-      setValidationError("");
-      setSuccessMessage(
-        messageType === "ERRATA"
-          ? "Default Errata layout restored."
-          : "Default new-call layout restored."
-      );
-    } catch {
-      setValidationError(
-        "Unable to restore the default template."
       );
     } finally {
       setIsSavingTemplate(false);
@@ -1016,6 +970,12 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
         </Box>
       </Box>
 
+      {ownerType === "RA" && (
+        <RASettingsDisclaimer onSaved={(disclaimer) =>
+          setRaProfile((profile) => profile ? { ...profile, additional_comments: disclaimer } : profile)
+        } />
+      )}
+
       <Box
         sx={{
           p: 1.5,
@@ -1059,7 +1019,6 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
               setMessageType(nextType);
               setCustomText("");
               setValidationError("");
-              startNewNamedTemplate();
             }}
             aria-label="Choose message template"
             sx={{
@@ -1107,79 +1066,9 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
         )}
       </Box>
 
-      {ownerType === "RA" && disclaimerGroup && (
-        <Paper variant="outlined" sx={{ mt: 2, p: 2, borderRadius: 2.5, borderColor: "#C7D2FE", backgroundColor: "#F8FAFF" }}>
-          <Typography fontWeight={800}>Set a disclaimer for “{disclaimerGroup.name}”</Typography>
-          <Typography color="text.secondary" fontSize="0.8rem" sx={{ mt: 0.4, mb: 1.25 }}>
-            This disclaimer is shown in calls sent to this group. You can also assign a named message template to the group below.
-          </Typography>
-          <TextField
-            fullWidth
-            multiline
-            minRows={3}
-            maxRows={6}
-            label="Group call disclaimer"
-            value={groupDisclaimerText}
-            onChange={event => setGroupDisclaimerText(event.target.value)}
-            inputProps={{ maxLength: 2000 }}
-            helperText={`${groupDisclaimerText.length}/2000 characters`}
-          />
-          <Button sx={{ mt: 1.25 }} variant="contained" onClick={saveGroupDisclaimer} disabled={isSavingGroupDisclaimer}>
-            {isSavingGroupDisclaimer ? "Saving disclaimer…" : "Save group disclaimer"}
-          </Button>
-        </Paper>
-      )}
-
-      {ownerType === "RA" && (
-        <Paper variant="outlined" sx={{ mt: 2, p: 2, borderRadius: 2.5, borderColor: "#C7D2FE" }}>
-          <Typography fontWeight={800}>Named templates for groups</Typography>
-          <Typography color="text.secondary" fontSize="0.8rem" sx={{ mt: 0.4, mb: 1.5 }}>
-            Save a named layout, then assign it to one audience group. The selected group determines the template in call preview.
-          </Typography>
-          <TextField
-            fullWidth
-            size="small"
-            label="Template name"
-            placeholder={messageType === "NEW_CALL" ? "e.g. Futures calls" : "e.g. Futures errata"}
-            value={namedTemplateName}
-            onChange={event => setNamedTemplateName(event.target.value)}
-            inputProps={{ maxLength: 100 }}
-            sx={{ mb: 1.25 }}
-          />
-          <FormControl fullWidth size="small">
-            <InputLabel id="named-template-groups-label">Assign to audience group</InputLabel>
-            <Select
-              labelId="named-template-groups-label"
-              value={namedTemplateGroupId}
-              label="Assign to audience group"
-              onChange={event => setNamedTemplateGroupId(String(event.target.value))}
-            >
-              <MenuItem value="">No group assigned</MenuItem>
-              {audienceGroups.map(group => <MenuItem key={group.id} value={group.id}>{group.name}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <Button sx={{ mt: 1.25 }} variant="contained" onClick={saveNamedTemplate} disabled={isSavingTemplate || isLoadingTemplates}>
-            {namedTemplateId ? "Update named template" : "Save named template"}
-          </Button>
-          {namedTemplateId && <Button sx={{ mt: 1.25, ml: 1 }} onClick={startNewNamedTemplate}>Create another template</Button>}
-          <Divider sx={{ my: 1.5 }} />
-          <Typography fontWeight={700} fontSize="0.9rem" sx={{ mb: 0.5 }}>Saved named templates</Typography>
-          {namedTemplates.filter(item => item.messageType === messageType).length === 0 ? (
-            <Typography color="text.secondary" fontSize="0.8rem">No named templates saved for this message type yet.</Typography>
-          ) : namedTemplates.filter(item => item.messageType === messageType).map(item => (
-            <Stack key={item.id} direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={0.5} sx={{ py: 0.75, borderBottom: "1px solid #E2E8F0" }}>
-              <Box>
-                <Typography fontWeight={700} fontSize="0.85rem">{item.name}</Typography>
-                <Typography color="text.secondary" fontSize="0.8rem">{item.groupIds.map(id => audienceGroups.find(group => group.id === id)?.name ?? "Unavailable group").join(", ") || "Not assigned to a group"}</Typography>
-              </Box>
-              <Stack direction="row" spacing={0.5}>
-                <Button size="small" onClick={() => loadNamedTemplate(item)}>Edit</Button>
-                <IconButton size="small" aria-label={`Delete ${item.name}`} onClick={() => void removeNamedTemplate(item.id)}><DeleteOutlineIcon fontSize="small" /></IconButton>
-              </Stack>
-            </Stack>
-          ))}
-        </Paper>
-      )}
+      {ownerType === "RA" && saveDestination === "GROUP" && namedTemplateGroupId && <Alert severity="info" sx={{ mt: 2 }}>
+        Template destination: {audienceGroups.find(group => group.id === namedTemplateGroupId)?.name || "selected group"}. Arrange the message, then choose Save template.
+      </Alert>}
 
       {validationError && (
         <Alert severity="error" sx={{ my: 2 }}>
@@ -1190,10 +1079,7 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: {
-            xs: "1fr",
-            md: "minmax(0, 1fr) minmax(0, 1fr)",
-          },
+          gridTemplateColumns: "minmax(0, 1fr)",
           gap: 2,
           mt: 2,
         }}
@@ -1220,6 +1106,41 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
               Arrange your message
             </Typography>
           </Stack>
+          {ownerType === "RA" ? <>
+            <Typography color="text.secondary" fontSize="0.8rem" sx={{ mb: 1.5 }}>
+              Type the message exactly as it should appear. Drag a value into the text, or tap it to insert at the cursor. Blank lines appear only when you add them.
+            </Typography>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(240px, 0.85fr) minmax(0, 1.5fr)" }, gap: 2, alignItems: "start" }}>
+              <Box sx={{ minWidth: 0, p: { xs: 1.25, sm: 1.5 }, border: "1px solid #C7D2FE", borderRadius: 2, bgcolor: "#F8FAFF" }}>
+                <Typography fontWeight={800} fontSize="0.85rem" sx={{ mb: 1 }}>Values to insert</Typography>
+                <Box sx={{ maxHeight: { xs: 240, md: 580 }, overflowY: "auto", pr: 0.5 }}>
+                  {(["Call", "Prices", "Risk & reward", "Notes", "Research analyst"] as const).map(group =>
+                    <Box key={group} sx={{ mb: 1.5 }}>
+                      <Typography fontSize="0.75rem" fontWeight={800} color={TARKASH_BLUE_DARK} sx={{ mb: 0.75 }}>{group}</Typography>
+                      <Stack direction="row" gap={0.75} flexWrap="wrap">
+                        {RA_CANVAS_VALUES.filter(([key, , category]) => category === group && (messageType === "ERRATA" || key !== "errataReason")).map(([key, label]) =>
+                          <Chip key={key} label={label} size="small" draggable
+                            onDragStart={event => event.dataTransfer.setData("text/plain", `{{${key}}}`)}
+                            onClick={() => insertCanvasText(`{{${key}}}`)}
+                            sx={{ cursor: "pointer", bgcolor: "#EAF0FF", color: TARKASH_BLUE_DARK, fontWeight: 700, maxWidth: "100%" }} />)}
+                      </Stack>
+                    </Box>)}
+                </Box>
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Stack direction={{ xs: "column", sm: "row" }} gap={1} sx={{ mb: 1.5 }}>
+                  <Button size="small" variant="outlined" onClick={() => insertCanvasText("\n\n")}>Add blank line</Button>
+                  <Button size="small" variant="outlined" onClick={() => previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}>Preview message</Button>
+                </Stack>
+                <TextField fullWidth multiline minRows={18} label="Message template" value={canvasText}
+                  inputRef={canvasRef} inputProps={{ maxLength: 8000, style: { fontFamily: "monospace", lineHeight: 1.4 } }}
+                  onChange={event => setTemplate(current => ({ ...current, standardLayout: false, canvasText: event.target.value }))}
+                  onDragOver={event => event.preventDefault()}
+                  onDrop={event => { event.preventDefault(); const token = event.dataTransfer.getData("text/plain"); if (/^\{\{[a-zA-Z0-9]+\}\}$/.test(token)) insertCanvasText(token); }}
+                  helperText="Use Enter for a new line. Add blank line inserts one empty line at the cursor." />
+              </Box>
+            </Box>
+          </> : <>
           <Typography
             color="text.secondary"
             fontSize="0.8rem"
@@ -1403,18 +1324,18 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
             </Stack>
           </Stack>
           </Box>
+          </>}
         </Box>
 
         <Box
+          ref={previewRef}
           sx={{
             p: { xs: 1.5, sm: 2 },
             borderRadius: 3,
             backgroundColor: "#FFFFFF",
             border: "1px solid #C7D2FE",
             boxShadow: "0 4px 14px rgba(79, 108, 248, 0.07)",
-            alignSelf: "start",
-            position: { md: "sticky" },
-            top: { md: 16 },
+            minWidth: 0,
           }}
         >
           <Stack
@@ -1446,14 +1367,14 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
             This is an example only. Nothing is published from this
             screen.
           </Typography>
-          {ownerType === "RA" && <PreviewChannelStatus raPhoneNumber={raPhoneNumber} />}
+          {ownerType === "RA" && <PreviewChannelStatus raPhoneNumber={raProfile?.mobile} />}
           <Paper
             variant="outlined"
             component="pre"
             sx={{
               p: 2,
               m: 0,
-              minHeight: 360,
+              minHeight: 0,
               whiteSpace: "pre-wrap",
               overflowWrap: "anywhere",
               fontFamily: "monospace",
@@ -1503,9 +1424,8 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
                 ? <CircularProgress size={16} color="inherit" />
                 : <SaveOutlinedIcon />
             }
-            onClick={saveTemplate}
+            onClick={() => { setValidationError(""); setSaveDialogOpen(true); }}
             disabled={
-              !hasUnsavedChanges ||
               isLoadingTemplates ||
               isSavingTemplate
             }
@@ -1526,29 +1446,47 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
           >
             Save template
           </Button>
-          <Button
-            variant="outlined"
-            startIcon={<RestartAltIcon />}
-            onClick={resetTemplate}
-            disabled={
-              isLoadingTemplates || isSavingTemplate
-            }
-            sx={{
-              minHeight: 44,
-              color: TARKASH_BLUE_DARK,
-              fontWeight: 700,
-              borderColor: TARKASH_BLUE,
-              backgroundColor: "#FFFFFF",
-              "&:hover": {
-                borderColor: TARKASH_BLUE_DARK,
-                backgroundColor: "#F4F7FE",
-              },
-            }}
-          >
-            Reset to default
-          </Button>
         </Stack>
       </Stack>
+
+      <Dialog open={saveDialogOpen} onClose={() => !isSavingTemplate && setSaveDialogOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Save template</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Choose where this {messageType === "ERRATA" ? "errata" : "recommendation"} layout should be used.
+          </Typography>
+          {ownerType === "RA" && <Stack spacing={1} sx={{ mb: 2 }}>
+            <Button variant={saveDestination === "DEFAULT" ? "contained" : "outlined"} onClick={() => setSaveDestination("DEFAULT")}>Save as my default</Button>
+            <Button variant={saveDestination === "GROUP" ? "contained" : "outlined"} onClick={() => setSaveDestination("GROUP")}>Save for one group</Button>
+          </Stack>}
+          {ownerType === "RA" && saveDestination === "GROUP" && <Stack spacing={2}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="save-template-group-label">Audience group</InputLabel>
+              <Select labelId="save-template-group-label" label="Audience group" value={namedTemplateGroupId}
+                onChange={event => {
+                  const groupId = String(event.target.value);
+                  const existing = namedTemplates.find(item => item.messageType === messageType && item.groupIds.includes(groupId));
+                  setNamedTemplateGroupId(groupId);
+                  setNamedTemplateName(existing?.name || `${audienceGroups.find(group => group.id === groupId)?.name || "Group"} template`);
+                }}>
+                {audienceGroups.map(group => <MenuItem key={group.id} value={group.id}>{group.name}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <TextField fullWidth size="small" label="Template name" value={namedTemplateName}
+              onChange={event => setNamedTemplateName(event.target.value)} inputProps={{ maxLength: 100 }} />
+            {namedTemplateGroupId && namedTemplates.some(item => item.messageType === messageType && item.groupIds.includes(namedTemplateGroupId)) &&
+              <Alert severity="info">Saving will replace this group’s current {messageType === "ERRATA" ? "errata" : "recommendation"} template.</Alert>}
+          </Stack>}
+          {validationError && <Alert severity="error" sx={{ mt: 2 }}>{validationError}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSaveDialogOpen(false)} disabled={isSavingTemplate}>Cancel</Button>
+          <Button variant="contained" disabled={isSavingTemplate || (ownerType === "RA" && saveDestination === "GROUP" && !namedTemplateGroupId)}
+            onClick={() => void (ownerType === "RA" && saveDestination === "GROUP" ? saveNamedTemplate() : saveTemplate())}>
+            {isSavingTemplate ? "Saving…" : "Save template"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={Boolean(successMessage)}

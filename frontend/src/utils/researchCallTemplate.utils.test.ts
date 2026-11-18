@@ -139,6 +139,29 @@ describe("research-call template utilities", () => {
     );
   });
 
+  it("keeps only the spacing typed in an RA canvas and resolves live values", () => {
+    const template = {
+      ...createDefaultCallTemplate(),
+      standardLayout: false,
+      canvasText: "{{exchangeType}} {{tradeType}}\nEntry: {{entry}}\nTarget: {{target1}}\nRisk: {{riskPerLot}}\n\nRA: {{raName}} ({{raFirstName}})",
+    };
+    expect(formatResearchCallMessage(template, { ...callData, exchangeType: "NSE", timeHorizon: "BTST", riskPerLot: 250 }, { ...raData, firstName: "Sample" })).toBe(
+      "NSE BTST\nEntry: 100 - 105\nTarget: 120\nRisk: 250\n\nRA: Sample Analyst (Sample)"
+    );
+  });
+
+  it("inserts the full risk and reward line with a two-decimal ratio", () => {
+    const template = {
+      ...createDefaultCallTemplate(),
+      standardLayout: false,
+      canvasText: "{{riskRewardPerLot}}",
+    };
+    expect(formatResearchCallMessage(template, { ...callData, riskPerLot: 57575, rewardPerLot: 157500, riskRewardRatio: 157500 / 57575 }, raData)).toBe(
+      "Risk /Reward on 1 Lot: Rs.57575/Rs. 157500; 1:2.74"
+    );
+    expect(formatResearchCallMessage({ ...template, canvasText: "{{riskRewardRatio}}" }, { ...callData, riskPerLot: 57575, rewardPerLot: 157500 }, raData)).toBe("1:2.74");
+  });
+
   it("reorders blocks without dropping fields", () => {
     const template = createDefaultCallTemplate();
     const first = template.blocks[0].id;

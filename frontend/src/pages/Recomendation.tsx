@@ -514,13 +514,26 @@ const prepareResearchCallMessage = async (
     .join(" ");
   const raTemplateData = {
     fullName: raFullName || "N/A",
+    salutation: raDetails?.salutation || "",
+    firstName: raDetails?.first_name || "",
+    middleName: raDetails?.middle_name || "",
+    surname: raDetails?.surname || "",
     organizationName: raDetails?.org_name || "N/A",
     sebiRegistrationNumber: raDetails?.sebi_reg_no || "N/A",
     contactNumber: raDetails?.mobile || "N/A",
     email: raDetails?.email || "N/A",
-    disclaimer: "",
+    disclaimer: raDetails?.additional_comments || "",
     disclaimerLink: "",
+    additionalComments: raDetails?.additional_comments || "",
   };
+  const conservativeEntry = Number(form.rangeEnabled
+    ? form.action === "BUY" ? form.entryUpper : form.entryLow
+    : form.entry);
+  const lotSize = Number(form.lotSize);
+  const riskPercent = perLotRiskReward && conservativeEntry > 0 && lotSize > 0
+    ? perLotRiskReward.risk / (conservativeEntry * lotSize) * 100 : undefined;
+  const rewardPercent = perLotRiskReward && conservativeEntry > 0 && lotSize > 0
+    ? perLotRiskReward.reward / (conservativeEntry * lotSize) * 100 : undefined;
   let savedMessageTemplates = {
     NEW_CALL: null,
     ERRATA: null,
@@ -540,13 +553,29 @@ const prepareResearchCallMessage = async (
       publishedAt,
       instrument: finalDisplayName,
       symbol: finalSymbol,
+      exchange: `${form.exchangeType} / ${form.exchange}`,
+      exchangeType: form.exchangeType,
+      marketType: form.exchange,
       action: form.action,
       callType: form.callType,
+      timeHorizon: form.tradeType,
       expiry: form.expiry,
       entry: form.rangeEnabled ? `${form.entryLow} - ${form.entryUpper}` : form.entry,
-      targets: [form.target],
-      stopLosses: [form.stopLoss],
+      entryLow: form.rangeEnabled ? form.entryLow : "",
+      entryUpper: form.rangeEnabled ? form.entryUpper : "",
+      targets: [form.target, form.secondaryTargetEnabled ? form.target2 : null, form.secondaryTargetEnabled ? form.target3 : null],
+      stopLosses: [form.stopLoss, form.stopLoss2Enabled ? form.stopLoss2 : null, form.stopLoss2Enabled ? form.stopLoss3 : null],
       holdingPeriod: form.holdingPeriod,
+      rationale: form.rationale,
+      underlyingStudy: form.underlyingStudy.map(study => study.label).join(", "),
+      remarks: form.remark,
+      lotSize: form.lotSize,
+      riskPerLot: perLotRiskReward?.risk,
+      rewardPerLot: perLotRiskReward?.reward,
+      riskPercent,
+      rewardPercent,
+      riskRewardRatio: riskRewardRatio ?? undefined,
+      status: "Errata",
       errataReason: trimmedRemark,
     };
     const defaultErrataMessage = formatDefaultRaErrata(errataCallData, raTemplateData);
@@ -572,8 +601,12 @@ const prepareResearchCallMessage = async (
               instrument: finalDisplayName,
               symbol: finalSymbol,
               exchange: `${form.exchange} ${form.callType}`,
+              exchangeType: form.exchangeType,
+              marketType: form.exchange,
               action: form.action,
-              callType: form.tradeType,
+              callType: errataTemplate.canvasText ? form.callType : form.tradeType,
+              entryLow: form.rangeEnabled ? form.entryLow : "",
+              entryUpper: form.rangeEnabled ? form.entryUpper : "",
               entry: form.rangeEnabled
                 ? `${form.entryLow} - ${form.entryUpper}`
                 : form.entry,
@@ -590,11 +623,21 @@ const prepareResearchCallMessage = async (
               expiry: form.expiry ? formatExpiry(form.expiry) : "N/A",
               timeHorizon: form.tradeType,
               holdingPeriod: form.holdingPeriod,
+              rationale: form.rationale,
+              underlyingStudy: form.underlyingStudy.map(study => study.label).join(", "),
+              remarks: form.remark,
+              lotSize: form.lotSize,
+              riskPerLot: perLotRiskReward?.risk,
+              rewardPerLot: perLotRiskReward?.reward,
+              riskPercent,
+              rewardPercent,
+              riskRewardRatio: riskRewardRatio ?? undefined,
+              status: "Errata",
               errataReason: trimmedRemark,
             },
             raTemplateData,
             "ERRATA"
-          ), riskRewardRatio),
+          ), errataTemplate.canvasText ? null : riskRewardRatio),
           templateVersion: errataTemplate.version,
           templateSnapshot: selectedNamedTemplate?.messageType === "ERRATA" ? JSON.stringify({ ...errataTemplate, namedTemplateId: selectedNamedTemplate.id, name: selectedNamedTemplate.name }) : errataTemplate,
         };
@@ -612,29 +655,32 @@ const prepareResearchCallMessage = async (
 
   const now = new Date();
   const standardPublishedAt = `${new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).format(now)}, ${new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }).format(now)}`;
-  const conservativeEntry = Number(form.rangeEnabled
-    ? form.action === "BUY" ? form.entryUpper : form.entryLow
-    : form.entry);
-  const lotSize = Number(form.lotSize);
   const standardCallData = {
     publishedAt: standardPublishedAt,
     instrument: finalDisplayName,
     symbol: finalSymbol,
+    exchange: `${form.exchangeType} / ${form.exchange}`,
+    exchangeType: form.exchangeType,
+    marketType: form.exchange,
     action: form.action,
     callType: form.callType,
+    timeHorizon: form.tradeType,
     expiry: form.expiry,
     entry: form.rangeEnabled ? `${form.entryLow} - ${form.entryUpper}` : form.entry,
-    targets: [form.target],
-    stopLosses: [form.stopLoss],
+    entryLow: form.rangeEnabled ? form.entryLow : "",
+    entryUpper: form.rangeEnabled ? form.entryUpper : "",
+    targets: [form.target, form.secondaryTargetEnabled ? form.target2 : null, form.secondaryTargetEnabled ? form.target3 : null],
+    stopLosses: [form.stopLoss, form.stopLoss2Enabled ? form.stopLoss2 : null, form.stopLoss2Enabled ? form.stopLoss3 : null],
     holdingPeriod: form.holdingPeriod,
     rationale: form.rationale,
+    underlyingStudy: form.underlyingStudy.map(study => study.label).join(", "),
+    remarks: form.remark,
     lotSize: form.lotSize,
     riskPerLot: perLotRiskReward?.risk,
     rewardPerLot: perLotRiskReward?.reward,
-    riskPercent: perLotRiskReward && conservativeEntry > 0 && lotSize > 0
-      ? perLotRiskReward.risk / (conservativeEntry * lotSize) * 100 : undefined,
-    rewardPercent: perLotRiskReward && conservativeEntry > 0 && lotSize > 0
-      ? perLotRiskReward.reward / (conservativeEntry * lotSize) * 100 : undefined,
+    riskPercent,
+    rewardPercent,
+    riskRewardRatio: riskRewardRatio ?? undefined,
     status: "Open",
   };
   const defaultPublishMessage = formatDefaultRaRecommendation(standardCallData, raTemplateData);
@@ -660,8 +706,12 @@ const prepareResearchCallMessage = async (
             instrument: finalDisplayName,
             symbol: finalSymbol,
             exchange: `${form.exchangeType} / ${form.exchange}`,
+            exchangeType: form.exchangeType,
+            marketType: form.exchange,
             action: form.action,
             callType: form.callType,
+            entryLow: form.rangeEnabled ? form.entryLow : "",
+            entryUpper: form.rangeEnabled ? form.entryUpper : "",
             entry: form.rangeEnabled
               ? `${form.entryLow} - ${form.entryUpper}`
               : form.entry,
@@ -679,6 +729,13 @@ const prepareResearchCallMessage = async (
             timeHorizon: form.tradeType,
             holdingPeriod: form.holdingPeriod,
             rationale: form.rationale,
+            lotSize: form.lotSize,
+            riskPerLot: perLotRiskReward?.risk,
+            rewardPerLot: perLotRiskReward?.reward,
+            riskPercent,
+            rewardPercent,
+            riskRewardRatio: riskRewardRatio ?? undefined,
+            status: "Open",
             underlyingStudy:
               form.underlyingStudy.map((study) => study.label).join(", ") ||
               "N/A",
@@ -686,7 +743,7 @@ const prepareResearchCallMessage = async (
           },
           raTemplateData,
           "NEW_CALL"
-        ), riskRewardRatio),
+        ), newCallTemplate.canvasText ? null : riskRewardRatio),
         templateVersion: newCallTemplate.version,
         templateSnapshot: JSON.stringify(selectedNamedTemplate?.messageType === "NEW_CALL" ? { ...newCallTemplate, namedTemplateId: selectedNamedTemplate.id, name: selectedNamedTemplate.name } : newCallTemplate),
       };

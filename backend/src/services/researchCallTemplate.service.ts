@@ -94,7 +94,18 @@ const fieldsFor = (messageType: ResearchCallMessageType, ownerType: ResearchCall
 export interface ResearchCallTemplate {
   version: typeof RESEARCH_CALL_TEMPLATE_VERSION;
   blocks: Array<Record<string, unknown>>;
+  canvasText?: string;
 }
+
+const RA_CANVAS_KEYS = new Set([
+  "publishedAt", "action", "symbol", "instrument", "exchange", "exchangeType", "marketType",
+  "callType", "tradeType", "expiry", "holdingPeriod", "status", "entry", "entryLow", "entryUpper",
+  "target1", "target2", "target3", "stopLoss1", "stopLoss2", "stopLoss3", "lotSize",
+  "riskPerLot", "rewardPerLot", "riskRewardPerLot", "riskPercent", "rewardPercent", "riskRewardRatio",
+  "rationale", "underlyingStudy", "remarks", "errataReason", "raName", "raSalutation",
+  "raFirstName", "raMiddleName", "raSurname", "organization", "sebiRegistration", "contact",
+  "email", "raComments", "disclaimer",
+]);
 
 interface StoredTemplateRow {
   message_type: ResearchCallMessageType;
@@ -161,6 +172,10 @@ export const isValidResearchCallTemplate = (
   ) {
     return false;
   }
+
+  if (value.canvasText !== undefined && (ownerType !== "RA" || typeof value.canvasText !== "string" ||
+    value.canvasText.trim().length === 0 || value.canvasText.length > 8000 ||
+    [...value.canvasText.matchAll(/\{\{([^{}]+)\}\}/g)].some(match => !RA_CANVAS_KEYS.has(match[1])))) return false;
 
   const definitionsByKey = new Map(
     definitions.map((definition) => [

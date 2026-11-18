@@ -314,16 +314,93 @@ export interface CallTemplate {
   version: typeof CALL_TEMPLATE_VERSION;
   blocks: CallTemplateBlock[];
   standardLayout?: boolean;
+  canvasText?: string;
 }
+
+export const DEFAULT_RA_CANVAS: Record<ResearchCallMessageType, string> = {
+  NEW_CALL: "{{publishedAt}}\nRESEARCH RECOMMENDATION:\n{{action}} {{symbol}} {{expiry}} {{callType}}\nEntry Price: {{entry}}\nTarget: {{target1}}\nStop Loss: {{stopLoss1}}\nHolding Period: {{holdingPeriod}}\nRationale: {{rationale}}\nLot Size: {{lotSize}}\n{{riskRewardPerLot}}\nStatus: {{status}}\nResearch Analyst: {{raName}} ({{organization}})\nSEBI Registration No: {{sebiRegistration}}\nContact No: {{contact}}\nEmail ID: {{email}}\nDisclaimer: {{disclaimer}}",
+  ERRATA: "{{publishedAt}}\nERRATA / CORRECTION:\n{{action}} {{symbol}} {{expiry}} {{callType}}\nEntry Price: {{entry}}\nTarget: {{target1}}\nStop Loss: {{stopLoss1}}\nHolding Period: {{holdingPeriod}}\nReason for Correction: {{errataReason}}\nResearch Analyst: {{raName}} ({{organization}})\nSEBI Registration No: {{sebiRegistration}}\nContact No: {{contact}}\nEmail ID: {{email}}\nDisclaimer: {{disclaimer}}",
+};
+
+export const RA_CANVAS_VALUES = [
+  ["publishedAt", "Date and time", "Call"], ["action", "Buy / Sell", "Call"],
+  ["symbol", "Symbol", "Call"], ["instrument", "Stock name", "Call"],
+  ["exchange", "Exchange", "Call"], ["exchangeType", "NSE / BSE", "Call"],
+  ["marketType", "Stock / Index", "Call"], ["callType", "Cash / Futures / Options", "Call"],
+  ["tradeType", "Intraday / BTST / STBT / Term", "Call"], ["expiry", "Expiry", "Call"],
+  ["holdingPeriod", "Holding period", "Call"], ["status", "Status", "Call"],
+  ["entry", "Entry price or range", "Prices"], ["entryLow", "Entry range low", "Prices"],
+  ["entryUpper", "Entry range high", "Prices"], ["target1", "Target 1", "Prices"],
+  ["target2", "Target 2", "Prices"], ["target3", "Target 3", "Prices"],
+  ["stopLoss1", "Stop Loss 1", "Prices"], ["stopLoss2", "Stop Loss 2", "Prices"],
+  ["stopLoss3", "Stop Loss 3", "Prices"], ["lotSize", "Lot size", "Prices"],
+  ["riskPerLot", "Risk on 1 lot", "Risk & reward"],
+  ["rewardPerLot", "Reward on 1 lot", "Risk & reward"],
+  ["riskRewardPerLot", "Risk / Reward on 1 Lot (full line)", "Risk & reward"],
+  ["riskPercent", "Risk %", "Risk & reward"],
+  ["rewardPercent", "Reward %", "Risk & reward"],
+  ["riskRewardRatio", "Risk : Reward ratio", "Risk & reward"],
+  ["rationale", "Rationale", "Notes"], ["underlyingStudy", "Underlying study", "Notes"],
+  ["remarks", "Research remarks", "Notes"], ["errataReason", "Errata reason", "Notes"],
+  ["raName", "RA full name", "Research analyst"], ["raSalutation", "RA title", "Research analyst"],
+  ["raFirstName", "RA first name", "Research analyst"],
+  ["raMiddleName", "RA middle name", "Research analyst"],
+  ["raSurname", "RA surname", "Research analyst"],
+  ["organization", "Organization", "Research analyst"],
+  ["sebiRegistration", "SEBI number", "Research analyst"],
+  ["contact", "RA contact", "Research analyst"], ["email", "RA email", "Research analyst"],
+  ["raComments", "RA additional comments", "Research analyst"],
+  ["disclaimer", "Disclaimer", "Research analyst"],
+] as const;
+
+const formatRaCanvas = (canvasText: string, call: ResearchCallTemplateData, ra: ResearchAnalystTemplateData): string => {
+  const ratio = call.riskRewardRatio ?? (call.riskPerLot && call.rewardPerLot !== undefined ? call.rewardPerLot / call.riskPerLot : undefined);
+  const riskRewardPerLot = call.riskPerLot !== undefined && call.rewardPerLot !== undefined && ratio !== undefined && Number.isFinite(ratio)
+    ? `Risk /Reward on 1 Lot: Rs.${Math.round(call.riskPerLot)}/Rs. ${Math.round(call.rewardPerLot)}; 1:${ratio.toFixed(2)}`
+    : "Risk /Reward on 1 Lot: N/A";
+  const values: Record<string, string> = {
+    publishedAt: call.publishedAt || "N/A", action: call.action || "N/A",
+    symbol: call.symbol || "N/A", instrument: call.instrument || "N/A",
+    exchange: call.exchange || "N/A", exchangeType: call.exchangeType || "N/A",
+    marketType: call.marketType || "N/A", callType: call.callType || "N/A",
+    tradeType: call.timeHorizon || "N/A",
+    expiry: call.expiry || "N/A", entry: call.entry || "N/A",
+    entryLow: call.entryLow || "", entryUpper: call.entryUpper || "",
+    target1: String(call.targets?.[0] ?? "N/A"), target2: String(call.targets?.[1] ?? ""),
+    target3: String(call.targets?.[2] ?? ""), stopLoss1: String(call.stopLosses?.[0] ?? "N/A"),
+    stopLoss2: String(call.stopLosses?.[1] ?? ""), stopLoss3: String(call.stopLosses?.[2] ?? ""),
+    holdingPeriod: call.holdingPeriod || "N/A", rationale: call.rationale || "N/A",
+    lotSize: String(call.lotSize ?? "N/A"), status: call.status || "Open",
+    underlyingStudy: call.underlyingStudy || "", remarks: call.remarks || "",
+    riskPerLot: call.riskPerLot === undefined ? "" : String(Math.round(call.riskPerLot)),
+    rewardPerLot: call.rewardPerLot === undefined ? "" : String(Math.round(call.rewardPerLot)),
+    riskRewardPerLot,
+    riskPercent: call.riskPercent === undefined ? "" : call.riskPercent.toFixed(2),
+    rewardPercent: call.rewardPercent === undefined ? "" : call.rewardPercent.toFixed(2),
+    riskRewardRatio: ratio === undefined || !Number.isFinite(ratio) ? "" : `1:${ratio.toFixed(2)}`,
+    errataReason: call.errataReason || "N/A", raName: ra.fullName || "N/A",
+    raSalutation: ra.salutation || "", raFirstName: ra.firstName || "",
+    raMiddleName: ra.middleName || "", raSurname: ra.surname || "",
+    organization: ra.organizationName || "N/A", sebiRegistration: ra.sebiRegistrationNumber || "N/A",
+    contact: ra.contactNumber || "N/A", email: ra.email || "N/A",
+    raComments: ra.additionalComments || "",
+    disclaimer: ra.disclaimer?.trim() || DEFAULT_RA_DISCLAIMER,
+  };
+  return canvasText.replace(/\{\{([a-zA-Z0-9]+)\}\}/g, (_token, key: string) => values[key] ?? "").trim();
+};
 
 export interface ResearchCallTemplateData {
   publishedAt?: string;
   instrument?: string;
   symbol?: string;
   exchange?: string;
+  exchangeType?: string;
+  marketType?: string;
   action?: string;
   callType?: string;
   entry?: string;
+  entryLow?: string;
+  entryUpper?: string;
   targets?: Array<string | number | null | undefined>;
   stopLosses?: Array<string | number | null | undefined>;
   expiry?: string;
@@ -338,17 +415,23 @@ export interface ResearchCallTemplateData {
   rewardPerLot?: number;
   riskPercent?: number;
   rewardPercent?: number;
+  riskRewardRatio?: number;
   status?: string;
 }
 
 export interface ResearchAnalystTemplateData {
   fullName?: string;
+  salutation?: string;
+  firstName?: string;
+  middleName?: string;
+  surname?: string;
   organizationName?: string;
   sebiRegistrationNumber?: string;
   contactNumber?: string;
   email?: string;
   disclaimer?: string;
   disclaimerLink?: string;
+  additionalComments?: string;
 }
 
 export interface BrokerTemplateData {
@@ -509,6 +592,9 @@ export const isValidCallTemplate = (
   ) {
     return false;
   }
+
+  if (value.canvasText !== undefined && (typeof value.canvasText !== "string" || value.canvasText.trim().length === 0 || value.canvasText.length > 8000 ||
+    [...value.canvasText.matchAll(/\{\{([^{}]+)\}\}/g)].some(match => !RA_CANVAS_VALUES.some(([key]) => key === match[1])))) return false;
 
   const ids = new Set<string>();
   const fieldKeys = new Set<CallTemplateFieldKey>();
@@ -777,6 +863,8 @@ export const formatResearchCallMessage = (
       "The research-call template is invalid."
     );
   }
+
+  if (ownerType === "RA" && template.canvasText) return formatRaCanvas(template.canvasText, call, ra);
 
   if (ownerType === "RA" && messageType === "NEW_CALL" && template.standardLayout) {
     return formatDefaultRaRecommendation(call, ra);

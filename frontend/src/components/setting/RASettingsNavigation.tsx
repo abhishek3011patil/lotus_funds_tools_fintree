@@ -3,7 +3,6 @@ import { Tab, Tabs } from "@mui/material";
 export type RASettingsSection =
   | "account"
   | "subscription"
-  | "disclaimer"
   | "message-template"
   | "security"
   | "whatsapp"
@@ -13,7 +12,6 @@ export type RASettingsSection =
 export const isRASettingsSection = (value: string | undefined): value is RASettingsSection =>
   value === "account" ||
   value === "subscription" ||
-  value === "disclaimer" ||
   value === "message-template" ||
   value === "security" ||
   value === "whatsapp" ||
@@ -28,7 +26,6 @@ type RASettingsNavigationProps = {
 const navigationItems = [
   { id: "account" as const, label: "Account" },
   { id: "subscription" as const, label: "Subscription" },
-  { id: "disclaimer" as const, label: "Disclaimer" },
   { id: "message-template" as const, label: "Message Template" },
   { id: "security" as const, label: "Security" },
   { id: "whatsapp" as const, label: "WhatsApp" },

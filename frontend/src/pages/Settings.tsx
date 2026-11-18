@@ -5,7 +5,6 @@ import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
 import { useNavigate, useParams } from "react-router-dom";
 import ChangePassword from "../common/ChangePassword";
 import TelegramConnection from "./common/TelegramConnection";
-import RASettingsDisclaimer from "../common/RASettingsDisclaimer";
 import ManageParticipants from "../components/setting/RA_setting_component/ManageParticipants";
 import WhatsAppParticipants from "../components/setting/WhatsAppParticipants";
 import RASubscriptionStatus from "../components/setting/RA_setting_component/RASubscriptionStatus";
@@ -21,8 +20,8 @@ import RAProfilePicture from "../components/setting/RAProfilePicture";
 const Settings = () => {
   const navigate = useNavigate();
   const { section } = useParams<{ section?: string }>();
-  const activeSection: RASettingsSection = section === "research"
-    ? "disclaimer"
+  const activeSection: RASettingsSection = section === "research" || section === "disclaimer"
+    ? "message-template"
     : isRASettingsSection(section) ? section : "account";
   const { telegramDisconnected, hideNotification } = useTelegramNotification();
 
@@ -56,8 +55,6 @@ const Settings = () => {
         );
       case "security":
         return <ChangePassword />;
-      case "disclaimer":
-        return <RASettingsDisclaimer />;
       case "message-template":
         return <ResearchCallTemplateBuilder />;
       case "whatsapp":
