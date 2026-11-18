@@ -909,6 +909,21 @@ export const getDisclaimerHistoryByRA = async (
       [userId]
     );
 
+    const templateHistory = await pool.query(
+      `SELECT id, message_type AS "messageType", version_number AS "versionNumber",
+              destination, template_name AS "templateName", group_name AS "groupName",
+              participants_snapshot AS participants, template_data AS template,
+              imported_current AS "importedCurrent", created_at AS "createdAt"
+       FROM ra_message_template_history
+       WHERE ra_user_id = $1
+       ORDER BY message_type, version_number DESC`,
+      [userId]
+    );
+    const ra = result.rows[0] || (await pool.query(
+      "SELECT name, username, email FROM users WHERE id = $1",
+      [userId]
+    )).rows[0];
+
     await createAuditLog({
       adminId: req.user?.id,
       adminName: req.user?.name || "ADMIN",
@@ -924,19 +939,21 @@ export const getDisclaimerHistoryByRA = async (
       newValue: {
         raUserId: userId,
         versionCount: result.rows.length,
+        templateVersionCount: templateHistory.rows.length,
       },
     });
 
     return res.json({
       success: true,
-      ra: result.rows[0]
+      ra: ra
         ? {
-            name: result.rows[0].name,
-            username: result.rows[0].username,
-            email: result.rows[0].email,
+            name: ra.name,
+            username: ra.username,
+            email: ra.email,
           }
         : null,
       history: result.rows,
+      messageTemplateHistory: templateHistory.rows,
     });
   } catch (error) {
     console.error("GET DISCLAIMER HISTORY ERROR:", error);

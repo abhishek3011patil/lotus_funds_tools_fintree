@@ -35,6 +35,65 @@ const requireResearchAnalyst = (
   return req.user.id;
 };
 
+const saveTemplateHistory = async (
+  db: PoolClient,
+  input: {
+    raUserId: string;
+    messageType: string;
+    destination: "DEFAULT" | "GROUP";
+    sourceTemplateId?: string;
+    templateName?: string;
+    groupId?: string;
+    template: unknown;
+  }
+) => {
+  await db.query("SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))", [input.raUserId, input.messageType]);
+  let groupName: string | null = null;
+  let participants: unknown[] = [];
+  if (input.groupId) {
+    const group = await db.query(
+      `SELECT g.name,
+        COALESCE(jsonb_agg(jsonb_build_object(
+          'type', m.member_type,
+          'name', CASE m.member_type
+            WHEN 'CLIENT' THEN COALESCE(NULLIF(TRIM(client.name), ''), client.email, 'Client')
+            WHEN 'BROKER' THEN COALESCE(NULLIF(TRIM(broker.trade_name), ''), broker.legal_name, 'Broker')
+            WHEN 'TELEGRAM' THEN COALESCE(NULLIF(TRIM(telegram.telegram_client_name), ''), 'Telegram ' || telegram.telegram_user_id::text)
+            ELSE COALESCE(NULLIF(TRIM(whatsapp.participant_name), ''), whatsapp.phone_number, 'WhatsApp participant') END,
+          'detail', CASE m.member_type
+            WHEN 'CLIENT' THEN client.email
+            WHEN 'BROKER' THEN broker.sebi_registration_no
+            WHEN 'TELEGRAM' THEN telegram.telegram_user_id::text
+            ELSE whatsapp.phone_number END
+        ) ORDER BY m.member_type, m.created_at) FILTER (WHERE m.id IS NOT NULL), '[]'::jsonb) AS participants
+       FROM ra_audience_groups g
+       LEFT JOIN ra_audience_group_members m ON m.group_id = g.id
+       LEFT JOIN users client ON client.id = m.client_user_id
+       LEFT JOIN broker_details broker ON broker.id = m.broker_id
+       LEFT JOIN telegram_users telegram ON telegram.id = m.telegram_participant_id
+       LEFT JOIN whatsapp_participants whatsapp ON whatsapp.id = m.whatsapp_participant_id
+       WHERE g.id = $1 AND g.ra_user_id = $2
+       GROUP BY g.id`,
+      [input.groupId, input.raUserId]
+    );
+    if (!group.rows[0]) throw new Error("The audience group no longer exists.");
+    groupName = group.rows[0].name;
+    participants = group.rows[0].participants;
+  }
+  await db.query(
+    `INSERT INTO ra_message_template_history
+      (ra_user_id, message_type, version_number, destination, source_template_id,
+       template_name, group_id, group_name, participants_snapshot, template_data)
+     VALUES ($1, $2,
+       (SELECT COALESCE(MAX(version_number), 0) + 1 FROM ra_message_template_history
+        WHERE ra_user_id = $1 AND message_type = $2),
+       $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb)`,
+    [input.raUserId, input.messageType, input.destination, input.sourceTemplateId || null,
+      input.templateName || null, input.groupId || null, groupName,
+      JSON.stringify(participants), JSON.stringify(input.template)]
+  );
+};
+
 export const getResearchCallTemplates = async (
   req: AuthRequest,
   res: Response
@@ -116,8 +175,11 @@ export const saveResearchCallTemplate = async (
     });
   }
 
+  let db: PoolClient | undefined;
   try {
-    const result = await pool.query(
+    db = await pool.connect();
+    await db.query("BEGIN");
+    const result = await db.query(
       `
         INSERT INTO ra_message_templates (
           ra_user_id,
@@ -147,6 +209,11 @@ export const saveResearchCallTemplate = async (
       ]
     );
 
+    await saveTemplateHistory(db, {
+      raUserId, messageType, destination: "DEFAULT", template,
+    });
+    await db.query("COMMIT");
+
     return res.status(200).json({
       success: true,
       message: "Message template saved",
@@ -159,6 +226,7 @@ export const saveResearchCallTemplate = async (
       },
     });
   } catch (error) {
+    if (db) await db.query("ROLLBACK").catch(() => undefined);
     console.error("SAVE RA MESSAGE TEMPLATE ERROR:", {
       raUserId,
       messageType,
@@ -172,6 +240,8 @@ export const saveResearchCallTemplate = async (
       success: false,
       message: "Unable to save message template",
     });
+  } finally {
+    db?.release();
   }
 };
 
@@ -260,6 +330,10 @@ export const saveNamedResearchCallTemplate = async (req: AuthRequest, res: Respo
     for (const groupId of groupIds) {
       await db.query("INSERT INTO ra_named_message_template_groups (template_id,group_id) VALUES ($1,$2)", [saved.id, groupId]);
     }
+    await saveTemplateHistory(db, {
+      raUserId, messageType, destination: "GROUP", sourceTemplateId: saved.id,
+      templateName: saved.name, groupId: groupIds[0], template,
+    });
     saved.groupIds = groupIds;
     await db.query("COMMIT");
     return res.status(templateId ? 200 : 201).json({ success: true, data: saved });

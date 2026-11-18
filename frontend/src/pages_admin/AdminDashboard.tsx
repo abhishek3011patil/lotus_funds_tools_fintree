@@ -1402,7 +1402,7 @@ const handleSuspend = async (userId: string) => {
                   fullWidth
                   onClick={() => selectedRA?.userId && navigate(`/admin/disclaimer-history/${selectedRA.userId}`)}
                 >
-                  View Disclaimer History
+                  View Message Templates & Disclaimers
                 </Button>
 
                 {(selectedRA.passwordSetupPending || selectedRA.passwordResetAvailable) && (
