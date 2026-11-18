@@ -123,19 +123,19 @@ describe("research-call template utilities", () => {
         ...callData,
         errataReason: "Corrected entry range.",
       },
-      raData,
+      { ...raData, disclaimer: "", disclaimerLink: "" },
       "ERRATA"
     );
 
-    expect(message).toContain("ERRATA / CORRECTION");
+    expect(message).toContain("ERRATA / CORRECTION:");
     expect(message).toContain(
-      "Reason:\nCorrected entry range."
+      "Reason for Correction: Corrected entry range."
     );
     expect(message).toContain(
       "SEBI Registration No: INH000000000"
     );
     expect(message).toContain(
-      "DISCLAIMER CUM DISCLOSURE:"
+      "Disclaimer: Investment/Trading in equities is subject to market risks."
     );
   });
 

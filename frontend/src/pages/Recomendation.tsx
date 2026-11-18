@@ -65,9 +65,10 @@ import PriceSection, {
 } from "../components/page_Mainapp/PriceSection";
 import axios from "axios";
 import RemarksField from "../components/page_Mainapp/RemarksField";
-import { formatDefaultRaRecommendation, formatResearchCallMessage, type CallTemplate } from "../utils/researchCallTemplate.utils";
+import { formatDefaultRaErrata, formatDefaultRaRecommendation, formatResearchCallMessage, type CallTemplate } from "../utils/researchCallTemplate.utils";
 import { fetchResearchCallTemplates, fetchNamedResearchCallTemplates, type NamedResearchCallTemplate } from "../services/researchCallTemplate.service";
 import RiskRewardSummary from "../components/page_Mainapp/RiskRewardSummary";
+import PreviewChannelStatus from "../components/common/PreviewChannelStatus";
 import { calculateCallRiskReward, calculatePerLotRiskReward, formatRiskReward } from "../utils/riskReward.utils";
 import {
   fetchAudienceConnections,
@@ -535,53 +536,31 @@ const prepareResearchCallMessage = async (
 
   if (isErrataMode) {
     const trimmedRemark = form.remark.trim();
-    const defaultErrataMessage = `
-ERRATA / CORRECTION
-
-Published On: ${publishedAt}
-
-Stock Name: ${finalDisplayName}
-Symbol: ${finalSymbol}
-
-${form.action} ${form.exchange} ${form.callType} Expiry: ${
-      form.expiry ? formatExpiry(form.expiry) : "N/A"
-    }
-
-Call Type: ${form.tradeType}
-
-Entry: ${
-      form.rangeEnabled
-        ? `${form.entryLow} - ${form.entryUpper}`
-        : form.entry
-    }
-
-Target: ${form.target}${
-      form.secondaryTargetEnabled
-        ? `
-T2: ${form.target2}
-T3: ${form.target3}`
-        : ""
-    }
-
-SL: ${form.stopLoss}${
-      form.stopLoss2Enabled
-        ? `
-SL 2: ${form.stopLoss2}
-SL 3: ${form.stopLoss3}`
-        : ""
-    }
-
-Reason:
-${trimmedRemark}
-
-Research Analyst: ${raFullName || "N/A"} (${raDetails?.org_name || "N/A"})
-SEBI Registration No: ${raDetails?.sebi_reg_no || "N/A"}
-Contact No: ${raDetails?.mobile || "N/A"}
-Email ID: ${raDetails?.email || "N/A"}
-`.trim();
+    const errataCallData = {
+      publishedAt,
+      instrument: finalDisplayName,
+      symbol: finalSymbol,
+      action: form.action,
+      callType: form.callType,
+      expiry: form.expiry,
+      entry: form.rangeEnabled ? `${form.entryLow} - ${form.entryUpper}` : form.entry,
+      targets: [form.target],
+      stopLosses: [form.stopLoss],
+      holdingPeriod: form.holdingPeriod,
+      errataReason: trimmedRemark,
+    };
+    const defaultErrataMessage = formatDefaultRaErrata(errataCallData, raTemplateData);
     const errataTemplate = selectedNamedTemplate?.messageType === "ERRATA"
       ? selectedNamedTemplate.template
       : savedMessageTemplates.ERRATA;
+
+    if (errataTemplate?.standardLayout) {
+      return {
+        message: formatDefaultRaErrata(errataCallData, raTemplateData),
+        templateVersion: errataTemplate.version,
+        templateSnapshot: JSON.stringify(errataTemplate),
+      };
+    }
 
     if (errataTemplate) {
       try {
@@ -625,7 +604,7 @@ Email ID: ${raDetails?.email || "N/A"}
     }
 
     return {
-      message: appendRiskReward(defaultErrataMessage, riskRewardRatio),
+      message: defaultErrataMessage,
       templateVersion: null,
       templateSnapshot: null,
     };
@@ -3366,12 +3345,18 @@ sx={{
         backgroundColor: "#3b51c5",
       },
     },
+    "&.Mui-disabled": {
+      color: "#9ca3af",
+      backgroundColor: "#e5e7eb",
+      opacity: 0.7,
+      cursor: "not-allowed",
+    },
   },
 }}
             >
               <ToggleButton value="Intraday">Intraday</ToggleButton>
-              <ToggleButton value="BTST">BTST</ToggleButton>
-              <ToggleButton value="STBT">STBT</ToggleButton>
+              <ToggleButton value="BTST" disabled={form.action === "SELL"}>BTST</ToggleButton>
+              <ToggleButton value="STBT" disabled={form.action === "BUY"}>STBT</ToggleButton>
               <ToggleButton value="Short Term">Short Term</ToggleButton>
               <ToggleButton
                 value="Long Term"
@@ -3939,6 +3924,7 @@ sx={{
  <RecommendationsPanel
   loading={loading}
   recommendations={recommendations}
+  raPhoneNumber={raDetails?.mobile}
   onModify={handleModify}
   onExit={handleExit}
   onInitiate={handleInitiate}
@@ -3958,6 +3944,7 @@ sx={{
       : "Research Call Message Preview"}
   </DialogTitle>
   <DialogContent dividers>
+    <PreviewChannelStatus raPhoneNumber={raDetails?.mobile} />
     <Paper variant="outlined" sx={{ p: 2, mb: 2, bgcolor: "#FBFCFF" }}>
       <Typography fontWeight={800}>Select audience</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>{isErrataMode ? "Confirm who should receive this correction. The original call’s audience is preselected." : "Choose who can see and receive this research call. The final recipient list is saved with the call."}</Typography>

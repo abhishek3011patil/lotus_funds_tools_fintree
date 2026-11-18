@@ -56,6 +56,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   CALL_TEMPLATE_VERSION,
+  DEFAULT_RA_DISCLAIMER,
   MAX_CUSTOM_BLOCK_LENGTH,
   createDefaultCallTemplate,
   formatResearchCallMessage,
@@ -81,6 +82,8 @@ import {
   type NamedResearchCallTemplate,
 } from "../../services/researchCallTemplate.service";
 import { fetchAudienceGroups, updateAudienceGroup, type AudienceGroup } from "../../services/audienceGroups.service";
+import api from "../../utils/axio";
+import PreviewChannelStatus from "../common/PreviewChannelStatus";
 
 type CustomBlockType = "text" | "heading";
 
@@ -357,10 +360,8 @@ const PREVIEW_RA = {
   sebiRegistrationNumber: "INH000000000",
   contactNumber: "+91 90000 00000",
   email: "analyst@example.com",
-  disclaimer:
-    "Investment in securities market are subject to market risks. Read all related documents carefully before investing.",
-  disclaimerLink:
-    "https://lotusfunds.com/disclaimer&disclosure",
+  disclaimer: DEFAULT_RA_DISCLAIMER,
+  disclaimerLink: "",
 };
 
 const PREVIEW_BROKER = {
@@ -396,6 +397,15 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
   const [initialAuthToken] = useState(() =>
     localStorage.getItem("token")
   );
+  const [raPhoneNumber, setRaPhoneNumber] = useState<string | null>(null);
+  useEffect(() => {
+    if (ownerType !== "RA" || !initialAuthToken) return;
+    let active = true;
+    api.get<{ data: { mobile?: string | null } }>("/research/ra/message-profile").then(response => {
+      if (active) setRaPhoneNumber(response.data.data.mobile || null);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [ownerType, initialAuthToken]);
   const [messageType, setMessageType] =
     useState<ResearchCallMessageType>("NEW_CALL");
   const [templates, setTemplates] =
@@ -1436,6 +1446,7 @@ const ResearchCallTemplateBuilder = ({ ownerType = "RA" }: { ownerType?: CallTem
             This is an example only. Nothing is published from this
             screen.
           </Typography>
+          {ownerType === "RA" && <PreviewChannelStatus raPhoneNumber={raPhoneNumber} />}
           <Paper
             variant="outlined"
             component="pre"

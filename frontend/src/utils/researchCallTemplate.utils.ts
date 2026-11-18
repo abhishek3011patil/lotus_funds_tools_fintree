@@ -7,6 +7,7 @@ export const BROKER_CALL_TEMPLATE_STORAGE_KEY =
 export const BROKER_ERRATA_TEMPLATE_STORAGE_KEY =
   "lotusfunds.broker.errata-template.v1";
 export const CALL_TEMPLATE_VERSION = 1 as const;
+export const DEFAULT_RA_DISCLAIMER = "Investment/Trading in equities is subject to market risks.";
 export const MAX_CUSTOM_BLOCK_LENGTH = 500;
 export type CallTemplateOwnerType = "RA" | "BROKER";
 
@@ -366,7 +367,7 @@ export const createDefaultCallTemplate = (
   ownerType: CallTemplateOwnerType = "RA"
 ): CallTemplate => ({
   version: CALL_TEMPLATE_VERSION,
-  ...(ownerType === "RA" && messageType === "NEW_CALL" ? { standardLayout: true } : {}),
+  ...(ownerType === "RA" ? { standardLayout: true } : {}),
   blocks: getCallTemplateFields(messageType, ownerType).map((field) => ({
     id: `field:${field.key}`,
     type: "field" as const,
@@ -396,7 +397,26 @@ export const formatDefaultRaRecommendation = (
     `${instrumentLine}\nEntry Price: ${call.entry || "N/A"}\nTarget: ${call.targets?.[0] ?? "N/A"}\nStop Loss: ${call.stopLosses?.[0] ?? "N/A"}\nHolding Period: ${call.holdingPeriod || "N/A"}`,
     `Rationale: ${call.rationale || "N/A"}\nLot Size: ${call.lotSize || "N/A"}\nRisk /Reward on 1 Lot: Rs. ${wholeRupees(call.riskPerLot)}/Rs. ${wholeRupees(call.rewardPerLot)}${percentages}\nStatus: ${call.status || "Open"}`,
     `Research Analyst: ${ra.fullName || "N/A"} (${ra.organizationName || "N/A"})\nSEBI Registration No: ${ra.sebiRegistrationNumber || "N/A"}\nContact No: ${ra.contactNumber || "N/A"}\nEmail ID: ${ra.email || "N/A"}`,
-    "Disclaimer: Investment/Trading in equities is subject to market risks.",
+    `Disclaimer: ${DEFAULT_RA_DISCLAIMER}`,
+  ].join("\n\n");
+};
+
+export const formatDefaultRaErrata = (
+  call: ResearchCallTemplateData,
+  ra: ResearchAnalystTemplateData
+): string => {
+  const expiryDate = call.expiry ? new Date(call.expiry) : null;
+  const expiryMonth = expiryDate && !Number.isNaN(expiryDate.getTime())
+    ? expiryDate.toLocaleString("en-IN", { month: "long" }).toUpperCase() : "";
+  const action = String(call.action || "Buy").toLowerCase() === "sell" ? "Sell" : "Buy";
+  const instrumentLine = [action, call.symbol || call.instrument || "N/A", expiryMonth, String(call.callType || "").toUpperCase()].filter(Boolean).join(" ");
+  return [
+    call.publishedAt || "N/A",
+    "ERRATA / CORRECTION:",
+    `${instrumentLine}\nEntry Price: ${call.entry || "N/A"}\nTarget: ${call.targets?.[0] ?? "N/A"}\nStop Loss: ${call.stopLosses?.[0] ?? "N/A"}\nHolding Period: ${call.holdingPeriod || "N/A"}`,
+    `Reason for Correction: ${call.errataReason || "N/A"}`,
+    `Research Analyst: ${ra.fullName || "N/A"} (${ra.organizationName || "N/A"})\nSEBI Registration No: ${ra.sebiRegistrationNumber || "N/A"}\nContact No: ${ra.contactNumber || "N/A"}\nEmail ID: ${ra.email || "N/A"}`,
+    `Disclaimer: ${DEFAULT_RA_DISCLAIMER}`,
   ].join("\n\n");
 };
 
@@ -731,12 +751,10 @@ const fieldValue = (
     case "email":
       return `Email ID: ${valueOrFallback(ra.email)}`;
     case "disclaimer":
-      if (!ra.disclaimer?.trim() && !ra.disclaimerLink?.trim()) return "";
       return [
-        "DISCLAIMER CUM DISCLOSURE:",
-        ra.disclaimer?.trim() || "",
+        `Disclaimer: ${ra.disclaimer?.trim() || DEFAULT_RA_DISCLAIMER}`,
         ra.disclaimerLink?.trim() ? `Read Full Disclaimer / Disclosure at:\n${ra.disclaimerLink.trim()}` : "",
-      ].filter(Boolean).join("\n\n");
+      ].filter(Boolean).join("\n");
     case "brokerDisclaimer":
       return [
         "BROKER DISCLAIMER:",
@@ -762,6 +780,9 @@ export const formatResearchCallMessage = (
 
   if (ownerType === "RA" && messageType === "NEW_CALL" && template.standardLayout) {
     return formatDefaultRaRecommendation(call, ra);
+  }
+  if (ownerType === "RA" && messageType === "ERRATA" && template.standardLayout) {
+    return formatDefaultRaErrata(call, ra);
   }
 
   return template.blocks

@@ -23,6 +23,7 @@ import LoadingPage from "../../common/LoadingPage";
 type Props = {
   recommendations: any[];
   loading: boolean;
+  raPhoneNumber?: string | null;
   onModify: (item: any) => void;
   onExit: (
     item: any,
@@ -38,6 +39,7 @@ const RecommendationsPanel = memo(
     ({
          recommendations,
   loading,
+  raPhoneNumber,
   onModify,
   onExit,
   onInitiate,
@@ -633,6 +635,7 @@ const closeExitDialog = useCallback(() => {
 <ExitRecommendationDialog
   open={exitDialogOpen}
   item={selectedExitCall}
+  raPhoneNumber={raPhoneNumber}
   onClose={closeExitDialog}
   onSubmit={onExit}
 />

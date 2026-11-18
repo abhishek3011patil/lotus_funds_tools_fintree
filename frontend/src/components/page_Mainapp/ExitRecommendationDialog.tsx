@@ -8,11 +8,13 @@ import {
   TextField,
 } from "@mui/material";
 import { memo, useEffect, useState } from "react";
+import PreviewChannelStatus from "../common/PreviewChannelStatus";
 
 type ExitRecommendationDialogProps = {
   open: boolean;
   item: { id?: string | number; [key: string]: unknown } | null;
   onClose: () => void;
+  raPhoneNumber?: string | null;
   onSubmit: (
     item: { id?: string | number; [key: string]: unknown },
     exitPrice: number,
@@ -40,6 +42,7 @@ const ExitRecommendationDialog = memo(
     item,
     onClose,
     onSubmit,
+    raPhoneNumber,
   }: ExitRecommendationDialogProps) => {
     const [exitPrice, setExitPrice] = useState("");
     const [exitRemark, setExitRemark] = useState("");
@@ -159,6 +162,7 @@ const ExitRecommendationDialog = memo(
             margin="normal"
           />
 
+          {previewMessage && <PreviewChannelStatus raPhoneNumber={raPhoneNumber} />}
           {previewMessage && (
             <Paper
               component="pre"
