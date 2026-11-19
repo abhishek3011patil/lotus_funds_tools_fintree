@@ -1910,6 +1910,8 @@ export const getMyRecommendationHistory = async (
 
     const query = `
       SELECT
+        rc.id,
+        rc.ra_user_id,
         rc.created_at AS date_time,
         rc.file_url,
         rc.attachments,
@@ -1934,6 +1936,11 @@ export const getMyRecommendationHistory = async (
           rc.entry_price_low,
           rc.entry_price_upper
         ) AS entry,
+
+        rc.target_price,
+        rc.stop_loss,
+        rc.holding_period,
+        rc.disclaimer_snapshot,
 
         rc.exit_price,
         COALESCE(rc.status, '-') AS status,
@@ -1972,6 +1979,7 @@ LEFT JOIN users u
   ON u.id = rc.ra_user_id
 
 WHERE rc.ra_user_id = $1
+  AND rc.is_latest IS TRUE
   AND (
     $2 = ''
     OR COALESCE(rc.display_name, '') ILIKE $3

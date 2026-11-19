@@ -673,8 +673,10 @@ return (
 {/* Recommendation History Table Component */}
 <Box sx={{ mt: 1 }}>
 <RecommendationHistory
+  compactRecommendationView
+  enableExitCalls
+  showClosedCalls
   enableExport
-  showAllRAs={true}
   exportFileBaseName="ra-performance"
   searchQuery={search}
   renderRowActions={(row) => (

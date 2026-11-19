@@ -1,5 +1,6 @@
 import {
   Box,
+  Collapse,
   InputAdornment,
   Switch,
   TextField,
@@ -191,7 +192,7 @@ const handleToggle = useCallback(
                 border:
                   "1px solid rgba(0,0,0,0.08)",
                 borderRadius: 2,
-                p: 1.5,
+                p: isActive ? 1.5 : 0.75,
                 backgroundColor: isActive
                   ? "rgba(25, 118, 210, 0.02)"
                   : "transparent",
@@ -204,7 +205,7 @@ const handleToggle = useCallback(
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 1,
-                  mb: 1.5,
+                  mb: isActive ? 1.5 : 0,
                 }}
               >
                 <Typography
@@ -228,6 +229,7 @@ const handleToggle = useCallback(
 />
               </Box>
 
+              <Collapse in={isActive} timeout="auto" unmountOnExit>
               <Box
                 sx={{
                   display: "flex",
@@ -306,6 +308,7 @@ const handleToggle = useCallback(
   );
 })}
               </Box>
+              </Collapse>
             </Box>
           );
         })}

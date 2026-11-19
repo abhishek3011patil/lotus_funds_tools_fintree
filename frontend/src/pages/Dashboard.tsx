@@ -9,6 +9,7 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Collapse,
   Divider,
   InputAdornment,
   Paper,
@@ -28,6 +29,8 @@ import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import BoltRoundedIcon from "@mui/icons-material/BoltRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
+import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import TrendingUpRoundedIcon from "@mui/icons-material/TrendingUpRounded";
 import { useNavigate } from "react-router-dom";
 import RecommendationHistory from "./common/RecommendationHistory";
@@ -324,6 +327,7 @@ const CallSummaryRow = ({ call }: { call: ResearchCall }) => (
 const Dashboard = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [summaryCardsCollapsed, setSummaryCardsCollapsed] = useState(false);
   const [calls, setCalls] = useState<ResearchCall[]>([]);
   const [callsLoading, setCallsLoading] = useState(true);
   const [callsError, setCallsError] = useState<string | null>(null);
@@ -429,16 +433,13 @@ const Dashboard = () => {
     () => calls.filter((call) => String(call.status || "").toUpperCase() === "DRAFT"),
     [calls]
   );
-  const activeCalls = useMemo(
-    () =>
-      calls
-        .filter((call) =>
-          ["ACTIVE", "OPEN", "PUBLISHED"].includes(
-            String(call.status || "").toUpperCase()
-          )
-        )
-        .slice(0, 5),
-    [calls]
+  const watchlistFnoCalls = useMemo(
+    () => watchlistCalls.filter((call) => ["FUTURES", "OPTION CALL", "OPTION PUT"].includes(String(call.call_type || "").trim().toUpperCase())),
+    [watchlistCalls]
+  );
+  const watchlistCashCalls = useMemo(
+    () => watchlistCalls.filter((call) => String(call.call_type || "").trim().toUpperCase() === "CASH"),
+    [watchlistCalls]
   );
   const accountStatus = statusPresentation(
     profile?.account_status || profile?.status
@@ -529,18 +530,30 @@ const Dashboard = () => {
         </Stack>
       </Paper>
 
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: {
-            xs: "1fr",
-            sm: "repeat(2, minmax(0, 1fr))",
-            xl: "repeat(5, minmax(0, 1fr))",
-          },
-          gap: 2,
-          my: 2.5,
-        }}
-      >
+      <Box sx={{ my: 2.5 }}>
+        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: summaryCardsCollapsed ? 0 : 1 }}>
+          <Button
+            size="small"
+            onClick={() => setSummaryCardsCollapsed((collapsed) => !collapsed)}
+            endIcon={summaryCardsCollapsed ? <ExpandMoreRoundedIcon /> : <ExpandLessRoundedIcon />}
+            aria-expanded={!summaryCardsCollapsed}
+            sx={{ color: "#475467", fontWeight: 650, textTransform: "none", borderRadius: 2 }}
+          >
+            {summaryCardsCollapsed ? "Show account overview" : "Minimize account overview"}
+          </Button>
+        </Box>
+        <Collapse in={!summaryCardsCollapsed} timeout="auto" unmountOnExit>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "1fr",
+                sm: "repeat(2, minmax(0, 1fr))",
+                xl: "repeat(5, minmax(0, 1fr))",
+              },
+              gap: 2,
+            }}
+          >
         <RAClientsCard />
 
         <DashboardStatusCard
@@ -613,6 +626,8 @@ const Dashboard = () => {
               : "Subscription details unavailable"}
           </Typography>
         </DashboardStatusCard>
+          </Box>
+        </Collapse>
       </Box>
 
       <Paper
@@ -651,7 +666,7 @@ const Dashboard = () => {
             </Box>
             <Box>
               <Typography variant="h6" fontWeight={750} color="#172033">
-                Research Call History
+                Recommendation History
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 Review and filter your complete recommendation history.
@@ -682,9 +697,10 @@ const Dashboard = () => {
           />
         </Stack>
         <RecommendationHistory
+          compactRecommendationView
+          enableExitCalls
           searchQuery={searchQuery}
           pageSize={5}
-          showAllRAs
           enableExport
           exportFileBaseName="ra-dashboard"
         />
@@ -714,23 +730,41 @@ const Dashboard = () => {
                 <BoltRoundedIcon fontSize="small" />
               </Box>
               <Box>
-                <Typography fontWeight={750} color="#172033">Active Calls</Typography>
-                <Typography variant="caption" color="text.secondary">Currently in the market</Typography>
+                <Typography fontWeight={750} color="#172033">Watchlist F&amp;O</Typography>
+                <Typography variant="caption" color="text.secondary">Futures and options drafts</Typography>
               </Box>
             </Stack>
-            <Chip size="small" label={activeCalls.length} color="success" sx={{ fontWeight: 750 }} />
+            <Chip size="small" label={watchlistFnoCalls.length} color="primary" sx={{ fontWeight: 750 }} />
           </Stack>
           {callsLoading ? (
             <Stack alignItems="center" py={4}><CircularProgress size={24} /></Stack>
           ) : callsError ? (
             <Typography variant="body2" color="error.main" py={2}>{callsError}</Typography>
-          ) : activeCalls.length === 0 ? (
+          ) : watchlistFnoCalls.length === 0 ? (
             <Typography variant="body2" color="text.secondary" py={2}>
-              No active calls right now.
+              No Futures or Options watchlist items.
             </Typography>
           ) : (
-            <Stack divider={<Divider flexItem />}>
-              {activeCalls.map((call) => <CallSummaryRow key={call.id} call={call} />)}
+            <Stack divider={<Divider flexItem />} sx={{ maxHeight: 400, overflowY: "auto" }}>
+              {watchlistFnoCalls.map((call) => (
+                <Stack key={call.id} direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1} px={0.5} py={1.25}>
+                  <Box minWidth={0}>
+                    <Typography fontWeight={700} fontSize="0.82rem" color={String(call.action).toUpperCase() === "BUY" ? "success.main" : "error.main"}>
+                      {call.action || "—"} {call.instrument || ""} {call.call_type || ""}
+                    </Typography>
+                    <Typography fontWeight={650} fontSize="0.78rem" color="#172033">
+                      {call.name || call.symbol || "Unknown instrument"}{call.trade_type ? ` · ${call.trade_type}` : ""}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      Entry {formatEntry(call)} · TP {call.targets?.join(", ") || "—"} · SL {call.stop_losses?.[0] ?? "—"}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">{formatDateTime(call.created_at)}</Typography>
+                  </Box>
+                  <Button size="small" onClick={() => navigate("/recommendations", { state: { initiateCall: call } })} sx={{ flexShrink: 0, fontWeight: 700 }}>
+                    Initiate
+                  </Button>
+                </Stack>
+              ))}
             </Stack>
           )}
         </Paper>
@@ -751,23 +785,23 @@ const Dashboard = () => {
                 <TrendingUpRoundedIcon fontSize="small" />
               </Box>
               <Box>
-                <Typography fontWeight={750} color="#172033">Watchlist</Typography>
-                <Typography variant="caption" color="text.secondary">Draft recommendations</Typography>
+                <Typography fontWeight={750} color="#172033">Watchlist CASH</Typography>
+                <Typography variant="caption" color="text.secondary">Cash recommendation drafts</Typography>
               </Box>
             </Stack>
-            <Chip size="small" label={watchlistCalls.length} variant="outlined" sx={{ fontWeight: 650, borderColor: "#D9E1EC" }} />
+            <Chip size="small" label={watchlistCashCalls.length} variant="outlined" sx={{ fontWeight: 650, borderColor: "#D9E1EC" }} />
           </Stack>
           {callsLoading ? (
             <Stack alignItems="center" py={4}><CircularProgress size={24} /></Stack>
           ) : callsError ? (
             <Typography variant="body2" color="error.main" py={2}>{callsError}</Typography>
-          ) : watchlistCalls.length === 0 ? (
+          ) : watchlistCashCalls.length === 0 ? (
             <Typography variant="body2" color="text.secondary" py={2}>
               No watchlist items.
             </Typography>
           ) : (
             <Stack divider={<Divider flexItem />} sx={{ maxHeight: 400, overflowY: "auto" }}>
-              {watchlistCalls.map((call) => (
+              {watchlistCashCalls.map((call) => (
                 <Stack key={call.id} direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1} px={0.5} py={1.25}>
                   <Box minWidth={0}>
                     <Typography fontWeight={700} fontSize="0.82rem" color={String(call.action).toUpperCase() === "BUY" ? "success.main" : "error.main"}>
@@ -781,8 +815,8 @@ const Dashboard = () => {
                     </Typography>
                     <Typography variant="caption" color="text.secondary">{formatDateTime(call.created_at)}</Typography>
                   </Box>
-                  <Button size="small" onClick={() => navigate("/recommendations")} sx={{ flexShrink: 0, fontWeight: 700 }}>
-                    Open
+                  <Button size="small" onClick={() => navigate("/recommendations", { state: { initiateCall: call } })} sx={{ flexShrink: 0, fontWeight: 700 }}>
+                    Initiate
                   </Button>
                 </Stack>
               ))}

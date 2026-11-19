@@ -111,6 +111,9 @@ const closeExitDialog = useCallback(() => {
                     display: "flex",
                     flexDirection: "column",
                     gap: 2,
+                    height: "fit-content",
+                    alignSelf: "start",
+                    minWidth: 0,
                 }}
             >
                 {/* =========================================================

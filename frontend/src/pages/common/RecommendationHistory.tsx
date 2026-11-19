@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, type ReactNode } from "react";
+import axios from "axios";
 import {
   Box,
   Paper,
@@ -38,6 +39,7 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import TableExportMenu from "../../components/common/TableExportMenu";
 import RecommendationMediaButton, { type RecommendationAttachment } from "../../components/common/RecommendationMediaButton";
+import ExitRecommendationDialog from "../../components/page_Mainapp/ExitRecommendationDialog";
 import {
   formatExportDate,
   type TableExportColumn,
@@ -67,11 +69,13 @@ export interface HistoryRecord {
   username?: string;
   version_type?: string;
   published_message_text?: string | null;
+  disclaimer_snapshot?: string | null;
   broker_name?: string;
   broker_sebi_registration?: string | null;
   broker_published?: boolean;
   target_price?: number | string | null; target_price_2?: number | string | null; target_price_3?: number | string | null;
   stop_loss?: number | string | null; stop_loss_2?: number | string | null; stop_loss_3?: number | string | null;
+  ra_user_id?: string;
   holding_period?: string | null; rationale?: string | null; underlying_study?: string | null; research_remarks?: string | null; errata_reason?: string | null;
   researcher_organization?: string | null; researcher_sebi_registration?: string | null; researcher_contact?: string | null; researcher_email?: string | null;
   broker_disclaimer_template?: string | null; broker_legal_name?: string | null; broker_trade_name?: string | null;
@@ -102,11 +106,13 @@ export interface ApiHistoryRecord {
   version_type?: string;
    researcherName?: string;
   published_message_text?: string | null;
+  disclaimer_snapshot?: string | null;
   broker_name?: string;
   broker_sebi_registration?: string | null;
   broker_published?: boolean;
   target_price?: number | string | null; target_price_2?: number | string | null; target_price_3?: number | string | null;
   stop_loss?: number | string | null; stop_loss_2?: number | string | null; stop_loss_3?: number | string | null;
+  ra_user_id?: string;
   holding_period?: string | null; rationale?: string | null; underlying_study?: string | null; research_remarks?: string | null; errata_reason?: string | null;
   researcher_organization?: string | null; researcher_sebi_registration?: string | null; researcher_contact?: string | null; researcher_email?: string | null;
   broker_disclaimer_template?: string | null; broker_legal_name?: string | null; broker_trade_name?: string | null;
@@ -131,6 +137,9 @@ toDate?: string;
 sortBy?: string;
 pageSize?: number;
 renderRowActions?: (record: HistoryRecord) => ReactNode;
+  compactRecommendationView?: boolean;
+  enableExitCalls?: boolean;
+  showClosedCalls?: boolean;
 }
 
 const CLIENT_HISTORY_STORAGE_KEY = "clientRecommendationHistory";
@@ -153,7 +162,19 @@ export default function RecommendationHistory({
   sortBy = "latest",
   pageSize = 10,
   renderRowActions,
+  compactRecommendationView = false,
+  enableExitCalls = false,
+  showClosedCalls = false,
 }: RecommendationHistoryProps) {
+  const [exitCall, setExitCall] = useState<HistoryRecord | null>(null);
+  const [exitDialogOpen, setExitDialogOpen] = useState(false);
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
+  useEffect(() => {
+    if (!enableExitCalls) return;
+    const interval = window.setInterval(() => setCurrentTime(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
+  }, [enableExitCalls]);
   const mapApiRowToHistory = (row: ApiHistoryRecord): HistoryRecord => ({
     id: row.id,
     attachments: row.attachments,
@@ -175,11 +196,13 @@ export default function RecommendationHistory({
 
     researcherName: row.researcherName,
     published_message_text: row.published_message_text,
+    disclaimer_snapshot: row.disclaimer_snapshot,
     broker_name: row.broker_name,
     broker_sebi_registration: row.broker_sebi_registration,
     broker_published: row.broker_published,
     target_price: row.target_price, target_price_2: row.target_price_2, target_price_3: row.target_price_3,
     stop_loss: row.stop_loss, stop_loss_2: row.stop_loss_2, stop_loss_3: row.stop_loss_3,
+    ra_user_id: row.ra_user_id,
     holding_period: row.holding_period, rationale: row.rationale, underlying_study: row.underlying_study,
     research_remarks: row.research_remarks, errata_reason: row.errata_reason,
     researcher_organization: row.researcher_organization, researcher_sebi_registration: row.researcher_sebi_registration,
@@ -616,6 +639,10 @@ useEffect(() => {
   // Apply filters
  const filteredData = useMemo(() => {
   let result = [...filterData];
+  if (compactRecommendationView) {
+    result = result.filter((item) => !["DRAFT", "WATCHLIST"].includes(item.status.trim().toUpperCase()));
+    if (!showClosedCalls) result = result.filter((item) => item.status.trim().toUpperCase() !== "CLOSED");
+  }
 
  // ================= GLOBAL ADVANCED SEARCH =================
 if (searchQuery.trim()) {
@@ -977,6 +1004,8 @@ if (advancedSortBy === "profitLow") {
   fromDate,
   toDate,
   sortBy,
+  compactRecommendationView,
+  showClosedCalls,
   typesOfCall,
   categoryFilter,
   outcomeFilter,
@@ -1075,6 +1104,59 @@ const handleReset = () => {
   };
 
 
+  const timeToExpiry = (expiry: string | null) => {
+    if (!expiry) return null;
+    const [year, month, day] = expiry.slice(0, 10).split("-").map(Number);
+    if (!year || !month || !day) return null;
+    const expiryEnd = new Date(year, month - 1, day, 23, 59, 59, 999);
+    const remainingMinutes = Math.ceil((expiryEnd.getTime() - currentTime) / 60000);
+    if (!Number.isFinite(remainingMinutes)) return null;
+    if (remainingMinutes < 0) return { expired: true, label: "Expired" };
+    const days = Math.floor(remainingMinutes / 1440);
+    const hours = Math.floor((remainingMinutes % 1440) / 60);
+    const minutes = remainingMinutes % 60;
+    return { expired: false, label: `Expires in ${days ? `${days}d ` : ""}${hours}h ${minutes}m` };
+  };
+
+  const submitExitCall = async (
+    item: { id?: string | number; [key: string]: unknown },
+    exitPrice: number,
+    exitRemark: string,
+    options?: { previewOnly?: boolean; preparedMessage?: string; onPreview?: (message: string) => void },
+  ) => {
+    const token = localStorage.getItem("token");
+    if (!token) throw new Error("Please log in again");
+    const profileResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/research/ra/message-profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const profile = profileResponse.data?.data;
+    if (!profile) throw new Error("RA message profile is unavailable");
+
+    const call = item as Partial<HistoryRecord>;
+    const entryPrice = Number(call.entry);
+    if (!Number.isFinite(entryPrice) || entryPrice <= 0) throw new Error("Original entry price is not available");
+    const action = String(call.action || "").toUpperCase();
+    if (action !== "BUY" && action !== "SELL") throw new Error("Invalid recommendation action");
+    const pnl = action === "SELL" ? entryPrice - exitPrice : exitPrice - entryPrice;
+    const expiry = call.expiry ? new Date(call.expiry).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kolkata" }) : "N/A";
+    const publishedAt = call.dateTime ? new Date(call.dateTime).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true }) : "N/A";
+    const raName = [profile.salutation, profile.first_name, profile.middle_name, profile.surname].filter(Boolean).join(" ") || "N/A";
+    const message = options?.preparedMessage?.trim() || `EXIT Recommendation\nExit Message Published On: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}\n\nEXIT ${call.instrument || "STOCK"} ${call.type || "Cash"} Expiry: ${expiry}\n\nStock Name: ${call.instrument || call.symbol || "N/A"}\nSymbol: ${call.symbol || "N/A"}\nCall Type: Exit\n\nExit Price: ${exitPrice}\nEntry Price: ${entryPrice}\nPnL: ${pnl > 0 ? `Profit ${pnl.toFixed(2)}` : pnl < 0 ? `Loss ${Math.abs(pnl).toFixed(2)}` : "No Profit / No Loss"}\n\nRecommendation Published On: ${publishedAt}\nRemarks: ${exitRemark.trim()}\n\nDISCLAIMER CUM DISCLOSURE:\n\n${call.disclaimer_snapshot || profile.additional_comments || "Investment in securities market are subject to market risks. Read all related documents carefully before investing."}\n\nResearch Analyst: ${raName} (${profile.org_name || "Tarkashh"})\nSEBI Registration No: ${profile.sebi_reg_no || "N/A"}\nContact No: ${profile.mobile || "N/A"}\nEmail ID: ${profile.email || "N/A"}\n\nRead Full Disclaimer / Disclosure at:\nhttps://lotusfunds.com/disclaimer&disclosure`;
+
+    if (options?.previewOnly) {
+      options.onPreview?.(message);
+      return;
+    }
+    await axios.patch(`${import.meta.env.VITE_API_URL}/api/research/calls/${encodeURIComponent(String(item.id))}/exit`, {
+      exit_price: exitPrice,
+      exit_remark: exitRemark.trim(),
+      message_text: message,
+    }, { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } });
+    setData(previous => previous.map(row => row.id === String(item.id) ? { ...row, status: "CLOSED", exit_price: exitPrice, profitLoss: pnl } : row));
+    setExitDialogOpen(false);
+    setExitCall(null);
+  };
+
   const historySelectStyle = {
     fontSize: "0.75rem",
     fontWeight: 500,
@@ -1097,6 +1179,21 @@ const handleReset = () => {
     fontSize: "0.75rem",
     py: 1.5,
     borderBottom: "1px solid #FAFAFA",
+  };
+
+  const compactHistoryHeadStyle = {
+    ...historyHeadStyle,
+    fontSize: "0.84rem",
+    color: "#475467",
+    whiteSpace: "nowrap",
+    px: 1.75,
+  };
+  const compactHistoryBodyStyle = {
+    ...historyBodyStyle,
+    fontSize: "0.9rem",
+    color: "#344054",
+    py: 1.75,
+    px: 1.75,
   };
 
   const historyPageButtonStyle = {
@@ -1501,7 +1598,45 @@ const handleReset = () => {
 )}
         </Box>
 
-        <Stack spacing={1.5} sx={{ display: { xs: "flex", md: "none" }, p: 1.5 }}>
+        {compactRecommendationView && (
+          <Stack spacing={1.25} sx={{ display: { xs: "flex", md: "none" }, p: 1.5 }}>
+            {loading && <LoadingPage title="Loading" subtitle="Fetching recommendation history..." fullScreen={false} size={44} />}
+            {!loading && paginatedData.length === 0 && <Paper variant="outlined" sx={{ p: 3, textAlign: "center" }}><Typography color="text.secondary">No records found</Typography></Paper>}
+            {!loading && paginatedData.map((row, idx) => {
+              const side = row.action.toUpperCase();
+              const name = row.symbol && row.symbol !== "-" ? row.symbol : row.instrument;
+              const pnlPositive = row.profitLoss >= 0;
+              const expiry = timeToExpiry(row.expiry);
+              return <Paper key={`${row.id || row.symbol}-${idx}`} variant="outlined" sx={{ p: 1.5, borderColor: "#E6EAF0", borderRadius: 2 }}>
+                <Stack direction="row" justifyContent="space-between" gap={1} alignItems="flex-start">
+                  <Box sx={{ minWidth: 0 }}>
+                    <Stack direction="row" spacing={0.75} sx={{ mb: 0.75, flexWrap: "wrap" }}>
+                      <Box sx={{ px: 1, py: 0.3, borderRadius: 1, bgcolor: side === "BUY" ? "#E8F7EF" : side === "SELL" ? "#FDECEC" : "#F1F3F5", color: side === "BUY" ? "#138A5B" : side === "SELL" ? "#C33D3D" : "#475467", fontWeight: 750, fontSize: 12 }}>{side}</Box>
+                      <Box sx={{ px: 1, py: 0.3, borderRadius: 1, bgcolor: "#EEF4FF", color: "#56719A", fontWeight: 650, fontSize: 12 }}>{row.category || row.holding_period || row.type}</Box>
+                    </Stack>
+                    <Typography sx={{ mt: 1.1, color: "#202938", fontSize: "0.95rem", fontWeight: 650, lineHeight: 1.35, letterSpacing: "0.01em", overflowWrap: "anywhere" }}>{name}</Typography>
+                    <Typography sx={{ display: "block", mt: 0.65, color: "#667085", fontSize: "0.75rem", fontWeight: 600, lineHeight: 1.4, letterSpacing: "0.04em", textTransform: "uppercase" }}>{row.type || "Instrument type unavailable"}{row.exchange && row.exchange !== "-" ? ` · ${row.exchange}` : ""}</Typography>
+                  </Box>
+                  <Box sx={{ flexShrink: 0, textAlign: "right" }}><Typography sx={{ fontSize: "0.82rem", color: "#344054", lineHeight: 1.5 }}>{new Date(row.dateTime).toLocaleDateString("en-IN")}</Typography><Typography sx={{ fontSize: "0.78rem", color: "#667085", lineHeight: 1.5 }}>{new Date(row.dateTime).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true })}</Typography></Box>
+                </Stack>
+                <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1.25, mt: 1.5 }}>
+                  <Box><Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>Status</Typography><Stack direction="column" spacing={0.55} alignItems="flex-start" sx={{ mt: 0.35 }}><Box sx={{ px: 0.9, py: 0.25, borderRadius: 1, fontSize: "0.78rem", fontWeight: 650, bgcolor: ["published", "active"].includes(row.status.toLowerCase()) ? "#E8F7EF" : row.status.toLowerCase() === "closed" ? "#FFF4D6" : "#F2F4F7", color: ["published", "active"].includes(row.status.toLowerCase()) ? "#138A5B" : row.status.toLowerCase() === "closed" ? "#9A6700" : "#475467" }}>{row.status}</Box>{isErrataVersion(row.version_type) && <Box sx={errataBadgeSx}>ERRATA</Box>}</Stack></Box>
+                  <Box><Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>Current Market Price</Typography><Typography sx={{ fontSize: "0.95rem", fontWeight: 600, color: "#475467" }}>—</Typography></Box>
+                  <Box><Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>Entry</Typography><Typography sx={{ fontSize: "0.95rem", fontWeight: 600, color: "#344054" }}>{row.entry}</Typography></Box>
+                  <Box><Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>Stop Loss</Typography><Typography sx={{ fontSize: "0.95rem", fontWeight: 650, color: "#D92D20" }}>{row.stop_loss ?? "—"}</Typography></Box>
+                  <Box><Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>Target</Typography><Typography sx={{ fontSize: "0.95rem", fontWeight: 650, color: "#039855" }}>{row.target_price ?? "—"}</Typography></Box>
+                  <Box><Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>P/L</Typography><Typography sx={{ fontSize: "0.95rem", fontWeight: 700, color: pnlPositive ? "success.main" : "error.main" }}>{pnlPositive ? "+" : "−"}{Math.abs(row.profitLoss).toLocaleString()}</Typography></Box>
+                </Box>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1.25, pt: 1, borderTop: "1px solid #EEF0F3" }}>
+                  <Box><Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>Analyst: {getResearcherName(row)}</Typography>{enableExitCalls && <Typography sx={{ fontSize: "0.8rem", display: "block", color: "text.secondary" }}>{expiry?.label || "Expiry: —"}</Typography>}</Box>
+                  <Stack direction="row" spacing={0.75} alignItems="center">{renderRowActions && renderRowActions(row)}{enableExitCalls && row.id && ["PUBLISHED", "ERRATA", "ACTIVE"].includes(row.status.toUpperCase()) && <Button size="small" variant="contained" onClick={() => { setExitCall(row); setExitDialogOpen(true); }}>Exit</Button>}</Stack>
+                </Stack>
+              </Paper>;
+            })}
+          </Stack>
+        )}
+
+        {!compactRecommendationView && <Stack spacing={1.5} sx={{ display: { xs: "flex", md: "none" }, p: 1.5 }}>
           {loading && <LoadingPage title="Loading" subtitle="Fetching recommendation history..." fullScreen={false} size={44} />}
           {!loading && paginatedData.length === 0 && <Paper variant="outlined" sx={{ p: 3, textAlign: "center" }}><Typography color="text.secondary">No records found</Typography></Paper>}
           {!loading && paginatedData.map((row, idx) => <Paper key={`${row.id || row.symbol}-${idx}`} variant="outlined" sx={{ p: 2 }}>
@@ -1514,9 +1649,41 @@ const handleReset = () => {
             <Typography variant="caption" color="text.secondary" display="block">Researcher: {getResearcherName(row)}</Typography>
             {(showMedia || renderRowActions) && <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1.5 }}>{showMedia && <RecommendationMediaButton filePath={row.file_url} attachments={row.attachments} symbol={row.symbol} />}{renderRowActions && renderRowActions(row)}</Stack>}
           </Paper>)}
-        </Stack>
+        </Stack>}
 
-        <TableContainer sx={{ display: { xs: "none", md: "block" } }}>
+        {compactRecommendationView && <TableContainer sx={{ display: { xs: "none", md: "block" } }}>
+          <Table stickyHeader size="small" sx={{ borderCollapse: "separate", borderSpacing: "0 3px" }}>
+            <TableHead><TableRow>
+              <TableCell sx={compactHistoryHeadStyle}>Date &amp; Time</TableCell><TableCell sx={compactHistoryHeadStyle}>Recommendation</TableCell><TableCell sx={compactHistoryHeadStyle}>Status</TableCell><TableCell sx={compactHistoryHeadStyle}>Current Market Price</TableCell><TableCell sx={compactHistoryHeadStyle}>Entry</TableCell><TableCell sx={compactHistoryHeadStyle}>Stop Loss</TableCell><TableCell sx={compactHistoryHeadStyle}>Target</TableCell><TableCell align="right" sx={compactHistoryHeadStyle}>Profit / Loss</TableCell><TableCell sx={compactHistoryHeadStyle}>Analyst</TableCell>{renderRowActions && <TableCell sx={compactHistoryHeadStyle}>Options</TableCell>}{enableExitCalls && <TableCell sx={compactHistoryHeadStyle}>Exit</TableCell>}
+            </TableRow></TableHead>
+            <TableBody>
+              {loading ? <TableRow><TableCell colSpan={9 + (renderRowActions ? 1 : 0) + (enableExitCalls ? 1 : 0)} align="center" sx={{ py: 4 }}><LoadingPage title="Loading" subtitle="Fetching recommendation history..." fullScreen={false} size={44} /></TableCell></TableRow> : paginatedData.length === 0 ? <TableRow><TableCell colSpan={9 + (renderRowActions ? 1 : 0) + (enableExitCalls ? 1 : 0)} align="center" sx={{ py: 4 }}>No records found</TableCell></TableRow> : paginatedData.map((row, idx) => {
+                const side = row.action.toUpperCase();
+                const name = row.symbol && row.symbol !== "-" ? row.symbol : row.instrument;
+                const pnlPositive = row.profitLoss >= 0;
+                const expiry = timeToExpiry(row.expiry);
+                const canExit = enableExitCalls && row.id && ["PUBLISHED", "ERRATA", "ACTIVE"].includes(row.status.toUpperCase());
+                return <TableRow key={`${row.id || row.symbol}-${idx}`} sx={{ bgcolor: "#fff", transition: "background-color 140ms ease", "&:hover": { bgcolor: "#F8FAFC" }, "& td:first-of-type": { borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }, "& td:last-of-type": { borderTopRightRadius: 8, borderBottomRightRadius: 8 }, "& td": { borderBottom: "1px solid #EAECF0" }, ...(isErrataVersion(row.version_type) ? errataRowSx : {}) }}>
+                  <TableCell sx={compactHistoryBodyStyle}><Typography sx={{ fontSize: "0.82rem", color: "#344054", lineHeight: 1.5 }}>{new Date(row.dateTime).toLocaleDateString("en-IN")}</Typography><Typography sx={{ fontSize: "0.78rem", color: "#667085", lineHeight: 1.5 }}>{new Date(row.dateTime).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true })}</Typography></TableCell>
+                  <TableCell sx={{ ...compactHistoryBodyStyle, minWidth: 260, py: 2.25 }}>
+                    <Stack direction="row" spacing={0.75} sx={{ mb: 1.25 }}>
+                      <Box sx={{ px: 1, py: 0.3, borderRadius: 1, bgcolor: side === "BUY" ? "#E8F7EF" : side === "SELL" ? "#FDECEC" : "#F1F3F5", color: side === "BUY" ? "#138A5B" : side === "SELL" ? "#C33D3D" : "#475467", fontWeight: 750, fontSize: 11 }}>{side}</Box>
+                      <Box sx={{ px: 1, py: 0.3, borderRadius: 1, bgcolor: "#EEF4FF", color: "#56719A", fontWeight: 650, fontSize: 11 }}>{row.category || row.holding_period || row.type}</Box>
+                    </Stack>
+                    <Typography sx={{ mb: 0.7, color: "#202938", fontSize: "0.9rem", fontWeight: 650, lineHeight: 1.35, letterSpacing: "0.01em", overflowWrap: "anywhere" }}>{name}</Typography>
+                    <Typography sx={{ color: "#667085", fontSize: "0.74rem", fontWeight: 600, lineHeight: 1.45, letterSpacing: "0.04em", textTransform: "uppercase" }}>{row.type || "Instrument type unavailable"}{row.exchange && row.exchange !== "-" ? ` · ${row.exchange}` : ""}</Typography>
+                  </TableCell>
+                  <TableCell sx={compactHistoryBodyStyle}><Stack direction="column" spacing={0.55} alignItems="flex-start"><Box sx={{ px: 1, py: 0.4, borderRadius: 1, fontSize: "0.78rem", fontWeight: 650, bgcolor: ["published", "active"].includes(row.status.toLowerCase()) ? "#E8F7EF" : row.status.toLowerCase() === "closed" ? "#FFF4D6" : "#F2F4F7", color: ["published", "active"].includes(row.status.toLowerCase()) ? "#138A5B" : row.status.toLowerCase() === "closed" ? "#9A6700" : "#475467" }}>{row.status}</Box>{isErrataVersion(row.version_type) && <Box sx={errataBadgeSx}>ERRATA</Box>}</Stack></TableCell>
+                  <TableCell sx={compactHistoryBodyStyle}><Typography sx={{ fontSize: "0.9rem", fontWeight: 600, color: "#475467" }}>—</Typography></TableCell><TableCell sx={{ ...compactHistoryBodyStyle, color: "#344054", fontWeight: 600 }}>{row.entry}</TableCell><TableCell sx={{ ...compactHistoryBodyStyle, color: "#D92D20", fontWeight: 650 }}>{row.stop_loss ?? "—"}</TableCell><TableCell sx={{ ...compactHistoryBodyStyle, color: "#039855", fontWeight: 650 }}>{row.target_price ?? "—"}</TableCell>
+                  <TableCell align="right" sx={compactHistoryBodyStyle}><Typography sx={{ fontSize: "0.9rem", fontWeight: 700, color: pnlPositive ? "success.dark" : "error.dark" }}>{pnlPositive ? "+" : "−"}{Math.abs(row.profitLoss).toLocaleString()}</Typography></TableCell>
+                  <TableCell sx={compactHistoryBodyStyle}>{getResearcherName(row)}</TableCell>{renderRowActions && <TableCell sx={compactHistoryBodyStyle}>{renderRowActions(row)}</TableCell>}{enableExitCalls && <TableCell sx={compactHistoryBodyStyle}><Stack spacing={0.75} alignItems="flex-start"><Typography sx={{ fontSize: "0.78rem", color: "#667085", whiteSpace: "nowrap" }}>{expiry?.label || "Expiry: —"}</Typography>{canExit && <Button size="small" variant="contained" onClick={() => { setExitCall(row); setExitDialogOpen(true); }} sx={{ fontSize: "0.82rem", textTransform: "none", px: 1.5, py: 0.55 }}>Exit</Button>}</Stack></TableCell>}
+                </TableRow>;
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>}
+
+        {!compactRecommendationView && <TableContainer sx={{ display: { xs: "none", md: "block" } }}>
           <Table stickyHeader size="small">
             <TableHead>
               <TableRow>
@@ -1678,7 +1845,7 @@ const handleReset = () => {
               )}
             </TableBody>
           </Table>
-        </TableContainer>
+        </TableContainer>}
 
         {/* Pagination */}
         <Box
@@ -2218,7 +2385,13 @@ const handleReset = () => {
 
   </DialogActions>
 </Dialog>
-      <Snackbar
+  {enableExitCalls && <ExitRecommendationDialog
+    open={exitDialogOpen}
+    item={exitCall as (HistoryRecord & { [key: string]: unknown }) | null}
+    onClose={() => { setExitDialogOpen(false); setExitCall(null); }}
+    onSubmit={submitExitCall}
+  />}
+  <Snackbar
         open={notificationOpen}
         autoHideDuration={4000}
         onClose={() => setNotificationOpen(false)}

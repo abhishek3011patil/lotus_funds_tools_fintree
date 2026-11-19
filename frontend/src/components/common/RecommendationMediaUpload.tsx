@@ -67,9 +67,6 @@ export default function RecommendationMediaUpload({
       >
         Upload Media{files.length > 0 ? ` (${files.length}/10)` : ""}
       </Button>
-      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-        Up to 10 files, 5 MB each. Images (JPG, PNG, WEBP, GIF), PDF, Word, Excel, CSV, TXT and PowerPoint.
-      </Typography>
       {error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
       {files.length > 0 && (
         <Box sx={{ mt: 1.5, p: 1.25, border: "1px solid #B9CDF5", borderRadius: 2, bgcolor: "#F4F8FF" }}>

@@ -30,6 +30,7 @@ import {
 
 
 import RecommendationsPanel from "../components/page_Mainapp/RecommendationsPanel";
+import { useLocation } from "react-router-dom";
 import RecommendationMediaUpload from "../components/common/RecommendationMediaUpload";
 
 import AdditionalPriceSection, {
@@ -87,6 +88,20 @@ const BUY_COLOR = "#22c55e";
 const SELL_COLOR = "#ef4444";
 const MAX_UNDERLYING_STUDY_LENGTH = 255;
 const MAX_UNDERLYING_STUDIES = 20;
+
+const expiryDateKey = (value: string | Date): string => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
+
+const savedStudySelections = (value: unknown): StudyOption[] =>
+  typeof value === "string"
+    ? value.split(",").map((label) => label.trim()).filter(Boolean).map((label) =>
+        getStudiesByLabels([label])[0] || { label, value: `saved:${label.toLowerCase()}` }
+      )
+    : [];
 
 const replaceCallDisclaimer = (message: string, disclaimer: string) => {
   const lines = message.split("\n");
@@ -150,6 +165,8 @@ type RecommendationForm = {
   holdingPeriod: string;
   rationale: string;
   remark: string;
+  isAlgo: boolean;
+  hasVestedInterest: boolean;
   underlyingStudy: StudyOption[];
   rangeEnabled: boolean;
   secondaryTargetEnabled: boolean;
@@ -174,6 +191,9 @@ const getActionStyles = (current: "BUY" | "SELL", button: "BUY" | "SELL") => {
 };
 
 const NewRecommendation = () => {
+    const location = useLocation();
+    const dashboardInitiateCall = (location.state as { initiateCall?: { id?: string } } | null)?.initiateCall;
+    const initiatedDashboardCallId = useRef<string | null>(null);
     const [raDetails, setRaDetails] = useState<any>(null);
     const draftStorageKey = useMemo(
       () => getRecommendationDraftStorageKey(localStorage.getItem("username")),
@@ -307,6 +327,8 @@ const [
     holdingPeriod: "",
     rationale: "Overbought Condition",
     remark: "",
+    isAlgo: false,
+    hasVestedInterest: false,
     underlyingStudy: [],
     rangeEnabled: false,
     secondaryTargetEnabled: false,
@@ -1016,8 +1038,8 @@ const finalDisplayName =
           )
         ),
 
-      is_algo: false,
-      has_vested_interest: false,
+      is_algo: form.isAlgo,
+      has_vested_interest: form.hasVestedInterest,
       research_remarks: form.remark.trim() || null,
       audience_mode: audienceMode,
       audience_group_ids: JSON.stringify(audienceMode === "GROUPS" ? selectedAudienceGroupIds : []),
@@ -1143,13 +1165,20 @@ const finalDisplayName =
       }
       : autocomplete;
 
+  const [debouncedInstrumentName, setDebouncedInstrumentName] = useState("");
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedInstrumentName(form.display_name.trim()), 350);
+    return () => window.clearTimeout(timer);
+  }, [form.display_name]);
+
   const contractSymbol = form.symbol && form.symbol !== "SYM"
     ? form.symbol.trim()
     : /^[A-Za-z0-9&._-]{1,50}$/.test(inputValue.trim()) ? inputValue.trim() : "";
-  const contractIdentifier = contractSymbol || selectedLocalStockName;
+  const contractIdentifier = contractSymbol || selectedLocalStockName || (form.symbol === "SYM" ? debouncedInstrumentName : "");
   const expiryLookupKey = !isErrataMode && form.callType !== "Cash" && contractSymbol
     ? `${form.exchangeType}|${contractSymbol}|${form.callType}` : "";
   const [listedExpiryDates, setListedExpiryDates] = useState<{ key: string; dates: string[] }>({ key: "", dates: [] });
+  const initiatedExpiryRef = useRef<{ day: string; symbol: string; callType: string; exchange: string } | null>(null);
   useEffect(() => {
     if (!expiryLookupKey) return;
     const controller = new AbortController();
@@ -1179,13 +1208,10 @@ const finalDisplayName =
     ? `${form.exchangeType}|${contractIdentifier}|${form.callType}|${contractExpiry}`
     : null;
   const lastLotLookupKey = useRef<string | null | undefined>(undefined);
-  const manualLotSizeKey = useRef<string | null>(null);
-  const [lotSizeHint, setLotSizeHint] = useState("");
 
   useEffect(() => {
     if (lastLotLookupKey.current !== undefined && lastLotLookupKey.current !== lotLookupKey) {
       dispatch({ type: "SET_FIELD", field: "lotSize", value: "" });
-      setLotSizeHint("");
     }
     lastLotLookupKey.current = lotLookupKey;
     if (!lotLookupKey) return;
@@ -1197,27 +1223,20 @@ const finalDisplayName =
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       signal: controller.signal,
     }).then(response => {
-      if (controller.signal.aborted || manualLotSizeKey.current === lotLookupKey) return;
+      if (controller.signal.aborted) return;
       const lotSize = response.data?.lotSize;
       if (Number.isSafeInteger(lotSize) && lotSize > 0) {
         dispatch({ type: "SET_FIELD", field: "lotSize", value: String(lotSize) });
-        setLotSizeHint("Filled from Dhan instrument data; you can edit it.");
-      } else {
-        setLotSizeHint(form.callType === "Cash"
-          ? "No equity lot size found; enter it manually."
-          : "No matching futures or options contract for this symbol and expiry; enter lot size manually if applicable.");
       }
-    }).catch(() => {
-      if (!controller.signal.aborted) setLotSizeHint("Lot size unavailable; enter it manually.");
-    });
+    }).catch(() => undefined);
     return () => controller.abort();
   }, [lotLookupKey, form.exchangeType, form.callType, contractExpiry, contractSymbol, selectedLocalStockName]);
 
   useEffect(() => {
-    if (!restoredDraft) return;
+    if (!restoredDraft || dashboardInitiateCall?.id) return;
 
     setDirectValue(restoredDraft.stockInput);
-  }, [restoredDraft, setDirectValue]);
+  }, [restoredDraft, dashboardInitiateCall?.id, setDirectValue]);
 
   useEffect(() => {
     saveRecommendationDraft(localStorage, draftStorageKey, {
@@ -1319,7 +1338,10 @@ useEffect(() => {
 const studyOptions:
   StudyAutocompleteOption[] =
   useMemo(() => {
-    return buildPersonalizedStudyOptions({
+    const savedOptions = form.underlyingStudy
+      .filter((study) => study.value.startsWith("saved:"))
+      .map((study) => ({ ...study, group: "Saved studies" }));
+    return [...savedOptions, ...buildPersonalizedStudyOptions({
       frequentValues:
         frequentStudyOptions.map(
           (study) => study.value
@@ -1328,8 +1350,9 @@ const studyOptions:
         recentStudyOptions.map(
           (study) => study.value
         ),
-    });
+    })];
   }, [
+    form.underlyingStudy,
     frequentStudyOptions,
     recentStudyOptions,
   ]);
@@ -1380,21 +1403,29 @@ const handleUnderlyingStudyChange = (
 
   useEffect(() => {
     if (!expiryDates.length) {
-      dispatch({ type: "SET_FIELD", field: "expiry", value: "" });
+      if (form.expiry) dispatch({ type: "SET_FIELD", field: "expiry", value: "" });
       return;
     }
 
-    const currentExpiryIsAvailable = expiryDates.some(
-      (date) => date.toISOString() === form.expiry
-    );
-    if (currentExpiryIsAvailable) return;
+    const currentExpiry = expiryDateKey(form.expiry);
+    const matchingExpiry = expiryDates.find((date) => expiryDateKey(date) === currentExpiry);
+    if (matchingExpiry) {
+      if (form.expiry !== matchingExpiry.toISOString()) {
+        dispatch({ type: "SET_FIELD", field: "expiry", value: matchingExpiry.toISOString() });
+      }
+      return;
+    }
+    if (initiatedExpiryRef.current?.day === currentExpiry &&
+        initiatedExpiryRef.current.symbol === form.symbol &&
+        initiatedExpiryRef.current.callType === form.callType &&
+        initiatedExpiryRef.current.exchange === form.exchangeType) return;
 
     const first = expiryDates[0].toISOString();
 
     if (form.expiry !== first) {
       dispatch({ type: "SET_FIELD", field: "expiry", value: first });
     }
-  }, [expiryDates, form.expiry]);
+  }, [expiryDates, form.expiry, form.symbol, form.callType, form.exchangeType]);
 
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1814,7 +1845,7 @@ const handleViewHistory = useCallback(async (item: any) => {
         tradeType: item.trade_type,
         symbol: item.symbol || "SYM",
         display_name: item.name || item.display_name || "",
-        lotSize: item.lotSize?.toString() || "",
+        lotSize: "",
         expiry: item.expiry_date || "",
         entry: item.entry?.ideal?.toString() || "",
         target: item.targets?.[0]?.toString() || "",
@@ -1828,6 +1859,8 @@ const handleViewHistory = useCallback(async (item: any) => {
         stopLoss3: item.stop_losses?.[2]?.toString() || "",
         rationale: item.rationale || "",
  remark: "",
+        isAlgo: Boolean(item.flags?.algo),
+        hasVestedInterest: Boolean(item.flags?.vested_interest),
        underlyingStudy: item.underlying_study
   ? getStudiesByLabels(item.underlying_study.split(","))
   : [],
@@ -2453,6 +2486,13 @@ const handleConfirmPreview = async () => {
 // };
 
 const handleInitiate = useCallback(async (item: any) => {
+  const savedExpiryDay = typeof item.expiry_date === "string" ? item.expiry_date.slice(0, 10) : "";
+  const savedExpiry = /^\d{4}-\d{2}-\d{2}$/.test(savedExpiryDay)
+    ? new Date(`${savedExpiryDay}T12:00:00`).toISOString()
+    : "";
+  initiatedExpiryRef.current = savedExpiry
+    ? { day: savedExpiryDay, symbol: item.symbol || "SYM", callType: item.call_type || "Cash", exchange: item.exchange || "NSE" }
+    : null;
   const formUpdate: Partial<RecommendationForm> = {
     exchangeType: item.exchange || "NSE",
     exchange: item.instrument || "STOCK",
@@ -2461,8 +2501,8 @@ const handleInitiate = useCallback(async (item: any) => {
     tradeType: item.trade_type || "Short Term",
     symbol: item.symbol || "SYM",
     display_name: item.name || item.symbol || "",
-    lotSize: item.lotSize?.toString() || "",
-    expiry: item.expiry_date?.slice(0, 10) || "",
+    lotSize: "",
+    expiry: savedExpiry,
     entry: item.entry?.ideal?.toString() || "",
     entryLow: item.entry?.low?.toString() || "",
     entryUpper: item.entry?.high?.toString() || "",
@@ -2475,9 +2515,9 @@ const handleInitiate = useCallback(async (item: any) => {
     holdingPeriod: item.holding_period?.toString() || "",
     rationale: item.rationale || "",
     remark: item.remarks || "",
-    underlyingStudy: item.underlying_study
-      ? getStudiesByLabels(item.underlying_study.split(","))
-      : [],
+    isAlgo: Boolean(item.flags?.algo),
+    hasVestedInterest: Boolean(item.flags?.vested_interest),
+    underlyingStudy: savedStudySelections(item.underlying_study),
     rangeEnabled: Boolean(item.entry?.low || item.entry?.high),
     secondaryTargetEnabled: Boolean(item.targets?.[1] || item.targets?.[2]),
     stopLoss2Enabled: Boolean(item.stop_losses?.[1] || item.stop_losses?.[2]),
@@ -2502,6 +2542,12 @@ const handleInitiate = useCallback(async (item: any) => {
   setWasValidated(false);
   window.scrollTo({ top: 0, behavior: "smooth" });
 }, [setDirectValue]);
+
+useEffect(() => {
+  if (!dashboardInitiateCall?.id || initiatedDashboardCallId.current === dashboardInitiateCall.id) return;
+  initiatedDashboardCallId.current = dashboardInitiateCall.id;
+  void handleInitiate(dashboardInitiateCall);
+}, [dashboardInitiateCall, handleInitiate]);
 
 const handleTrack = async () => {
   if (submittingRef.current) return;
@@ -2652,8 +2698,8 @@ const finalSymbol = String(
           )
         ),
 
-      is_algo: false,
-      has_vested_interest: false,
+      is_algo: form.isAlgo,
+      has_vested_interest: form.hasVestedInterest,
 
       research_remarks: form.remark || null,
     };
@@ -3023,6 +3069,7 @@ const additionalPriceToggles = useMemo(
         display: "grid",
         gridTemplateColumns: { xs: "1fr", lg: "3fr 1.5fr" },
         gap: { xs: 2, md: 1.5 },
+        alignItems: "start",
         height: "auto",
         p: { xs: 1, sm: 1.5 },
         boxSizing: "border-box",
@@ -3041,18 +3088,18 @@ const additionalPriceToggles = useMemo(
         component="form"
         noValidate
         sx={{
-          p: { xs: 1.5, sm: 2 },
+          p: { xs: 1.25, sm: 1.5 },
           backgroundColor: panelBg,
           border: `1px solid ${panelBorder}`,
-          borderRadius: 1,
+          borderRadius: 2,
           display: "flex",
           flexDirection: "column",
           height: "auto",
-          // minHeight: "100%",
           minHeight: "auto",
-width: "100%",
-maxWidth: "100%",
-          gap: 1.5,
+          width: "100%",
+          maxWidth: "100%",
+          alignSelf: "start",
+          gap: 1,
           "& .MuiTextField-root": {
             "& .MuiOutlinedInput-root": {
               ...(wasValidated && {
@@ -3428,14 +3475,15 @@ sx={{
         {/* Script Row */}
         <Box
   sx={{
-    display: "flex",
-    flexDirection: { xs: "column", sm: "row" }, // mobile = column, desktop = row
-    gap: 1,
-    mb: 1,
+    display: "grid",
+    gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: "minmax(0, 1fr) 180px 145px" },
+    alignItems: "start",
+    gap: { xs: 0.75, sm: 1 },
+    mb: 0.5,
     width: "100%",
   }}
 >
-          <Box sx={{ position: 'relative', display: 'flex', flexGrow: 1 }}>
+          <Box sx={{ position: 'relative', display: 'flex', gridColumn: { xs: "1 / -1", sm: "auto" }, minWidth: 0 }}>
             {suggestion && suggestion.toLowerCase().startsWith(inputValue.toLowerCase()) && (
               <Box
                 sx={{
@@ -3554,7 +3602,7 @@ sx={{
             />
 
           </Box>
-          <Box sx={{ display: "flex", gap: 1, flexGrow: { xs: 1, sm: 0 } }}>
+          <Box sx={{ display: "flex", gap: 1, width: "100%", minWidth: 0 }}>
             <Select
               size="small"
               value={form.expiry}
@@ -3563,7 +3611,7 @@ sx={{
               displayEmpty
               sx={{
                 flexGrow: 1,
-                minWidth: 160,
+                minWidth: 0,
                 height: 32,
                 fontSize: "0.8rem",
               }}
@@ -3574,6 +3622,12 @@ sx={{
                 </MenuItem>
               )}
 
+              {form.expiry && !expiryDates.some((date) => expiryDateKey(date) === expiryDateKey(form.expiry)) && (
+                <MenuItem value={form.expiry}>
+                  {new Date(form.expiry).toDateString()} (saved)
+                </MenuItem>
+              )}
+
               {expiryDates.map((d) => (
                 <MenuItem key={d.toISOString()} value={d.toISOString()}>
                   {d.toDateString()}
@@ -3581,23 +3635,18 @@ sx={{
               ))}
             </Select>
           </Box>
-
-        </Box>
-
-        <Box sx={{ width: { xs: "100%", sm: 220 }, mb: 1 }}>
+          <Box sx={{ width: "100%", minWidth: 0 }}>
           <TextField
             fullWidth
             size="small"
             type="number"
             label="Lot Size"
             value={form.lotSize}
-            onChange={(event) => {
-              manualLotSizeKey.current = lotLookupKey;
-              updateField("lotSize", event.target.value);
-            }}
+            InputProps={{ readOnly: true }}
             inputProps={{ min: 1, step: 1 }}
-            helperText={lotSizeHint || "Optional; enter a positive whole number"}
+            sx={{ "& .MuiInputBase-root": { backgroundColor: "#F8FAFC" } }}
           />
+          </Box>
         </Box>
 
         {/* Prices Row */}
@@ -3867,7 +3916,15 @@ sx={{
     minWidth: { xs: "100%", sm: 180 },
   }}
 >
-            <RecommendationMediaUpload files={selectedFiles} onChange={setSelectedFiles} disabled={isSubmitting || previewLoading} />
+            <RecommendationMediaUpload files={selectedFiles} onChange={setSelectedFiles} disabled={isSubmitting || previewLoading || Boolean(pendingDraftPublish)} />
+            {pendingDraftPublish && (
+              <Typography variant="caption" color="text.secondary">
+                {Array.isArray(pendingDraftPublish.attachments) && pendingDraftPublish.attachments.length > 0
+                  ? `Saved files: ${pendingDraftPublish.attachments.map((file: { name?: string }) => file.name || "Attachment").join(", ")}. These remain attached when published.`
+                  : "This watchlist item has no saved files."}
+                {" "}Files cannot be changed while publishing a saved watchlist item.
+              </Typography>
+            )}
             {isErrataMode && (
               <Typography variant="caption" color="text.secondary">
                 Existing attachments are retained; new uploads are added to this correction.
@@ -3875,11 +3932,11 @@ sx={{
             )}
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <Typography sx={{ fontSize: '0.65rem', fontWeight: 600 }}>Is this an Algo Powered Recommendation?</Typography>
-              <Switch size="small" />
+              <Switch size="small" checked={form.isAlgo} onChange={(event) => updateField("isAlgo", event.target.checked)} />
             </Box>
             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <Typography sx={{ fontSize: '0.65rem', fontWeight: 600 }}>Vested Interest?</Typography>
-              <Switch size="small" />
+              <Switch size="small" checked={form.hasVestedInterest} onChange={(event) => updateField("hasVestedInterest", event.target.checked)} />
             </Box>
           </Box>
         </Box>
