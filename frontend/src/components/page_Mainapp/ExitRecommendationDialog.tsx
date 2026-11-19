@@ -205,7 +205,7 @@ const ExitRecommendationDialog = memo(
               !exitRemark.trim()
             }
           >
-            {previewing ? "Preparing Preview..." : "Preview Exit Call"}
+            {previewing ? "Preparing Preview..." : "Preview Exit Message"}
           </Button>
 
           <Button
@@ -214,6 +214,7 @@ const ExitRecommendationDialog = memo(
             disabled={
               submitting ||
               previewing ||
+              !previewMessage ||
               !exitPrice ||
               !exitRemark.trim()
             }

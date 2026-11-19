@@ -140,6 +140,7 @@ renderRowActions?: (record: HistoryRecord) => ReactNode;
   compactRecommendationView?: boolean;
   popupFilters?: boolean;
   enableExitCalls?: boolean;
+  showExpiryCountdown?: boolean;
   showClosedCalls?: boolean;
 }
 
@@ -166,6 +167,7 @@ export default function RecommendationHistory({
   compactRecommendationView = false,
   popupFilters = false,
   enableExitCalls = false,
+  showExpiryCountdown = false,
   showClosedCalls = false,
 }: RecommendationHistoryProps) {
   const [exitCall, setExitCall] = useState<HistoryRecord | null>(null);
@@ -174,10 +176,10 @@ export default function RecommendationHistory({
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   useEffect(() => {
-    if (!enableExitCalls) return;
+    if (!enableExitCalls && !showExpiryCountdown) return;
     const interval = window.setInterval(() => setCurrentTime(Date.now()), 60_000);
     return () => window.clearInterval(interval);
-  }, [enableExitCalls]);
+  }, [enableExitCalls, showExpiryCountdown]);
   const mapApiRowToHistory = (row: ApiHistoryRecord): HistoryRecord => ({
     id: row.id,
     attachments: row.attachments,
@@ -1687,7 +1689,7 @@ const handleReset = () => {
                   <Box><Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>P/L</Typography><Typography sx={{ fontSize: "0.95rem", fontWeight: 700, color: pnlPositive ? "success.main" : "error.main" }}>{pnlPositive ? "+" : "−"}{Math.abs(row.profitLoss).toLocaleString()}</Typography></Box>
                 </Box>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1.25, pt: 1, borderTop: "1px solid #EEF0F3" }}>
-                  <Box><Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>Analyst: {getResearcherName(row)}</Typography>{enableExitCalls && <Typography sx={{ fontSize: "0.8rem", display: "block", color: "text.secondary" }}>{expiry?.label || "Expiry: —"}</Typography>}</Box>
+                  <Box><Typography sx={{ fontSize: "0.8rem", color: "text.secondary" }}>Analyst: {getResearcherName(row)}</Typography>{(enableExitCalls || showExpiryCountdown) && <Typography sx={{ fontSize: "0.8rem", display: "block", color: "text.secondary" }}>{expiry?.label || "Expiry: —"}</Typography>}</Box>
                   <Stack direction="row" spacing={0.75} alignItems="center">{renderRowActions && renderRowActions(row)}{enableExitCalls && row.id && ["PUBLISHED", "ERRATA", "ACTIVE"].includes(row.status.toUpperCase()) && <Button size="small" variant="contained" onClick={() => { setExitCall(row); setExitDialogOpen(true); }}>Exit</Button>}</Stack>
                 </Stack>
               </Paper>;
@@ -1713,10 +1715,10 @@ const handleReset = () => {
         {compactRecommendationView && <TableContainer sx={{ display: { xs: "none", md: "block" } }}>
           <Table stickyHeader size="small" sx={{ borderCollapse: "separate", borderSpacing: "0 3px" }}>
             <TableHead><TableRow>
-              <TableCell sx={compactHistoryHeadStyle}>Date &amp; Time</TableCell><TableCell sx={compactHistoryHeadStyle}>Recommendation</TableCell><TableCell sx={compactHistoryHeadStyle}>Status</TableCell><TableCell sx={compactHistoryHeadStyle}>Current Market Price</TableCell><TableCell sx={compactHistoryHeadStyle}>Entry</TableCell><TableCell sx={compactHistoryHeadStyle}>Stop Loss</TableCell><TableCell sx={compactHistoryHeadStyle}>Target</TableCell><TableCell align="right" sx={compactHistoryHeadStyle}>Profit / Loss</TableCell><TableCell sx={compactHistoryHeadStyle}>Analyst</TableCell>{renderRowActions && <TableCell sx={compactHistoryHeadStyle}>Options</TableCell>}{enableExitCalls && <TableCell sx={compactHistoryHeadStyle}>Exit</TableCell>}
+              <TableCell sx={compactHistoryHeadStyle}>Date &amp; Time</TableCell><TableCell sx={compactHistoryHeadStyle}>Recommendation</TableCell><TableCell sx={compactHistoryHeadStyle}>Status</TableCell><TableCell sx={compactHistoryHeadStyle}>Current Market Price</TableCell><TableCell sx={compactHistoryHeadStyle}>Entry</TableCell><TableCell sx={compactHistoryHeadStyle}>Stop Loss</TableCell><TableCell sx={compactHistoryHeadStyle}>Target</TableCell><TableCell align="right" sx={compactHistoryHeadStyle}>Profit / Loss</TableCell><TableCell sx={compactHistoryHeadStyle}>Analyst</TableCell>{renderRowActions && <TableCell sx={compactHistoryHeadStyle}>Options</TableCell>}{(enableExitCalls || showExpiryCountdown) && <TableCell sx={compactHistoryHeadStyle}>{enableExitCalls ? "Exit" : "Expiry"}</TableCell>}
             </TableRow></TableHead>
             <TableBody>
-              {loading ? <TableRow><TableCell colSpan={9 + (renderRowActions ? 1 : 0) + (enableExitCalls ? 1 : 0)} align="center" sx={{ py: 4 }}><LoadingPage title="Loading" subtitle="Fetching recommendation history..." fullScreen={false} size={44} /></TableCell></TableRow> : paginatedData.length === 0 ? <TableRow><TableCell colSpan={9 + (renderRowActions ? 1 : 0) + (enableExitCalls ? 1 : 0)} align="center" sx={{ py: 4 }}>No records found</TableCell></TableRow> : paginatedData.map((row, idx) => {
+              {loading ? <TableRow><TableCell colSpan={9 + (renderRowActions ? 1 : 0) + ((enableExitCalls || showExpiryCountdown) ? 1 : 0)} align="center" sx={{ py: 4 }}><LoadingPage title="Loading" subtitle="Fetching recommendation history..." fullScreen={false} size={44} /></TableCell></TableRow> : paginatedData.length === 0 ? <TableRow><TableCell colSpan={9 + (renderRowActions ? 1 : 0) + ((enableExitCalls || showExpiryCountdown) ? 1 : 0)} align="center" sx={{ py: 4 }}>No records found</TableCell></TableRow> : paginatedData.map((row, idx) => {
                 const side = row.action.toUpperCase();
                 const name = row.symbol && row.symbol !== "-" ? row.symbol : row.instrument;
                 const pnlPositive = row.profitLoss >= 0;
@@ -1735,7 +1737,7 @@ const handleReset = () => {
                   <TableCell sx={compactHistoryBodyStyle}><Stack direction="column" spacing={0.55} alignItems="flex-start"><Box sx={{ px: 1, py: 0.4, borderRadius: 1, fontSize: "0.78rem", fontWeight: 650, bgcolor: ["published", "active"].includes(row.status.toLowerCase()) ? "#E8F7EF" : row.status.toLowerCase() === "closed" ? "#FFF4D6" : "#F2F4F7", color: ["published", "active"].includes(row.status.toLowerCase()) ? "#138A5B" : row.status.toLowerCase() === "closed" ? "#9A6700" : "#475467" }}>{row.status}</Box>{isErrataVersion(row.version_type) && <Box sx={errataBadgeSx}>ERRATA</Box>}</Stack></TableCell>
                   <TableCell sx={compactHistoryBodyStyle}><Typography sx={{ fontSize: "0.9rem", fontWeight: 600, color: "#475467" }}>—</Typography></TableCell><TableCell sx={{ ...compactHistoryBodyStyle, color: "#344054", fontWeight: 600 }}>{row.entry}</TableCell><TableCell sx={{ ...compactHistoryBodyStyle, color: "#D92D20", fontWeight: 650 }}>{row.stop_loss ?? "—"}</TableCell><TableCell sx={{ ...compactHistoryBodyStyle, color: "#039855", fontWeight: 650 }}>{row.target_price ?? "—"}</TableCell>
                   <TableCell align="right" sx={compactHistoryBodyStyle}><Typography sx={{ fontSize: "0.9rem", fontWeight: 700, color: pnlPositive ? "success.dark" : "error.dark" }}>{pnlPositive ? "+" : "−"}{Math.abs(row.profitLoss).toLocaleString()}</Typography></TableCell>
-                  <TableCell sx={compactHistoryBodyStyle}>{getResearcherName(row)}</TableCell>{renderRowActions && <TableCell sx={compactHistoryBodyStyle}>{renderRowActions(row)}</TableCell>}{enableExitCalls && <TableCell sx={compactHistoryBodyStyle}><Stack spacing={0.75} alignItems="flex-start"><Typography sx={{ fontSize: "0.78rem", color: "#667085", whiteSpace: "nowrap" }}>{expiry?.label || "Expiry: —"}</Typography>{canExit && <Button size="small" variant="contained" onClick={() => { setExitCall(row); setExitDialogOpen(true); }} sx={{ fontSize: "0.82rem", textTransform: "none", px: 1.5, py: 0.55 }}>Exit</Button>}</Stack></TableCell>}
+                  <TableCell sx={compactHistoryBodyStyle}>{getResearcherName(row)}</TableCell>{renderRowActions && <TableCell sx={compactHistoryBodyStyle}>{renderRowActions(row)}</TableCell>}{(enableExitCalls || showExpiryCountdown) && <TableCell sx={compactHistoryBodyStyle}><Stack spacing={0.75} alignItems="flex-start"><Typography sx={{ fontSize: "0.78rem", color: "#667085", whiteSpace: "nowrap" }}>{expiry?.label || "Expiry: —"}</Typography>{canExit && <Button size="small" variant="contained" onClick={() => { setExitCall(row); setExitDialogOpen(true); }} sx={{ fontSize: "0.82rem", textTransform: "none", px: 1.5, py: 0.55 }}>Exit</Button>}</Stack></TableCell>}
                 </TableRow>;
               })}
             </TableBody>

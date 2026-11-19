@@ -674,7 +674,7 @@ return (
 <Box sx={{ mt: 1 }}>
 <RecommendationHistory
   compactRecommendationView
-  enableExitCalls
+  showExpiryCountdown
   showClosedCalls
   enableExport
   exportFileBaseName="ra-performance"
