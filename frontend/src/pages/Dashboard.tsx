@@ -327,7 +327,7 @@ const CallSummaryRow = ({ call }: { call: ResearchCall }) => (
 const Dashboard = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-  const [summaryCardsCollapsed, setSummaryCardsCollapsed] = useState(false);
+  const [summaryCardsCollapsed, setSummaryCardsCollapsed] = useState(true);
   const [calls, setCalls] = useState<ResearchCall[]>([]);
   const [callsLoading, setCallsLoading] = useState(true);
   const [callsError, setCallsError] = useState<string | null>(null);
@@ -531,15 +531,38 @@ const Dashboard = () => {
       </Paper>
 
       <Box sx={{ my: 2.5 }}>
-        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: summaryCardsCollapsed ? 0 : 1 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 1.5,
+            mb: 1,
+            p: summaryCardsCollapsed ? 1.25 : 0.5,
+            border: summaryCardsCollapsed ? "1px solid #DCE6FB" : "1px solid transparent",
+            borderRadius: 2,
+            bgcolor: summaryCardsCollapsed ? "#F5F8FF" : "transparent",
+          }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center" minWidth={0}>
+            <Box sx={{ width: 34, height: 34, borderRadius: 1.5, bgcolor: "#E8EEFF", color: "#3657B3", display: "grid", placeItems: "center", flexShrink: 0 }}>
+              <VerifiedUserOutlinedIcon fontSize="small" />
+            </Box>
+            <Box minWidth={0}>
+              <Typography sx={{ fontWeight: 700, color: "#24324A", fontSize: "0.9rem" }}>Account overview</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                {summaryCardsCollapsed ? "Minimized · account and channel status" : "Account and channel status"}
+              </Typography>
+            </Box>
+          </Stack>
           <Button
             size="small"
             onClick={() => setSummaryCardsCollapsed((collapsed) => !collapsed)}
             endIcon={summaryCardsCollapsed ? <ExpandMoreRoundedIcon /> : <ExpandLessRoundedIcon />}
             aria-expanded={!summaryCardsCollapsed}
-            sx={{ color: "#475467", fontWeight: 650, textTransform: "none", borderRadius: 2 }}
+            sx={{ color: "#3657B3", fontWeight: 700, textTransform: "none", borderRadius: 2, flexShrink: 0, bgcolor: summaryCardsCollapsed ? "#FFFFFF" : "transparent", border: summaryCardsCollapsed ? "1px solid #D7E1F7" : "1px solid transparent", px: 1.5 }}
           >
-            {summaryCardsCollapsed ? "Show account overview" : "Minimize account overview"}
+            {summaryCardsCollapsed ? "Show overview" : "Minimize"}
           </Button>
         </Box>
         <Collapse in={!summaryCardsCollapsed} timeout="auto" unmountOnExit>
