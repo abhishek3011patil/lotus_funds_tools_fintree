@@ -138,6 +138,7 @@ sortBy?: string;
 pageSize?: number;
 renderRowActions?: (record: HistoryRecord) => ReactNode;
   compactRecommendationView?: boolean;
+  popupFilters?: boolean;
   enableExitCalls?: boolean;
   showClosedCalls?: boolean;
 }
@@ -163,11 +164,13 @@ export default function RecommendationHistory({
   pageSize = 10,
   renderRowActions,
   compactRecommendationView = false,
+  popupFilters = false,
   enableExitCalls = false,
   showClosedCalls = false,
 }: RecommendationHistoryProps) {
   const [exitCall, setExitCall] = useState<HistoryRecord | null>(null);
   const [exitDialogOpen, setExitDialogOpen] = useState(false);
+  const [dashboardFilterOpen, setDashboardFilterOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   useEffect(() => {
@@ -1270,7 +1273,7 @@ const handleReset = () => {
           </Typography>
 
           {/* Condition: Only show Filters on Performance page */}
-          {statusFilter === "ALL" && (
+          {statusFilter === "ALL" && !popupFilters && (
   <Box
     sx={{
       p: { xs: 0, md: 2 },
@@ -1596,7 +1599,63 @@ const handleReset = () => {
     </Box>
   </Box>
 )}
+
+          {statusFilter === "ALL" && popupFilters && (
+            <Stack direction={{ xs: "row", sm: "row" }} spacing={1} alignItems="center" sx={{ alignSelf: { xs: "stretch", md: "center" }, ml: { md: "auto" } }}>
+              <Button
+                variant="outlined"
+                startIcon={<FilterAltOutlinedIcon />}
+                onClick={() => setDashboardFilterOpen(true)}
+                sx={{ textTransform: "none", fontWeight: 650, borderRadius: 2, minWidth: 110 }}
+              >
+                Filter
+              </Button>
+              {enableExport && <TableExportMenu rows={paginatedData} columns={exportColumns} fileBaseName={exportFileBaseName} printTitle="RA Recommendation History" loading={loading} />}
+            </Stack>
+          )}
         </Box>
+
+        {popupFilters && <Dialog open={dashboardFilterOpen} onClose={() => setDashboardFilterOpen(false)} fullWidth maxWidth="sm">
+          <DialogTitle>Filter Recommendations</DialogTitle>
+          <DialogContent dividers>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, gap: 1.5, py: 0.5 }}>
+              <Select value={dateFilter} onChange={(event) => {
+                const value = event.target.value;
+                setDateFilter(value);
+                setPage(1);
+                if (value === "Custom") {
+                  setDashboardFilterOpen(false);
+                  setCustomDateOpen(true);
+                }
+              }} size="small" fullWidth displayEmpty>
+                <MenuItem value="All">Date: All</MenuItem><MenuItem value="Today">Today</MenuItem><MenuItem value="Last 7 Days">Last 7 Days</MenuItem><MenuItem value="Custom">Custom dates…</MenuItem>
+              </Select>
+              <Select value={typesOfCall} onChange={(event) => { settypesOfCall(event.target.value); setPage(1); }} size="small" fullWidth displayEmpty>
+                <MenuItem value="All">All call types</MenuItem><MenuItem value="cash">Cash</MenuItem><MenuItem value="futures">Futures</MenuItem><MenuItem value="options call">Options Call</MenuItem><MenuItem value="options put">Options Put</MenuItem>
+              </Select>
+              <Select value={selectedActionFilter} onChange={(event) => { setSelectedActionFilter(event.target.value); setPage(1); }} size="small" fullWidth displayEmpty>
+                <MenuItem value="ALL">All actions</MenuItem><MenuItem value="BUY">Buy</MenuItem><MenuItem value="SELL">Sell</MenuItem>
+              </Select>
+              <Select value={outcomeFilter} onChange={(event) => { setOutcomeFilter(event.target.value); setPage(1); }} size="small" fullWidth displayEmpty>
+                <MenuItem value="All">All outcomes</MenuItem><MenuItem value="Profit">Profit</MenuItem><MenuItem value="Loss">Loss</MenuItem>
+              </Select>
+            </Box>
+            <Button
+              startIcon={<TuneIcon />}
+              onClick={() => {
+                setDashboardFilterOpen(false);
+                window.setTimeout(() => setAdvancedFilterOpen(true), 160);
+              }}
+              sx={{ mt: 1.5, textTransform: "none", fontWeight: 650 }}
+            >
+              More filters
+            </Button>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => { handleReset(); setDashboardFilterOpen(false); }} startIcon={<RestartAltIcon />} color="inherit">Reset</Button>
+            <Button onClick={() => setDashboardFilterOpen(false)} variant="contained">Done</Button>
+          </DialogActions>
+        </Dialog>}
 
         {compactRecommendationView && (
           <Stack spacing={1.25} sx={{ display: { xs: "flex", md: "none" }, p: 1.5 }}>

@@ -698,6 +698,7 @@ const Dashboard = () => {
         </Stack>
         <RecommendationHistory
           compactRecommendationView
+          popupFilters
           enableExitCalls
           searchQuery={searchQuery}
           pageSize={5}
