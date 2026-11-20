@@ -16,10 +16,12 @@ const MAX_BYTES = 5 * 1024 * 1024;
 export default function RecommendationMediaUpload({
   files,
   onChange,
+  existingAttachments = [],
   disabled = false,
 }: {
   files: File[];
   onChange: (files: File[]) => void;
+  existingAttachments?: Array<{ name?: string; url?: string }>;
   disabled?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
@@ -50,7 +52,7 @@ export default function RecommendationMediaUpload({
           const added = selected.filter(file => !files.some(existing =>
             existing.name === file.name && existing.size === file.size && existing.lastModified === file.lastModified
           ));
-          if (files.length + added.length > MAX_FILES) {
+          if (existingAttachments.length + files.length + added.length > MAX_FILES) {
             setError("You can attach up to 10 files. Remove a file before adding more.");
             return;
           }
@@ -65,10 +67,10 @@ export default function RecommendationMediaUpload({
         onClick={() => input.current?.click()}
         sx={{ textTransform: "none" }}
       >
-        Upload Media{files.length > 0 ? ` (${files.length}/10)` : ""}
+        Upload Media{files.length + existingAttachments.length > 0 ? ` (${files.length + existingAttachments.length}/10)` : ""}
       </Button>
       {error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
-      {files.length > 0 && (
+      {(files.length > 0 || existingAttachments.length > 0) && (
         <Box sx={{ mt: 1.5, p: 1.25, border: "1px solid #B9CDF5", borderRadius: 2, bgcolor: "#F4F8FF" }}>
           <Button
             fullWidth
@@ -79,10 +81,19 @@ export default function RecommendationMediaUpload({
             endIcon={filesExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
             sx={{ justifyContent: "space-between", textTransform: "none", fontWeight: 800, color: "#23447C", px: 0.5 }}
           >
-            Attached files ({files.length})
+            Attached files ({existingAttachments.length + files.length})
           </Button>
           <Collapse in={filesExpanded}>
             <Box id="recommendation-attached-files" sx={{ display: "flex", flexDirection: "column", gap: 0.75, mt: 1 }}>
+              {existingAttachments.map((attachment, index) => (
+                <Box key={`${attachment.url || attachment.name || "saved"}-${index}`} sx={{ display: "flex", alignItems: "center", gap: 1, p: 0.75, minWidth: 0, border: "1px solid #DCE6F5", borderRadius: 1.5, bgcolor: "#FFFFFF" }}>
+                  <Box sx={{ width: 32, height: 32, flexShrink: 0, display: "grid", placeItems: "center", borderRadius: 1.5, bgcolor: "#E8F1FF", color: "#2563A6" }}><ImageOutlinedIcon fontSize="small" /></Box>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700, overflowWrap: "anywhere", lineHeight: 1.3 }}>{attachment.name || "Saved attachment"}</Typography>
+                    <Typography variant="caption" color="text.secondary">Already saved with this watchlist item</Typography>
+                  </Box>
+                </Box>
+              ))}
               {files.map((file, index) => {
               const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|gif)$/i.test(file.name);
               return (
