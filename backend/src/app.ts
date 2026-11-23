@@ -241,7 +241,6 @@ if (
   app.use((req, res, next) => {
     const backendPrefixes = [
       "/api",
-      "/admin",
       "/notifications",
       "/uploads",
       "/check",
