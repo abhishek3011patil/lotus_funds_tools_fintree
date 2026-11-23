@@ -11,6 +11,7 @@ import Sidebar from "../page_Mainapp/Sidebar";
 import type { SidebarItem } from "../../types/sidebar";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import Badge from "@mui/material/Badge";
+import PhoneInTalkIcon from "@mui/icons-material/PhoneInTalk";
 
 const automationSidebarItems: SidebarItem[] = [
   {
@@ -33,6 +34,12 @@ const automationSidebarItems: SidebarItem[] = [
     path: "/admin/AdminAuditLogs" , 
     icon: <FolderIcon sx={{ mr: 1.5 }} />
    },
+
+   {
+  label: "Calls Log",
+  path: "/admin/calls-log",
+  icon: <PhoneInTalkIcon sx={{ mr: 1.5 }} />,
+},
 
   {
     label: "Notifications",
@@ -95,23 +102,32 @@ useEffect(() => {
   };
 }, []);
 
-const sidebarItems = automationSidebarItems.map(item =>
-  item.label === "Notifications"
-    ? {
-        ...item,
-        icon: (
-          <Badge
-            badgeContent={unreadCount}
-            color="error"
-            max={99}
-            invisible={unreadCount === 0}
-          >
-            <NotificationsNoneIcon sx={{ mr: 1.5 }} />
-          </Badge>
-        ),
-      }
-    : item
-);
+const userRole = localStorage.getItem("role");
+
+const sidebarItems = automationSidebarItems
+  .filter(item => {
+    if (item.label === "Calls Log") {
+      return userRole === "ADMIN";
+    }
+    return true;
+  })
+  .map(item =>
+    item.label === "Notifications"
+      ? {
+          ...item,
+          icon: (
+            <Badge
+              badgeContent={unreadCount}
+              color="error"
+              max={99}
+              invisible={unreadCount === 0}
+            >
+              <NotificationsNoneIcon sx={{ mr: 1.5 }} />
+            </Badge>
+          ),
+        }
+      : item
+  );
 
   return (
     <Box sx={{ display: "flex" }}>
