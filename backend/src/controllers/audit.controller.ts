@@ -14,6 +14,22 @@ const getClientIp = (req: Request): string => {
   ).replace(/^::ffff:/, "");
 };
 
+const isValidDate = (value: string) => {
+  if (!value) return true;
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+
+  return (
+    !Number.isNaN(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value
+  );
+};
+
+
 /* =========================================================
    GET AUDIT LOGS (GET /api/audit-logs/)
    ========================================================= */
@@ -28,6 +44,22 @@ export const getAuditLogs = async (req: Request, res: Response) => {
     const user = String(req.query.user || "");
     const module = String(req.query.module || "");
     const status = String(req.query.status || "");
+    const fromDate = String(req.query.fromDate || "").trim();
+const toDate = String(req.query.toDate || "").trim();
+
+if (!isValidDate(fromDate) || !isValidDate(toDate)) {
+  return res.status(400).json({
+    success: false,
+    message: "Invalid date format. Use YYYY-MM-DD.",
+  });
+}
+
+if (fromDate && toDate && fromDate > toDate) {
+  return res.status(400).json({
+    success: false,
+    message: "From date cannot be later than To date.",
+  });
+}
 
     const values: any[] = [];
     const where: string[] = [];
@@ -70,17 +102,33 @@ export const getAuditLogs = async (req: Request, res: Response) => {
       where.push(`admin_role IN ('SUPERADMIN', 'SUPER_ADMIN')`);
     }
 
-    if (date === "today") {
-      where.push(`created_at >= CURRENT_DATE`);
-    }
+// Custom From-To date filter takes priority
+if (fromDate) {
+  values.push(fromDate);
+  where.push(`created_at >= $${values.length}::date`);
+}
 
-    if (date === "week") {
-      where.push(`created_at >= NOW() - INTERVAL '7 days'`);
-    }
+if (toDate) {
+  values.push(toDate);
+  where.push(
+    `created_at < ($${values.length}::date + INTERVAL '1 day')`
+  );
+}
 
-    if (date === "month") {
-      where.push(`created_at >= NOW() - INTERVAL '1 month'`);
-    }
+// Preset date filter
+if (!fromDate && !toDate) {
+  if (date === "today") {
+    where.push(`created_at >= CURRENT_DATE`);
+  }
+
+  if (date === "week") {
+    where.push(`created_at >= NOW() - INTERVAL '7 days'`);
+  }
+
+  if (date === "month") {
+    where.push(`created_at >= NOW() - INTERVAL '1 month'`);
+  }
+}
 
     const whereClause = where.length
       ? `WHERE ${where.join(" AND ")}`
@@ -145,8 +193,23 @@ export const getAuditLogs = async (req: Request, res: Response) => {
 export const exportAuditLogs = async (req: AuthRequest, res: Response) => {
   try {
     const search = String(req.query.search || "").trim().toLowerCase();
+    const date = String(req.query.date || "");
     const fromDate = String(req.query.fromDate || "");
     const toDate = String(req.query.toDate || "");
+    
+    if (!isValidDate(fromDate) || !isValidDate(toDate)) {
+  return res.status(400).json({
+    success: false,
+    message: "Invalid date format. Use YYYY-MM-DD.",
+  });
+}
+
+if (fromDate && toDate && fromDate > toDate) {
+  return res.status(400).json({
+    success: false,
+    message: "From date cannot be later than To date.",
+  });
+}
     const user = String(req.query.user || "");
     const module = String(req.query.module || "");
     const status = String(req.query.status || "");
@@ -198,6 +261,20 @@ export const exportAuditLogs = async (req: AuthRequest, res: Response) => {
       where.push(`created_at < ($${values.length}::date + INTERVAL '1 day')`);
     }
 
+    // Preset date filter (only when custom dates are not selected)
+if (!fromDate && !toDate) {
+  if (date === "today") {
+    where.push(`created_at >= CURRENT_DATE`);
+  }
+
+  if (date === "week") {
+    where.push(`created_at >= NOW() - INTERVAL '7 days'`);
+  }
+
+  if (date === "month") {
+    where.push(`created_at >= NOW() - INTERVAL '1 month'`);
+  }
+}
     const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
     const result = await pool.query(
@@ -239,6 +316,7 @@ export const exportAuditLogs = async (req: AuthRequest, res: Response) => {
       ipAddress: getClientIp(req),
       device: req.headers["user-agent"],
       newValue: {
+        date: date || null,
         fromDate: fromDate || null,
         toDate: toDate || null,
         user: user || null,
@@ -279,3 +357,4 @@ export const exportAuditLogs = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+

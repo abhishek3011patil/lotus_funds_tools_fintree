@@ -2148,3 +2148,218 @@ export const getAllResearchAnalysts = async (
     });
   }
 };
+
+export const getAdminCallsLog = async (
+  req: AuthRequest,
+  res: Response
+) => {
+  try {
+    // ADMIN-only access
+    if (!req.user?.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (String(req.user.role).toUpperCase() !== "ADMIN") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Admin only.",
+      });
+    }
+
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(
+      Math.max(Number(req.query.limit) || 10, 1),
+      100
+    );
+    const offset = (page - 1) * limit;
+
+    const search = String(req.query.search || "").trim();
+    const raUserId = String(req.query.raUserId || "").trim();
+    const status = String(req.query.status || "").trim().toUpperCase();
+    const versionType = String(req.query.versionType || "").trim().toUpperCase();
+    const fromDate = String(req.query.fromDate || "").trim();
+    const toDate = String(req.query.toDate || "").trim();
+    const exportAll = String(req.query.export || "").toLowerCase() === "true";
+
+    // Validate date format
+    const isValidDate = (value: string) => {
+      if (!value) return true;
+
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return false;
+      }
+
+      const date = new Date(`${value}T00:00:00.000Z`);
+
+      return (
+        !Number.isNaN(date.getTime()) &&
+        date.toISOString().slice(0, 10) === value
+      );
+    };
+
+    if (!isValidDate(fromDate) || !isValidDate(toDate)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date format. Use YYYY-MM-DD.",
+      });
+    }
+
+    if (fromDate && toDate && fromDate > toDate) {
+      return res.status(400).json({
+        success: false,
+        message: "From date cannot be later than To date.",
+      });
+    }
+
+    const conditions: string[] = [];
+    const values: any[] = [];
+
+    const addCondition = (condition: string, value: any) => {
+      values.push(value);
+      conditions.push(condition.replace("?", `$${values.length}`));
+    };
+
+    if (search) {
+      values.push(`%${search}%`);
+      const searchParam = `$${values.length}`;
+
+      conditions.push(`(
+        COALESCE(u.name, '') ILIKE ${searchParam}
+        OR COALESCE(u.username, '') ILIKE ${searchParam}
+        OR COALESCE(rc.display_name, '') ILIKE ${searchParam}
+        OR COALESCE(rc.symbol, '') ILIKE ${searchParam}
+      )`);
+    }
+
+    if (raUserId) {
+      addCondition("rc.ra_user_id = ?", raUserId);
+    }
+
+    if (status) {
+      addCondition("UPPER(rc.status) = ?", status);
+    }
+
+    if (versionType) {
+      addCondition(
+        "UPPER(COALESCE(rc.version_type, 'ORIGINAL')) = ?",
+        versionType
+      );
+    }
+
+    if (fromDate) {
+      addCondition("rc.created_at >= ?::date", fromDate);
+    }
+
+    if (toDate) {
+      addCondition(
+        "rc.created_at < (?::date + INTERVAL '1 day')",
+        toDate
+      );
+    }
+
+    const whereClause = conditions.length
+      ? `WHERE ${conditions.join(" AND ")}`
+      : "";
+
+    const baseQuery = `
+      FROM research_calls rc
+      LEFT JOIN users u ON u.id = rc.ra_user_id
+      ${whereClause}
+    `;
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*) AS total ${baseQuery}`,
+      values
+    );
+
+    const total = Number(countResult.rows[0]?.total || 0);
+
+    const summaryResult = await pool.query(
+      `
+        SELECT
+          COUNT(*) AS total_calls,
+          COUNT(*) FILTER (
+            WHERE UPPER(COALESCE(rc.status, '')) = 'DRAFT'
+          ) AS draft_calls,
+          COUNT(*) FILTER (
+            WHERE UPPER(COALESCE(rc.status, '')) = 'PUBLISHED'
+          ) AS published_calls,
+          COUNT(*) FILTER (
+            WHERE UPPER(COALESCE(rc.version_type, '')) = 'ERRATA'
+          ) AS errata_calls
+        ${baseQuery}
+      `,
+      values
+    );
+
+    const analystsResult = await pool.query(`
+      SELECT
+        id,
+        COALESCE(
+          NULLIF(TRIM(name), ''),
+          NULLIF(TRIM(username), ''),
+          'Research Analyst'
+        ) AS name
+      FROM users
+      WHERE role = 'RESEARCH_ANALYST'
+      ORDER BY name ASC
+    `);
+
+    const dataValues = [...values];
+
+    let paginationClause = "";
+
+    if (!exportAll) {
+      dataValues.push(limit);
+      const limitParam = `$${dataValues.length}`;
+
+      dataValues.push(offset);
+      const offsetParam = `$${dataValues.length}`;
+
+      paginationClause = `
+        LIMIT ${limitParam}
+        OFFSET ${offsetParam}
+      `;
+    }
+
+const callsResult = await pool.query(
+  `
+    SELECT
+      COALESCE(
+        NULLIF(TRIM(u.name), ''),
+        NULLIF(TRIM(u.username), ''),
+        'Research Analyst'
+      ) AS ra_name,
+      rc.*
+    ${baseQuery}
+    ORDER BY rc.created_at DESC
+  `,
+  values
+);
+
+    return res.status(200).json({
+      success: true,
+      calls: callsResult.rows,
+      total,
+      page,
+      limit,
+      summary: {
+        total_calls: Number(summaryResult.rows[0]?.total_calls || 0),
+        draft_calls: Number(summaryResult.rows[0]?.draft_calls || 0),
+        published_calls: Number(summaryResult.rows[0]?.published_calls || 0),
+        errata_calls: Number(summaryResult.rows[0]?.errata_calls || 0),
+      },
+      analysts: analystsResult.rows,
+    });
+  } catch (error) {
+    console.error("ADMIN CALLS LOG ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch research calls log.",
+    });
+  }
+};

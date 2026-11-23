@@ -19,7 +19,9 @@ import Grid from "@mui/material/GridLegacy";
 import { Search, Download } from '@mui/icons-material';
 import axios from "axios";
 import * as XLSX from 'xlsx';
-
+import FilterListIcon from "@mui/icons-material/FilterList";
+import IconButton from "@mui/material/IconButton";
+import CloseIcon from "@mui/icons-material/Close";
 import AuditLogTable from './Admin common/AuditLogTable';
 
 interface AuditLog {
@@ -87,10 +89,12 @@ const AdminAuditLogs: React.FC = () => {
   const [userFilter, setUserFilter] = useState('');
   const [moduleFilter, setModuleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  
+  const [filterOpen, setFilterOpen] = useState(true);
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [filterFromDate, setFilterFromDate] = useState("");
+const [filterToDate, setFilterToDate] = useState("");
 
   // ── NEW: dialog state ──────────────────────────────────────────────
-  const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportFromDate, setExportFromDate] = useState('');
   const [exportToDate, setExportToDate] = useState('');
   const [exportError, setExportError] = useState('');
@@ -111,14 +115,18 @@ useEffect(() => {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        params: {
+       params: {
   page: page + 1,
   limit: rowsPerPage,
-  search: debouncedSearch.trim().length >= 3 ? debouncedSearch.trim() : "",
+  search: debouncedSearch.trim().length >= 3
+    ? debouncedSearch.trim()
+    : "",
   date: dateFilter,
   user: userFilter,
   module: moduleFilter,
   status: statusFilter,
+  fromDate: filterFromDate || "",
+  toDate: filterToDate || "",
 },
       });
 
@@ -133,7 +141,17 @@ useEffect(() => {
   };
 
   fetchAuditLogs();
-}, [page, rowsPerPage, debouncedSearch, dateFilter, userFilter, moduleFilter, statusFilter]);
+}, [
+  page,
+  rowsPerPage,
+  debouncedSearch,
+  dateFilter,
+  userFilter,
+  moduleFilter,
+  statusFilter,
+  filterFromDate,
+  filterToDate,
+]);
 
 useEffect(() => {
   const timer = setTimeout(() => {
@@ -153,12 +171,14 @@ useEffect(() => {
   };
 
   // ── NEW: open dialog instead of console.log ───────────────────────
-  const handleExport = () => {
-    setExportFromDate('');
-    setExportToDate('');
-    setExportError('');
-    setExportDialogOpen(true);
-  };
+const handleExport = () => {
+  setExportFromDate('');
+  setExportToDate('');
+  setExportError('');
+  setFilterDialogOpen(true);
+};
+
+
   // ──────────────────────────────────────────────────────────────────
 const handleResetFilters = () => {
   setSearchQuery("");
@@ -167,50 +187,62 @@ const handleResetFilters = () => {
   setUserFilter("");
   setModuleFilter("");
   setStatusFilter("");
+  setFilterFromDate("");
+  setFilterToDate("");
   setPage(0);
 };
   // ── NEW: actual download logic ────────────────────────────────────
- const handleConfirmExport = async () => {
-  if (!exportFromDate || !exportToDate) {
-    setExportError("Please enter both dates in DD/MM/YYYY format.");
+const handleConfirmExport = async () => {
+  setExportError('');
+
+  if ((exportFromDate && !exportToDate) || (!exportFromDate && exportToDate)) {
+    setExportError("Please enter both From Date and To Date.");
     return;
   }
 
-  const fromDate = parseManualDate(exportFromDate);
-  const toDate = parseManualDate(exportToDate);
+  let fromDate: string | null = null;
+  let toDate: string | null = null;
 
-  if (!fromDate || !toDate) {
-    setExportError("Please enter valid dates in DD/MM/YYYY format.");
-    return;
-  }
+  if (exportFromDate && exportToDate) {
+    fromDate = parseManualDate(exportFromDate);
+    toDate = parseManualDate(exportToDate);
 
-  if (fromDate > toDate) {
-    setExportError('"From" date cannot be after "To" date.');
-    return;
+    if (!fromDate || !toDate) {
+      setExportError("Please enter valid dates in DD/MM/YYYY format.");
+      return;
+    }
+
+    if (fromDate > toDate) {
+      setExportError('"From" date cannot be after "To" date.');
+      return;
+    }
   }
 
   try {
     const token = localStorage.getItem("token");
     const API_URL = import.meta.env.VITE_API_URL;
 
-    const response = await axios.get(`${API_URL}/api/audit-logs/export`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      params: {
-        fromDate,
-        toDate,
-        search: debouncedSearch.trim().length >= 3 ? debouncedSearch.trim() : "",
-        user: userFilter,
-        module: moduleFilter,
-        status: statusFilter,
-      },
-    });
+const response = await axios.get(`${API_URL}/api/audit-logs/export`, {
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+  params: {
+    fromDate: fromDate || filterFromDate || undefined,
+    toDate: toDate || filterToDate || undefined,
+    search: debouncedSearch.trim().length >= 3
+      ? debouncedSearch.trim()
+      : "",
+    date: dateFilter,
+    user: userFilter,
+    module: moduleFilter,
+    status: statusFilter,
+  },
+});
 
     const exportData = response.data.logs || [];
 
     if (exportData.length === 0) {
-      setExportError("No logs found for the selected date range.");
+      setExportError("No logs found for the selected filters.");
       return;
     }
 
@@ -253,10 +285,9 @@ const handleResetFilters = () => {
 
     XLSX.writeFile(
       workbook,
-      `audit_logs_${fromDate}_to_${toDate}.xlsx`
+      `audit_logs_${fromDate || "all"}_to_${toDate || "all"}.xlsx`
     );
 
-    setExportDialogOpen(false);
   } catch (error) {
     console.error("Export failed:", error);
     setExportError("Failed to export audit logs.");
@@ -275,179 +306,308 @@ const handleResetFilters = () => {
         </Typography>
       </Box>
 
-<Paper 
-  elevation={0}
-  sx={{ 
-    p: { xs: 2, md: 2.5 }, 
-    mb: 3, 
-    border: '1px solid #e2e8f0', 
-    borderRadius: '14px',
-    backgroundColor: '#ffffff'
-  }}
->
-  <Box 
-    sx={{ 
-      display: 'flex', 
-      flexDirection: { xs: 'column', lg: 'row' }, 
-      alignItems: { xs: 'stretch', lg: 'center' }, 
-      justifyContent: 'space-between',
-      gap: 2
+
+
+
+{filterOpen && (
+  <Paper
+    elevation={0}
+    sx={{
+      mb: 3,
+      p: { xs: 1.5, sm: 2 },
+      border: "1px solid #E2E8F0",
+      borderRadius: "12px",
+      backgroundColor: "#FFFFFF",
     }}
   >
-    {/* Left Side: Inputs wrapper - responsive grid/wrap alignment across screens */}
-    <Box 
-      sx={{ 
-        display: 'flex', 
-        flexDirection: { xs: 'column', sm: 'row' }, 
-        flexWrap: 'wrap', 
-        alignItems: 'center', 
-        gap: 1.5, 
-        flexGrow: 1, 
-        width: '100%' 
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 2,
+        width: "100%",
+        flexWrap: "wrap",
       }}
     >
+      {/* Search Bar */}
       <TextField
+        fullWidth
+        size="small"
         placeholder="Search logs..."
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         InputProps={{
-          startAdornment: <Search sx={{ color: 'text.secondary', mr: 0.75, fontSize: '1.25rem' }} />,
+          startAdornment: (
+            <Search
+              sx={{
+                color: "#64748B",
+                fontSize: 20,
+                mr: 1,
+              }}
+            />
+          ),
         }}
-        size="small"
-        sx={{ 
-          width: { xs: '100%', sm: 'calc(50% - 6px)', md: '240px' },
-          '& .MuiOutlinedInput-root': { borderRadius: '10px', height: '42px', fontSize: '0.9rem' } 
+        sx={{
+          flex: 1,
+          minWidth: { xs: "100%", sm: "250px" },
+          "& .MuiOutlinedInput-root": {
+            height: 46,
+            borderRadius: "10px",
+            backgroundColor: "#FFFFFF",
+            fontSize: "14px",
+            "& fieldset": {
+              borderColor: "#CBD5E1",
+            },
+            "&:hover fieldset": {
+              borderColor: "#94A3B8",
+            },
+            "&.Mui-focused fieldset": {
+              borderColor: "#315BFF",
+              borderWidth: "1px",
+            },
+          },
+          "& input::placeholder": {
+            color: "#94A3B8",
+            opacity: 1,
+          },
         }}
       />
 
-      <FormControl size="small" sx={{ width: { xs: '100%', sm: 'calc(50% - 6px)', md: '150px' } }}>
-        <InputLabel sx={{ fontSize: '0.9rem', mt: 0.1 }}>Date Range</InputLabel>
-        <Select 
-          value={dateFilter} 
-          onChange={(e) => {
-            setDateFilter(e.target.value);
-            setPage(0);
+      {/* Filter and Export Buttons */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          gap: 1.5,
+          flexShrink: 0,
+          width: { xs: "100%", sm: "auto" },
+        }}
+      >
+        <Button
+          variant="outlined"
+          startIcon={<FilterListIcon />}
+          onClick={() => setFilterDialogOpen(true)}
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+            borderRadius: "20px",
+            px: 3,
+            height: 42,
+            borderColor: "#94A3FF",
+            color: "#3157FF",
+            "&:hover": {
+              borderColor: "#3157FF",
+              backgroundColor: "#F8FAFF",
+            },
           }}
-          label="Date Range"
-          sx={{ borderRadius: '10px', height: '42px', fontSize: '0.9rem' }}
         >
-          <MenuItem value="" sx={{ fontSize: '0.9rem' }}>All Time</MenuItem>
-          <MenuItem value="today" sx={{ fontSize: '0.9rem' }}>Today</MenuItem>
-          <MenuItem value="week" sx={{ fontSize: '0.9rem' }}>This Week</MenuItem>
-          <MenuItem value="month" sx={{ fontSize: '0.9rem' }}>This Month</MenuItem>
-        </Select>
-      </FormControl>
+          Filter
+        </Button>
 
-      <FormControl size="small" sx={{ width: { xs: '100%', sm: 'calc(50% - 6px)', md: '150px' } }}>
-        <InputLabel sx={{ fontSize: '0.9rem', mt: 0.1 }}>User Role</InputLabel>
-        <Select 
-          value={userFilter} 
-          onChange={(e) => {
-            setUserFilter(e.target.value);
-            setPage(0);
+        <Button
+          variant="outlined"
+          startIcon={<Download />}
+        onClick={handleExport}
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+            borderRadius: "10px",
+            px: 2.5,
+            height: 42,
+            borderColor: "#3157FF",
+            color: "#3157FF",
+            "&:hover": {
+              borderColor: "#3157FF",
+              backgroundColor: "#F8FAFF",
+            },
           }}
-          label="User Role"
-          sx={{ borderRadius: '10px', height: '42px', fontSize: '0.9rem' }}
         >
-          <MenuItem value="" sx={{ fontSize: '0.9rem' }}>All Roles</MenuItem>
-          <MenuItem value="admin" sx={{ fontSize: '0.9rem' }}>Admin</MenuItem>
-          <MenuItem value="superadmin" sx={{ fontSize: '0.9rem' }}>Super Admin</MenuItem>
-        </Select>
-      </FormControl>
-
-      <FormControl size="small" sx={{ width: { xs: '100%', sm: 'calc(50% - 6px)', md: '160px' } }}>
-        <InputLabel sx={{ fontSize: '0.9rem', mt: 0.1 }}>Modules</InputLabel>
-        <Select 
-          value={moduleFilter} 
-          onChange={(e) => {
-            setModuleFilter(e.target.value);
-            setPage(0);
-          }}
-          label="Modules"
-          sx={{ borderRadius: '10px', height: '42px', fontSize: '0.9rem' }}
-        >
-          <MenuItem value="" sx={{ fontSize: '0.9rem' }}>All Modules</MenuItem>
-          {auditModules.map((module) => (
-            <MenuItem key={module.value} value={module.value} sx={{ fontSize: '0.9rem' }}>
-              {module.label}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-
-      <FormControl size="small" sx={{ width: { xs: '100%', sm: 'calc(50% - 6px)', md: '150px' } }}>
-        <InputLabel sx={{ fontSize: '0.9rem', mt: 0.1 }}>Status</InputLabel>
-        <Select 
-          value={statusFilter} 
-          onChange={(e) => {
-            setStatusFilter(e.target.value);
-            setPage(0);
-          }}
-          label="Status"
-          sx={{ borderRadius: '10px', height: '42px', fontSize: '0.9rem' }}
-        >
-          <MenuItem value="" sx={{ fontSize: '0.9rem' }}>All Statuses</MenuItem>
-          <MenuItem value="SUCCESS" sx={{ fontSize: '0.9rem' }}>Success</MenuItem>
-          <MenuItem value="FAILED" sx={{ fontSize: '0.9rem' }}>Failed</MenuItem>
-        </Select>
-      </FormControl>
+          Export
+        </Button>
+      </Box>
     </Box>
+  </Paper>
+)}
 
-    {/* Right Side: Action Buttons - auto-stretches down onto mobile devices */}
-    <Box 
-      sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 1.5, 
-        width: { xs: '100%', lg: 'auto' }, 
-        justifyContent: { xs: 'stretch', sm: 'flex-end' } 
+{/* Filter Dialog */}
+<Dialog
+  open={filterDialogOpen}
+  onClose={() => setFilterDialogOpen(false)}
+  fullWidth
+  maxWidth="sm"
+  PaperProps={{
+    sx: {
+      borderRadius: 3,
+    },
+  }}
+>
+<DialogTitle
+  sx={{
+    fontWeight: 600,
+    borderBottom: "1px solid #e2e8f0",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  }}
+>
+  Filters
+
+  <IconButton
+    onClick={() => setFilterDialogOpen(false)}
+    size="small"
+    sx={{
+      color: "#64748B",
+      "&:hover": {
+        backgroundColor: "#F1F5F9",
+        color: "#3157FF",
+      },
+    }}
+  >
+    <CloseIcon fontSize="small" />
+  </IconButton>
+</DialogTitle>
+
+  <DialogContent sx={{ py: 3 }}>
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "1fr",
+          sm: "1fr 1fr",
+        },
+        gap: 2,
+        pt: 1,
       }}
     >
-      <Button
-        variant="outlined"
-        size="medium"
-        onClick={handleResetFilters}
-        sx={{ 
-          textTransform: 'none', 
-          fontWeight: 600,
-          borderRadius: '10px',
-          px: 3,
-          height: '42px',
-          fontSize: '0.9rem',
-          borderColor: '#cbd5e1',
-          color: '#475569',
-          whiteSpace: 'nowrap',
-          flex: { xs: 1, sm: 'initial' },
-          '&:hover': { backgroundColor: '#f8fafc', borderColor: '#94a3b8' }
+      {/* Date Range */}
+      <TextField
+        select
+        fullWidth
+        size="small"
+        label="Date Range"
+        value={dateFilter}
+        onChange={(e) => {
+          setDateFilter(e.target.value);
+          setPage(0);
         }}
       >
-        Reset
-      </Button>
-      
-      <Button
-        variant="contained"
-        startIcon={<Download sx={{ fontSize: '1.1rem' }} />}
-        onClick={handleExport}
-        size="medium"
-        sx={{ 
-          textTransform: 'none', 
-          fontWeight: 600,
-          borderRadius: '10px',
-          px: 3,
-          height: '42px',
-          fontSize: '0.9rem',
-          backgroundColor: '#1e3a8a',
-          boxShadow: 'none',
-          whiteSpace: 'nowrap',
-          flex: { xs: 1, sm: 'initial' },
-          '&:hover': { backgroundColor: '#172554', boxShadow: 'none' }
+        <MenuItem value="">All Time</MenuItem>
+        <MenuItem value="today">Today</MenuItem>
+        <MenuItem value="week">This Week</MenuItem>
+        <MenuItem value="month">This Month</MenuItem>
+      </TextField>
+
+      {/* User Role */}
+      <TextField
+        select
+        fullWidth
+        size="small"
+        label="User Role"
+        value={userFilter}
+        onChange={(e) => {
+          setUserFilter(e.target.value);
+          setPage(0);
         }}
       >
-        Export
-      </Button>
+        <MenuItem value="">All Roles</MenuItem>
+        <MenuItem value="admin">Admin</MenuItem>
+        <MenuItem value="superadmin">Super Admin</MenuItem>
+      </TextField>
+
+      {/* Modules */}
+      <TextField
+        select
+        fullWidth
+        size="small"
+        label="Modules"
+        value={moduleFilter}
+        onChange={(e) => {
+          setModuleFilter(e.target.value);
+          setPage(0);
+        }}
+      >
+        <MenuItem value="">All Modules</MenuItem>
+        {auditModules.map((module) => (
+          <MenuItem key={module.value} value={module.value}>
+            {module.label}
+          </MenuItem>
+        ))}
+      </TextField>
+
+      {/* Status */}
+      <TextField
+        select
+        fullWidth
+        size="small"
+        label="Status"
+        value={statusFilter}
+        onChange={(e) => {
+          setStatusFilter(e.target.value);
+          setPage(0);
+        }}
+      >
+        <MenuItem value="">All Statuses</MenuItem>
+        <MenuItem value="SUCCESS">Success</MenuItem>
+        <MenuItem value="FAILED">Failed</MenuItem>
+      </TextField>
+
+      {/* From Date */}
+      <TextField
+        fullWidth
+        size="small"
+        label="From Date"
+        type="date"
+        value={filterFromDate}
+        onChange={(e) => setFilterFromDate(e.target.value)}
+        InputLabelProps={{ shrink: true }}
+      />
+
+      {/* To Date */}
+      <TextField
+        fullWidth
+        size="small"
+        label="To Date"
+        type="date"
+        value={filterToDate}
+        onChange={(e) => setFilterToDate(e.target.value)}
+        InputLabelProps={{ shrink: true }}
+      />
     </Box>
-  </Box>
-</Paper>
+  </DialogContent>
+
+  <DialogActions
+    sx={{
+      px: 3,
+      py: 2,
+      borderTop: "1px solid #e2e8f0",
+    }}
+  >
+    <Button
+      color="inherit"
+      onClick={handleResetFilters}
+      sx={{ fontWeight: 600, textTransform: "none" }}
+    >
+      Clear
+    </Button>
+
+    <Button
+      variant="outlined"
+      onClick={() => setFilterDialogOpen(false)}
+      sx={{
+        textTransform: "none",
+        fontWeight: 600,
+        borderRadius: 2,
+        px: 2.5,
+        borderColor: "#94A3FF",
+        color: "#3157FF",
+      }}
+    >
+      Apply
+    </Button>
+  </DialogActions>
+</Dialog>
 
     <AuditLogTable
   logs={logs}
@@ -481,81 +641,6 @@ const handleResetFilters = () => {
     }}
   />
 </Box>
-
-      {/* ── NEW: Date Range Export Dialog ─────────────────────────────── */}
-      <Dialog
-        open={exportDialogOpen}
-        onClose={() => setExportDialogOpen(false)}
-        PaperProps={{ sx: { borderRadius: 2, minWidth: 380 } }}
-      >
-        <DialogTitle sx={{ fontWeight: 600, pb: 1 }}>
-          Download Audit Logs
-        </DialogTitle>
-
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Select the date range for the logs you want to export.
-          </Typography>
-
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="From Date"
-                type="text"
-                placeholder="DD/MM/YYYY"
-                value={exportFromDate}
-                inputProps={{ inputMode: "numeric", maxLength: 10 }}
-                onChange={(e) => {
-                  setExportFromDate(e.target.value);
-                  setExportError('');
-                }}
-                helperText="Enter as DD/MM/YYYY"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="To Date"
-                type="text"
-                placeholder="DD/MM/YYYY"
-                value={exportToDate}
-                inputProps={{ inputMode: "numeric", maxLength: 10 }}
-                onChange={(e) => {
-                  setExportToDate(e.target.value);
-                  setExportError('');
-                }}
-                helperText="Enter as DD/MM/YYYY"
-              />
-            </Grid>
-          </Grid>
-
-          {exportError && (
-            <Typography variant="body2" color="error" sx={{ mt: 2 }}>
-              {exportError}
-            </Typography>
-          )}
-        </DialogContent>
-
-        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-          <Button
-            variant="outlined"
-            onClick={() => setExportDialogOpen(false)}
-            sx={{ flex: 1 }}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<Download />}
-            onClick={handleConfirmExport}
-            sx={{ flex: 1 }}
-          >
-            Download
-          </Button>
-        </DialogActions>
-      </Dialog>
-      {/* ──────────────────────────────────────────────────────────────── */}
     </Box>
   );
 };

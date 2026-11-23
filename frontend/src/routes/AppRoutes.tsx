@@ -17,6 +17,7 @@ import HomePage from "../pages/HomePage";
 
 // --- Lazy: Auth & Public ---
 const LoginForm = lazy(() => import("../common/LoginForm"));
+const AdminCallsLog = lazy(() => import("../pages_admin/AdminCallsLog"));
 const LoginFormAdmin = lazy(() => import("../common/LoginFormAdmin"));
 const Signup = lazy(() => import("../pages/common/Signup"));
 const NotFound = lazy(() => import("../pages/Notfound"));
@@ -395,6 +396,15 @@ const AppRoutes = () => {
           <Route path="approval" element={<AdminApproval />} />
           <Route path="AdminAuditLogs" element={<AdminAuditLogs />} />
           <Route path="notifications" element={<AdminNotification />} />
+          <Route path="AdminAuditLogs" element={<AdminAuditLogs />} />
+          <Route
+  path="calls-log"
+  element={
+    <ProtectedRoute allowedRoles={["ADMIN"]}>
+      <AdminCallsLog />
+    </ProtectedRoute>
+  }
+/>
           <Route path="settings" element={<AdminSettings />} />
           <Route path="edit/:type/:id" element={<EditPage />} />
         <Route

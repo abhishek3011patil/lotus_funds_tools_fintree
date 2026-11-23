@@ -5,7 +5,8 @@ import {
     getResearchCalls,
     getPublishedCalls,
     publishDraftCall,
-     getAllResearchAnalysts
+     getAllResearchAnalysts,
+     getAdminCallsLog
 } from "../controllers/researchCalls.controller";
 import { exitResearchCall } from "../controllers/exitResearchCall";
 import {
@@ -127,6 +128,12 @@ router.get(
   "/research/underlying-studies/preferences",
   authenticate,
   getMyUnderlyingStudyPreferences
+);
+
+router.get(
+  "/admin/calls-log",
+  authenticate,
+  getAdminCallsLog
 );
 
 export default router;
