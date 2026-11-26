@@ -1,4 +1,22 @@
-import { Chip, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
+import { Alert, Stack, Typography } from "@mui/material";
 import AdminPageShell from "../components/admin/AdminPageShell";
-const AdminBillingReview = () => <AdminPageShell title="Billing Review" subtitle="Read-only payment and subscription review foundation."><TableContainer component={Paper} variant="outlined"><Table size="small"><TableHead><TableRow><TableCell>Reference</TableCell><TableCell>Account type</TableCell><TableCell>Amount</TableCell><TableCell>Status</TableCell></TableRow></TableHead><TableBody><TableRow><TableCell>PAY-2048</TableCell><TableCell>Broker</TableCell><TableCell>₹48,000</TableCell><TableCell><Chip size="small" label="REVIEW" /></TableCell></TableRow></TableBody></Table></TableContainer></AdminPageShell>;
+
+const AdminBillingReview = () => (
+  <AdminPageShell
+    title="Billing & Subscriptions"
+    subtitle="Review account plans, payment status, and subscription periods."
+  >
+    <Stack spacing={2}>
+      <Alert severity="info">
+        The billing review screen is connected. Live payment and subscription records
+        will appear here once the admin billing API is available.
+      </Alert>
+      <Typography color="text.secondary" variant="body2">
+        This page is read-only. Payment verification and subscription changes should
+        be based on server-verified payment records.
+      </Typography>
+    </Stack>
+  </AdminPageShell>
+);
+
 export default AdminBillingReview;

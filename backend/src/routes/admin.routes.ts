@@ -53,22 +53,30 @@ router.get(
 
 router.get(
   "/support/requests",
+  authenticate,
+  requireAdmin,
   getAllSupportRequests
 );
 
 // Get new support request count for sidebar badge
 router.get(
   "/support/requests/unread-count",
+  authenticate,
+  requireAdmin,
   getNewSupportRequestCount
 );
 
 router.get(
   "/support/requests/:id",
+  authenticate,
+  requireAdmin,
   getSupportRequestById
 );
 
 router.put(
   "/support/requests/:id",
+  authenticate,
+  requireAdmin,
   updateSupportRequest
 );
 

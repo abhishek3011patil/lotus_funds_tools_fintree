@@ -92,6 +92,7 @@ const ExceltoJSONTool = lazy(() => import("../tools/ExceltoJSONtool").then(m => 
 // --- Lazy: Admin ---
 const AdminDashboard = lazy(() => import("../pages_admin/AdminDashboard"));
 const AdminApproval = lazy(() => import("../pages_admin/AdminApproval"));
+const AdminBillingReview = lazy(() => import("../pages_admin/AdminBillingReview"));
 const AdminNotification = lazy(() => import("../pages_admin/Admin common/AdminNotification"));
 const AdminSettings = lazy(() => import("../pages_admin/AdminSettings"));
 const AdminSupportRequests = lazy(() => import("../pages_admin/AdminSupportRequests"));
@@ -376,6 +377,7 @@ const AppRoutes = () => {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="recommendations" element={<Navigate to="../dashboard" replace />} />
           <Route path="approval" element={<AdminApproval />} />
+          <Route path="billing" element={<AdminBillingReview />} />
           <Route path="AdminAuditLogs" element={<AdminAuditLogs />} />
           <Route path="notifications" element={<AdminNotification />} />
           <Route path="AdminAuditLogs" element={<AdminAuditLogs />} />
