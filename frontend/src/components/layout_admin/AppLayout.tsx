@@ -12,6 +12,7 @@ import type { SidebarItem } from "../../types/sidebar";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import Badge from "@mui/material/Badge";
 import PhoneInTalkIcon from "@mui/icons-material/PhoneInTalk";
+import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 
 const automationSidebarItems: SidebarItem[] = [
   {
@@ -47,16 +48,24 @@ const automationSidebarItems: SidebarItem[] = [
     icon: <NotificationsNoneIcon sx={{ mr: 1.5 }} />
 
   },
+    {
+  label: "Support Requests",
+  path: "/admin/support-requests",
+  icon: <SupportAgentIcon sx={{ mr: 1.5 }} />,
+},
   {
     label: "Settings",
     path: "/admin/settings",
     icon: <SettingsIcon sx={{ mr: 1.5 }} />,
   },
+
+
 ];
 
 const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [supportCount, setSupportCount] = useState(0);
 
   const handleMenuClick = () => {
     setSidebarOpen(true);
@@ -65,6 +74,27 @@ const AppLayout = () => {
   const handleSidebarClose = () => {
     setSidebarOpen(false);
   };
+
+  const fetchSupportCount = async () => {
+  try {
+    const res = await fetch(
+      `${import.meta.env.VITE_API_URL}/admin/support/requests/unread-count`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+
+    const data = await res.json();
+
+    if (data.success) {
+      setSupportCount(data.count);
+    }
+  } catch (err) {
+    console.error("Support count error:", err);
+  }
+};
 
   const fetchUnreadCount = async () => {
   try {
@@ -89,16 +119,25 @@ const AppLayout = () => {
 
 useEffect(() => {
   fetchUnreadCount();
+  fetchSupportCount();
 
-  const interval = setInterval(fetchUnreadCount, 5000);
+   const interval = setInterval(() => {
+    fetchUnreadCount();
+    fetchSupportCount();
+  }, 5000);
 
-  const updateBadge = () => fetchUnreadCount();
+    const updateBadge = () => {
+    fetchUnreadCount();
+    fetchSupportCount();
+  };
 
   window.addEventListener("notificationsUpdated", updateBadge);
+  window.addEventListener("supportRequestsUpdated", updateBadge);
 
   return () => {
     clearInterval(interval);
     window.removeEventListener("notificationsUpdated", updateBadge);
+    window.removeEventListener("supportRequestsUpdated", updateBadge);
   };
 }, []);
 
@@ -123,6 +162,20 @@ const sidebarItems = automationSidebarItems
               invisible={unreadCount === 0}
             >
               <NotificationsNoneIcon sx={{ mr: 1.5 }} />
+            </Badge>
+          ),
+        }
+      : item.label === "Support Requests"
+      ? {
+          ...item,
+          icon: (
+            <Badge
+              badgeContent={supportCount}
+              color="error"
+              max={99}
+              invisible={supportCount === 0}
+            >
+              <SupportAgentIcon sx={{ mr: 1.5 }} />
             </Badge>
           ),
         }

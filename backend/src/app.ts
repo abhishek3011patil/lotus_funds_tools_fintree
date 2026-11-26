@@ -36,6 +36,7 @@ import clientRegistrationRoutes from "./routes/clientRegistration/clientRegistra
 import aadhaarKycRoutes from "./routes/aadhaarKyc.routes";
 import contentRoutes from "./routes/content.routes";
 import employeeCompanyBrandsRoutes from "./routes/employeeCompanyBrands.routes";
+import supportRoutes from "./routes/support.routes";
 
 
 
@@ -154,6 +155,7 @@ app.use(
   "/api/subscription-notifications",
   subscriptionNotificationRoutes
 );
+app.use("/api/support", supportRoutes);
 
 app.get("/check", (_req, res) => {
   res.send("APP WORKING");

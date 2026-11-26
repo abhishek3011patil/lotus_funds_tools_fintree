@@ -9,6 +9,7 @@ import FolderIcon from "@mui/icons-material/Folder";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import AutoStoriesRoundedIcon from "@mui/icons-material/AutoStoriesRounded";
+import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 
 import Header from "./Header";
 import Sidebar from "../page_Mainapp/Sidebar";
@@ -112,6 +113,11 @@ const AppLayout = () => {
         </Badge>
       ),
     },
+    {
+  label: "Support Helpdesk",
+  path: "/support-helpdesk",
+  icon: <SupportAgentIcon sx={{ mr: 1.5 }} />,
+},
     {
       label: "Settings",
       path: "/settings",

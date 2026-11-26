@@ -5,6 +5,13 @@ import { requireAdmin } from "../middlewares/admin.middleware";
 import whatsappRoutes from "./whatsapp.routes";
 import { approvePaidRegistration } from "../controllers/adminSubscriptionApproval.controller";
 import { runSubscriptionNotificationPass } from "../controllers/subscriptionNotification.controller";
+import {
+  getAllSupportRequests,
+  getSupportRequestById,
+  updateSupportRequest,
+  getNewSupportRequestCount,
+} from "../controllers/support.controller";
+
 
 
 const router = Router();
@@ -40,6 +47,28 @@ router.get(
   getDisclaimerHistoryByRA
 );
 
+// ADMIN SUPPORT REQUESTS
+
+router.get(
+  "/support/requests",
+  getAllSupportRequests
+);
+
+// Get new support request count for sidebar badge
+router.get(
+  "/support/requests/unread-count",
+  getNewSupportRequestCount
+);
+
+router.get(
+  "/support/requests/:id",
+  getSupportRequestById
+);
+
+router.put(
+  "/support/requests/:id",
+  updateSupportRequest
+);
 
 
 

@@ -31,6 +31,7 @@ import AutoStoriesRoundedIcon from '@mui/icons-material/AutoStoriesRounded';
 import { getLoginRoute } from '../../utils/authRedirect';
 import api from '../../utils/axio';
 import AuthenticatedAvatar from '../../components/common/AuthenticatedAvatar';
+import SupportAgentIcon from "@mui/icons-material/SupportAgent";
 
 const drawerWidth = 240;
 
@@ -44,6 +45,7 @@ const brokerSidebarItems = [
   { name: 'Content', path: '/broker/content', icon: AutoStoriesRoundedIcon },
   { name: 'Subscription', path: '/broker/subscription', icon: CreditCardIcon },
   { name: 'Notifications', path: '/broker/notifications', icon: NotificationsIcon },
+  {name: 'Support Helpdesk',path: '/broker/support-helpdesk',icon: SupportAgentIcon,},
   { name: 'Settings', path: '/broker/settings', icon: SettingsIcon },
 ];
 

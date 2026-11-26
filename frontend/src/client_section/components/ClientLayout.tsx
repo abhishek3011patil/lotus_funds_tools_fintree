@@ -28,6 +28,7 @@ import { getLoginRoute } from '../../utils/authRedirect';
 import api from '../../utils/axio';
 import { ClientRouteSkeleton } from './ClientPageSkeletons';
 import AuthenticatedAvatar from '../../components/common/AuthenticatedAvatar';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 
 const drawerWidth = 240;
 
@@ -37,6 +38,7 @@ const sidebarItems = [
   { name: 'Marketplace', path: '/client/analysts', icon: GroupsRoundedIcon },
   { name: 'Insights', path: '/client/insights', icon: AutoStoriesRoundedIcon },
   { name: 'Notifications', path: '/client/notifications', icon: NotificationsIcon },
+  { name: 'Support Helpdesk', path: '/client/support-helpdesk', icon: SupportAgentIcon },
   { name: 'Profile', path: '/client/profile', icon: PersonIcon },
 ];
 

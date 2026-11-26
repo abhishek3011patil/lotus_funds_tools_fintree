@@ -30,33 +30,11 @@ const RAPasswordSetupPage = lazy(
 );
 // --- Lazy: Registration ---
 const RegistrationPage = lazy(() => import("../pages_registration/RegistrationPage"));
-const RAPlanSelectionPage = lazy(
-  () =>
-    import(
-      "../features/raRegistrationSubscription/pages/RAPlanSelectionPage"
-    )
-);
-
-const RAUnderReviewPage = lazy(
-  () =>
-    import(
-      "../features/raRegistrationSubscription/pages/RAUnderReviewPage"
-    )
-);
-
+const RAPlanSelectionPage = lazy(() => import("../features/raRegistrationSubscription/pages/RAPlanSelectionPage"));
+const RAUnderReviewPage = lazy(() => import("../features/raRegistrationSubscription/pages/RAUnderReviewPage"));
 const BrokerRegistration = lazy(() => import("../pages_registration/BrokerRegistration"));
-const RegistrationSubscriptionPage = lazy(
-  () =>
-    import(
-      "../folder/registrationSubscription/pages/RegistrationSubscriptionPage"
-    )
-);
-const RegistrationCheckoutPage = lazy(
-  () =>
-    import(
-      "../folder/registrationSubscription/pages/RegistrationCheckoutPage"
-    )
-);
+const RegistrationSubscriptionPage = lazy(() => import("../folder/registrationSubscription/pages/RegistrationSubscriptionPage"));
+const RegistrationCheckoutPage = lazy(() => import("../folder/registrationSubscription/pages/RegistrationCheckoutPage"));
 const RegistrationPaymentSuccessPage = lazy(
   () =>
     import(
@@ -89,6 +67,7 @@ const Performance = lazy(() => import("../pages/Performance"));
 const Settings = lazy(() => import("../pages/Settings"));
 const Recommendations = lazy(() => import("../pages/Recomendation"));
 const RANotification = lazy(() => import("../pages/common/RANotification"));
+const RASupportHelpdesk = lazy(() => import("../pages/RASupportHelpdesk"));
 const EditPage = lazy(() => import("../pages/EditPage"));
 
 
@@ -115,26 +94,18 @@ const AdminDashboard = lazy(() => import("../pages_admin/AdminDashboard"));
 const AdminApproval = lazy(() => import("../pages_admin/AdminApproval"));
 const AdminNotification = lazy(() => import("../pages_admin/Admin common/AdminNotification"));
 const AdminSettings = lazy(() => import("../pages_admin/AdminSettings"));
-
+const AdminSupportRequests = lazy(() => import("../pages_admin/AdminSupportRequests"));
 
 
 // --- Lazy: Client Section Pages ---
-const ClientDashboard = lazy(
-  () => import("../client_section/dashboard/pages/ClientDashboardPage")
-);
-const ClientRecommendations = lazy(
-  () => import("../client_section/recommendations/pages/ClientRecommendationsPage")
-);
+const ClientDashboard = lazy(() => import("../client_section/dashboard/pages/ClientDashboardPage"));
+const ClientRecommendations = lazy(() => import("../client_section/recommendations/pages/ClientRecommendationsPage"));
 const ClientInsights = lazy(() => import("../client_section/insights/pages/ClientInsightsPage"));
 const ClientNotifications = lazy(() => import("../client_section/pages/ClientNotifications"));
 const ClientProfile = lazy(() => import("../client_section/profile/pages/ClientProfilePage"));
-const ClientAnalystsPage = lazy(
-  () => import("../client_section/analysts/pages/ClientAnalystsPage")
-);
-const ClientRegistrationPage = lazy(
-  () => import("../client_section/registration/pages/ClientRegistrationPage")
-);
-
+const ClientAnalystsPage = lazy(() => import("../client_section/analysts/pages/ClientAnalystsPage"));
+const ClientRegistrationPage = lazy(() => import("../client_section/registration/pages/ClientRegistrationPage"));
+const ClientSupportHelpdesk = lazy(() => import("../client_section/pages/ClientSupportHelpdesk"));
 // --- Lazy: Subscription ---
 const SubscriptionPage = lazy(() => import("../subscription/SubscriptionPage"));
 
@@ -158,6 +129,7 @@ const BrokerAnnouncements = lazy(() => import("../broker_section/pages/BrokerAnn
 const BrokerBranding = lazy(() => import("../broker_section/pages/BrokerBranding"));
 const BrokerSubscription = lazy(() => import("../broker_section/pages/BrokerSubscription"));
 const BrokerNotifications = lazy(() => import("../broker_section/pages/BrokerNotifications"));
+const BrokerSupportHelpdesk = lazy(() => import("../broker_section/pages/BrokerSupportHelpdesk"));
 const ContentManagement = lazy(() => import("../content/ContentManagementPage"));
 
 const SuperAdminDashboard = lazy(() => import("../pages_super_admin/SuperAdminDashboard"));
@@ -257,6 +229,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
+
 <Route path="/dashboard" element={<Dashboard />} />
 <Route path="/performance" element={<Performance />} />
 <Route path="/content" element={<ProtectedRoute allowedRoles={["RESEARCH_ANALYST"]}><ContentManagement /></ProtectedRoute>} />
@@ -265,6 +238,14 @@ const AppRoutes = () => {
   element={
     <ProtectedRoute allowedRoles={["RESEARCH_ANALYST"]}>
       <RAClientsPage />
+    </ProtectedRoute>
+  }
+/>
+<Route
+  path="/support-helpdesk"
+  element={
+    <ProtectedRoute allowedRoles={["RESEARCH_ANALYST"]}>
+      <RASupportHelpdesk />
     </ProtectedRoute>
   }
 />
@@ -324,6 +305,7 @@ const AppRoutes = () => {
           <Route path="branding" element={<BrokerBranding />} />
           <Route path="subscription" element={<BrokerSubscription />} />
           <Route path="notifications" element={<BrokerNotifications />} />
+          <Route path="support-helpdesk" element={<BrokerSupportHelpdesk />} />
           <Route path="settings" element={<BrokerSettings />} />
         </Route>
 
@@ -405,6 +387,14 @@ const AppRoutes = () => {
     </ProtectedRoute>
   }
 />
+<Route
+  path="support-requests"
+  element={
+    <ProtectedRoute allowedRoles={["ADMIN"]}>
+      <AdminSupportRequests />
+    </ProtectedRoute>
+  }
+/>
           <Route path="settings" element={<AdminSettings />} />
           <Route path="edit/:type/:id" element={<EditPage />} />
         <Route
@@ -416,6 +406,8 @@ const AppRoutes = () => {
   element={<DisclaimerHistory />}
 />
         </Route>
+
+
 
 {/* 3. Client Section Layout — CLIENT ROLE ONLY */}
 
@@ -457,6 +449,7 @@ const AppRoutes = () => {
           <Route path="videos" element={<Navigate to="../insights" replace />} />
           <Route path="performance" element={<Navigate to="../dashboard" replace />} />
           <Route path="notifications" element={<ClientNotifications />} />
+          <Route path="support-helpdesk" element={<ClientSupportHelpdesk />}/>
           <Route path="profile" element={<ClientProfile />} />
         </Route>
         {/* Catch-all — always last */}
