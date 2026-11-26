@@ -1,6 +1,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import * as XLSX from "xlsx";
 import {
   Alert,
   Box,
@@ -415,54 +416,68 @@ const AdminSupportRequests: React.FC = () => {
   };
 
   // Export filtered records
-  const handleExport = () => {
-    const headers = [
-      "Ticket ID",
-      "User Type",
-      "Sender Name",
-      "Complaint",
-      "Category",
-      "Description",
-      "Priority",
-      "Status",
-      "Submitted At",
-    ];
+ 
+// Export filtered records to Excel
+const handleExport = () => {
+  const headers = [
+    "Ticket ID",
+    "User Type",
+    "Sender Name",
+    "Complaint",
+    "Category",
+    "Description",
+    "Priority",
+    "Status",
+    "Submitted At",
+  ];
 
-    const rows = filteredRequests.map((request) =>
-      [
-        request.ticketId,
-        request.userType,
-        request.senderName,
-        request.complaint,
-        request.category || "",
-        request.description,
-        request.priority,
-        request.status,
-        request.submittedAt,
-      ]
-        .map((value) =>
-          `"${String(value).replace(/"/g, '""')}"`
-        )
-        .join(",")
-    );
+  const rows = filteredRequests.map((request) => [
+    request.ticketId,
+    request.userType,
+    request.senderName,
+    request.complaint,
+    request.category || "",
+    request.description,
+    request.priority,
+    request.status,
+    request.submittedAt,
+  ]);
 
-    const csv = [headers.join(","), ...rows].join("\n");
+  // Create Excel worksheet
+  const worksheet = XLSX.utils.aoa_to_sheet([
+    headers,
+    ...rows,
+  ]);
 
-    const blob = new Blob([csv], {
-      type: "text/csv;charset=utf-8;",
-    });
+  // Set column widths
+  worksheet["!cols"] = [
+    { wch: 15 },
+    { wch: 15 },
+    { wch: 22 },
+    { wch: 30 },
+    { wch: 20 },
+    { wch: 40 },
+    { wch: 15 },
+    { wch: 18 },
+    { wch: 22 },
+  ];
 
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+  // Create workbook
+  const workbook = XLSX.utils.book_new();
 
-    link.href = url;
-    link.download = "Tarkashh_Support_Requests.csv";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    "Support Requests"
+  );
 
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
+  // Download Excel file
+  XLSX.writeFile(
+    workbook,
+    "Tarkashh_Support_Requests.xlsx"
+  );
+};
+
 
   const resetFilters = () => {
     setUserTypeFilter("ALL");
