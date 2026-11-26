@@ -16,21 +16,21 @@ import {
 
 const router = Router();
 
-// ✅ Apply middleware to all admin routes
-router.use(authenticate, requireAdmin);
+router.post("/approve-user", authenticate, requireAdmin, approvePaidRegistration);
 
-router.post("/approve-user", approvePaidRegistration);
-
-router.post("/suspend-user", suspendUser);
+router.post("/suspend-user", authenticate, requireAdmin, suspendUser);
 
 router.post(
   "/subscription-notifications/run",
+  authenticate,
+  requireAdmin,
   runSubscriptionNotificationPass
 );
 
 router.post(
   "/resend-password-link",
-  
+  authenticate,
+  requireAdmin,
   resendPasswordLink
 );
 
@@ -44,6 +44,8 @@ router.put(
 
 router.get(
   "/history/:userId",
+  authenticate,
+  requireAdmin,
   getDisclaimerHistoryByRA
 );
 

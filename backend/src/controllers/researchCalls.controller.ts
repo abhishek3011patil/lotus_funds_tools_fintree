@@ -1483,6 +1483,10 @@ export const publishDraftCall = async (
   req: AuthRequest,
   res: Response
 ) => {
+  const files = Array.isArray(req.files)
+    ? req.files
+    : Object.values(req.files || {}).flat();
+  if (req.file) files.push(req.file);
   try {
     const { id } = req.params;
     const raUserId = req.user?.id;
@@ -1546,6 +1550,12 @@ export const publishDraftCall = async (
       });
     }
 
+    const uploadedAttachments = files.map(file => ({
+      url: `/uploads/${file.filename}`,
+      name: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+    }));
     const result = await pool.query(
       `
       UPDATE research_calls
@@ -1558,7 +1568,9 @@ export const publishDraftCall = async (
         audience_groups_snapshot = $5::jsonb,
         audience_recipient_snapshot = $6::jsonb,
         disclaimer_snapshot = COALESCE($7, disclaimer_snapshot),
-        disclaimer_snapshot_at = CASE WHEN $7 IS NOT NULL THEN NOW() ELSE disclaimer_snapshot_at END
+        disclaimer_snapshot_at = CASE WHEN $7 IS NOT NULL THEN NOW() ELSE disclaimer_snapshot_at END,
+        attachments = COALESCE(attachments, '[]'::jsonb) || $8::jsonb,
+        file_url = COALESCE(file_url, $9)
       WHERE id = $1
         AND status = 'DRAFT'
         AND ra_user_id = $2
@@ -1568,7 +1580,8 @@ export const publishDraftCall = async (
       `,
       [id, raUserId, messageText, resolvedAudience.mode,
         JSON.stringify(resolvedAudience.selectedGroups), JSON.stringify(resolvedAudience.recipients),
-        resolveAudienceDisclaimer(null, resolvedAudience.selectedGroups)]
+        resolveAudienceDisclaimer(null, resolvedAudience.selectedGroups), JSON.stringify(uploadedAttachments),
+        files[0]?.path || null]
     );
 
     if ((result.rowCount ?? 0) === 0) {

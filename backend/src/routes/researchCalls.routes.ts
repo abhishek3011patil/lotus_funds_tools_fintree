@@ -96,6 +96,7 @@ router.patch(
     requireSubscriptionFeature(
       "RA_RESEARCH_CALLS"
     ),
+    recommendationUpload,
     publishDraftCall
 );
 // 🔹 Dashboard (already created)

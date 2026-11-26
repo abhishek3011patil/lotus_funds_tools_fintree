@@ -2038,14 +2038,16 @@ const publishTrackedDraft = async (
 
   setIsSubmitting(true);
   try {
+    const publishFormData = new FormData();
+    publishFormData.append("message_text", preparedMessage.message);
+    publishFormData.append("audience_mode", audienceMode);
+    publishFormData.append("audience_group_ids", JSON.stringify(audienceMode === "GROUPS" ? selectedAudienceGroupIds : []));
+    selectedFiles.forEach(file => publishFormData.append("files", file));
+
     await axios.patch(
       `${import.meta.env.VITE_API_URL}/api/research/calls/${item.id}/publish`,
-      {
-        message_text: preparedMessage.message,
-        audience_mode: audienceMode,
-        audience_group_ids: audienceMode === "GROUPS" ? selectedAudienceGroupIds : [],
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
+      publishFormData,
+      { headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" } }
     );
 
     setRecommendations((previous) =>
@@ -3916,13 +3918,17 @@ sx={{
     minWidth: { xs: "100%", sm: 180 },
   }}
 >
-            <RecommendationMediaUpload files={selectedFiles} onChange={setSelectedFiles} disabled={isSubmitting || previewLoading || Boolean(pendingDraftPublish)} />
+            <RecommendationMediaUpload
+              files={selectedFiles}
+              onChange={setSelectedFiles}
+              existingAttachments={Array.isArray(pendingDraftPublish?.attachments) ? pendingDraftPublish.attachments : []}
+              disabled={isSubmitting || previewLoading}
+            />
             {pendingDraftPublish && (
               <Typography variant="caption" color="text.secondary">
                 {Array.isArray(pendingDraftPublish.attachments) && pendingDraftPublish.attachments.length > 0
-                  ? `Saved files: ${pendingDraftPublish.attachments.map((file: { name?: string }) => file.name || "Attachment").join(", ")}. These remain attached when published.`
-                  : "This watchlist item has no saved files."}
-                {" "}Files cannot be changed while publishing a saved watchlist item.
+                  ? "Watchlist files stay attached when published. You can also add more files here."
+                  : "Add files here if you want them attached to the published call."}
               </Typography>
             )}
             {isErrataMode && (
