@@ -13,6 +13,7 @@ import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import Badge from "@mui/material/Badge";
 import PhoneInTalkIcon from "@mui/icons-material/PhoneInTalk";
 import SupportAgentIcon from "@mui/icons-material/SupportAgent";
+import PaymentsIcon from "@mui/icons-material/Payments";
 
 const automationSidebarItems: SidebarItem[] = [
   {
@@ -29,6 +30,11 @@ const automationSidebarItems: SidebarItem[] = [
     label: "Admin Approval",
     path: "/admin/approval",
     icon: <PrivacyTipIcon sx={{ mr: 1.5 }} />,
+  },
+  {
+    label: "Billing & Subscriptions",
+    path: "/admin/billing",
+    icon: <PaymentsIcon sx={{ mr: 1.5 }} />,
   },
   {    
     label: "Audit Logs", 
