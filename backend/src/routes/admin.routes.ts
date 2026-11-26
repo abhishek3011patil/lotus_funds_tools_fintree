@@ -5,6 +5,7 @@ import { requireAdmin } from "../middlewares/admin.middleware";
 import whatsappRoutes from "./whatsapp.routes";
 import { approvePaidRegistration } from "../controllers/adminSubscriptionApproval.controller";
 import { runSubscriptionNotificationPass } from "../controllers/subscriptionNotification.controller";
+import { getAdminBillingRecords } from "../controllers/adminBilling.controller";
 import {
   getAllSupportRequests,
   getSupportRequestById,
@@ -47,6 +48,13 @@ router.get(
   authenticate,
   requireAdmin,
   getDisclaimerHistoryByRA
+);
+
+router.get(
+  "/billing/records",
+  authenticate,
+  requireAdmin,
+  getAdminBillingRecords
 );
 
 // ADMIN SUPPORT REQUESTS
